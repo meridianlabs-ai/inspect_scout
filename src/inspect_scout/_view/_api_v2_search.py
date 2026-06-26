@@ -29,6 +29,7 @@ from ._api_v2_types import (
     SearchResponse,
 )
 from ._server_common import InspectPydanticJSONResponse, decode_base64url
+from .capabilities import ViewerCapabilities
 
 LLM_SEARCH_TEMPLATE = """\
 You are a search assistant for LLM transcript analysis. A user is searching \
@@ -179,13 +180,18 @@ def _search_result_store() -> KVStore:
     return KVStore(db_path.as_posix(), max_entries=MAX_ENTRIES)
 
 
-def create_search_router() -> APIRouter:
+def create_search_router(
+    capabilities: ViewerCapabilities | None = None,
+) -> APIRouter:
     """Create search API router.
 
     Returns:
         Configured APIRouter with search endpoints.
     """
     router = APIRouter(tags=["search"])
+
+    def scoped_root(value: str) -> str:
+        return capabilities.require_transcripts(value) if capabilities else value
 
     @router.get("/searches", summary="List recent search inputs")
     async def list_search_inputs(
@@ -221,7 +227,7 @@ def create_search_router() -> APIRouter:
 
         Returns cached results if the same search was run before.
         """
-        transcript_dir = decode_base64url(dir)
+        transcript_dir = scoped_root(decode_base64url(dir))
         sid = _search_id(request)
         key = _result_key(
             transcript_dir,
@@ -303,7 +309,7 @@ def create_search_router() -> APIRouter:
         ),
     ) -> Result:
         """Get a cached search result by search input ID and transcript scope."""
-        transcript_dir = decode_base64url(dir)
+        transcript_dir = scoped_root(decode_base64url(dir))
         key = _result_key(
             transcript_dir,
             id,

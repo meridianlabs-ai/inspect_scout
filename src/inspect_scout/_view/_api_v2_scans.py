@@ -27,6 +27,7 @@ from starlette.status import (
 )
 from upath import UPath
 
+from .._project import read_project
 from .._query import Query, ScalarValue
 from .._query.order_by import OrderBy
 from .._recorder.active_scans_store import ActiveScanInfo, active_scans_store
@@ -45,6 +46,7 @@ from ._api_v2_types import (
 )
 from ._pagination_helpers import build_pagination_context
 from ._server_common import InspectPydanticJSONResponse, decode_base64url
+from .capabilities import PathCapability, ViewerCapabilities
 from .invalidationTopics import notify_topics
 
 # Scan result columns that are stored as pre-serialized JSON strings in
@@ -63,10 +65,16 @@ def _build_scan_zip(scan_path: UPath) -> Response:
             detail=f"Scan not found: {scan_path}",
         )
 
+    scan_scope = PathCapability.parse("directory", str(scan_path))
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for child in scan_path.iterdir():
             if child.is_file():
+                if not scan_scope.allows(str(child)):
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Scan archive entry escapes the selected scan directory",
+                    )
                 with file(child.as_posix(), "rb") as f:
                     zf.writestr(child.name, f.read())
 
@@ -82,16 +90,28 @@ def _build_scan_zip(scan_path: UPath) -> Response:
 
 def create_scans_router(
     streaming_batch_size: int = 1024,
+    capabilities: ViewerCapabilities | None = None,
 ) -> APIRouter:
     """Create scans API router.
 
     Args:
         streaming_batch_size: Batch size for Arrow IPC streaming.
+        capabilities: Maximum paths and files granted at viewer startup.
 
     Returns:
         Configured APIRouter with scans endpoints.
     """
     router = APIRouter(tags=["scans"])
+
+    def scoped_root(value: str) -> str:
+        return capabilities.require_scans(value) if capabilities else value
+
+    def scoped_scan(root: str, child: str) -> UPath:
+        return (
+            capabilities.resolve_scan(root, child)
+            if capabilities
+            else UPath(root) / child
+        )
 
     @router.post(
         "/scans/{dir}",
@@ -106,7 +126,7 @@ def create_scans_router(
         body: ScansRequest | None = None,
     ) -> ScansResponse:
         """Filter scan jobs from the scans directory."""
-        scans_dir = decode_base64url(dir)
+        scans_dir = scoped_root(decode_base64url(dir))
 
         ctx = build_pagination_context(body, "scan_id")
 
@@ -148,7 +168,7 @@ def create_scans_router(
         body: DistinctRequest | None = None,
     ) -> list[ScalarValue]:
         """Get distinct values for a column."""
-        scans_dir = decode_base64url(dir)
+        scans_dir = scoped_root(decode_base64url(dir))
         if body is None:
             return []
         async with await scan_jobs_view(scans_dir) as view:
@@ -164,7 +184,14 @@ def create_scans_router(
     async def active_scans() -> ActiveScansResponse:
         """Get info on all active scans from the KV store."""
         with active_scans_store() as store:
-            return ActiveScansResponse(items=store.read_all())
+            items = store.read_all()
+        if capabilities is not None:
+            items = {
+                scan_id: info
+                for scan_id, info in items.items()
+                if capabilities.allows_scans(info.location)
+            }
+        return ActiveScansResponse(items=items)
 
     @router.post(
         "/startscan",
@@ -175,6 +202,9 @@ def create_scans_router(
     )
     async def run_llm_scanner(body: ScanJobConfig) -> ScanStatus:
         """Run an llm_scanner scan via subprocess."""
+        if capabilities is not None:
+            capabilities.validate_project_update(read_project())
+            capabilities.validate_scan_job(body)
         proc, temp_path, _stdout_lines, stderr_lines = _spawn_scan_subprocess(body)
         pid = proc.pid
 
@@ -232,8 +262,8 @@ def create_scans_router(
         Content negotiation: returns JSON by default, or a zip archive
         when the client sends Accept: application/zip.
         """
-        scans_dir = decode_base64url(dir)
-        scan_path = UPath(scans_dir) / decode_base64url(scan)
+        scans_dir = scoped_root(decode_base64url(dir))
+        scan_path = scoped_scan(scans_dir, decode_base64url(scan))
 
         accept = request.headers.get("accept", "")
         if "application/zip" in accept:
@@ -276,8 +306,8 @@ def create_scans_router(
         """Stream scanner results as Arrow IPC with LZ4 compression."""
         excluded = [c.strip() for c in exclude_column if c.strip()]
 
-        scans_dir = decode_base64url(dir)
-        scan_path = UPath(scans_dir) / decode_base64url(scan)
+        scans_dir = scoped_root(decode_base64url(dir))
+        scan_path = scoped_scan(scans_dir, decode_base64url(scan))
 
         result = await scan_results_arrow_async(str(scan_path))
         if scanner not in result.scanners:
@@ -347,8 +377,8 @@ def create_scans_router(
 
         requested = list(dict.fromkeys(c.strip() for c in column if c.strip()))
 
-        scans_dir = decode_base64url(dir)
-        scan_path = UPath(scans_dir) / decode_base64url(scan)
+        scans_dir = scoped_root(decode_base64url(dir))
+        scan_path = scoped_scan(scans_dir, decode_base64url(scan))
 
         result = await scan_results_arrow_async(str(scan_path))
         if scanner not in result.scanners:
@@ -394,8 +424,8 @@ def create_scans_router(
         scan: str = Path(description="Scan path (base64url-encoded)"),
     ) -> None:
         """Delete a scan directory."""
-        scans_dir = decode_base64url(dir)
-        scan_path = UPath(scans_dir) / decode_base64url(scan)
+        scans_dir = scoped_root(decode_base64url(dir))
+        scan_path = scoped_scan(scans_dir, decode_base64url(scan))
 
         # Check if scan exists
         if not scan_path.exists():

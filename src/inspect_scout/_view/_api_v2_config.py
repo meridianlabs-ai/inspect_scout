@@ -24,17 +24,20 @@ from .._project.types import ProjectConfig
 from .._util.constants import DEFAULT_SCANS_DIR
 from ._api_v2_types import AppConfig, AppDir
 from ._server_common import InspectPydanticJSONResponse
+from .capabilities import ViewerCapabilities
 from .invalidationTopics import notify_topics
 from .types import ViewConfig
 
 
 def create_config_router(
     view_config: ViewConfig | None = None,
+    capabilities: ViewerCapabilities | None = None,
 ) -> APIRouter:
     """Create config API router.
 
     Args:
         view_config: View configuration.
+        capabilities: Maximum paths and files granted at viewer startup.
 
     Returns:
         Configured APIRouter with config endpoints.
@@ -105,6 +108,9 @@ def create_config_router(
         ),
     ) -> Response:
         """Update project configuration with comment preservation."""
+        if capabilities is not None:
+            capabilities.validate_project_update(config)
+
         # Parse the If-Match header (may be quoted), None means force save
         expected_etag = if_match.strip('"') if if_match else None
 

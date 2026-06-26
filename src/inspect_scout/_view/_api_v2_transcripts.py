@@ -28,6 +28,7 @@ from ._api_v2_types import (
 )
 from ._pagination_helpers import build_pagination_context
 from ._server_common import InspectPydanticJSONResponse, decode_base64url
+from .capabilities import ViewerCapabilities
 
 # Supported compression algorithms for X-Accept-Raw-Encoding header
 RawEncoding = Literal["zstd"]
@@ -35,13 +36,18 @@ RawEncoding = Literal["zstd"]
 MAX_TRANSCRIPT_BYTES = 350 * 1024 * 1024  # 350MB
 
 
-def create_transcripts_router() -> APIRouter:
+def create_transcripts_router(
+    capabilities: ViewerCapabilities | None = None,
+) -> APIRouter:
     """Create transcripts API router.
 
     Returns:
         Configured APIRouter with transcripts endpoints.
     """
     router = APIRouter(tags=["transcripts"])
+
+    def scoped_root(value: str) -> str:
+        return capabilities.require_transcripts(value) if capabilities else value
 
     @router.post(
         "/transcripts/{dir}",
@@ -55,7 +61,7 @@ def create_transcripts_router() -> APIRouter:
         body: TranscriptsRequest | None = None,
     ) -> TranscriptsResponse:
         """Filter transcript metadata from the transcripts directory."""
-        transcripts_dir = decode_base64url(dir)
+        transcripts_dir = scoped_root(decode_base64url(dir))
 
         try:
             ctx = build_pagination_context(
@@ -115,7 +121,7 @@ def create_transcripts_router() -> APIRouter:
         id: str = Path(description="Transcript ID"),
     ) -> TranscriptInfo:
         """Get transcript info (metadata only) by ID."""
-        transcripts_dir = decode_base64url(dir)
+        transcripts_dir = scoped_root(decode_base64url(dir))
 
         async with transcripts_view(transcripts_dir) as view:
             condition = Column("transcript_id") == id
@@ -162,7 +168,7 @@ def create_transcripts_router() -> APIRouter:
             "server transcodes to deflate for automatic browser decompression.",
         ),
     ) -> StreamingResponse:
-        transcripts_dir = decode_base64url(dir)
+        transcripts_dir = scoped_root(decode_base64url(dir))
 
         # Parse accepted raw encodings from header
         accepted_raw_encodings: set[str] = set()
@@ -229,7 +235,7 @@ def create_transcripts_router() -> APIRouter:
         body: DistinctRequest | None = None,
     ) -> list[ScalarValue]:
         """Get distinct values for a column."""
-        transcripts_dir = decode_base64url(dir)
+        transcripts_dir = scoped_root(decode_base64url(dir))
         if body is None:
             return []
         async with transcripts_view(transcripts_dir) as view:

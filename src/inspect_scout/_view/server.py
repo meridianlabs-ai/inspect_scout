@@ -1,5 +1,6 @@
 import logging
 import os
+import secrets
 from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlparse
@@ -13,13 +14,21 @@ from inspect_ai._util.event_loop_monitor import event_loop_monitor
 from inspect_ai._util.file import filesystem
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import HTMLResponse
-from starlette.types import Scope
+from starlette.types import ASGIApp, Scope
 
 from inspect_scout._util.appdirs import scout_cache_dir
 from inspect_scout._util.constants import (
     DEFAULT_SCANS_DIR,
     DEFAULT_SERVER_HOST,
     DEFAULT_VIEW_PORT,
+)
+from inspect_scout._view.network import (
+    BrowserOriginMiddleware,
+    HostValidationMiddleware,
+    SecurityHeadersMiddleware,
+    ViewerNetworkPolicy,
+    resolve_viewer_network_policy,
+    unsafe_network_warning,
 )
 from inspect_scout._view.notify import notify_lifespan
 from inspect_scout._view.types import ViewConfig
@@ -30,6 +39,8 @@ from ._api_v2 import v2_api_app
 _IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
 _DIST_DIR = Path(__file__).parent / "dist"
 _REPO_URL = "https://github.com/meridianlabs-ai/inspect_scout.git"
+
+logger = logging.getLogger(__name__)
 
 
 class _ScoutStaticFiles(StaticFiles):
@@ -106,7 +117,20 @@ def view_server(
     authorization: str | None = None,
     fs_options: dict[str, Any] | None = None,
     root_path: str = "",
+    trusted_origins: tuple[str, ...] = (),
+    trusted_hosts: tuple[str, ...] = (),
+    unsafe_allow_unauthenticated: bool = False,
+    network_policy: ViewerNetworkPolicy | None = None,
 ) -> None:
+    network_policy = network_policy or resolve_viewer_network_policy(
+        bind_host=host,
+        port=port,
+        trusted_hosts=trusted_hosts,
+        trusted_origins=trusted_origins,
+        authorization=authorization,
+        unsafe_allow_unauthenticated=unsafe_allow_unauthenticated,
+        root_path=root_path,
+    )
     root_path = _normalize_root_path(root_path)
 
     # get filesystem and resolve scan_dir to full path
@@ -120,11 +144,55 @@ def view_server(
     # ensure we've resolved the dist directory
     directory = _resolve_dist_directory()
 
-    v2_api = v2_api_app(view_config=config, dist_path=directory)
+    app = standalone_view_app(
+        view_config=config,
+        network_policy=network_policy,
+        root_path=root_path,
+        directory=directory,
+    )
 
-    if authorization:
-        v2_api.add_middleware(AuthorizationMiddleware, authorization=authorization)
+    # run app
+    display().print("Scout View")
+    warning = unsafe_network_warning(network_policy)
+    if warning:
+        logger.warning(warning)
 
+    async def run_server() -> None:
+        config = uvicorn.Config(
+            app,
+            host=network_policy.bind_host,
+            port=network_policy.port,
+            root_path=root_path,
+            log_config=None,
+        )
+        server = uvicorn.Server(config)
+
+        async def announce_when_ready() -> None:
+            while not server.started:
+                await anyio.sleep(0.05)
+            # Print this for compatibility with the Inspect VSCode plugin:
+            url = view_url(network_policy.bind_host, network_policy.port, mode)
+            display().print(
+                f"======== Running on {url} ========\n(Press CTRL+C to quit)"
+            )
+
+        async with anyio.create_task_group() as tg:
+            tg.start_soon(announce_when_ready)
+            await server.serve()
+
+    anyio.run(run_server)
+
+
+def standalone_view_app(
+    *,
+    view_config: ViewConfig | None,
+    network_policy: ViewerNetworkPolicy,
+    root_path: str = "",
+    directory: Path | None = None,
+) -> ASGIApp:
+    root_path = _normalize_root_path(root_path)
+    directory = directory or _resolve_dist_directory()
+    v2_api = v2_api_app(view_config=view_config, dist_path=directory)
     app = FastAPI(lifespan=notify_lifespan)
 
     if os.getenv("SCOUT_VIEW_EVENT_LOOP_MONITOR", "false").lower() in (
@@ -145,7 +213,7 @@ def view_server(
 
         app.middleware("http")(log_and_monitor)
 
-    app.mount("/api/v2", v2_api)
+    app.mount("/api/v2", BrowserOriginMiddleware(v2_api, network_policy))
 
     app.mount(
         "/",
@@ -157,29 +225,14 @@ def view_server(
         name="static",
     )
 
-    # run app
-    display().print("Scout View")
-
-    async def run_server() -> None:
-        config = uvicorn.Config(
-            app, host=host, port=port, root_path=root_path, log_config=None
+    if network_policy.authorization:
+        app.add_middleware(
+            AuthorizationMiddleware,
+            authorization=network_policy.authorization,
         )
-        server = uvicorn.Server(config)
 
-        async def announce_when_ready() -> None:
-            while not server.started:
-                await anyio.sleep(0.05)
-            # Print this for compatibility with the Inspect VSCode plugin:
-            url = view_url(host, port, mode)
-            display().print(
-                f"======== Running on {url} ========\n(Press CTRL+C to quit)"
-            )
-
-        async with anyio.create_task_group() as tg:
-            tg.start_soon(announce_when_ready)
-            await server.serve()
-
-    anyio.run(run_server)
+    protected_app: ASGIApp = HostValidationMiddleware(app, network_policy)
+    return SecurityHeadersMiddleware(protected_app)
 
 
 def view_url(host: str, port: int, mode: Literal["default", "scans"]) -> str:
@@ -197,7 +250,9 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         auth_header = request.headers.get("authorization", None)
-        if auth_header != self.authorization:
+        if auth_header is None or not secrets.compare_digest(
+            auth_header.encode(), self.authorization.encode()
+        ):
             return Response("Unauthorized", status_code=401)
         return await call_next(request)
 

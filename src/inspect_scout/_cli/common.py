@@ -102,7 +102,7 @@ def view_options(func: Callable[..., Any]) -> Callable[..., click.Context]:
     @click.option(
         "--host",
         default=DEFAULT_SERVER_HOST,
-        help="Tcp/Ip host for view server.",
+        help="TCP/IP bind host. Non-loopback binds require authorization or an explicit unsafe acknowledgement.",
     )
     @click.option(
         "--port",
@@ -122,6 +122,21 @@ def view_options(func: Callable[..., Any]) -> Callable[..., click.Context]:
         default="",
         envvar="UVICORN_ROOT_PATH",
         help="ASGI root_path for serving behind a reverse proxy.",
+    )
+    @click.option(
+        "--trusted-origin",
+        multiple=True,
+        help="Exact browser origin allowed to use the viewer. Repeat for multiple origins.",
+    )
+    @click.option(
+        "--trusted-host",
+        multiple=True,
+        help="Additional exact HTTP authority allowed for non-browser clients.",
+    )
+    @click.option(
+        "--unsafe-allow-unauthenticated",
+        is_flag=True,
+        help="Acknowledge unauthenticated access when binding beyond loopback.",
     )
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> click.Context:

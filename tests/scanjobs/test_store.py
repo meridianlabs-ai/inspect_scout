@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
-from inspect_scout._query import Column, Query
+from inspect_scout._query import Column, Query, UnknownColumnError
 from inspect_scout._query.order_by import OrderBy
 from inspect_scout._scanjobs.store import ScanIndexStore
 from inspect_scout._view._api_v2_types import ScanRow
@@ -117,4 +117,13 @@ def test_distinct_rejects_unknown_column(tmp_path: Path) -> None:
     store.upsert([(make_row("a"), "t")])
     with pytest.raises(ValueError):
         store.distinct('x" FROM scan_jobs; --', None)
+    store.close()
+
+
+def test_order_by_rejects_unknown_column(tmp_path: Path) -> None:
+    store = ScanIndexStore(tmp_path / "scans.sqlite")
+    store.upsert([(make_row("a"), "t")])
+    with pytest.raises(UnknownColumnError):
+        store.select(Query(order_by=[OrderBy('x"; DELETE FROM scan_jobs; --', "ASC")]))
+    assert {row.scan_id for row in store.select()} == {"a"}
     store.close()

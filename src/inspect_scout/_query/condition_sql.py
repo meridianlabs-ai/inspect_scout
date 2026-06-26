@@ -13,7 +13,12 @@ from __future__ import annotations
 from typing import Any, Literal, overload
 
 from .condition import Condition, LogicalOperator, Operator
-from .sql import SQLDialect, format_sql_value
+from .sql import (
+    SQLDialect,
+    escape_identifier,
+    format_sql_value,
+    quote_identifier,
+)
 
 
 class ConditionSQLError(ValueError):
@@ -340,10 +345,6 @@ def _build_condition_sql(
             )
 
 
-def _esc_double(s: str) -> str:
-    return s.replace('"', '""')
-
-
 def _esc_single(s: str) -> str:
     return s.replace("'", "''")
 
@@ -455,7 +456,7 @@ def _format_condition_column(column_name: str, dialect: SQLDialect) -> str:
         if not path_parts:
             # No JSON path, just a column name that might contain a dot
             # in table.column format (not supported in current implementation)
-            return f'"{_esc_double(column_name)}"'
+            return quote_identifier(column_name)
 
         if dialect == "sqlite":
             # Build JSONPath like $.key[0]."user.name"
@@ -470,7 +471,7 @@ def _format_condition_column(column_name: str, dialect: SQLDialect) -> str:
                 else:
                     json_path_parts.append(f".{segment}")
             json_path = "$" + "".join(json_path_parts)
-            return f"json_extract(\"{_esc_double(base)}\", '{_esc_single(json_path)}')"
+            return f"json_extract({quote_identifier(base)}, '{_esc_single(json_path)}')"
 
         elif dialect == "duckdb":
             # Use json_extract_string to extract as VARCHAR for direct comparison
@@ -484,10 +485,13 @@ def _format_condition_column(column_name: str, dialect: SQLDialect) -> str:
                 else:
                     json_path_parts.append(f".{segment}")
             json_path = "$" + "".join(json_path_parts)
-            return f"json_extract_string(\"{_esc_double(base)}\", '{_esc_single(json_path)}')"
+            return (
+                f"json_extract_string({quote_identifier(base)}, "
+                f"'{_esc_single(json_path)}')"
+            )
 
         elif dialect == "postgres":
-            result = f'"{_esc_double(base)}"'
+            result = quote_identifier(base)
             for i, (segment, is_index) in enumerate(path_parts):
                 op = "->>" if i == len(path_parts) - 1 else "->"
                 if is_index:
@@ -499,7 +503,7 @@ def _format_condition_column(column_name: str, dialect: SQLDialect) -> str:
             return result
 
     # Simple (non-JSON) column
-    return f'"{_esc_double(column_name)}"'
+    return quote_identifier(column_name)
 
 
 def _get_condition_placeholder(position: int, dialect: SQLDialect) -> str:
@@ -781,7 +785,7 @@ def _needs_quoting(identifier: str) -> bool:
 
 def _escape_identifier(identifier: str) -> str:
     """Escape an identifier for use in double quotes."""
-    return identifier.replace('"', '""')
+    return escape_identifier(identifier)
 
 
 # Placeholder for condition_from_sql - will be implemented next

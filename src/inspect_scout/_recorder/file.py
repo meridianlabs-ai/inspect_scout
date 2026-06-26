@@ -4,6 +4,7 @@ import json
 import os
 import tempfile
 from collections.abc import Iterator, Mapping
+from logging import getLogger
 from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence, cast
 
 import duckdb
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
 
 from inspect_scout._recorder.summary import Summary
 
+from .._query.sql import quote_identifier
 from .._recorder.buffer import (
     SCAN_ERRORS,
     SCAN_SUMMARY,
@@ -36,6 +38,7 @@ from .._recorder.buffer import (
 from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec, ScanTranscripts
 from .._transcript.types import TranscriptInfo
+from .._util.duckdb import create_parquet_view, restrict_external_access
 from .recorder import (
     ScanRecorder,
     ScanResultsArrow,
@@ -45,6 +48,7 @@ from .recorder import (
 )
 
 SCAN_JSON = "_scan.json"
+logger = getLogger(__name__)
 
 
 class LazyScannerMapping(Mapping[str, pd.DataFrame]):
@@ -580,37 +584,69 @@ class FileRecorder(ScanRecorder):
         # Create in-memory DuckDB connection
         conn = duckdb.connect(":memory:")
 
-        # Create views for each parquet file
-        async with AsyncFilesystem() as fs:
-            parquet_uris = sorted(
-                [u async for u in fs.iter_files(scan_location, "*.parquet")]
-            )
-        for parquet_uri in parquet_uris:
-            parquet_file = UPath(parquet_uri)
-            scanner_name = parquet_file.stem
-            # Create a view that references the parquet file
-            # Use absolute path to ensure it works regardless of working directory
-            # iter_files already yields absolute URIs.
-            abs_path = parquet_file.as_posix()
-
-            # Check if we need to expand resultsets
-            if rows == "results" and _has_resultsets(conn, abs_path):
-                # Create expanded view with UNNEST for resultset rows
-                sql = _create_expanded_view_sql(conn, abs_path, scanner_name)
-                conn.execute(sql)
-            else:
-                # Use existing simple view logic (for transcripts mode or non-resultset scanners)
-                # Check if value_type is uniform and needs casting
-                uniform_type = _get_uniform_value_type(conn, abs_path)
-                if uniform_type in ("boolean", "number"):
-                    cast_expr = _cast_value_sql(uniform_type)
-                    select_clause = f"SELECT * REPLACE ({cast_expr} AS value)"
-                else:
-                    select_clause = "SELECT *"
-
-                conn.execute(
-                    f"CREATE VIEW {scanner_name} AS {select_clause} FROM read_parquet('{abs_path}')"
+        scanner_tables: dict[str, str] = {}
+        allowed_paths: list[str] = []
+        try:
+            # Match filesystem entries to scanners declared by the parsed spec.
+            async with AsyncFilesystem() as fs:
+                parquet_uris = sorted(
+                    [u async for u in fs.iter_files(scan_location, "*.parquet")]
                 )
+            declared_scanners = set(status.spec.scanners)
+            parquet_by_scanner: dict[str, str] = {}
+            unexpected_count = 0
+            for parquet_uri in parquet_uris:
+                parquet_file = UPath(parquet_uri)
+                scanner_name = parquet_file.stem
+                if scanner_name not in declared_scanners:
+                    unexpected_count += 1
+                    continue
+                if scanner_name in parquet_by_scanner:
+                    raise ValueError(
+                        f"Multiple Parquet files found for scanner {scanner_name!r}"
+                    )
+                parquet_by_scanner[scanner_name] = parquet_file.as_posix()
+
+            if unexpected_count:
+                logger.warning(
+                    "Ignoring %d undeclared Parquet file(s) in scan results",
+                    unexpected_count,
+                )
+
+            for scanner_name in status.spec.scanners:
+                abs_path = parquet_by_scanner.get(scanner_name)
+                if abs_path is None:
+                    continue
+
+                source_view = create_parquet_view(conn, abs_path)
+                allowed_paths.append(abs_path)
+
+                # Check if we need to expand resultsets
+                if rows == "results" and _has_resultsets(conn, source_view):
+                    # Create expanded view with UNNEST for resultset rows
+                    sql = _create_expanded_view_sql(conn, source_view, scanner_name)
+                    conn.execute(sql)
+                else:
+                    # Use existing simple view logic (for transcripts mode or
+                    # non-resultset scanners). Check if value_type is uniform
+                    # and needs casting.
+                    uniform_type = _get_uniform_value_type(conn, source_view)
+                    if uniform_type in ("boolean", "number"):
+                        cast_expr = _cast_value_sql(uniform_type)
+                        select_clause = f"SELECT * REPLACE ({cast_expr} AS value)"
+                    else:
+                        select_clause = "SELECT *"
+
+                    conn.execute(
+                        f"CREATE VIEW {quote_identifier(scanner_name)} AS "
+                        f"{select_clause} FROM {quote_identifier(source_view)}"
+                    )
+                scanner_tables[scanner_name] = scanner_name
+
+            restrict_external_access(conn, allowed_paths=allowed_paths)
+        except Exception:
+            conn.close()
+            raise
 
         return ScanResultsDB(
             status=status.complete,
@@ -619,6 +655,7 @@ class FileRecorder(ScanRecorder):
             summary=status.summary,
             errors=status.errors,
             conn=conn,
+            scanner_tables=scanner_tables,
         )
 
     @override
@@ -800,25 +837,26 @@ def _ensure_scans_dir(scans_dir: UPath) -> None:
     scans_dir.mkdir(parents=True, exist_ok=True)
 
 
-def _has_resultsets(conn: duckdb.DuckDBPyConnection, parquet_path: str) -> bool:
+def _has_resultsets(conn: duckdb.DuckDBPyConnection, source_view: str) -> bool:
     """
     Check if a parquet file contains any resultset rows.
 
     Args:
         conn: DuckDB connection
-        parquet_path: Path to the parquet file
+        source_view: Generated view over the parquet file
 
     Returns:
         True if any rows have value_type == 'resultset', False otherwise
     """
     result = conn.execute(
-        f"SELECT COUNT(*) FROM read_parquet('{parquet_path}') WHERE value_type = 'resultset' LIMIT 1"
+        f"SELECT COUNT(*) FROM {quote_identifier(source_view)} "
+        "WHERE value_type = 'resultset' LIMIT 1"
     ).fetchone()
     return result is not None and result[0] > 0
 
 
 def _create_expanded_view_sql(
-    conn: duckdb.DuckDBPyConnection, parquet_path: str, scanner_name: str
+    conn: duckdb.DuckDBPyConnection, source_view: str, scanner_name: str
 ) -> str:
     """
     Generate SQL to create an expanded view that unnests resultset rows.
@@ -832,7 +870,7 @@ def _create_expanded_view_sql(
 
     Args:
         conn: DuckDB connection to query schema
-        parquet_path: Path to the parquet file
+        source_view: Generated view over the parquet file
         scanner_name: Name for the view
 
     Returns:
@@ -841,7 +879,7 @@ def _create_expanded_view_sql(
     # Query the actual column names from the parquet file to avoid hardcoding
     # We use LIMIT 0 to get just the schema without reading data
     result = conn.execute(
-        f"SELECT * FROM read_parquet('{parquet_path}') LIMIT 0"
+        f"SELECT * FROM {quote_identifier(source_view)} LIMIT 0"
     ).description
     all_columns = [col[0] for col in result]
 
@@ -874,9 +912,9 @@ def _create_expanded_view_sql(
     }
 
     # Build the non-resultset rows query with explicit column selection
-    non_resultset_cols = ", ".join(all_columns)
+    non_resultset_cols = ", ".join(quote_identifier(column) for column in all_columns)
     non_resultset_query = f"""
-    SELECT {non_resultset_cols} FROM read_parquet('{parquet_path}')
+    SELECT {non_resultset_cols} FROM {quote_identifier(source_view)}
     WHERE value_type != 'resultset' OR value_type IS NULL
     """
 
@@ -898,15 +936,15 @@ def _create_expanded_view_sql(
     for col in all_columns:
         if col in base_columns:
             # Base columns from the parquet table
-            expanded_col_selects.append(f"base_row.{col}")
+            expanded_col_selects.append(f"base_row.{quote_identifier(col)}")
         elif col in scan_execution_fields:
             # NULL out scan execution fields to avoid incorrect aggregation
-            expanded_col_selects.append(f"NULL AS {col}")
+            expanded_col_selects.append(f"NULL AS {quote_identifier(col)}")
         elif col in validation_fields or col.startswith("validation_result_"):
             # NULL out validation fields in expanded rows because:
             # 1. Label-based validation can't create synthetic rows in SQL
             # 2. Without synthetic rows, validation results are incomplete/misleading
-            expanded_col_selects.append(f"NULL AS {col}")
+            expanded_col_selects.append(f"NULL AS {quote_identifier(col)}")
         elif col == "uuid":
             expanded_col_selects.append(
                 "json_extract_string(CAST(elem AS JSON), '$.uuid') AS uuid"
@@ -953,13 +991,13 @@ def _create_expanded_view_sql(
     expanded_resultset_query = f"""
     SELECT
         {", ".join(expanded_col_selects)}
-    FROM read_parquet('{parquet_path}') base_row,
-    UNNEST(CAST(json_extract(base_row.value, '$') AS JSON[])) AS t(elem)
-    WHERE base_row.value_type = 'resultset'
+    FROM {quote_identifier(source_view)} base_row,
+    UNNEST(CAST(json_extract(base_row.{quote_identifier("value")}, '$') AS JSON[])) AS t(elem)
+    WHERE base_row.{quote_identifier("value_type")} = 'resultset'
     """
 
     # Combine both queries with UNION ALL
-    return f"""CREATE VIEW {scanner_name} AS
+    return f"""CREATE VIEW {quote_identifier(scanner_name)} AS
     SELECT * FROM (
         {non_resultset_query}
         UNION ALL
@@ -968,20 +1006,21 @@ def _create_expanded_view_sql(
 
 
 def _get_uniform_value_type(
-    conn: duckdb.DuckDBPyConnection, parquet_path: str
+    conn: duckdb.DuckDBPyConnection, source_view: str
 ) -> str | None:
     """
     Check if value_type is uniform across all rows in a parquet file.
 
     Args:
         conn: DuckDB connection
-        parquet_path: Path to the parquet file
+        source_view: Generated view over the parquet file
 
     Returns:
         The uniform value_type if all rows have the same type, None otherwise
     """
     result = conn.execute(
-        f"SELECT DISTINCT value_type FROM read_parquet('{parquet_path}') WHERE value_type IS NOT NULL"
+        f"SELECT DISTINCT value_type FROM {quote_identifier(source_view)} "
+        "WHERE value_type IS NOT NULL"
     ).fetchall()
 
     if len(result) == 1:

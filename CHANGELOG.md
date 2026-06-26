@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Security: Remove terminal control sequences from scanner names, scan metadata, errors, progress text, and filenames before rendering console output.
+- Security: Build DuckDB queries from bound Parquet sources and quoted, schema-validated identifiers so malicious transcript/scan filenames and sort or distinct columns cannot inject SQL.
 - Add `timeline` option to `transcript_messages()` and `llm_scanner()` for selecting a named timeline.
 - Scout View: Back the scans list with a persistent, per-location SQLite index in the local Scout cache. The index is lazily refreshed from scan metadata, so filtering, sorting, pagination, and distinct-value queries no longer rebuild the full scans table on every request.
 - Scout View: Fix event panel nav pills never expanding back from picker mode 

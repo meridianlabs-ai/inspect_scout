@@ -10,9 +10,11 @@ import pyarrow as pa
 if TYPE_CHECKING:
     from pyarrow import Scalar
 
+from .._query.sql import quote_identifier
 from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec, ScanTranscripts
 from .._transcript.types import TranscriptInfo
+from .._util.duckdb import generated_identifier
 from .summary import Summary
 
 
@@ -121,6 +123,9 @@ class ScanResultsDB(Status):
     conn: duckdb.DuckDBPyConnection
     """Connection to DuckDB database."""
 
+    scanner_tables: Mapping[str, str]
+    """Logical scanner names mapped to their queryable DuckDB relations."""
+
     def __init__(
         self,
         status: bool,
@@ -129,9 +134,11 @@ class ScanResultsDB(Status):
         summary: Summary,
         errors: list[Error],
         conn: duckdb.DuckDBPyConnection,
+        scanner_tables: Mapping[str, str],
     ) -> None:
         super().__init__(status, spec, location, summary, errors)
         self.conn = conn
+        self.scanner_tables = scanner_tables
 
     def __enter__(self) -> "ScanResultsDB":
         """Enter the async context manager."""
@@ -183,18 +190,22 @@ class ScanResultsDB(Status):
         file_conn = duckdb.connect(file)
 
         try:
-            # Get all tables and views from the in-memory connection
-            tables_and_views = self.conn.execute("SHOW TABLES").fetchall()
-
-            # Materialize each table/view into the file database
-            for row in tables_and_views:
-                table_name = row[0]
-
+            # Materialize each logical scanner relation into the file database
+            for scanner_name, table_name in self.scanner_tables.items():
                 # Read the data from the in-memory connection into a DataFrame
-                df = self.conn.execute(f"SELECT * FROM {table_name}").fetchdf()  # noqa: F841
+                df = self.conn.execute(
+                    f"SELECT * FROM {quote_identifier(table_name)}"
+                ).fetchdf()
 
-                # Write the DataFrame as a table in the file connection
-                file_conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM df")
+                registered_name = generated_identifier("export")
+                file_conn.register(registered_name, df)
+                try:
+                    file_conn.execute(
+                        f"CREATE TABLE {quote_identifier(scanner_name)} AS "
+                        f"SELECT * FROM {quote_identifier(registered_name)}"
+                    )
+                finally:
+                    file_conn.unregister(registered_name)
 
         finally:
             # Close the file connection

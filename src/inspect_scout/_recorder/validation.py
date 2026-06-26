@@ -159,8 +159,8 @@ def compute_validation_metrics(
         # Per-key metrics
         per_key: dict[str, ValidationMetrics] = {}
         for entry in with_targets:
-            target_is_dict = isinstance(entry.target, dict)
-            entry_target_positive = is_positive_value(entry.target)
+            target = entry.target
+            entry_target_positive = is_positive_value(target)
             if isinstance(entry.valid, dict):
                 for key, valid in entry.valid.items():
                     if key not in per_key:
@@ -173,8 +173,8 @@ def compute_validation_metrics(
                     # specificity). Fall back to the entry-level positivity when the
                     # target is a scalar.
                     key_target_positive = (
-                        is_positive_value(entry.target.get(key))
-                        if target_is_dict
+                        is_positive_value(target.get(key))
+                        if isinstance(target, dict)
                         else entry_target_positive
                     )
                     _update_metrics(per_key[key], key_target_positive, valid)

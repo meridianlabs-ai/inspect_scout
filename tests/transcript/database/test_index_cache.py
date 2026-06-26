@@ -8,6 +8,7 @@ import duckdb
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
+from inspect_scout._query.sql import quote_identifier
 from inspect_scout._transcript.database.parquet.index import (
     init_index_table,
 )
@@ -227,6 +228,28 @@ class TestCacheSaveLoad:
         assert len(result) == 2
         assert result[0][0] == "id1"
         assert result[1][0] == "id2"
+
+    def test_cache_paths_and_table_names_are_not_sql(
+        self, conn: duckdb.DuckDBPyConnection, tmp_path: Path
+    ) -> None:
+        table_name = 'index"; COPY (SELECT 1); --'
+        loaded_name = 'loaded"; DROP TABLE x; --'
+        conn.execute(
+            f"CREATE TABLE {quote_identifier(table_name)} AS "
+            "SELECT 'id1' AS transcript_id, 'file.parquet' AS filename"
+        )
+
+        cache_path = tmp_path / "cache'; --.parquet"
+        save_index_cache(conn, cache_path, table_name)
+
+        conn2 = duckdb.connect(":memory:")
+        try:
+            assert load_cached_index(conn2, cache_path, loaded_name) == 1
+            assert conn2.execute(
+                f"SELECT transcript_id FROM {quote_identifier(loaded_name)}"
+            ).fetchone() == ("id1",)
+        finally:
+            conn2.close()
 
     def test_load_cached_index_returns_none_if_missing(
         self, conn: duckdb.DuckDBPyConnection, tmp_path: Path

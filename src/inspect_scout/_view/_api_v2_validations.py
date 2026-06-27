@@ -15,7 +15,11 @@ from starlette.status import (
 )
 from upath import UPath
 
-from .._validation.file_scanner import scan_validation_files
+from .._validation.file_scanner import (
+    VALIDATION_EXTENSIONS,
+    is_validation_file,
+    scan_validation_files,
+)
 from .._validation.predicates import PredicateType
 from .._validation.types import ValidationCase
 from .._validation.writer import ValidationFileWriter, _unflatten_columns
@@ -72,10 +76,7 @@ def create_validation_router(
     def create_validation(body: CreateValidationSetRequest) -> str:
         """Create a new validation file."""
         # Convert URI to path
-        file_path = _uri_to_path(body.path)
-
-        # Validate path is within project directory
-        _validate_path_within_project(file_path, project_dir)
+        file_path = _resolve_new_validation_path(_uri_to_path(body.path), project_dir)
 
         # Convert request cases to ValidationCase objects
         cases: list[ValidationCase] = []
@@ -121,10 +122,9 @@ def create_validation_router(
     ) -> list[dict[str, Any]]:
         """Get all cases from a validation file."""
         file_uri = decode_base64url(uri)
-        file_path = _uri_to_path(file_uri)
-
-        # Validate path is within project directory
-        _validate_path_within_project(file_path, project_dir)
+        file_path = _resolve_existing_validation_file(
+            _uri_to_path(file_uri), project_dir
+        )
 
         try:
             writer = ValidationFileWriter(file_path)
@@ -148,16 +148,9 @@ def create_validation_router(
     ) -> None:
         """Delete a validation file."""
         file_uri = decode_base64url(uri)
-        file_path = _uri_to_path(file_uri)
-
-        # Validate path is within project directory
-        _validate_path_within_project(file_path, project_dir)
-
-        if not file_path.exists():
-            raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND,
-                detail="Validation file not found",
-            )
+        file_path = _resolve_existing_validation_file(
+            _uri_to_path(file_uri), project_dir
+        )
 
         send2trash(str(file_path))
 
@@ -173,16 +166,9 @@ def create_validation_router(
     ) -> str:
         """Rename a validation file."""
         file_uri = decode_base64url(uri)
-        file_path = _uri_to_path(file_uri)
-
-        # Validate path is within project directory
-        _validate_path_within_project(file_path, project_dir)
-
-        if not file_path.exists():
-            raise HTTPException(
-                status_code=HTTP_404_NOT_FOUND,
-                detail="Validation file not found",
-            )
+        file_path = _resolve_existing_validation_file(
+            _uri_to_path(file_uri), project_dir
+        )
 
         # Validate new name
         new_name = body.name.strip()
@@ -205,7 +191,7 @@ def create_validation_router(
         new_path = file_path.parent / f"{new_name}{extension}"
 
         # Validate new path is within project directory
-        _validate_path_within_project(new_path, project_dir)
+        new_path = _resolve_new_validation_path(new_path, project_dir)
 
         # Check if target already exists
         if new_path.exists():
@@ -235,11 +221,10 @@ def create_validation_router(
     ) -> dict[str, Any]:
         """Get a specific case by ID."""
         file_uri = decode_base64url(uri)
-        file_path = _uri_to_path(file_uri)
+        file_path = _resolve_existing_validation_file(
+            _uri_to_path(file_uri), project_dir
+        )
         decoded_case_id = _decode_case_id(case_id)
-
-        # Validate path is within project directory
-        _validate_path_within_project(file_path, project_dir)
 
         try:
             writer = ValidationFileWriter(file_path)
@@ -273,11 +258,10 @@ def create_validation_router(
     ) -> dict[str, Any]:
         """Create or update a case."""
         file_uri = decode_base64url(uri)
-        file_path = _uri_to_path(file_uri)
+        file_path = _resolve_existing_validation_file(
+            _uri_to_path(file_uri), project_dir
+        )
         decoded_case_id = _decode_case_id(case_id)
-
-        # Validate path is within project directory
-        _validate_path_within_project(file_path, project_dir)
 
         _validate_target_or_labels(body.target, body.labels, "")
 
@@ -317,11 +301,10 @@ def create_validation_router(
     ) -> None:
         """Delete a case from a validation file."""
         file_uri = decode_base64url(uri)
-        file_path = _uri_to_path(file_uri)
+        file_path = _resolve_existing_validation_file(
+            _uri_to_path(file_uri), project_dir
+        )
         decoded_case_id = _decode_case_id(case_id)
-
-        # Validate path is within project directory
-        _validate_path_within_project(file_path, project_dir)
 
         try:
             writer = ValidationFileWriter(file_path)
@@ -383,22 +366,61 @@ def _decode_case_id(encoded_id: str) -> str | list[str]:
     return decoded
 
 
-def _validate_path_within_project(path: Path, project_dir: Path) -> None:
-    """Validate that a path is within the project directory.
-
-    Raises HTTPException with 400 status if path traversal is detected.
-    """
+def _resolve_project_file_path(path: Path, project_dir: Path) -> Path:
+    """Resolve a strict project descendant for a file operation."""
     try:
         resolved = path.resolve()
         project_resolved = project_dir.resolve()
-
-        # Check that the path is within project_dir
-        resolved.relative_to(project_resolved)
+        relative = resolved.relative_to(project_resolved)
+        if not relative.parts:
+            raise ValueError
     except ValueError:
         raise HTTPException(
             status_code=HTTP_400_BAD_REQUEST,
-            detail="Path must be within project directory",
+            detail="Path must be a file within the project directory",
         ) from None
+    return resolved
+
+
+def _resolve_new_validation_path(path: Path, project_dir: Path) -> Path:
+    resolved = _resolve_project_file_path(path, project_dir)
+    if resolved.suffix.lower() not in VALIDATION_EXTENSIONS:
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail="Path must use a supported validation file extension",
+        )
+    return resolved
+
+
+def _resolve_existing_validation_file(path: Path, project_dir: Path) -> Path:
+    if path.is_symlink():
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail="Validation file symlinks are not supported",
+        )
+    resolved = _resolve_new_validation_path(path, project_dir)
+    if not resolved.exists():
+        raise HTTPException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail="Validation file not found",
+        )
+    if not _is_validation_set_file(resolved):
+        raise HTTPException(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail="Path is not a valid validation file",
+        )
+    return resolved
+
+
+def _is_validation_set_file(path: Path) -> bool:
+    if is_validation_file(path):
+        return True
+    if path.suffix.lower() not in {".yaml", ".yml", ".json", ".jsonl"}:
+        return False
+    try:
+        return ValidationFileWriter(path).read_cases() == []
+    except Exception:
+        return False
 
 
 def _uri_to_path(uri: str) -> Path:

@@ -14,6 +14,7 @@ from ._api_v2_search import create_search_router
 from ._api_v2_topics import create_topics_router
 from ._api_v2_transcripts import create_transcripts_router
 from ._api_v2_validations import create_validation_router
+from .capabilities import ViewerCapabilities
 from .types import ViewConfig
 
 API_VERSION = "2.0.0-alpha"
@@ -23,6 +24,7 @@ def v2_api_app(
     view_config: ViewConfig | None = None,
     streaming_batch_size: int = 1024,
     dist_path: PathlibPath | None = None,
+    capabilities: ViewerCapabilities | None = None,
 ) -> FastAPI:
     """Create V2 API FastAPI app.
 
@@ -42,13 +44,23 @@ def v2_api_app(
     ) -> JSONResponse:
         return JSONResponse(status_code=400, content={"detail": str(exc)})
 
-    app.include_router(create_config_router(view_config=view_config))
+    app.include_router(
+        create_config_router(
+            view_config=view_config,
+            capabilities=capabilities,
+        )
+    )
     app.include_router(create_dist_router(dist_path=dist_path))
     app.include_router(create_topics_router())
-    app.include_router(create_transcripts_router())
-    app.include_router(create_scans_router(streaming_batch_size=streaming_batch_size))
+    app.include_router(create_transcripts_router(capabilities=capabilities))
+    app.include_router(
+        create_scans_router(
+            streaming_batch_size=streaming_batch_size,
+            capabilities=capabilities,
+        )
+    )
     app.include_router(create_scanners_router())
     app.include_router(create_validation_router(PathlibPath.cwd()))
-    app.include_router(create_search_router())
+    app.include_router(create_search_router(capabilities=capabilities))
 
     return app

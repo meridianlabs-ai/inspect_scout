@@ -51,6 +51,8 @@ Note that `scout.yaml` project files are intended to be checked in to version co
 
 When you run `scout view` from a project directory it uses the project settings to initialize the **Transcripts** and **Results** panes. You can also edit the project settings by clicking on the **Project** button at the top right:
 
+The viewer treats the transcript, scans, project, and configured file locations present when it starts as its maximum capabilities. Project settings may select a location within those roots, but expanding to another directory, bucket, or filesystem requires editing `scout.yaml` outside the viewer or changing the `scout view` command and restarting it.
+
 ![](images/project.png){.border}
 
 ## Project Settings

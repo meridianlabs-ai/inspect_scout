@@ -21,6 +21,7 @@ from inspect_scout._util.constants import (
     DEFAULT_SERVER_HOST,
     DEFAULT_VIEW_PORT,
 )
+from inspect_scout._view.capabilities import ViewerCapabilities
 from inspect_scout._view.notify import notify_lifespan
 from inspect_scout._view.types import ViewConfig
 
@@ -120,7 +121,12 @@ def view_server(
     # ensure we've resolved the dist directory
     directory = _resolve_dist_directory()
 
-    v2_api = v2_api_app(view_config=config, dist_path=directory)
+    capabilities = ViewerCapabilities.from_view_config(config, Path.cwd())
+    v2_api = v2_api_app(
+        view_config=config,
+        dist_path=directory,
+        capabilities=capabilities,
+    )
 
     if authorization:
         v2_api.add_middleware(AuthorizationMiddleware, authorization=authorization)

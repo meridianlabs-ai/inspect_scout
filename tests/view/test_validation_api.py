@@ -182,6 +182,25 @@ class TestCreateValidation:
         assert response.status_code == 200
         assert file_path.exists()
 
+    def test_create_empty_validation_can_receive_first_case(
+        self, client: TestClient, tmp_path: Path
+    ) -> None:
+        file_path = tmp_path / "empty.yaml"
+        create_response = client.post(
+            "/validations",
+            json={"path": file_path.as_uri()},
+        )
+        encoded_uri = _base64url(file_path.as_uri())
+        encoded_case_id = _base64url("first")
+
+        upsert_response = client.post(
+            f"/validations/{encoded_uri}/{encoded_case_id}",
+            json={"target": True},
+        )
+
+        assert create_response.status_code == 200
+        assert upsert_response.status_code == 200
+
     def test_create_validation_conflict(
         self, client: TestClient, validation_csv: Path
     ) -> None:
@@ -365,6 +384,39 @@ class TestDeleteValidation:
         response = client.delete(f"/validations/{encoded_uri}")
 
         assert response.status_code == HTTP_400_BAD_REQUEST
+
+    def test_delete_validation_rejects_project_root(
+        self, client: TestClient, tmp_path: Path
+    ) -> None:
+        encoded_uri = _base64url(tmp_path.as_uri())
+
+        response = client.delete(f"/validations/{encoded_uri}")
+
+        assert response.status_code == HTTP_400_BAD_REQUEST
+        assert tmp_path.exists()
+
+    @pytest.mark.parametrize(
+        ("name", "contents"),
+        [
+            ("important.txt", "do not delete"),
+            ("package.json", "{}"),
+        ],
+    )
+    def test_delete_validation_rejects_non_validation_files(
+        self,
+        client: TestClient,
+        tmp_path: Path,
+        name: str,
+        contents: str,
+    ) -> None:
+        file_path = tmp_path / name
+        file_path.write_text(contents, encoding="utf-8")
+        encoded_uri = _base64url(file_path.as_uri())
+
+        response = client.delete(f"/validations/{encoded_uri}")
+
+        assert response.status_code == HTTP_400_BAD_REQUEST
+        assert file_path.read_text(encoding="utf-8") == contents
 
 
 class TestGetValidationCase:

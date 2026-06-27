@@ -109,7 +109,7 @@ def create_config_router(
     ) -> Response:
         """Update project configuration with comment preservation."""
         if capabilities is not None:
-            capabilities.validate_project_update(config)
+            config = capabilities.resolve_scan_job(config)
 
         # Parse the If-Match header (may be quoted), None means force save
         expected_etag = if_match.strip('"') if if_match else None

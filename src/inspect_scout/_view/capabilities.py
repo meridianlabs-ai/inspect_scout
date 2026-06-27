@@ -6,7 +6,7 @@ import re
 import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import Iterable, Literal
+from typing import Iterable, Literal, TypeVar
 
 from fastapi import HTTPException
 from fsspec.core import split_protocol  # type: ignore
@@ -19,6 +19,7 @@ from inspect_scout._util.constants import DEFAULT_SCANS_DIR
 from inspect_scout._view.types import ViewConfig
 
 CapabilityKind = Literal["directory", "file"]
+ConfigT = TypeVar("ConfigT", bound=ScanJobConfig)
 _WINDOWS_DRIVE_PATH = re.compile(r"^[A-Za-z]:[\\/]")
 
 
@@ -28,6 +29,11 @@ class _RemotePath:
     authority: str
     path: PurePosixPath
     query: str
+
+    def location(self) -> str:
+        return urllib.parse.urlunsplit(
+            (self.scheme, self.authority, self.path.as_posix(), self.query, "")
+        )
 
 
 @dataclass(frozen=True)
@@ -49,31 +55,40 @@ class PathCapability:
                 raise ValueError("Scout directory capabilities cannot contain a query")
         return cls(kind=kind, _local=local, _remote=remote)
 
-    def allows(self, location: str) -> bool:
+    def resolve(self, location: str) -> str | None:
+        """Resolve an allowed location to the exact path used for I/O."""
         if self._local is not None:
             candidate = _canonical_local_path(location)
             if candidate is None:
-                return False
+                return None
             if self.kind == "file":
-                return candidate == self._local
-            return candidate.is_relative_to(self._local)
+                return str(candidate) if candidate == self._local else None
+            return str(candidate) if candidate.is_relative_to(self._local) else None
 
         remote_candidate = _canonical_remote_path(location)
         if remote_candidate is None or self._remote is None:
-            return False
+            return None
         if (
             remote_candidate.scheme != self._remote.scheme
             or remote_candidate.authority != self._remote.authority
         ):
-            return False
+            return None
         if self.kind == "file":
-            return (
+            allowed = (
                 remote_candidate.path == self._remote.path
                 and remote_candidate.query == self._remote.query
             )
+            return remote_candidate.location() if allowed else None
         if remote_candidate.query:
-            return False
-        return remote_candidate.path.is_relative_to(self._remote.path)
+            return None
+        return (
+            remote_candidate.location()
+            if remote_candidate.path.is_relative_to(self._remote.path)
+            else None
+        )
+
+    def allows(self, location: str) -> bool:
+        return self.resolve(location) is not None
 
 
 @dataclass(frozen=True)
@@ -130,32 +145,73 @@ class ViewerCapabilities:
         if _is_absolute_or_traversing(child):
             raise _forbidden("Scan path must be relative to the configured scans root")
         candidate = str(UPath(root) / child)
-        self.require_scans(candidate)
-        return UPath(candidate)
+        resolved = self.require_scans(candidate)
+        if resolved == root:
+            raise _forbidden("Scan path must be a child of the configured scans root")
+        return UPath(resolved)
 
     def validate_project_update(self, config: ProjectConfig) -> None:
         self.validate_scan_job(config)
 
     def validate_scan_job(self, config: ScanJobConfig) -> None:
+        self.resolve_scan_job(config)
+
+    def resolve_scan_job(self, config: ConfigT) -> ConfigT:
+        updates: dict[str, object] = {}
         if config.transcripts is not None:
-            self.require_transcripts(config.transcripts)
+            updates["transcripts"] = self.require_transcripts(config.transcripts)
         if config.scans is not None:
-            self.require_scans(config.scans)
+            updates["scans"] = self.require_scans(config.scans)
         if isinstance(config.model_args, str):
-            self.require_file(config.model_args, "model arguments")
-        for scanner in _scanner_specs(config.scanners):
-            if scanner.file is not None:
-                self.require_file(scanner.file, "scanner")
+            updates["model_args"] = self.require_file(
+                config.model_args, "model arguments"
+            )
+        if isinstance(config.scanners, list):
+            updates["scanners"] = [
+                scanner.model_copy(
+                    update={
+                        "file": self.require_file(scanner.file, "scanner")
+                        if scanner.file is not None
+                        else None
+                    }
+                )
+                for scanner in config.scanners
+            ]
+        elif isinstance(config.scanners, dict):
+            updates["scanners"] = {
+                name: scanner.model_copy(
+                    update={
+                        "file": self.require_file(scanner.file, "scanner")
+                        if scanner.file is not None
+                        else None
+                    }
+                )
+                for name, scanner in config.scanners.items()
+            }
         if config.validation:
-            for validation in config.validation.values():
-                if isinstance(validation, str):
+            updates["validation"] = {
+                name: (
                     self.require_file(validation, "validation")
+                    if isinstance(validation, str)
+                    else validation
+                )
+                for name, validation in config.validation.items()
+            }
+        return config.model_copy(update=updates)
 
     def require_file(self, location: str, label: str) -> str:
-        if self.project.allows(location) or any(
-            capability.allows(location) for capability in self.files
-        ):
-            return location
+        resolved = self.project.resolve(location)
+        if resolved is None:
+            resolved = next(
+                (
+                    candidate
+                    for capability in self.files
+                    if (candidate := capability.resolve(location)) is not None
+                ),
+                None,
+            )
+        if resolved is not None:
+            return resolved
         raise _forbidden(
             f"{label.capitalize()} file is outside the viewer's startup capabilities"
         )
@@ -166,8 +222,16 @@ class ViewerCapabilities:
         location: str,
         label: str,
     ) -> str:
-        if any(capability.allows(location) for capability in capabilities):
-            return location
+        resolved = next(
+            (
+                candidate
+                for capability in capabilities
+                if (candidate := capability.resolve(location)) is not None
+            ),
+            None,
+        )
+        if resolved is not None:
+            return resolved
         raise _forbidden(
             f"Requested {label} location is outside the viewer's startup capabilities"
         )
@@ -304,5 +368,22 @@ def _canonical_remote_path(location: str) -> _RemotePath | None:
         scheme=protocol.lower(),
         authority=parsed.netloc.lower(),
         path=PurePosixPath(path),
-        query=parsed.query,
+        query=_canonical_query(parsed.query),
     )
+
+
+def _canonical_query(query: str) -> str:
+    if not query:
+        return ""
+
+    def encode(value: str) -> str:
+        return urllib.parse.quote(urllib.parse.unquote(value), safe="-._~")
+
+    fields: list[str] = []
+    for field in query.split("&"):
+        if "=" in field:
+            name, value = field.split("=", 1)
+            fields.append(f"{encode(name)}={encode(value)}")
+        else:
+            fields.append(encode(field))
+    return "&".join(fields)

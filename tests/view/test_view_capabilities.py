@@ -57,6 +57,12 @@ def test_local_and_remote_path_capabilities(tmp_path: Path) -> None:
     assert not remote_scope.allows("s3://other/logs/run.eval")
     assert not remote_scope.allows("s3://bucket/logs/%2e%2e/private")
 
+    remote_file = PathCapability.parse("file", "memory://bucket/logs/secret")
+    assert (
+        remote_file.resolve("memory://bucket/logs//secret")
+        == "memory://bucket/logs/secret"
+    )
+
 
 def test_local_capability_retains_selected_symlink_target(tmp_path: Path) -> None:
     first = tmp_path / "first"
@@ -86,10 +92,58 @@ def test_remote_capabilities_preserve_exact_queries() -> None:
     )
     assert not capability.allows("https://example.test/scanner.py")
 
+    canonical = PathCapability.parse(
+        "file",
+        "https://example.test/scanner.py?"
+        "credential=team%2Fmember&label=hello%20world",
+    )
+    assert (
+        canonical.resolve(
+            "https://example.test/scanner.py?"
+            "credential=team/member&label=hello world"
+        )
+        == "https://example.test/scanner.py?"
+        "credential=team%2Fmember&label=hello%20world"
+    )
+
     directory = PathCapability.parse("directory", "s3://bucket/scans")
     assert not directory.allows("s3://bucket/scans/run?version=selected")
     with pytest.raises(ValueError, match="cannot contain a query"):
         PathCapability.parse("directory", "s3://bucket/scans?version=selected")
+
+
+def test_scan_job_paths_are_replaced_with_resolved_locations(tmp_path: Path) -> None:
+    selected_file = "memory://bucket/config/selected.json"
+    capabilities = ViewerCapabilities(
+        project=PathCapability.parse("directory", str(tmp_path)),
+        transcripts=(
+            PathCapability.parse("directory", "memory://bucket/transcripts"),
+        ),
+        scans=(PathCapability.parse("directory", "memory://bucket/scans"),),
+        files=(PathCapability.parse("file", selected_file),),
+    )
+
+    resolved = capabilities.resolve_scan_job(
+        ScanJobConfig(
+            transcripts="memory://bucket/transcripts//team",
+            scans="memory://bucket/scans//team",
+            model_args="memory://bucket/config//selected.json",
+            scanners=[
+                ScannerSpec(
+                    name="scanner",
+                    file="memory://bucket/config//selected.json",
+                )
+            ],
+            validation={"scanner": "memory://bucket/config//selected.json"},
+        )
+    )
+
+    assert resolved.transcripts == "memory://bucket/transcripts/team"
+    assert resolved.scans == "memory://bucket/scans/team"
+    assert resolved.model_args == selected_file
+    assert isinstance(resolved.scanners, list)
+    assert resolved.scanners[0].file == selected_file
+    assert resolved.validation == {"scanner": selected_file}
 
 
 def test_file_uri_parsing_supports_windows_unc_paths() -> None:
@@ -113,6 +167,7 @@ def test_capabilities_resolve_relative_scan_children(tmp_path: Path) -> None:
     assert resolved == scans / "scan_id=abc"
 
     for child in (
+        ".",
         str(tmp_path / "outside"),
         "../outside",
         "%2Fetc",
@@ -121,6 +176,47 @@ def test_capabilities_resolve_relative_scan_children(tmp_path: Path) -> None:
     ):
         with pytest.raises(HTTPException):
             capabilities.resolve_scan(str(scans), child)
+
+
+def test_delete_scan_requires_strict_valid_scan_child(tmp_path: Path) -> None:
+    transcripts = tmp_path / "transcripts"
+    scans = tmp_path / "scans"
+    unrelated = scans / "unrelated"
+    scan = scans / "scan_id=test"
+    transcripts.mkdir()
+    unrelated.mkdir(parents=True)
+    scan.mkdir()
+    (scan / "_scan.json").write_text("{}", encoding="utf-8")
+    capabilities = _capabilities(tmp_path, str(transcripts), str(scans))
+    store = MagicMock()
+    store.read_all.return_value = {}
+
+    @contextmanager
+    def fake_store() -> Iterator[MagicMock]:
+        yield store
+
+    with (
+        patch(
+            "inspect_scout._view._api_v2_scans.active_scans_store",
+            fake_store,
+        ),
+        patch("inspect_scout._view._api_v2_scans.send2trash") as trash,
+        TestClient(v2_api_app(capabilities=capabilities)) as client,
+    ):
+        root_response = client.delete(
+            f"/scans/{_encode(str(scans))}/{_encode('.')}"
+        )
+        unrelated_response = client.delete(
+            f"/scans/{_encode(str(scans))}/{_encode('unrelated')}"
+        )
+        scan_response = client.delete(
+            f"/scans/{_encode(str(scans))}/{_encode('scan_id=test')}"
+        )
+
+    assert root_response.status_code == 403
+    assert unrelated_response.status_code == 404
+    assert scan_response.status_code == 204
+    trash.assert_called_once_with(str(scan))
 
 
 def test_project_updates_may_narrow_but_not_expand_capabilities(

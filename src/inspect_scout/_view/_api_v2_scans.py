@@ -70,12 +70,13 @@ def _build_scan_zip(scan_path: UPath) -> Response:
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for child in scan_path.iterdir():
             if child.is_file():
-                if not scan_scope.allows(str(child)):
+                resolved_child = scan_scope.resolve(str(child))
+                if resolved_child is None:
                     raise HTTPException(
                         status_code=403,
                         detail="Scan archive entry escapes the selected scan directory",
                     )
-                with file(child.as_posix(), "rb") as f:
+                with file(resolved_child, "rb") as f:
                     zf.writestr(child.name, f.read())
 
     scan_id = scan_path.name
@@ -204,7 +205,7 @@ def create_scans_router(
         """Run an llm_scanner scan via subprocess."""
         if capabilities is not None:
             capabilities.validate_project_update(read_project())
-            capabilities.validate_scan_job(body)
+            body = capabilities.resolve_scan_job(body)
         proc, temp_path, _stdout_lines, stderr_lines = _spawn_scan_subprocess(body)
         pid = proc.pid
 
@@ -427,8 +428,9 @@ def create_scans_router(
         scans_dir = scoped_root(decode_base64url(dir))
         scan_path = scoped_scan(scans_dir, decode_base64url(scan))
 
-        # Check if scan exists
-        if not scan_path.exists():
+        # Delete only an actual scan directory, never the scans root or an
+        # unrelated descendant that happens to exist.
+        if not scan_path.is_dir() or not (scan_path / "_scan.json").is_file():
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
                 detail="Scan not found",

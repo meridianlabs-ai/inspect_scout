@@ -4,7 +4,7 @@ import base64
 import io
 import zipfile
 from contextlib import contextmanager
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Iterator
 from unittest.mock import MagicMock, patch
 
@@ -17,6 +17,7 @@ from inspect_scout._view._api_v2 import v2_api_app
 from inspect_scout._view.capabilities import (
     PathCapability,
     ViewerCapabilities,
+    _local_path_from_file_uri,
 )
 from inspect_scout._view.types import ViewConfig
 from starlette.exceptions import HTTPException
@@ -55,6 +56,50 @@ def test_local_and_remote_path_capabilities(tmp_path: Path) -> None:
     assert not remote_scope.allows("s3://bucket/logs-archive/run.eval")
     assert not remote_scope.allows("s3://other/logs/run.eval")
     assert not remote_scope.allows("s3://bucket/logs/%2e%2e/private")
+
+
+def test_local_capability_retains_selected_symlink_target(tmp_path: Path) -> None:
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    selected = tmp_path / "selected"
+    first.mkdir()
+    second.mkdir()
+    (second / "secret.txt").write_text("secret", encoding="utf-8")
+    try:
+        selected.symlink_to(first, target_is_directory=True)
+    except OSError:
+        pytest.skip("Creating directory symlinks is not supported")
+
+    capability = PathCapability.parse("directory", str(selected))
+    selected.unlink()
+    selected.symlink_to(second, target_is_directory=True)
+
+    assert not capability.allows(str(selected / "secret.txt"))
+
+
+def test_remote_capabilities_preserve_exact_queries() -> None:
+    selected = "https://example.test/scanner.py?expires=60&signature=selected"
+    capability = PathCapability.parse("file", selected)
+    assert capability.allows(selected)
+    assert not capability.allows(
+        "https://example.test/scanner.py?expires=60&signature=other"
+    )
+    assert not capability.allows("https://example.test/scanner.py")
+
+    directory = PathCapability.parse("directory", "s3://bucket/scans")
+    assert not directory.allows("s3://bucket/scans/run?version=selected")
+    with pytest.raises(ValueError, match="cannot contain a query"):
+        PathCapability.parse("directory", "s3://bucket/scans?version=selected")
+
+
+def test_file_uri_parsing_supports_windows_unc_paths() -> None:
+    assert _local_path_from_file_uri(
+        "file://server/share/scans/run", windows=True
+    ) == str(PureWindowsPath("//server/share/scans/run"))
+    assert (
+        _local_path_from_file_uri("file://server/share/scans/run", windows=False)
+        is None
+    )
 
 
 def test_capabilities_resolve_relative_scan_children(tmp_path: Path) -> None:

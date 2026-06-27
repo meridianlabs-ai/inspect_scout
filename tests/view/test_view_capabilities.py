@@ -94,13 +94,11 @@ def test_remote_capabilities_preserve_exact_queries() -> None:
 
     canonical = PathCapability.parse(
         "file",
-        "https://example.test/scanner.py?"
-        "credential=team%2Fmember&label=hello%20world",
+        "https://example.test/scanner.py?credential=team%2Fmember&label=hello%20world",
     )
     assert (
         canonical.resolve(
-            "https://example.test/scanner.py?"
-            "credential=team/member&label=hello world"
+            "https://example.test/scanner.py?credential=team/member&label=hello world"
         )
         == "https://example.test/scanner.py?"
         "credential=team%2Fmember&label=hello%20world"
@@ -116,9 +114,7 @@ def test_scan_job_paths_are_replaced_with_resolved_locations(tmp_path: Path) -> 
     selected_file = "memory://bucket/config/selected.json"
     capabilities = ViewerCapabilities(
         project=PathCapability.parse("directory", str(tmp_path)),
-        transcripts=(
-            PathCapability.parse("directory", "memory://bucket/transcripts"),
-        ),
+        transcripts=(PathCapability.parse("directory", "memory://bucket/transcripts"),),
         scans=(PathCapability.parse("directory", "memory://bucket/scans"),),
         files=(PathCapability.parse("file", selected_file),),
     )
@@ -203,9 +199,7 @@ def test_delete_scan_requires_strict_valid_scan_child(tmp_path: Path) -> None:
         patch("inspect_scout._view._api_v2_scans.send2trash") as trash,
         TestClient(v2_api_app(capabilities=capabilities)) as client,
     ):
-        root_response = client.delete(
-            f"/scans/{_encode(str(scans))}/{_encode('.')}"
-        )
+        root_response = client.delete(f"/scans/{_encode(str(scans))}/{_encode('.')}")
         unrelated_response = client.delete(
             f"/scans/{_encode(str(scans))}/{_encode('unrelated')}"
         )

@@ -76,9 +76,7 @@ def create_validation_router(
     def create_validation(body: CreateValidationSetRequest) -> str:
         """Create a new validation file."""
         # Convert URI to path
-        file_path = _resolve_new_validation_path(
-            _uri_to_path(body.path), project_dir
-        )
+        file_path = _resolve_new_validation_path(_uri_to_path(body.path), project_dir)
 
         # Convert request cases to ValidationCase objects
         cases: list[ValidationCase] = []

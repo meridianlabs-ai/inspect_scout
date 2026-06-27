@@ -37,33 +37,64 @@ class _RemotePath:
 
 
 @dataclass(frozen=True)
+class _OpaqueHttpFile:
+    scheme: str
+    authority: str
+    location: str
+
+
+@dataclass(frozen=True)
 class PathCapability:
     kind: CapabilityKind
     _local: Path | None
     _remote: _RemotePath | None
+    _opaque_http: _OpaqueHttpFile | None
 
     @classmethod
     def parse(cls, kind: CapabilityKind, location: str) -> "PathCapability":
+        opaque_http = _parse_opaque_http_file(location) if kind == "file" else None
         local = _canonical_local_path(location)
-        remote = None if local is not None else _canonical_remote_path(location)
-        if local is None and remote is None:
+        remote = (
+            None
+            if local is not None or opaque_http is not None
+            else _canonical_remote_path(location)
+        )
+        if local is None and remote is None and opaque_http is None:
             raise ValueError(f"Invalid Scout capability path: {location}")
         if kind == "directory" and remote:
             if remote.scheme in ("http", "https"):
                 raise ValueError(f"Unsupported Scout directory scheme: {remote.scheme}")
             if remote.query:
                 raise ValueError("Scout directory capabilities cannot contain a query")
-        return cls(kind=kind, _local=local, _remote=remote)
+        return cls(
+            kind=kind,
+            _local=local,
+            _remote=remote,
+            _opaque_http=opaque_http,
+        )
 
     def resolve(self, location: str) -> str | None:
         """Resolve an allowed location to the exact path used for I/O."""
+        if self._opaque_http is not None:
+            opaque_candidate = _parse_opaque_http_file(location)
+            return (
+                self._opaque_http.location
+                if opaque_candidate is not None
+                and opaque_candidate.location == self._opaque_http.location
+                else None
+            )
+
         if self._local is not None:
-            candidate = _canonical_local_path(location)
-            if candidate is None:
+            local_candidate = _canonical_local_path(location)
+            if local_candidate is None:
                 return None
             if self.kind == "file":
-                return str(candidate) if candidate == self._local else None
-            return str(candidate) if candidate.is_relative_to(self._local) else None
+                return str(local_candidate) if local_candidate == self._local else None
+            return (
+                str(local_candidate)
+                if local_candidate.is_relative_to(self._local)
+                else None
+            )
 
         remote_candidate = _canonical_remote_path(location)
         if remote_candidate is None or self._remote is None:
@@ -361,7 +392,12 @@ def _canonical_remote_path(location: str) -> _RemotePath | None:
     ):
         return None
     decoded_path = urllib.parse.unquote(parsed.path)
-    if "\\" in decoded_path or ".." in PurePosixPath(decoded_path).parts:
+    if (
+        "\\" in decoded_path
+        or "?" in decoded_path
+        or "#" in decoded_path
+        or ".." in PurePosixPath(decoded_path).parts
+    ):
         return None
     path = posixpath.normpath("/" + decoded_path.lstrip("/"))
     return _RemotePath(
@@ -387,3 +423,25 @@ def _canonical_query(query: str) -> str:
         else:
             fields.append(encode(field))
     return "&".join(fields)
+
+
+def _parse_opaque_http_file(location: str) -> _OpaqueHttpFile | None:
+    try:
+        parsed = urllib.parse.urlsplit(location)
+        _ = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme.lower() not in ("http", "https")
+        or not parsed.netloc
+        or parsed.fragment
+        or parsed.username is not None
+        or parsed.password is not None
+        or "\\" in parsed.path
+    ):
+        return None
+    return _OpaqueHttpFile(
+        scheme=parsed.scheme.lower(),
+        authority=parsed.netloc.lower(),
+        location=location,
+    )

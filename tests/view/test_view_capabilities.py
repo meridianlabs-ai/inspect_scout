@@ -6,10 +6,11 @@ import zipfile
 from contextlib import contextmanager
 from pathlib import Path, PureWindowsPath
 from typing import Iterator
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+from inspect_scout._project._project import read_project_config_with_etag
 from inspect_scout._project.types import ProjectConfig
 from inspect_scout._scanjob_config import ScanJobConfig
 from inspect_scout._scanspec import ScannerSpec
@@ -94,14 +95,27 @@ def test_remote_capabilities_preserve_exact_queries() -> None:
 
     canonical = PathCapability.parse(
         "file",
-        "https://example.test/scanner.py?credential=team%2Fmember&label=hello%20world",
+        "s3://bucket/scanner.py?credential=team%2Fmember&label=hello%20world",
     )
     assert (
         canonical.resolve(
-            "https://example.test/scanner.py?credential=team/member&label=hello world"
+            "s3://bucket/scanner.py?credential=team/member&label=hello world"
         )
-        == "https://example.test/scanner.py?"
-        "credential=team%2Fmember&label=hello%20world"
+        == "s3://bucket/scanner.py?credential=team%2Fmember&label=hello%20world"
+    )
+
+    opaque = "https://example.test/scanner.py?token=a%26b&credential=team%2Fmember"
+    opaque_capability = PathCapability.parse("file", opaque)
+    assert opaque_capability.resolve(opaque) == opaque
+    assert (
+        opaque_capability.resolve(
+            "https://example.test/scanner.py?token=a&b&credential=team%2Fmember"
+        )
+        is None
+    )
+    encoded_path = "https://example.test/a%3Fb%23c.py"
+    assert (
+        PathCapability.parse("file", encoded_path).resolve(encoded_path) == encoded_path
     )
 
     directory = PathCapability.parse("directory", "s3://bucket/scans")
@@ -186,6 +200,16 @@ def test_delete_scan_requires_strict_valid_scan_child(tmp_path: Path) -> None:
     capabilities = _capabilities(tmp_path, str(transcripts), str(scans))
     store = MagicMock()
     store.read_all.return_value = {}
+    recorder = MagicMock()
+    status = MagicMock()
+    status.spec.scan_id = "test"
+
+    async def read_status(location: str) -> MagicMock:
+        if location == str(scan):
+            return status
+        raise FileNotFoundError
+
+    recorder.status = AsyncMock(side_effect=read_status)
 
     @contextmanager
     def fake_store() -> Iterator[MagicMock]:
@@ -197,6 +221,10 @@ def test_delete_scan_requires_strict_valid_scan_child(tmp_path: Path) -> None:
             fake_store,
         ),
         patch("inspect_scout._view._api_v2_scans.send2trash") as trash,
+        patch(
+            "inspect_scout._view._api_v2_scans.scan_recorder_for_location",
+            return_value=recorder,
+        ),
         TestClient(v2_api_app(capabilities=capabilities)) as client,
     ):
         root_response = client.delete(f"/scans/{_encode(str(scans))}/{_encode('.')}")
@@ -211,6 +239,78 @@ def test_delete_scan_requires_strict_valid_scan_child(tmp_path: Path) -> None:
     assert unrelated_response.status_code == 404
     assert scan_response.status_code == 204
     trash.assert_called_once_with(str(scan))
+
+
+def test_delete_scan_rejects_forged_validation_marker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    transcripts = tmp_path / "transcripts"
+    scans = tmp_path / "scans"
+    victim = scans / "important-data"
+    transcripts.mkdir()
+    victim.mkdir(parents=True)
+    (victim / "keep.txt").write_text("keep", encoding="utf-8")
+    capabilities = _capabilities(tmp_path, str(transcripts), str(scans))
+    monkeypatch.chdir(tmp_path)
+
+    with (
+        patch("inspect_scout._view._api_v2_scans.send2trash") as trash,
+        TestClient(v2_api_app(capabilities=capabilities)) as client,
+    ):
+        create_response = client.post(
+            "/validations",
+            json={
+                "path": (victim / "_scan.json").as_uri(),
+                "cases": [{"id": "x", "target": True}],
+            },
+        )
+        delete_response = client.delete(
+            f"/scans/{_encode(str(scans))}/{_encode('important-data')}"
+        )
+
+    assert create_response.status_code == 200
+    assert delete_response.status_code == 404
+    trash.assert_not_called()
+
+
+def test_delete_scan_blocks_active_scan_path_alias(tmp_path: Path) -> None:
+    transcripts = tmp_path / "transcripts"
+    scans = tmp_path / "scans"
+    scan = scans / "scan_id=test"
+    transcripts.mkdir()
+    scan.mkdir(parents=True)
+    capabilities = _capabilities(tmp_path, str(transcripts), str(scans))
+    status = MagicMock()
+    status.spec.scan_id = "test"
+    recorder = MagicMock()
+    recorder.status = AsyncMock(return_value=status)
+    store = MagicMock()
+    store.read_all.return_value = {
+        "test": MagicMock(scan_id="test", location="scans/scan_id=test")
+    }
+
+    @contextmanager
+    def fake_store() -> Iterator[MagicMock]:
+        yield store
+
+    with (
+        patch(
+            "inspect_scout._view._api_v2_scans.active_scans_store",
+            fake_store,
+        ),
+        patch(
+            "inspect_scout._view._api_v2_scans.scan_recorder_for_location",
+            return_value=recorder,
+        ),
+        patch("inspect_scout._view._api_v2_scans.send2trash") as trash,
+        TestClient(v2_api_app(capabilities=capabilities)) as client,
+    ):
+        response = client.delete(
+            f"/scans/{_encode(str(scans))}/{_encode('scan_id=test')}"
+        )
+
+    assert response.status_code == 409
+    trash.assert_not_called()
 
 
 def test_project_updates_may_narrow_but_not_expand_capabilities(
@@ -417,6 +517,50 @@ def test_start_scan_revalidates_project_config_before_spawning(
     spawn.assert_not_called()
 
 
+def test_start_scan_rejects_child_reported_location_outside_capabilities(
+    tmp_path: Path,
+) -> None:
+    transcripts = tmp_path / "transcripts"
+    scans = tmp_path / "scans"
+    outside = tmp_path / "outside"
+    transcripts.mkdir()
+    scans.mkdir()
+    capabilities = _capabilities(tmp_path, str(transcripts), str(scans))
+    proc = MagicMock(pid=123)
+    active_info = MagicMock(scan_id="test", location=str(outside))
+
+    with (
+        patch(
+            "inspect_scout._view._api_v2_scans.read_project",
+            return_value=ProjectConfig(
+                transcripts=str(transcripts),
+                scans=str(scans),
+            ),
+        ),
+        patch(
+            "inspect_scout._view._api_v2_scans._spawn_scan_subprocess",
+            return_value=(proc, str(tmp_path / "missing.json"), [], []),
+        ),
+        patch(
+            "inspect_scout._view._api_v2_scans._wait_for_active_scan",
+            new=AsyncMock(return_value=active_info),
+        ),
+        patch(
+            "inspect_scout._view._api_v2_scans.scan_recorder_for_location"
+        ) as recorder,
+        TestClient(v2_api_app(capabilities=capabilities)) as client,
+    ):
+        response = client.post(
+            "/startscan",
+            json={
+                "scanners": [{"name": "inspect_scout/llm_scanner"}],
+            },
+        )
+
+    assert response.status_code == 403
+    recorder.assert_not_called()
+
+
 def test_project_api_rejects_capability_expansion(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -439,3 +583,29 @@ def test_project_api_rejects_capability_expansion(
 
     assert response.status_code == 403
     assert not (tmp_path / "scout.yaml").exists()
+
+
+def test_project_api_preserves_relative_path_spelling(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transcripts = tmp_path / "transcripts"
+    scans = tmp_path / "scans"
+    transcripts.mkdir()
+    scans.mkdir()
+    capabilities = _capabilities(tmp_path, str(transcripts), str(scans))
+    monkeypatch.chdir(tmp_path)
+
+    with TestClient(v2_api_app(capabilities=capabilities)) as client:
+        response = client.put(
+            "/project/config",
+            json={
+                "transcripts": "./transcripts",
+                "scans": "./scans",
+            },
+        )
+
+    saved, _etag = read_project_config_with_etag()
+    assert response.status_code == 200
+    assert saved.transcripts == "./transcripts"
+    assert saved.scans == "./scans"

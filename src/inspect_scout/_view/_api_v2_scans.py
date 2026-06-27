@@ -17,6 +17,7 @@ import pyarrow.ipc as pa_ipc
 from fastapi import APIRouter, HTTPException, Path, Request, Response
 from fastapi import Query as QueryParam
 from fastapi.responses import StreamingResponse
+from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.file import file
 from send2trash import send2trash
 from starlette.status import (
@@ -231,9 +232,20 @@ def create_scans_router(
                     detail="Scan subprocess failed to register within timeout",
                 )
 
-        return await scan_recorder_for_location(active_info.location).status(
-            active_info.location
+        active_location = (
+            capabilities.require_scans(active_info.location)
+            if capabilities is not None
+            else active_info.location
         )
+        active_status = await scan_recorder_for_location(active_location).status(
+            active_location
+        )
+        if active_status.spec.scan_id != active_info.scan_id:
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Scan subprocess registered an inconsistent location",
+            )
+        return active_status
 
     @router.get(
         "/scans/{dir}/{scan}",
@@ -428,24 +440,26 @@ def create_scans_router(
         scans_dir = scoped_root(decode_base64url(dir))
         scan_path = scoped_scan(scans_dir, decode_base64url(scan))
 
-        # Delete only an actual scan directory, never the scans root or an
-        # unrelated descendant that happens to exist.
-        if not scan_path.is_dir() or not (scan_path / "_scan.json").is_file():
+        scan_location = str(scan_path)
+        try:
+            scan_status = await scan_recorder_for_location(scan_location).status(
+                scan_location
+            )
+        except (FileNotFoundError, PrerequisiteError, ValueError):
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
                 detail="Scan not found",
-            )
+            ) from None
 
         # Check if scan is active (prevent deletion of running scans)
-        scan_location_str = str(scan_path)
         with active_scans_store() as store:
             active_scans = store.read_all()
-            for active_info in active_scans.values():
-                if active_info.location == scan_location_str:
-                    raise HTTPException(
-                        status_code=HTTP_409_CONFLICT,
-                        detail=f"Cannot delete active scan: {active_info.scan_id}",
-                    )
+        active_info = active_scans.get(scan_status.spec.scan_id)
+        if active_info is not None:
+            raise HTTPException(
+                status_code=HTTP_409_CONFLICT,
+                detail=f"Cannot delete active scan: {active_info.scan_id}",
+            )
 
         send2trash(scan_path.path)
 

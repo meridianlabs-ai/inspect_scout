@@ -1,6 +1,13 @@
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    field_validator,
+    model_validator,
+)
 from typing_extensions import Literal
 
 from .predicates import PREDICATES, PredicateType, ValidationPredicate
@@ -118,9 +125,15 @@ class ValidationSetSpec(BaseModel):
     predicate: PredicateSpec = Field(default="eq")
     split: str | list[str] | None = Field(default=None)
 
-    @field_validator("predicate", mode="before")
+    @model_validator(mode="before")
     @classmethod
     def legacy_predicate_marker(cls, value: Any) -> Any:
-        if isinstance(value, str) and value not in PREDICATES:
-            return UnavailablePredicateSpec(reason="legacy")
+        if not isinstance(value, dict):
+            return value
+        predicate = value.get("predicate")
+        if isinstance(predicate, str) and predicate not in PREDICATES:
+            return {
+                **value,
+                "predicate": UnavailablePredicateSpec(reason="legacy"),
+            }
         return value

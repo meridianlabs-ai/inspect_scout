@@ -283,6 +283,27 @@ def test_legacy_pickle_payload_is_never_deserialized(tmp_path: Path) -> None:
     assert payload not in spec.model_dump_json()
 
 
+def test_malformed_legacy_predicate_is_redacted_from_validation_errors() -> None:
+    payload = "STARTLEAK_" + ("A" * 100) + "_ENDLEAK"
+
+    with pytest.raises(ValidationError) as exc_info:
+        ScanSpec.model_validate(
+            {
+                "scan_name": "malformed",
+                "scanners": {},
+                "validation": {
+                    "scanner": {
+                        "predicate": payload,
+                    }
+                },
+            }
+        )
+
+    assert "STARTLEAK" not in str(exc_info.value)
+    assert "ENDLEAK" not in str(exc_info.value)
+    assert payload not in repr(exc_info.value.errors())
+
+
 @pytest.mark.asyncio
 async def test_file_recorder_status_treats_legacy_predicate_as_data(
     tmp_path: Path,

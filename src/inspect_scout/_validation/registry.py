@@ -6,7 +6,6 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, ParamSpec, cast, overload
 
-from inspect_ai._util._async import is_callable_coroutine
 from inspect_ai._util.package import get_installed_package_name
 from inspect_ai._util.registry import (
     RegistryInfo,
@@ -20,7 +19,7 @@ from inspect_ai._util.registry import (
     registry_tag,
 )
 
-from .predicates import PredicateFn, ValidationPredicate
+from .predicates import PredicateFn, ValidationPredicate, is_async_predicate
 
 P = ParamSpec("P")
 PredicateFactory = Callable[P, ValidationPredicate]
@@ -71,7 +70,7 @@ def validation_predicate(
         @wraps(factory_fn)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> PredicateFn:
             predicate = factory_fn(*args, **kwargs)
-            if isinstance(predicate, str) or not is_callable_coroutine(predicate):
+            if isinstance(predicate, str) or not is_async_predicate(predicate):
                 raise TypeError(
                     f"Validation predicate '{predicate_name}' must be an async callable."
                 )

@@ -5,14 +5,13 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import importlib_metadata
-from inspect_ai._util._async import is_callable_coroutine
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.module import load_module
 from inspect_ai._util.path import cwd_relative_path
 from inspect_ai._util.registry import registry_package_name
 from pydantic import JsonValue, TypeAdapter
 
-from .predicates import PredicateFn, ValidationPredicate
+from .predicates import PredicateFn, ValidationPredicate, is_async_predicate
 from .registry import (
     create_registered_predicate,
     is_registered_predicate,
@@ -138,7 +137,7 @@ def validation_sets_from_specs(
     invalid_overrides = {
         scanner
         for scanner, override in overrides.items()
-        if isinstance(override, str) or not is_callable_coroutine(override)
+        if isinstance(override, str) or not is_async_predicate(override)
     }
     if invalid_overrides:
         raise PrerequisiteError(

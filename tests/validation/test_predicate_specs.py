@@ -5,7 +5,9 @@ from __future__ import annotations
 import base64
 import json
 import pickle
+from collections.abc import AsyncIterator
 from pathlib import Path
+from typing import cast
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,6 +15,7 @@ from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.module import load_module
 from inspect_ai._util.registry import _registry, registry_key
 from inspect_scout import (
+    PredicateFn,
     Result,
     ValidationCase,
     ValidationPredicate,
@@ -75,6 +78,18 @@ def test_registered_predicate_rejects_non_finite_args(distance: float) -> None:
 
     with pytest.raises(ValidationError, match="finite number"):
         validation_set_to_spec(validation)
+
+
+def test_registered_predicate_rejects_async_generator() -> None:
+    @validation_predicate(name="async_generator_predicate")
+    def async_generator_predicate() -> ValidationPredicate:
+        async def check(result: Result, target: JsonValue) -> AsyncIterator[bool]:
+            yield result.value == target
+
+        return cast(ValidationPredicate, check)
+
+    with pytest.raises(TypeError, match="must be an async callable"):
+        async_generator_predicate()
 
 
 @pytest.mark.asyncio
@@ -182,6 +197,24 @@ def test_builtin_name_override_for_custom_predicate_is_rejected() -> None:
                 )
             },
             {"scanner": "eq"},  # type: ignore[dict-item]
+        )
+
+
+def test_async_generator_override_is_rejected() -> None:
+    async def async_generator_override(
+        result: Result, target: JsonValue
+    ) -> AsyncIterator[bool]:
+        yield result.value == target
+
+    with pytest.raises(PrerequisiteError, match="must be async callables"):
+        validation_sets_from_specs(
+            {
+                "scanner": ValidationSetSpec(
+                    cases=[],
+                    predicate=UnavailablePredicateSpec(reason="anonymous"),
+                )
+            },
+            {"scanner": cast(PredicateFn, async_generator_override)},
         )
 
 

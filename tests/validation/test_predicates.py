@@ -1,5 +1,8 @@
 """Tests for validation predicates."""
 
+from collections.abc import AsyncIterator
+from typing import cast
+
 import pytest
 from inspect_scout._scanner.result import Result
 from inspect_scout._validation import ValidationCase, ValidationPredicate, ValidationSet
@@ -195,6 +198,23 @@ async def test_custom_callable_predicate() -> None:
     assert await validate(validation, Result(value=123), "123") is True
     assert await validate(validation, Result(value="hello"), "hello") is True
     assert await validate(validation, Result(value=123), "456") is False
+
+
+@pytest.mark.asyncio
+async def test_async_generator_predicate_is_rejected() -> None:
+    """Test that async generators are rejected before predicate execution."""
+
+    async def async_generator_predicate(
+        result: Result, target: JsonValue
+    ) -> AsyncIterator[bool]:
+        yield result.value == target
+
+    validation = ValidationSet(
+        cases=[],
+        predicate=cast(ValidationPredicate, async_generator_predicate),
+    )
+    with pytest.raises(TypeError, match="must be async functions"):
+        await validate(validation, Result(value=True), True)
 
 
 # Test dict target validation (string predicates applied to each key)

@@ -5,13 +5,14 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import importlib_metadata
+from inspect_ai._util._async import is_callable_coroutine
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.module import load_module
 from inspect_ai._util.path import cwd_relative_path
 from inspect_ai._util.registry import registry_package_name
 from pydantic import JsonValue, TypeAdapter
 
-from .predicates import PredicateFn, ValidationPredicate, resolve_predicate
+from .predicates import PredicateFn, ValidationPredicate
 from .registry import (
     create_registered_predicate,
     is_registered_predicate,
@@ -134,6 +135,17 @@ def validation_sets_from_specs(
             "predicate_overrides."
         )
 
+    invalid_overrides = {
+        scanner
+        for scanner, override in overrides.items()
+        if isinstance(override, str) or not is_callable_coroutine(override)
+    }
+    if invalid_overrides:
+        raise PrerequisiteError(
+            "Predicate overrides must be async callables for: "
+            + ", ".join(sorted(invalid_overrides))
+        )
+
     runtime: dict[str, ValidationSet] = {}
     loaded = loaded_files if loaded_files is not None else set()
     for scanner, validation_set in validation.items():
@@ -141,7 +153,6 @@ def validation_sets_from_specs(
         override = overrides.get(scanner)
         predicate: ValidationPredicate | None
         if override is not None:
-            resolve_predicate(override)
             predicate = override
         elif isinstance(predicate_spec, RegisteredPredicateSpec):
             if predicate_spec.file and predicate_spec.file not in loaded:

@@ -172,6 +172,19 @@ def test_override_for_builtin_predicate_is_rejected() -> None:
         )
 
 
+def test_builtin_name_override_for_custom_predicate_is_rejected() -> None:
+    with pytest.raises(PrerequisiteError, match="must be async callables"):
+        validation_sets_from_specs(
+            {
+                "scanner": ValidationSetSpec(
+                    cases=[],
+                    predicate=UnavailablePredicateSpec(reason="anonymous"),
+                )
+            },
+            {"scanner": "eq"},  # type: ignore[dict-item]
+        )
+
+
 def test_missing_override_fails_before_registered_source_load(
     tmp_path: Path,
 ) -> None:

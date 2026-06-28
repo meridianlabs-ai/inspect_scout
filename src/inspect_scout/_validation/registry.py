@@ -50,8 +50,8 @@ def validation_predicate(
 ):
     """Register a portable custom validation predicate.
 
-    Registered predicates are persisted by name and JSON arguments rather than
-    by serializing their Python implementation.
+    Registered predicates are persisted by name and Inspect registry-compatible
+    creation parameters rather than by serializing their Python implementation.
 
     Args:
         factory: Function that creates an async validation predicate.

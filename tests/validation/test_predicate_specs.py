@@ -36,7 +36,7 @@ from inspect_scout._validation.types import (
 )
 from inspect_scout._validation.validate import validate
 from inspect_scout._view._api_v2 import v2_api_app
-from pydantic import JsonValue
+from pydantic import JsonValue, ValidationError
 
 LOGS_DIR = Path(__file__).parent.parent / "recorder" / "logs"
 
@@ -67,6 +67,14 @@ def test_registered_predicate_serializes_as_data() -> None:
     serialized = spec.model_dump_json()
     assert '"kind":"registered"' in serialized
     assert "gASV" not in serialized
+
+
+@pytest.mark.parametrize("distance", [float("nan"), float("inf"), float("-inf")])
+def test_registered_predicate_rejects_non_finite_args(distance: float) -> None:
+    validation = ValidationSet(cases=[], predicate=within_range(distance=distance))
+
+    with pytest.raises(ValidationError, match="finite number"):
+        validation_set_to_spec(validation)
 
 
 @pytest.mark.asyncio
@@ -329,6 +337,7 @@ def test_scan_list_api_treats_legacy_predicate_as_data(
 
 def test_registered_predicate_resumes_from_recorded_source(tmp_path: Path) -> None:
     gate = tmp_path / "gate.txt"
+    loads = tmp_path / "loads.txt"
     source = tmp_path / "registered_resume.py"
     source.write_text(
         "\n".join(
@@ -344,6 +353,9 @@ def test_registered_predicate_resumes_from_recorded_source(tmp_path: Path) -> No
                 "    validation_predicate,",
                 ")",
                 f"GATE = Path({str(gate)!r})",
+                f"LOADS = Path({str(loads)!r})",
+                "LOAD_COUNT = int(LOADS.read_text()) + 1 if LOADS.exists() else 1",
+                "LOADS.write_text(str(LOAD_COUNT))",
                 "",
                 "@scanner(name='resume_scanner', messages='all')",
                 "def resume_scanner() -> Scanner[Transcript]:",
@@ -363,6 +375,7 @@ def test_registered_predicate_resumes_from_recorded_source(tmp_path: Path) -> No
         )
     )
     module = load_module(source)
+    assert loads.read_text() == "1"
     validation = ValidationSet(cases=[], predicate=module.resume_predicate())
     first = scan(
         scanners=[module.resume_scanner()],
@@ -385,3 +398,4 @@ def test_registered_predicate_resumes_from_recorded_source(tmp_path: Path) -> No
     )
 
     assert resumed.complete is True
+    assert loads.read_text() == "2"

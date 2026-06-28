@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import BaseModel, Field, JsonValue, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 from typing_extensions import Literal
 
 from .predicates import PREDICATES, PredicateType, ValidationPredicate
@@ -88,6 +88,8 @@ class ValidationSet(BaseModel):
 
 class RegisteredPredicateSpec(BaseModel):
     """Portable reference to a registered custom predicate."""
+
+    model_config = ConfigDict(allow_inf_nan=False)
 
     kind: Literal["registered"] = "registered"
     name: str

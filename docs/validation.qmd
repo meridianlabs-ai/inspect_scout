@@ -200,9 +200,13 @@ validation = validation_set(
 )
 ```
 
-Scout records the registered predicate's name and arguments, not its Python
-implementation. The predicate's module or package must be available when the
-scan is resumed.
+Scout records the registered predicate's name and Inspect registry-compatible
+creation parameters, not its Python implementation. Use the same parameter
+conventions as other Inspect extensions: ordinary serializable values and
+registered Inspect objects or models are portable, while arbitrary Python
+objects are not. Non-finite floating-point values are rejected rather than
+silently changed in the scan artifact. The predicate's module or package must
+be available when the scan is resumed.
 
 An unregistered async callable can still be used for the current scan:
 

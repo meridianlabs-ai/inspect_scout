@@ -93,6 +93,8 @@ def validation_sets_to_specs(
 def validation_sets_from_specs(
     validation: dict[str, ValidationSetSpec] | None,
     predicate_overrides: Mapping[str, PredicateFn] | None = None,
+    *,
+    loaded_files: set[str] | None = None,
 ) -> dict[str, ValidationSet] | None:
     """Create runtime validation sets at the explicit resume boundary."""
     if validation is None:
@@ -133,7 +135,7 @@ def validation_sets_from_specs(
         )
 
     runtime: dict[str, ValidationSet] = {}
-    loaded_files: set[str] = set()
+    loaded = loaded_files if loaded_files is not None else set()
     for scanner, validation_set in validation.items():
         predicate_spec = validation_set.predicate
         override = overrides.get(scanner)
@@ -142,9 +144,9 @@ def validation_sets_from_specs(
             resolve_predicate(override)
             predicate = override
         elif isinstance(predicate_spec, RegisteredPredicateSpec):
-            if predicate_spec.file and predicate_spec.file not in loaded_files:
+            if predicate_spec.file and predicate_spec.file not in loaded:
                 load_module(Path(predicate_spec.file))
-                loaded_files.add(predicate_spec.file)
+                loaded.add(predicate_spec.file)
             predicate = create_registered_predicate(
                 predicate_spec.name,
                 predicate_spec.args,

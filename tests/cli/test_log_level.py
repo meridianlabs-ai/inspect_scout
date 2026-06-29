@@ -170,3 +170,22 @@ def test_absent_log_level_falls_back_to_project(
     _invoke(args)
     expected = "info" if project_aware else DEFAULT_LOG_LEVEL.lower()
     assert recorder.effective_level() == expected
+
+
+def test_scan_list_explicit_dir_and_level_skips_project(
+    recorder: _LevelRecorder, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`scan list <dir> --log-level X` must not read the project config.
+
+    With both the scans dir and the log level specified there is nothing to
+    resolve from scout.yaml, so a malformed scout.yaml must not break the
+    command (read_project() raises on invalid config).
+    """
+    import inspect_scout._cli.scan_list as scan_list_mod
+
+    def _fail() -> object:
+        raise AssertionError("read_project() should not be called")
+
+    monkeypatch.setattr(scan_list_mod, "read_project", _fail)
+    _invoke(["scan", "list", "somedir", "--log-level", "error"])
+    assert recorder.effective_level() == "error"

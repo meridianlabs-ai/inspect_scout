@@ -32,17 +32,20 @@ def scan_list_command(
     # Process common options
     process_common_options(common)
 
-    # initialize logging with the resolved log level
-    project = read_project()
-    top_level_async_init(resolve_common_log_level(ctx, common) or project.log_level)
+    # read the project only when needed: to fall back to its log level (when
+    # --log-level is not passed) or to resolve a default scans dir (when none
+    # is given). Avoids touching scout.yaml for a fully-specified invocation.
+    log_level = resolve_common_log_level(ctx, common)
+    if log_level is None or len(scans_dir) == 0:
+        project = read_project()
+        log_level = log_level or project.log_level
+        if len(scans_dir) == 0:
+            scans_dir = project.scans or "./scans"
 
-    # if there is no scans dir then get it from the project
-    if len(scans_dir) == 0:
-        scans_dir = project.scans or "./scans"
+    # initialize logging with the resolved log level
+    top_level_async_init(log_level)
 
     # list the scans
-    scans = scan_list(scans_dir)
-
     scans = sorted(
         scan_list(scans_dir),
         key=lambda scan: scan.spec.timestamp.timestamp(),

@@ -97,18 +97,18 @@ def recorder(monkeypatch: pytest.MonkeyPatch) -> _LevelRecorder:
     """Capture the log level committed to ``top_level_async_init``.
 
     All five commands funnel the resolved level into ``top_level_async_init``
-    (defined in ``inspect_scout._init``): ``import`` imports it lazily from
-    ``_init``; ``scan list``/``scan status`` bind it at import time; ``scan
-    complete``/``scan resume`` reach it via ``scan_complete()``/``scan_resume()``
-    in ``inspect_scout._scan``. Patch every binding a command actually reaches.
+    (defined in ``inspect_scout._init``). ``import``, ``scan list``, and ``scan
+    status`` bind it at import time, so patch each command module's binding;
+    ``scan complete``/``scan resume`` reach it via ``scan_complete()``/
+    ``scan_resume()`` in ``inspect_scout._scan``, so patch that binding too.
     """
+    import inspect_scout._cli.import_command as import_mod
     import inspect_scout._cli.scan_list as scan_list_mod
     import inspect_scout._cli.scan_status as scan_status_mod
-    import inspect_scout._init as init_mod
     import inspect_scout._scan as scan_mod
 
     rec = _LevelRecorder()
-    monkeypatch.setattr(init_mod, "top_level_async_init", rec)
+    monkeypatch.setattr(import_mod, "top_level_async_init", rec)
     monkeypatch.setattr(scan_mod, "top_level_async_init", rec)
     monkeypatch.setattr(scan_list_mod, "top_level_async_init", rec)
     monkeypatch.setattr(scan_status_mod, "top_level_async_init", rec)

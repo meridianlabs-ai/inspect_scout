@@ -9,16 +9,14 @@ from typing import Any, AsyncIterator, Mapping, Sequence, cast
 import anyio
 import yaml
 from anyio.abc import TaskGroup
-from dotenv import find_dotenv, load_dotenv
 from inspect_ai._eval.context import init_model_context
 from inspect_ai._util._async import run_coroutine
 from inspect_ai._util.background import set_background_task_group
 from inspect_ai._util.config import resolve_args
-from inspect_ai._util.constants import DEFAULT_LOG_LEVEL, DEFAULT_MAX_CONNECTIONS_BATCH
+from inspect_ai._util.constants import DEFAULT_MAX_CONNECTIONS_BATCH
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.json import jsonable_python
 from inspect_ai._util.path import pretty_path
-from inspect_ai._util.platform import platform_init as init_platform
 from inspect_ai._util.rich import clean_control_characters
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.model._model import Model, init_model_usage, model_usage, resolve_models
@@ -34,7 +32,6 @@ from rich import box
 from rich.table import Column, Table
 from typing_extensions import Unpack
 
-from inspect_scout._concurrency._mp_common import set_log_level
 from inspect_scout._project import read_project
 from inspect_scout._scanjob import merge_project_into_scanjob
 from inspect_scout._scanner.metrics import metrics_accumulators
@@ -54,9 +51,8 @@ from ._concurrency.single_process import single_process_strategy
 from ._display._display import (
     DisplayType,
     display,
-    display_type_initialized,
-    init_display_type,
 )
+from ._init import top_level_async_init, top_level_sync_init
 from ._recorder import summary as recorder_summary
 from ._recorder.active_scans_store import active_scans_store
 from ._recorder.factory import (
@@ -85,7 +81,6 @@ from ._transcript.types import (
 from ._transcript.util import union_transcript_contents
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
 from ._util.deprecation import raise_results_error, show_results_warning
-from ._util.log import init_log
 
 logger = getLogger(__name__)
 
@@ -747,39 +742,6 @@ async def _scan_async_inner(
 
     finally:
         cleanup_task_files_cache()
-
-
-def top_level_sync_init(display: DisplayType | None) -> None:
-    init_environment()
-    init_display_type(display)
-
-
-def top_level_async_init(
-    log_level: str | None,
-    *,
-    main_process: bool = True,
-) -> None:
-    init_platform(hooks=False)
-    init_environment()
-
-    log_level = log_level or DEFAULT_LOG_LEVEL
-
-    if not display_type_initialized():
-        init_display_type("plain")
-    init_log(log_level)
-    if main_process:
-        set_log_level(log_level)
-
-
-def init_environment() -> None:
-    global _initialized_environment
-    if not _initialized_environment:
-        dotenv_file = find_dotenv(usecwd=True)
-        load_dotenv(dotenv_file)
-        _initialized_environment = True
-
-
-_initialized_environment: bool = False
 
 
 def init_scan_model_context(

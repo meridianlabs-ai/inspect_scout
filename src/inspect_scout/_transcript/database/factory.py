@@ -20,7 +20,7 @@ def transcripts_view(location: str) -> TranscriptsView:
     Returns:
         Read-only view for querying transcripts.
     """
-    from inspect_scout._scan import init_environment
+    from inspect_scout._init import init_environment
     from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
     from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
     from inspect_scout._transcript.factory import _location_type
@@ -42,7 +42,7 @@ def transcripts_db(location: str) -> TranscriptsDB:
     Returns:
         Transcripts database for writing and reading.
     """
-    from inspect_scout._scan import init_environment
+    from inspect_scout._init import init_environment
     from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
     from inspect_scout._transcript.factory import _location_type
 

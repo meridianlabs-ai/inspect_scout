@@ -353,7 +353,7 @@ def import_command(
     **common: Unpack[CommonOptions],
 ) -> None:
     """Import transcripts from a source."""
-    from inspect_scout._scan import top_level_async_init
+    from inspect_scout._init import top_level_async_init
 
     process_common_options(common)
 

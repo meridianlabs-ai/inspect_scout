@@ -23,7 +23,7 @@ from inspect_ai.util._concurrency import init_concurrency
 
 from inspect_scout._display._display import display
 
-from .._scan import top_level_async_init
+from .._init import top_level_async_init
 from .._scanner.result import ResultReport
 from .._transcript.types import TranscriptInfo
 from . import _mp_common

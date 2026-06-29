@@ -2,7 +2,7 @@ import click
 from inspect_ai._util.error import set_exception_hook
 
 from .. import __version__
-from .._scan import init_environment
+from .._init import init_environment
 from .db import db_command
 from .import_command import import_command
 from .info import info_command

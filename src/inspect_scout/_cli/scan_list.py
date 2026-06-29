@@ -8,7 +8,7 @@ from inspect_scout._display.util import terminal_path
 from inspect_scout._project._project import read_project
 
 from .._display import display
-from .._scan import top_level_async_init
+from .._init import top_level_async_init
 from .._scanlist import scan_list
 from .common import (
     CommonOptions,

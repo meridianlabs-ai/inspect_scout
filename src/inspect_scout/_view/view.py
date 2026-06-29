@@ -5,8 +5,8 @@ from typing import Any, Literal
 from inspect_ai._util.path import chdir
 from inspect_ai._view.view import view_acquire_port
 
+from inspect_scout._init import top_level_async_init
 from inspect_scout._project._project import read_project
-from inspect_scout._scan import top_level_async_init
 from inspect_scout._util.appdirs import scout_data_dir
 from inspect_scout._util.constants import DEFAULT_SERVER_HOST, DEFAULT_VIEW_PORT
 from inspect_scout._view.server import view_server, view_url

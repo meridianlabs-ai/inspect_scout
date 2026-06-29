@@ -2,8 +2,8 @@ import click
 from typing_extensions import Unpack
 
 from inspect_scout._display._display import display
+from inspect_scout._init import top_level_async_init
 from inspect_scout._project._project import read_project
-from inspect_scout._scan import top_level_async_init
 from inspect_scout._scanresults import scan_status
 
 from .common import (

@@ -483,7 +483,7 @@ def scan_command(
         return
 
     # Process common options
-    process_common_options(common)
+    process_common_options(ctx, common)
 
     # Handle deprecated --results option
     if results is not None:

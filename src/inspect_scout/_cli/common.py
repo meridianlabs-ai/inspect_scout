@@ -3,11 +3,15 @@ import os
 from typing import Any, Callable, Literal, TypeVar, cast
 
 import click
+from click.core import ParameterSource
 from inspect_ai._util.constants import ALL_LOG_LEVELS, DEFAULT_LOG_LEVEL
 from typing_extensions import TypedDict
 
+from inspect_scout._concurrency._mp_common import set_log_level
 from inspect_scout._display._display import DisplayType, display, init_display_type
+from inspect_scout._project._project import read_project
 from inspect_scout._util.constants import DEFAULT_DISPLAY, DEFAULT_SERVER_HOST
+from inspect_scout._util.log import init_log
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -83,10 +87,53 @@ def common_options(func: Callable[..., Any]) -> Callable[..., click.Context]:
     return wrapper
 
 
-def process_common_options(options: CommonOptions) -> None:
+def resolve_log_level(ctx: click.Context, options: CommonOptions) -> str:
+    """Resolve the effective log level for a CLI command.
+
+    Precedence (highest to lowest):
+
+    1. The ``--log-level`` argument when supplied explicitly on the command line.
+    2. The ``log_level`` field of the project configuration (``scout.yaml``).
+    3. The ``SCOUT_LOG_LEVEL`` environment variable.
+    4. The built-in default (``DEFAULT_LOG_LEVEL``).
+
+    Environment variable and default both surface as ``options["log_level"]``
+    (click resolves them into the option value), so they are handled by the
+    final fallback.
+
+    Args:
+        ctx: The click context for the command (used to determine whether
+            ``--log-level`` was supplied on the command line).
+        options: The resolved common options for the command.
+
+    Returns:
+        The effective log level.
+    """
+    # an explicit command-line argument always wins
+    if ctx.get_parameter_source("log_level") == ParameterSource.COMMANDLINE:
+        return options["log_level"]
+
+    # otherwise prefer a project-configured value
+    project_log_level = read_project().log_level
+    if project_log_level is not None:
+        return project_log_level
+
+    # fall back to the click-resolved value (environment variable or default)
+    return options["log_level"]
+
+
+def process_common_options(ctx: click.Context, options: CommonOptions) -> None:
     # propagate display
     display_type = cast(DisplayType, options["display"].lower().strip())
     init_display_type(display_type)
+
+    # write the resolved log_level back so commands that forward it into the
+    # scan/view runtime pass an already-resolved value (the runtime's
+    # `log_level or project.log_level` keeps a truthy log_level as-is).
+    log_level = resolve_log_level(ctx, options)
+    options["log_level"] = log_level
+    init_log(log_level)
+    set_log_level(log_level)
 
     # attach debugger if requested
     if options["debug"]:

@@ -340,7 +340,9 @@ async def _run_dry_run(
     help="Overwrite existing transcripts directory without prompting.",
 )
 @common_options
+@click.pass_context
 def import_command(
+    ctx: click.Context,
     source: str | None,
     transcripts: str,
     limit: int | None,
@@ -353,7 +355,7 @@ def import_command(
     **common: Unpack[CommonOptions],
 ) -> None:
     """Import transcripts from a source."""
-    process_common_options(common)
+    process_common_options(ctx, common)
 
     available_sources = _discover_sources()
 

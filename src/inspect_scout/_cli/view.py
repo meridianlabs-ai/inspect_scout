@@ -40,7 +40,9 @@ logger = getLogger(__name__)
 )
 @view_options
 @common_options
+@click.pass_context
 def view_command(
+    ctx: click.Context,
     project_dir: str | None,
     transcripts: str | None,
     scans: str | None,
@@ -52,7 +54,7 @@ def view_command(
     **common: Unpack[CommonOptions],
 ) -> None:
     """View scan results."""
-    process_common_options(common)
+    process_common_options(ctx, common)
 
     view(
         project_dir=project_dir,

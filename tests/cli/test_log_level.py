@@ -10,6 +10,9 @@ Precedence (highest to lowest): CLI argument > project config > environment
 variable > default.
 """
 
+import re
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Literal
 from unittest.mock import MagicMock
@@ -244,3 +247,85 @@ def test_scan_list_explicit_dir_and_level_skips_project(
     monkeypatch.setattr(common, "read_project", _fail)
     _invoke(["scan", "list", "somedir", "--log-level", "error"])
     assert recorder.effective_level() == "error"
+
+
+# =============================================================================
+# `scout scan`: the scanjob config *file* log_level is applied to the logger
+# =============================================================================
+
+# `scan` resolves a more specific level (from the scanjob config file) than
+# process_common_options does, and installs the logging handler itself. Since
+# the handler installs once per process, asserting the *applied* console level
+# requires a fresh process — hence a subprocess.
+_BROKEN_SCANNER = Path(__file__).parent / "broken_scanner.py"
+_EXAMPLE_LOGS = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
+
+
+def _scanner_name() -> str:
+    match = re.search(r"def (\w+)\(", _BROKEN_SCANNER.read_text())
+    assert match is not None
+    return match.group(1)
+
+
+def _scan_console_level(tmp_path: Path, scanjob_log_level: str | None) -> str:
+    """Run a real ``scout scan`` in a fresh process and report the console gate.
+
+    Returns the level name (e.g. ``"DEBUG"``) of the installed logging
+    handler's display level after the scan.
+    """
+    job = tmp_path / "job.yaml"
+    config = f"scanners:\n  - name: {_scanner_name()}\n    file: {_BROKEN_SCANNER}\n"
+    if scanjob_log_level is not None:
+        config += f"log_level: {scanjob_log_level}\n"
+    job.write_text(config, encoding="utf-8")
+
+    args = [
+        "scan",
+        str(job),
+        "-T",
+        str(_EXAMPLE_LOGS),
+        "--scans",
+        str(tmp_path / "scans"),
+        "--limit",
+        "1",
+        "--max-processes",
+        "1",
+        "--display",
+        "none",
+        "--model",
+        "mockllm/model",
+    ]
+    snippet = (
+        "import logging;"
+        "from click.testing import CliRunner;"
+        "from inspect_scout._cli.main import scout;"
+        "import inspect_scout._util.log as logmod;"
+        f"r = CliRunner().invoke(scout, {args!r}, catch_exceptions=False);"
+        "assert r.exit_code == 0, r.output;"
+        "h = logmod._scout_log_handler['handler'];"
+        "print(logging.getLevelName(h.display_level) if h else 'NONE')"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", snippet],
+        cwd=str(tmp_path),  # hermetic: no stray scout.yaml on the resolution path
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    return result.stdout.strip()
+
+
+def test_scan_applies_scanjob_file_log_level(tmp_path: Path) -> None:
+    """Regression: a scanjob config file's ``log_level`` reaches the logger.
+
+    An eager logging init in ``process_common_options`` would install the
+    one-shot handler at the less-specific (project/default) level before the
+    scanjob file was read, silently dropping its ``log_level``.
+    """
+    assert _scan_console_level(tmp_path, "debug") == "DEBUG"
+
+
+def test_scan_default_console_level_without_scanjob_level(tmp_path: Path) -> None:
+    """Without a scanjob ``log_level`` (or project/flag), the default is used."""
+    assert _scan_console_level(tmp_path, None) == DEFAULT_LOG_LEVEL.upper()

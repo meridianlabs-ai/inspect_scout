@@ -122,7 +122,9 @@ def resolve_log_level(ctx: click.Context, options: CommonOptions) -> str:
     return options["log_level"]
 
 
-def process_common_options(ctx: click.Context, options: CommonOptions) -> None:
+def process_common_options(
+    ctx: click.Context, options: CommonOptions, *, init_logging: bool = True
+) -> None:
     # propagate display
     display_type = cast(DisplayType, options["display"].lower().strip())
     init_display_type(display_type)
@@ -132,8 +134,16 @@ def process_common_options(ctx: click.Context, options: CommonOptions) -> None:
     # `log_level or project.log_level` keeps a truthy log_level as-is).
     log_level = resolve_log_level(ctx, options)
     options["log_level"] = log_level
-    init_log(log_level)
-    set_log_level(log_level)
+
+    # initialize logging now for commands that won't enter a runtime that does
+    # it for them. `scout scan` passes init_logging=False: it resolves a more
+    # specific level from the scanjob config *file* after this point and
+    # initializes logging itself, and the logging handler is installed once per
+    # process (first caller wins) — so an eager init here would lock in the
+    # less-specific level and silently drop the scanjob file's log_level.
+    if init_logging:
+        init_log(log_level)
+        set_log_level(log_level)
 
     # attach debugger if requested
     if options["debug"]:

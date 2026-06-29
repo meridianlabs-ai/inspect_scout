@@ -2,9 +2,7 @@
 
 These initialize the runtime environment (platform, dotenv, display, logging)
 used by the CLI commands, the view server, scan execution, and the multi-process
-subprocess entry point. They live here — rather than in ``_scan`` — so callers
-that only need to bootstrap (e.g. ``scout import``) don't pull in the full
-scanning machinery.
+subprocess entry point.
 """
 
 from dotenv import find_dotenv, load_dotenv

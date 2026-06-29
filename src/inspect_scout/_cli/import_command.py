@@ -356,7 +356,7 @@ def import_command(
     """Import transcripts from a source."""
     process_common_options(common)
 
-    # initialize logging (and platform/environment) with the resolved log level
+    # initialize logging (and platform/environment)
     top_level_async_init(common["log_level"])
 
     available_sources = _discover_sources()

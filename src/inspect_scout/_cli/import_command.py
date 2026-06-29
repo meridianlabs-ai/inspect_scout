@@ -20,6 +20,7 @@ from inspect_scout._cli.common import (
     process_common_options,
 )
 from inspect_scout._display._display import display
+from inspect_scout._init import top_level_async_init
 from inspect_scout._util.constants import DEFAULT_TRANSCRIPTS_DIR
 
 
@@ -353,8 +354,6 @@ def import_command(
     **common: Unpack[CommonOptions],
 ) -> None:
     """Import transcripts from a source."""
-    from inspect_scout._init import top_level_async_init
-
     process_common_options(common)
 
     # initialize logging (and platform/environment) with the resolved log level

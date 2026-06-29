@@ -353,7 +353,12 @@ def import_command(
     **common: Unpack[CommonOptions],
 ) -> None:
     """Import transcripts from a source."""
+    from inspect_scout._scan import top_level_async_init
+
     process_common_options(common)
+
+    # initialize logging (and platform/environment) with the resolved log level
+    top_level_async_init(common["log_level"])
 
     available_sources = _discover_sources()
 

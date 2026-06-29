@@ -3,6 +3,7 @@ import os
 from typing import Any, Callable, Literal, TypeVar, cast
 
 import click
+from click.core import ParameterSource
 from inspect_ai._util.constants import ALL_LOG_LEVELS, DEFAULT_LOG_LEVEL
 from typing_extensions import TypedDict
 
@@ -81,6 +82,20 @@ def common_options(func: Callable[..., Any]) -> Callable[..., click.Context]:
         return cast(click.Context, func(*args, **kwargs))
 
     return wrapper
+
+
+def resolve_common_log_level(ctx: click.Context, options: CommonOptions) -> str | None:
+    """Resolve the effective ``--log-level`` for a command.
+
+    Returns the value only when it was provided explicitly on the command line;
+    otherwise returns ``None`` so callers can fall back to the project (and then
+    default) log level. This matches the precedence used by ``scout scan``,
+    where an explicit CLI flag wins but the (defaulted) option value does not
+    override project configuration.
+    """
+    if ctx.get_parameter_source("log_level") == ParameterSource.COMMANDLINE:
+        return options["log_level"]
+    return None
 
 
 def process_common_options(options: CommonOptions) -> None:

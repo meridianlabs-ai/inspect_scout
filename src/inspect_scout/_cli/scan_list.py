@@ -8,15 +8,23 @@ from inspect_scout._display.util import terminal_path
 from inspect_scout._project._project import read_project
 
 from .._display import display
+from .._scan import top_level_async_init
 from .._scanlist import scan_list
-from .common import CommonOptions, common_options, process_common_options
+from .common import (
+    CommonOptions,
+    common_options,
+    process_common_options,
+    resolve_common_log_level,
+)
 from .scan import scan_command
 
 
 @scan_command.command("list")
 @click.argument("scans_dir", default="")
 @common_options
+@click.pass_context
 def scan_list_command(
+    ctx: click.Context,
     scans_dir: str,
     **common: Unpack[CommonOptions],
 ) -> None:
@@ -24,9 +32,13 @@ def scan_list_command(
     # Process common options
     process_common_options(common)
 
+    # initialize logging with the resolved log level
+    project = read_project()
+    top_level_async_init(resolve_common_log_level(ctx, common) or project.log_level)
+
     # if there is no scans dir then get it from the project
     if len(scans_dir) == 0:
-        scans_dir = read_project().scans or "./scans"
+        scans_dir = project.scans or "./scans"
 
     # list the scans
     scans = scan_list(scans_dir)

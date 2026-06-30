@@ -10,6 +10,7 @@ Precedence (highest to lowest): CLI argument > project config > environment
 variable > default.
 """
 
+import json
 import re
 import subprocess
 import sys
@@ -295,8 +296,10 @@ def _scan_console_level(tmp_path: Path, scanjob_log_level: str | None) -> str:
         "--model",
         "mockllm/model",
     ]
+    syspath_json = json.dumps(sys.path)
     snippet = (
-        "import logging;"
+        "import logging, json, sys;"
+        f"sys.path = json.loads({syspath_json!r});"
         "from click.testing import CliRunner;"
         "from inspect_scout._cli.main import scout;"
         "import inspect_scout._util.log as logmod;"
@@ -366,9 +369,11 @@ def _view_console_level(
     if cli_level is not None:
         args += ["--log-level", cli_level]
 
+    syspath_json = json.dumps(sys.path)
     snippet = "\n".join(
         [
-            "import logging",
+            "import logging, json, sys",
+            f"sys.path = json.loads({syspath_json!r})",
             "from click.testing import CliRunner",
             "from inspect_scout._cli.main import scout",
             "import inspect_scout._view.view as viewmod",

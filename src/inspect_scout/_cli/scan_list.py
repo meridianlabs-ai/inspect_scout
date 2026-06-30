@@ -16,13 +16,15 @@ from .scan import scan_command
 @scan_command.command("list")
 @click.argument("scans_dir", default="")
 @common_options
+@click.pass_context
 def scan_list_command(
+    ctx: click.Context,
     scans_dir: str,
     **common: Unpack[CommonOptions],
 ) -> None:
     """List the scans within the scans dir."""
     # Process common options
-    process_common_options(common)
+    process_common_options(ctx, common)
 
     # if there is no scans dir then get it from the project
     if len(scans_dir) == 0:

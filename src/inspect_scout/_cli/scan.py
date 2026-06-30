@@ -482,8 +482,9 @@ def scan_command(
     if ctx.invoked_subcommand is not None:
         return
 
-    # Process common options
-    process_common_options(common)
+    # Process common options. Defer logging init: scan resolves a more specific
+    # log level from the scanjob config below and initializes logging itself.
+    process_common_options(ctx, common, init_logging=False)
 
     # Handle deprecated --results option
     if results is not None:

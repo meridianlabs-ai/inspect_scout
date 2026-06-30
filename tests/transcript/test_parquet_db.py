@@ -1997,6 +1997,45 @@ async def test_pool_dedup_read_content_equality(test_location: Path) -> None:
         assert e_np.call.request["messages"] == e_p.call.request["messages"]
 
 
+@pytest.mark.asyncio
+async def test_pool_dedup_events_json_is_compact(test_location: Path) -> None:
+    """Pool-dedup events/events_data columns are stored as compact JSON.
+
+    Regression guard: the serializer must use indent=None so that on-disk
+    (and the streamed-to-viewer) representation is not bloated by pretty-print
+    whitespace. Indented JSON would contain newlines.
+    """
+    import pyarrow.parquet as pq
+
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+    try:
+        await db.insert([_transcript_with_repeated_inputs()])
+    finally:
+        await db.disconnect()
+
+    parquet_files = list(test_location.glob(PARQUET_TRANSCRIPTS_GLOB))
+    assert len(parquet_files) == 1
+
+    table = pq.read_table(str(parquet_files[0]))
+    events_json = table.column("events").to_pylist()[0]
+    events_data_json = table.column("events_data").to_pylist()[0]
+
+    # Compact serialization: no pretty-print whitespace (indent=2 adds newlines).
+    assert isinstance(events_json, str)
+    assert isinstance(events_data_json, str)
+    assert "\n" not in events_json
+    assert "\n" not in events_data_json
+
+    events = json.loads(events_json)
+    events_data = json.loads(events_data_json)
+
+    # Pooling actually populated both columns for this poolable fixture
+    # (not just an empty "[]"/"{}" that would still be truthy as a string).
+    assert isinstance(events, list) and events
+    assert isinstance(events_data, dict) and events_data
+
+
 # --- Phase 3: read_messages_events() pool resolution tests ---
 
 

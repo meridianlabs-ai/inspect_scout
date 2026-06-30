@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Transcript DB: `atif()` transcript source for importing transcripts from Harbor ATIF (Agent Trajectory Interchange Format) trajectory files. Supports filtering by session and time range, and inlines subagent trajectories as spans. Requires the optional `harbor` dependency.
 - Security: Remove terminal control sequences from scanner names, scan metadata, errors, progress text, and filenames before rendering console output.
 - Security: Build DuckDB queries from bound Parquet sources and quoted, schema-validated identifiers so malicious transcript/scan filenames and sort or distinct columns cannot inject SQL.
 - Add `timeline` option to `transcript_messages()` and `llm_scanner()` for selecting a named timeline.

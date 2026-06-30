@@ -11,7 +11,7 @@ from shortuuid import uuid
 
 from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
 from inspect_scout._transcript.types import Transcript
-from inspect_scout._util._json import to_json_compact
+from inspect_scout._util._json import to_json_str_compact
 
 logger = getLogger(__name__)
 
@@ -139,7 +139,7 @@ class ResultReport(BaseModel):
                     columns["value_type"] = "null"
 
             else:
-                columns["value"] = to_json_compact(self.result.value)
+                columns["value"] = to_json_str_compact(self.result.value)
                 if self.result.type is not None:
                     columns["value_type"] = self.result.type
                 else:
@@ -148,12 +148,12 @@ class ResultReport(BaseModel):
                     )
             columns["answer"] = self.result.answer
             columns["explanation"] = self.result.explanation
-            columns["metadata"] = to_json_compact(self.result.metadata or {})
+            columns["metadata"] = to_json_str_compact(self.result.metadata or {})
 
             # references
             def references_json(type: str) -> str:
                 assert self.result
-                return to_json_compact(
+                return to_json_str_compact(
                     [ref for ref in self.result.references if ref.type == type]
                 )
 
@@ -171,9 +171,9 @@ class ResultReport(BaseModel):
             columns["value_type"] = "null"
             columns["answer"] = None
             columns["explanation"] = None
-            columns["metadata"] = to_json_compact({})
-            columns["message_references"] = to_json_compact([])
-            columns["event_references"] = to_json_compact([])
+            columns["metadata"] = to_json_str_compact({})
+            columns["message_references"] = to_json_str_compact([])
+            columns["event_references"] = to_json_str_compact([])
             columns["scan_error"] = self.error.error
             columns["scan_error_traceback"] = self.error.traceback
             columns["scan_error_type"] = "refusal"
@@ -184,8 +184,8 @@ class ResultReport(BaseModel):
 
         # report validation
         if self.validation is not None:
-            columns["validation_target"] = to_json_compact(self.validation.target)
-            columns["validation_result"] = to_json_compact(self.validation.valid)
+            columns["validation_target"] = to_json_str_compact(self.validation.target)
+            columns["validation_result"] = to_json_str_compact(self.validation.valid)
             columns["validation_predicate"] = self.validation.predicate
             columns["validation_split"] = self.validation.split
             if isinstance(self.validation.valid, dict):
@@ -204,8 +204,8 @@ class ResultReport(BaseModel):
             total_tokens += usage.total_tokens
 
         columns["scan_total_tokens"] = total_tokens
-        columns["scan_model_usage"] = to_json_compact(self.model_usage)
-        columns["scan_events"] = to_json_compact(self.events)
+        columns["scan_model_usage"] = to_json_str_compact(self.model_usage)
+        columns["scan_events"] = to_json_str_compact(self.events)
 
         return columns
 
@@ -222,16 +222,16 @@ def _serialize_input(
         (input_json, input_data_json | None)
     """
     if not pool_dedup or input_type not in ("transcript", "events"):
-        return to_json_compact(input), None
+        return to_json_str_compact(input), None
 
     if input_type == "transcript":
         assert isinstance(input, Transcript)
         condensed_events, events_data = condense_events(input.events)
         condensed = input.model_copy(update={"events": condensed_events})
-        return to_json_compact(condensed), to_json_compact(events_data)
+        return to_json_str_compact(condensed), to_json_str_compact(events_data)
 
     # input_type == "events"
     assert isinstance(input, Sequence)
     events = cast(Sequence[Event], input)
     condensed_events, events_data = condense_events(events)
-    return to_json_compact(condensed_events), to_json_compact(events_data)
+    return to_json_str_compact(condensed_events), to_json_str_compact(events_data)

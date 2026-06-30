@@ -27,7 +27,7 @@ from inspect_scout._display._display import display
 from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._transcript.database.factory import transcripts_from_db_snapshot
 from inspect_scout._transcript.util import LazyJSONDict
-from inspect_scout._util._json import to_json_compact
+from inspect_scout._util._json import to_json_str_compact
 from inspect_scout._util.filesystem import ensure_filesystem_dependencies
 
 from ...._query import Query
@@ -1044,8 +1044,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
             condensed_events, events_data = condense_events(transcript.events)
             # Compact JSON to reduce storage: pretty-printing significantly
             # increases the size of structures like range-encoded input_refs.
-            events_json = to_json_compact(condensed_events)
-            events_data_json = to_json_compact(events_data)
+            events_json = to_json_str_compact(condensed_events)
+            events_data_json = to_json_str_compact(events_data)
         else:
             events_json = json.dumps(
                 [event.model_dump() for event in transcript.events]

@@ -329,3 +329,86 @@ def test_scan_applies_scanjob_file_log_level(tmp_path: Path) -> None:
 def test_scan_default_console_level_without_scanjob_level(tmp_path: Path) -> None:
     """Without a scanjob ``log_level`` (or project/flag), the default is used."""
     assert _scan_console_level(tmp_path, None) == DEFAULT_LOG_LEVEL.upper()
+
+
+# =============================================================================
+# `scout view <project_dir>`: the level is resolved against the *target*
+# project, not the caller's cwd
+# =============================================================================
+
+# `view` changes into ``project_dir`` before it reads the project config, so its
+# log level must be resolved against that project — not the cwd the command was
+# launched from. We run from an empty cwd (no scout.yaml) with the project's
+# config under a separate ``project_dir`` to prove the target project drives the
+# level. A fresh process is required because the handler installs once per
+# process; the server is stopped right after logging init (before it blocks).
+
+
+def _view_console_level(
+    tmp_path: Path, project_log_level: str | None, *, cli_level: str | None = None
+) -> str:
+    """Run ``scout view <project_dir>`` from an empty cwd in a fresh process.
+
+    Returns the level name (e.g. ``"DEBUG"``) of the installed logging
+    handler's display level after view initializes logging.
+    """
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    if project_log_level is not None:
+        (project_dir / "scout.yaml").write_text(
+            f"log_level: {project_log_level}\n", encoding="utf-8"
+        )
+
+    cwd = tmp_path / "cwd"  # empty: no scout.yaml on the caller's path
+    cwd.mkdir()
+
+    args = ["view", str(project_dir), "--no-browser", "--display", "none"]
+    if cli_level is not None:
+        args += ["--log-level", cli_level]
+
+    snippet = "\n".join(
+        [
+            "import logging",
+            "from click.testing import CliRunner",
+            "from inspect_scout._cli.main import scout",
+            "import inspect_scout._view.view as viewmod",
+            "import inspect_scout._util.log as logmod",
+            # stop right after logging init, before the blocking server
+            "class _Stop(Exception): pass",
+            "def _stop(*a, **k): raise _Stop()",
+            "viewmod.view_acquire_port = _stop",
+            f"CliRunner().invoke(scout, {args!r}, catch_exceptions=True)",
+            "h = logmod._scout_log_handler['handler']",
+            "print(logging.getLevelName(h.display_level) if h else 'NONE')",
+        ]
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", snippet],
+        cwd=str(cwd),  # caller cwd has no project; the level must come from project_dir
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    return result.stdout.strip()
+
+
+def test_view_applies_target_project_log_level(tmp_path: Path) -> None:
+    """Regression: ``scout view <project_dir>`` honors that project's log_level.
+
+    The level must resolve against ``project_dir``'s ``scout.yaml`` even when
+    the command is launched from a directory with no project config. Resolving
+    against the caller's cwd (or eagerly installing the handler before the
+    chdir into ``project_dir``) would leave the console at the default level.
+    """
+    assert _view_console_level(tmp_path, "debug") == "DEBUG"
+
+
+def test_view_default_console_level_without_project(tmp_path: Path) -> None:
+    """With no target project ``log_level`` (or flag), the default is used."""
+    assert _view_console_level(tmp_path, None) == DEFAULT_LOG_LEVEL.upper()
+
+
+def test_view_cli_level_overrides_target_project(tmp_path: Path) -> None:
+    """An explicit ``--log-level`` wins over the target project's ``log_level``."""
+    assert _view_console_level(tmp_path, "debug", cli_level="error") == "ERROR"

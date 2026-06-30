@@ -2,6 +2,7 @@ from logging import getLogger
 from typing import Literal
 
 import click
+from inspect_ai._util.path import chdir
 from typing_extensions import Unpack
 
 from inspect_scout._cli.common import (
@@ -54,7 +55,9 @@ def view_command(
     **common: Unpack[CommonOptions],
 ) -> None:
     """View scan results."""
-    process_common_options(ctx, common)
+    # chdir to correctly resolve log level based on the relevant project_dir
+    with chdir(project_dir or "."):
+        process_common_options(ctx, common, init_logging=False)
 
     view(
         project_dir=project_dir,

@@ -16,7 +16,6 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import filesystem
-from inspect_ai._util.json import to_json_str_safe
 from inspect_ai._util.path import pretty_path
 from inspect_ai.log import condense_events, expand_events
 from inspect_ai.util import trace_action, trace_message
@@ -28,6 +27,7 @@ from inspect_scout._display._display import display
 from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._transcript.database.factory import transcripts_from_db_snapshot
 from inspect_scout._transcript.util import LazyJSONDict
+from inspect_scout._util._json import to_json_compact
 from inspect_scout._util.filesystem import ensure_filesystem_dependencies
 
 from ...._query import Query
@@ -1042,8 +1042,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         if pool_dedup:
             condensed_events, events_data = condense_events(transcript.events)
-            events_json = to_json_str_safe(condensed_events)
-            events_data_json = to_json_str_safe(events_data)
+            # Compact JSON to reduce storage: pretty-printing significantly
+            # increases the size of structures like range-encoded input_refs.
+            events_json = to_json_compact(condensed_events)
+            events_data_json = to_json_compact(events_data)
         else:
             events_json = json.dumps(
                 [event.model_dump() for event in transcript.events]

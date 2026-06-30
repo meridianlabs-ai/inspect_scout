@@ -79,6 +79,49 @@ def test_events_expanded_in_results_df() -> None:
         assert not _has_unresolved_refs(events)
 
 
+def test_results_input_columns_are_compact_json() -> None:
+    """Pooled input/input_data columns are stored as compact JSON on disk.
+
+    Regression guard: the results serializer must use indent=None so that the
+    on-disk parquet (and the bytes streamed to the viewer) are not bloated by
+    pretty-print whitespace. These columns are machine-read via json.loads /
+    expand_events, never human-consumed. Reads the raw parquet rather than
+    scan_results_df, which expands and drops input_data before returning.
+    """
+    import pyarrow.parquet as pq
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        status = scan(
+            scanners=[events_scanner_factory()],
+            transcripts=transcripts_from(LOGS_DIR),
+            scans=tmpdir,
+            limit=1,
+            max_processes=1,
+        )
+
+        parquet_path = Path(status.location) / "events_scanner.parquet"
+        assert parquet_path.exists()
+
+        # ParquetFile.read() avoids dataset partition inference: status.location
+        # is a scan_id=... directory, which read_table would treat as a
+        # partition column conflicting with the in-file scan_id column.
+        table = pq.ParquetFile(str(parquet_path)).read()
+        input_json = table.column("input").to_pylist()[0]
+        input_data_json = table.column("input_data").to_pylist()[0]
+
+        # Pooled events path populates both columns.
+        assert input_json
+        assert input_data_json
+
+        # Compact serialization: no pretty-print whitespace (indent=2 adds newlines).
+        assert "\n" not in input_json
+        assert "\n" not in input_data_json
+
+        # Still valid JSON that parses back.
+        assert isinstance(json.loads(input_json), list)
+        assert isinstance(json.loads(input_data_json), dict)
+
+
 def test_transcript_input_expanded_in_results_df() -> None:
     """Transcript-type inputs have events expanded and input_data dropped."""
     with tempfile.TemporaryDirectory() as tmpdir:

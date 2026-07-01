@@ -6,15 +6,19 @@ from logging import getLogger
 from inspect_ai._util.logger import warn_once
 from inspect_ai.event import (
     ApprovalEvent,
+    BranchEvent,
     ErrorEvent,
     Event,
     InfoEvent,
     InputEvent,
     LoggerEvent,
     ModelEvent,
+    SampleInitEvent,
     SampleLimitEvent,
     SandboxEvent,
     ScoreEvent,
+    StateEvent,
+    StoreEvent,
     ToolEvent,
 )
 
@@ -44,6 +48,14 @@ def event_as_str(event: Event) -> str | None:
             return _input_event_as_str(event)
         case "sandbox":
             return _sandbox_event_as_str(event)
+        case "state":
+            return _state_event_as_str(event)
+        case "store":
+            return _store_event_as_str(event)
+        case "branch":
+            return _branch_event_as_str(event)
+        case "sample_init":
+            return _sample_init_event_as_str(event)
         case _:
             warn_once(
                 logger,
@@ -163,3 +175,31 @@ def _sandbox_event_as_str(event: Event) -> str | None:
     detail = event.cmd if event.cmd is not None else event.file
     suffix = f": {detail}" if detail else ""
     return f"SANDBOX ({event.action}){suffix}\n"
+
+
+def _pluralize_changes(n: int) -> str:
+    return f"{n} change{'s' if n != 1 else ''}"
+
+
+def _state_event_as_str(event: Event) -> str | None:
+    if not isinstance(event, StateEvent):
+        return None
+    return f"STATE: {_pluralize_changes(len(event.changes))}\n"
+
+
+def _store_event_as_str(event: Event) -> str | None:
+    if not isinstance(event, StoreEvent):
+        return None
+    return f"STORE: {_pluralize_changes(len(event.changes))}\n"
+
+
+def _branch_event_as_str(event: Event) -> str | None:
+    if not isinstance(event, BranchEvent):
+        return None
+    return "BRANCH\n"
+
+
+def _sample_init_event_as_str(event: Event) -> str | None:
+    if not isinstance(event, SampleInitEvent):
+        return None
+    return "SAMPLE INIT\n"

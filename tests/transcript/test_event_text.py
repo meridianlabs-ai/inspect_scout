@@ -1,4 +1,10 @@
-from inspect_ai.event import ErrorEvent, ScoreEvent
+from inspect_ai.event import (
+    ErrorEvent,
+    InputEvent,
+    SampleLimitEvent,
+    SandboxEvent,
+    ScoreEvent,
+)
 from inspect_ai.log import EvalError
 from inspect_ai.scorer import Score
 from inspect_scout._transcript.event_text import event_as_str
@@ -41,3 +47,23 @@ def test_score_event_intermediate_no_target() -> None:
 def test_score_event_list_target_no_scorer() -> None:
     event = ScoreEvent(score=Score(value="A"), target=["A", "B"])
     assert event_as_str(event) == "SCORE (unknown): value=A target=A, B\n"
+
+
+def test_sample_limit_event() -> None:
+    event = SampleLimitEvent(type="token", message="Token limit exceeded", limit=1000)
+    assert event_as_str(event) == "LIMIT (token): Token limit exceeded\n"
+
+
+def test_input_event() -> None:
+    event = InputEvent(input="hello there", input_ansi="hello there")
+    assert event_as_str(event) == "INPUT:\nhello there\n"
+
+
+def test_sandbox_exec_event() -> None:
+    event = SandboxEvent(action="exec", cmd="ls -la")
+    assert event_as_str(event) == "SANDBOX (exec): ls -la\n"
+
+
+def test_sandbox_file_event() -> None:
+    event = SandboxEvent(action="read_file", file="/etc/hosts")
+    assert event_as_str(event) == "SANDBOX (read_file): /etc/hosts\n"

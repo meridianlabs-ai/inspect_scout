@@ -9,8 +9,11 @@ from inspect_ai.event import (
     ErrorEvent,
     Event,
     InfoEvent,
+    InputEvent,
     LoggerEvent,
     ModelEvent,
+    SampleLimitEvent,
+    SandboxEvent,
     ScoreEvent,
     ToolEvent,
 )
@@ -35,6 +38,12 @@ def event_as_str(event: Event) -> str | None:
             return _approval_event_as_str(event)
         case "score":
             return _score_event_as_str(event)
+        case "sample_limit":
+            return _sample_limit_event_as_str(event)
+        case "input":
+            return _input_event_as_str(event)
+        case "sandbox":
+            return _sandbox_event_as_str(event)
         case _:
             warn_once(
                 logger,
@@ -134,3 +143,23 @@ def _score_event_as_str(event: Event) -> str | None:
     if score.explanation:
         result += f"\n  explanation: {score.explanation}"
     return result + "\n"
+
+
+def _sample_limit_event_as_str(event: Event) -> str | None:
+    if not isinstance(event, SampleLimitEvent):
+        return None
+    return f"LIMIT ({event.type}): {event.message}\n"
+
+
+def _input_event_as_str(event: Event) -> str | None:
+    if not isinstance(event, InputEvent):
+        return None
+    return f"INPUT:\n{event.input}\n"
+
+
+def _sandbox_event_as_str(event: Event) -> str | None:
+    if not isinstance(event, SandboxEvent):
+        return None
+    detail = event.cmd if event.cmd is not None else event.file
+    suffix = f": {detail}" if detail else ""
+    return f"SANDBOX ({event.action}){suffix}\n"

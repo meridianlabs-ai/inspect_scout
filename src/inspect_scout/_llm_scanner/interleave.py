@@ -44,6 +44,10 @@ def interleave_events(transcript: Transcript) -> list[ChatMessage]:
     if not messages or not transcript.events:
         return messages
 
+    # Anchoring assumes a ModelEvent's output message id matches the same
+    # message in transcript.messages (the invariant Inspect logs satisfy). If
+    # those ids ever diverge, the event finds no anchor and is prepended
+    # (leading) rather than misplaced mid-thread.
     rendered_ids = {_message_id(m) for m in messages}
 
     leading: list[Event] = []

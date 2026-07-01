@@ -71,6 +71,53 @@ def test_has_interleavable_events() -> None:
     assert has_interleavable_events(only_model) is False
 
 
+def test_intermediate_event_anchored_mid_thread() -> None:
+    out1 = ModelOutput.from_content(model="mockllm", content="first")
+    out2 = ModelOutput.from_content(model="mockllm", content="second")
+    a1, a2 = out1.choices[0].message, out2.choices[0].message
+    u1, u2 = ChatMessageUser(content="q1"), ChatMessageUser(content="q2")
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[u1, a1, u2, a2],
+        events=[
+            _model_event("q1", out1),
+            ScoreEvent(score=Score(value=0.5), scorer="graded", intermediate=True),
+            _model_event("q2", out2),
+        ],
+    )
+    result = interleave_events(transcript)
+    # The intermediate score splices after turn 1's assistant, before turn 2 —
+    # not appended at the end.
+    assert [result[0].text, result[1].text, result[3].text, result[4].text] == [
+        u1.text,
+        a1.text,
+        u2.text,
+        a2.text,
+    ]
+    assert result[2].metadata is not None
+    assert result[2].metadata[EVENT_MARKER_KEY] is True
+    assert result[2].text.startswith("SCORE (graded): value=0.5 intermediate")
+
+
+def test_multiple_events_on_one_anchor_preserve_order() -> None:
+    out = ModelOutput.from_content(model="mockllm", content="ans")
+    assistant = out.choices[0].message
+    user = ChatMessageUser(content="q")
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[user, assistant],
+        events=[
+            _model_event("q", out),
+            ScoreEvent(score=Score(value="A"), scorer="first"),
+            ScoreEvent(score=Score(value="B"), scorer="second"),
+        ],
+    )
+    result = interleave_events(transcript)
+    assert len(result) == 4
+    assert result[2].text.startswith("SCORE (first)")
+    assert result[3].text.startswith("SCORE (second)")
+
+
 def _mock_model(captured: list[str]) -> Model:
     def _outputs(
         input: list[ChatMessage],

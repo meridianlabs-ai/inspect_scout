@@ -148,3 +148,46 @@ async def test_interleave_with_timeline_raises() -> None:
     scan = llm_scanner(question="q", answer="boolean", model=_mock_model([]))
     with pytest.raises(ValueError, match="timeline"):
         await scan(transcript)
+
+
+@pytest.mark.anyio
+async def test_final_score_lands_in_last_chunk_when_split() -> None:
+    # Two turns with long-ish content; a modest context_window forces the
+    # transcript to split into multiple segments. The score event is
+    # anchored after the final assistant turn, so it must appear exactly
+    # once, in the last segment sent to the model.
+    long_text = (
+        "lorem ipsum dolor sit amet consectetur adipiscing elit sed do "
+    ) * 5  # ~40 words
+    out1 = ModelOutput.from_content(
+        model="mockllm", content=f"{long_text} first answer"
+    )
+    out2 = ModelOutput.from_content(
+        model="mockllm", content=f"{long_text} second answer"
+    )
+    a1, a2 = out1.choices[0].message, out2.choices[0].message
+    u1, u2 = (
+        ChatMessageUser(content=f"{long_text} q1"),
+        ChatMessageUser(content=f"{long_text} q2"),
+    )
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[u1, a1, u2, a2],
+        events=[
+            _model_event(u1.text, out1),
+            _model_event(u2.text, out2),
+            ScoreEvent(score=Score(value="C"), target="C", scorer="match"),
+        ],
+    )
+    captured: list[str] = []
+    scan = llm_scanner(
+        question="Right?",
+        answer="boolean",
+        model=_mock_model(captured),
+        context_window=350,
+    )
+    await scan(transcript)
+    # Multiple segments captured; the score appears once, in the final one.
+    assert len(captured) >= 2
+    assert sum("[E1] SCORE" in c for c in captured) == 1
+    assert "[E1] SCORE" in captured[-1]

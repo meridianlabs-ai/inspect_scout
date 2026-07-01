@@ -9,6 +9,6 @@ reference: "inspect_scout.sources"
 ### logfire
 ### weave
 ### claude_code
-
+### openclaw_telemetry_hal
 
 

@@ -33,6 +33,7 @@ from .._transcript.handle import (
 )
 from .._transcript.messages import (
     _effective_segment_budget,
+    segment_messages,
     stream_segment_messages,
     transcript_messages,
 )
@@ -45,6 +46,7 @@ from .._transcript.types import Transcript, TranscriptContent
 from ._reducer import aggregate_results
 from .answer import Answer, answer_from_argument
 from .generate import generate_answer
+from .interleave import has_interleavable_events, interleave_events
 from .prompt import (
     DEFAULT_SCANNER_TEMPLATE_PREFIX,
     DEFAULT_SCANNER_TEMPLATE_SUFFIX,
@@ -228,6 +230,14 @@ def llm_scanner(
         content: Override the transcript content filters for this scanner.
             For example, ``TranscriptContent(timeline=True)`` requests timeline
             data so the scanner can process span-level segments.
+            When ``content`` requests events (e.g.
+            ``TranscriptContent(events=["score"])`` or ``events="all"``),
+            those non-message events are rendered inline in the transcript
+            as citable ``[E#]`` entries, anchored to the assistant turn they
+            followed. ``model``/``tool`` and structural events are never
+            interleaved (they are already the message thread). Model events
+            are loaded automatically for positioning. Not supported together
+            with timeline scanning.
         context_window: Override the model's context window size for chunking.
             When set, transcripts exceeding this limit are split into multiple
             segments, each scanned independently.
@@ -404,16 +414,31 @@ def llm_scanner(
         # fallback can reuse it after materializing the handle.
         async def scan_materialized(source_transcript: Transcript) -> Result:
             async def materialized_source() -> AsyncIterator[tuple[str | None, str]]:
-                async for seg in transcript_messages(
-                    source_transcript,
-                    messages_as_str=messages_as_str_fn,
-                    model=resolved_model,
-                    context_window=context_window,
-                    timeline=timeline,
-                    compaction=compaction,
-                    depth=depth,
-                    prompt_reserve=template_tokens,
-                ):
+                if has_interleavable_events(source_transcript):
+                    if source_transcript.timelines or timeline is not None:
+                        raise ValueError(
+                            "llm_scanner: interleaving events (via content.events) "
+                            "is not supported together with timeline scanning."
+                        )
+                    segment_iter = segment_messages(
+                        interleave_events(source_transcript),
+                        messages_as_str=messages_as_str_fn,
+                        model=resolved_model,
+                        context_window=context_window,
+                        prompt_reserve=template_tokens,
+                    )
+                else:
+                    segment_iter = transcript_messages(
+                        source_transcript,
+                        messages_as_str=messages_as_str_fn,
+                        model=resolved_model,
+                        context_window=context_window,
+                        timeline=timeline,
+                        compaction=compaction,
+                        depth=depth,
+                        prompt_reserve=template_tokens,
+                    )
+                async for seg in segment_iter:
                     span_id = seg.span.id if isinstance(seg, TimelineMessages) else None
                     yield span_id, seg.messages_str
 
@@ -496,6 +521,19 @@ def llm_scanner(
 
     # set content override for @scanner to merge into ScannerConfig
     if content is not None:
+        # Interleaving anchors events to the preceding assistant turn, which
+        # requires model events to be loaded even if the caller only asked for
+        # e.g. score events.
+        if (
+            content.events is not None
+            and content.events != "all"
+            and "model" not in content.events
+        ):
+            content = TranscriptContent(
+                messages=content.messages,
+                events=[*content.events, "model"],
+                timeline=content.timeline,
+            )
         setattr(scan, SCANNER_CONTENT_ATTR, content)
 
     # Opt in per-instance when the scan needs no full transcript (must mirror

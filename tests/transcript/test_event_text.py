@@ -21,9 +21,8 @@ from inspect_scout._transcript.event_text import event_as_str
 
 def test_event_as_str_reexported_from_grep() -> None:
     from inspect_scout._grep_scanner._event import event_as_str as grep_event_as_str
-    from inspect_scout._transcript.event_text import event_as_str as shared
 
-    assert grep_event_as_str is shared
+    assert grep_event_as_str is event_as_str
 
 
 @pytest.mark.parametrize(

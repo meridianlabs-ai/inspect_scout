@@ -24,12 +24,17 @@ from .._scanner.scanner import (
     Scanner,
     scanner,
 )
-from .._transcript.messages import _effective_segment_budget, transcript_messages
+from .._transcript.messages import (
+    _effective_segment_budget,
+    segment_messages,
+    transcript_messages,
+)
 from .._transcript.timeline import TimelineMessages
 from .._transcript.types import Transcript, TranscriptContent
 from ._reducer import aggregate_results
 from .answer import Answer, answer_from_argument
 from .generate import generate_answer
+from .interleave import has_interleavable_events, interleave_events
 from .prompt import (
     DEFAULT_SCANNER_TEMPLATE_PREFIX,
     DEFAULT_SCANNER_TEMPLATE_SUFFIX,
@@ -171,6 +176,14 @@ def llm_scanner(
         content: Override the transcript content filters for this scanner.
             For example, ``TranscriptContent(timeline=True)`` requests timeline
             data so the scanner can process span-level segments.
+            When ``content`` requests events (e.g.
+            ``TranscriptContent(events=["score"])`` or ``events="all"``),
+            those non-message events are rendered inline in the transcript
+            as citable ``[E#]`` entries, anchored to the assistant turn they
+            followed. ``model``/``tool`` and structural events are never
+            interleaved (they are already the message thread). Model events
+            are loaded automatically for positioning. Not supported together
+            with timeline scanning.
         context_window: Override the model's context window size for chunking.
             When set, transcripts exceeding this limit are split into multiple
             segments, each scanned independently.
@@ -303,9 +316,22 @@ def llm_scanner(
                 "the scanner template."
             )
 
-        segments = [
-            seg
-            async for seg in transcript_messages(
+        if has_interleavable_events(transcript):
+            if transcript.timelines or timeline is not None:
+                raise ValueError(
+                    "llm_scanner: interleaving events (via content.events) is not "
+                    "supported together with timeline scanning."
+                )
+            spliced = interleave_events(transcript)
+            segment_iter = segment_messages(
+                spliced,
+                messages_as_str=messages_as_str_fn,
+                model=resolved_model,
+                context_window=context_window,
+                prompt_reserve=template_tokens,
+            )
+        else:
+            segment_iter = transcript_messages(
                 transcript,
                 messages_as_str=messages_as_str_fn,
                 model=resolved_model,
@@ -315,7 +341,7 @@ def llm_scanner(
                 depth=depth,
                 prompt_reserve=template_tokens,
             )
-        ]
+        segments = [seg async for seg in segment_iter]
         segment_results: list[Result] = await tg_collect(
             [partial(scan_segment, seg.messages_str) for seg in segments]
         )
@@ -342,6 +368,19 @@ def llm_scanner(
 
     # set content override for @scanner to merge into ScannerConfig
     if content is not None:
+        # Interleaving anchors events to the preceding assistant turn, which
+        # requires model events to be loaded even if the caller only asked for
+        # e.g. score events.
+        if (
+            content.events is not None
+            and content.events != "all"
+            and "model" not in content.events
+        ):
+            content = TranscriptContent(
+                messages=content.messages,
+                events=[*content.events, "model"],
+                timeline=content.timeline,
+            )
         setattr(scan, SCANNER_CONTENT_ATTR, content)
 
     return scan

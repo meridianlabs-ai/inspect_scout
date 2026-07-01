@@ -8,7 +8,7 @@ import importlib
 import inspect
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import click
 import yaml
@@ -21,6 +21,9 @@ from inspect_scout._cli.common import (
 )
 from inspect_scout._display._display import display
 from inspect_scout._util.constants import DEFAULT_TRANSCRIPTS_DIR
+
+if TYPE_CHECKING:
+    from inspect_scout._transcript.types import Transcript
 
 
 def _discover_sources() -> dict[str, Callable[..., Any]]:
@@ -230,6 +233,17 @@ def _parse_params(
     return kwargs
 
 
+async def _collect_transcripts(
+    source_fn: Callable[..., Any],
+    kwargs: dict[str, Any],
+) -> "list[Transcript]":
+    """Fetch all transcripts from a source function into a list."""
+    transcripts: list[Transcript] = []
+    async for transcript in source_fn(**kwargs):
+        transcripts.append(transcript)
+    return transcripts
+
+
 async def _run_import(
     source_fn: Callable[..., Any],
     source_name: str,
@@ -242,10 +256,18 @@ async def _run_import(
     d = display()
     d.print(f"\nImporting from [bold]{source_name}[/bold]...\n", markup=True)
 
-    async with transcripts_db(transcripts_dir) as db:
-        await db.insert(source_fn(**kwargs))
+    transcripts = await _collect_transcripts(source_fn, kwargs)
 
-    d.print("\nImport complete. To view transcripts:\n")
+    async with transcripts_db(transcripts_dir) as db:
+        await db.insert(transcripts)
+
+    if not transcripts:
+        d.print("\nNo transcripts were imported (the source produced none).\n")
+        return
+
+    d.print(
+        f"\nImport complete — {len(transcripts)} transcript(s) imported. To view:\n"
+    )
     d.print(f"  scout view -T {transcripts_dir}\n")
 
 
@@ -255,15 +277,10 @@ async def _run_dry_run(
     kwargs: dict[str, Any],
 ) -> None:
     """Execute a dry run: fetch transcripts and display summary without writing."""
-    from inspect_scout._transcript.types import Transcript
-
     d = display()
     d.print(f"\nDry run — fetching from [bold]{source_name}[/bold]...\n", markup=True)
 
-    transcripts: list[Transcript] = []
-    async_iter = source_fn(**kwargs)
-    async for transcript in async_iter:
-        transcripts.append(transcript)
+    transcripts = await _collect_transcripts(source_fn, kwargs)
 
     if not transcripts:
         d.print("No transcripts found.")

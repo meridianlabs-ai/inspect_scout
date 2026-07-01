@@ -1,9 +1,12 @@
 from inspect_ai.event import (
+    BranchEvent,
     ErrorEvent,
     InputEvent,
     SampleLimitEvent,
     SandboxEvent,
     ScoreEvent,
+    StateEvent,
+    StoreEvent,
 )
 from inspect_ai.log import EvalError
 from inspect_ai.scorer import Score
@@ -67,3 +70,19 @@ def test_sandbox_exec_event() -> None:
 def test_sandbox_file_event() -> None:
     event = SandboxEvent(action="read_file", file="/etc/hosts")
     assert event_as_str(event) == "SANDBOX (read_file): /etc/hosts\n"
+
+
+def test_state_event_minimal() -> None:
+    event = StateEvent(changes=[])
+    assert event_as_str(event) == "STATE: 0 changes\n"
+
+
+def test_store_event_minimal_singular() -> None:
+    from inspect_ai._util.json import JsonChange
+
+    event = StoreEvent(changes=[JsonChange(op="add", path="/x", value=1)])
+    assert event_as_str(event) == "STORE: 1 change\n"
+
+
+def test_branch_event_minimal() -> None:
+    assert event_as_str(BranchEvent()) == "BRANCH\n"

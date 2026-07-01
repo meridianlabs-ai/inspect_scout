@@ -8,29 +8,31 @@ from inspect_ai.model import ChatMessage, ChatMessageUser
 from .._scanner.extract import EVENT_MARKER_KEY
 from .._scanner.util import _event_id, _message_id
 from .._transcript.event_text import event_as_str
-from .._transcript.types import Transcript
+from .._transcript.types import EventType, Transcript
 
 # Events that already appear in the message thread (model, tool) or are pure
 # structure are never rendered as [E#] entries.
-_NON_INTERLEAVED: frozenset[str] = frozenset(
+_NON_INTERLEAVED: frozenset[EventType] = frozenset(
     {"model", "tool", "compaction", "span_begin", "span_end"}
 )
 
 
-def _is_interleavable(event: Event) -> bool:
-    return event.event not in _NON_INTERLEAVED and event_as_str(event) is not None
+def _interleavable_text(event: Event) -> str | None:
+    if event.event in _NON_INTERLEAVED:
+        return None
+    return event_as_str(event)
 
 
-def _event_message(event: Event) -> ChatMessage:
+def _event_message(event: Event, text: str) -> ChatMessage:
     return ChatMessageUser(
         id=_event_id(event),
-        content=event_as_str(event) or "",
+        content=text,
         metadata={EVENT_MARKER_KEY: True},
     )
 
 
 def has_interleavable_events(transcript: Transcript) -> bool:
-    return any(_is_interleavable(e) for e in transcript.events)
+    return any(_interleavable_text(e) is not None for e in transcript.events)
 
 
 def interleave_events(transcript: Transcript) -> list[ChatMessage]:
@@ -41,36 +43,44 @@ def interleave_events(transcript: Transcript) -> list[ChatMessage]:
     ``transcript.messages``). Events with no preceding turn are prepended.
     """
     messages = list(transcript.messages)
-    if not messages or not transcript.events:
+    if not transcript.events:
         return messages
 
     # Anchoring assumes a ModelEvent's output message id matches the same
-    # message in transcript.messages (the invariant Inspect logs satisfy). If
-    # those ids ever diverge, the event finds no anchor and is prepended
-    # (leading) rather than misplaced mid-thread.
-    rendered_ids = {_message_id(m) for m in messages}
+    # message in transcript.messages (the invariant Inspect logs satisfy).
+    # Anchors are message *positions*: messages without explicit ids fall
+    # back to a text hash, so duplicate ids are real (e.g. two identical
+    # "yes" turns) and each ModelEvent must consume the next occurrence
+    # rather than re-anchoring to the first.
+    occurrences: dict[str, list[int]] = defaultdict(list)
+    for index, message in enumerate(messages):
+        occurrences[_message_id(message)].append(index)
+    next_occurrence: dict[str, int] = defaultdict(int)
 
-    leading: list[Event] = []
-    anchors: dict[str, list[Event]] = defaultdict(list)
-    last_anchor: str | None = None
+    leading: list[tuple[Event, str]] = []
+    anchored: dict[int, list[tuple[Event, str]]] = defaultdict(list)
+    last_anchor: int | None = None
     for event in transcript.events:
         if isinstance(event, ModelEvent):
             out = event.output
             if out and out.choices and out.choices[0].message is not None:
                 mid = _message_id(out.choices[0].message)
-                if mid in rendered_ids:
-                    last_anchor = mid
+                position = next_occurrence[mid]
+                if position < len(occurrences.get(mid, [])):
+                    last_anchor = occurrences[mid][position]
+                    next_occurrence[mid] = position + 1
             continue
-        if not _is_interleavable(event):
+        text = _interleavable_text(event)
+        if text is None:
             continue
         if last_anchor is None:
-            leading.append(event)
+            leading.append((event, text))
         else:
-            anchors[last_anchor].append(event)
+            anchored[last_anchor].append((event, text))
 
-    result: list[ChatMessage] = [_event_message(e) for e in leading]
-    for message in messages:
+    result: list[ChatMessage] = [_event_message(e, text) for e, text in leading]
+    for index, message in enumerate(messages):
         result.append(message)
-        for event in anchors.get(_message_id(message), []):
-            result.append(_event_message(event))
+        for event, text in anchored.get(index, []):
+            result.append(_event_message(event, text))
     return result

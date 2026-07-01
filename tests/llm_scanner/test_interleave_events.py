@@ -1,7 +1,7 @@
 import re
 
 import pytest
-from inspect_ai.event import ModelEvent, ScoreEvent
+from inspect_ai.event import ModelEvent, ScoreEvent, Timeline, TimelineSpan
 from inspect_ai.model import (
     ChatMessage,
     ChatMessageUser,
@@ -221,8 +221,6 @@ def test_factory_augments_events_with_model() -> None:
 
 @pytest.mark.anyio
 async def test_interleave_with_timeline_raises() -> None:
-    from inspect_ai.event import Timeline, TimelineSpan
-
     out = ModelOutput.from_content(model="mockllm", content="4")
     transcript = Transcript(
         transcript_id="t",
@@ -245,13 +243,7 @@ async def test_interleave_with_timeline_raises() -> None:
 
 @pytest.mark.anyio
 async def test_final_score_lands_in_last_chunk_when_split() -> None:
-    # Two turns with long-ish content; a modest context_window forces the
-    # transcript to split into multiple segments. The score event is
-    # anchored after the final assistant turn, so it must appear exactly
-    # once, in the last segment sent to the model.
-    long_text = (
-        "lorem ipsum dolor sit amet consectetur adipiscing elit sed do "
-    ) * 5  # ~40 words
+    long_text = "lorem ipsum dolor sit amet consectetur adipiscing elit sed do " * 5
     out1 = ModelOutput.from_content(
         model="mockllm", content=f"{long_text} first answer"
     )
@@ -285,7 +277,6 @@ async def test_final_score_lands_in_last_chunk_when_split() -> None:
         context_window=350,
     )
     await scan(transcript)
-    # Multiple segments captured; the score appears once, in the final one.
     assert len(captured) >= 2
     assert sum("[E1] SCORE" in c for c in captured) == 1
     assert "[E1] SCORE" in captured[-1]

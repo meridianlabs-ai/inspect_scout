@@ -11,6 +11,7 @@ from inspect_ai.event import (
     InfoEvent,
     LoggerEvent,
     ModelEvent,
+    ScoreEvent,
     ToolEvent,
 )
 
@@ -32,6 +33,8 @@ def event_as_str(event: Event) -> str | None:
             return _logger_event_as_str(event)
         case "approval":
             return _approval_event_as_str(event)
+        case "score":
+            return _score_event_as_str(event)
         case _:
             warn_once(
                 logger,
@@ -111,3 +114,23 @@ def _approval_event_as_str(event: Event) -> str | None:
     if event.explanation:
         parts.append(f"Explanation: {event.explanation}")
     return "\n".join(parts) + "\n"
+
+
+def _score_event_as_str(event: Event) -> str | None:
+    if not isinstance(event, ScoreEvent):
+        return None
+    score = event.score
+    header = [f"value={score.value}"]
+    if event.target is not None:
+        target = (
+            ", ".join(event.target) if isinstance(event.target, list) else event.target
+        )
+        header.append(f"target={target}")
+    if event.intermediate:
+        header.append("intermediate")
+    if score.answer:
+        header.append(f"answer={score.answer}")
+    result = f"SCORE ({event.scorer or 'unknown'}): {' '.join(header)}"
+    if score.explanation:
+        result += f"\n  explanation: {score.explanation}"
+    return result + "\n"

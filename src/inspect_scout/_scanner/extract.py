@@ -32,6 +32,13 @@ logger = getLogger(__name__)
 
 T = TypeVar("T", Transcript, list[ChatMessage])
 
+EVENT_MARKER_KEY = "__scout_event__"
+"""Marks a synthetic ChatMessage that carries pre-rendered event text.
+
+message_numbering renders such messages as ``[E#]`` entries (event
+references) without consuming an ``[M#]`` ordinal.
+"""
+
 
 @dataclass(frozen=True)
 class MessageFormatOptions:
@@ -243,6 +250,7 @@ def message_numbering(
             - label_for_id (when requested): takes a real message ID, returns its label (e.g. ``"M3"``) or None if not yet seen.
     """
     counter = [0]
+    event_counter = [0]
     id_map: dict[str, str] = {}
     reverse_map: dict[str, str] = {}
 
@@ -252,6 +260,14 @@ def message_numbering(
 
         items: list[str] = []
         for message in messages:
+            if message.metadata and message.metadata.get(EVENT_MARKER_KEY):
+                event_counter[0] += 1
+                ordinal = f"E{event_counter[0]}"
+                real_id = _message_id(message)
+                id_map[ordinal] = real_id
+                reverse_map[real_id] = ordinal
+                items.append(f"[{ordinal}] {message.text}")
+                continue
             content = message_as_str(message, preprocessor)
             if content is not None:
                 counter[0] += 1

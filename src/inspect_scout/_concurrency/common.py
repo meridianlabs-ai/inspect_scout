@@ -15,6 +15,7 @@ from typing import (
 
 from .._scanner.result import ResultReport
 from .._scanner.scanner import Scanner
+from .._transcript.handle import TranscriptHandle
 from .._transcript.transcripts import TranscriptsReader
 from .._transcript.types import Transcript, TranscriptInfo
 
@@ -72,8 +73,12 @@ class ParseJob(NamedTuple):
 class ScannerJob(NamedTuple):
     """Represents a unit of work for filtering a union transcript and scanning it with a specific scanner."""
 
-    union_transcript: Transcript
+    union_transcript: Transcript | TranscriptHandle
     """Transcript pre-filtered with the union of ALL scanners' content filters.
+
+    A materialized `Transcript` for legacy (non-handle-capable) scanners, or a
+    shared `TranscriptHandle` when all scanners in the parse job accept handles
+    (the streaming path). The lead and its followers share the same handle.
 
     This contains a superset of the data needed by all scanners and typically needs
     to be filtered again per-scanner (based on that scanner's specific content filter)
@@ -92,6 +97,14 @@ class ScannerJob(NamedTuple):
     The first scanner for a transcript runs alone so its generate call can
     populate the prompt cache; once it completes, followers are enqueued to
     hit the warm cache.
+    """
+
+    on_complete: Callable[[], Awaitable[None]] | None = None
+    """Awaited by `_scan_one` in a finally block after the scan completes.
+
+    Used to close the shared `TranscriptHandle` once the last job for the
+    transcript (lead + all followers) has finished. `None` for the legacy
+    materialized-`Transcript` path.
     """
 
 

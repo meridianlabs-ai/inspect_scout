@@ -1,5 +1,6 @@
 """Tests for transcript search endpoints."""
 
+import asyncio
 import base64
 from collections.abc import AsyncIterator, Awaitable, Callable
 from pathlib import Path
@@ -15,11 +16,16 @@ from google.genai.errors import ClientError as GoogleClientError
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai.model._chat_message import ChatMessageAssistant, ChatMessageUser
 from inspect_scout._scanner.result import Result
+from inspect_scout._transcript import handle as handle_mod
+from inspect_scout._transcript.handle import SpooledTranscriptHandle, TranscriptHandle
 from inspect_scout._transcript.types import Transcript
 from inspect_scout._view._api_v2 import v2_api_app
 from inspect_scout._view._api_v2_search import LLM_SEARCH_TEMPLATE
 from inspect_scout._view._api_v2_types import SearchRequest
 from pydantic import TypeAdapter
+
+LOGS_DIR = Path(__file__).parent.parent / "recorder" / "logs"
+EVAL_LOG = sorted(LOGS_DIR.glob("*.eval"))[0]
 
 
 def _fake_httpx_response(status_code: int) -> httpx.Response:
@@ -80,6 +86,19 @@ async def transcript_location(tmp_path: Path) -> AsyncIterator[Path]:
     location.mkdir(parents=True, exist_ok=True)
     await _populate_transcripts(location, [_create_transcript()])
     yield location
+
+
+async def _first_eval_log_transcript_id(log: Path) -> str:
+    """Fetch the transcript_id of the first sample in an eval log."""
+    from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
+
+    view = EvalLogTranscriptsView(str(log))
+    await view.connect()
+    try:
+        infos = [info async for info in view.select()]
+        return infos[0].transcript_id
+    finally:
+        await view.disconnect()
 
 
 class TestSearchEndpoint:
@@ -272,6 +291,71 @@ class TestSearchEndpoint:
             "model": "openai/gpt-5.4-mini",
         }
         assert llm_calls == [expected_call, expected_call]
+
+    def test_llm_search_uses_streaming_handle(
+        self, client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Forcing the spooled path still returns a valid SearchResponse."""
+        # Force EvalLogTranscriptsView.open() to take the spooled-handle
+        # branch regardless of sample size.
+        monkeypatch.setattr(handle_mod, "STREAMING_THRESHOLD_BYTES", 0)
+
+        transcript_id = asyncio.run(_first_eval_log_transcript_id(EVAL_LOG))
+
+        received_handles: list[object] = []
+
+        def fake_llm_scanner(
+            *,
+            question: str,
+            answer: str,
+            template: str,
+            model: str | None,
+            reducer: object,
+        ) -> Callable[[TranscriptHandle], Awaitable[Result]]:
+            async def _scan(handle: TranscriptHandle) -> Result:
+                received_handles.append(handle)
+                return Result(
+                    value="The assistant says the needle is in the haystack.",
+                    explanation="LLM summary.",
+                )
+
+            return _scan
+
+        encoded_dir = _base64url(str(EVAL_LOG))
+        with (
+            patch(
+                "inspect_scout._view._api_v2_search.scout_data_dir",
+                side_effect=_search_data_dir(tmp_path / "search-data"),
+            ),
+            patch(
+                "inspect_scout._view._api_v2_search.llm_scanner",
+                side_effect=fake_llm_scanner,
+            ),
+        ):
+            response = client.post(
+                f"/transcripts/{encoded_dir}/{transcript_id}/search",
+                json={
+                    "query": "Where is the needle?",
+                    "type": "llm",
+                    "model": "openai/gpt-5.4-mini",
+                },
+            )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert set(body.keys()) == {"id", "result"}
+        result = body["result"]
+        assert result["value"] == "The assistant says the needle is in the haystack."
+        assert result["explanation"] == "LLM summary."
+        assert result["references"] == []
+
+        # Confirm the streamed (spooled) handle path was actually exercised,
+        # not a plain materialized Transcript.
+        assert len(received_handles) == 1
+        handle = received_handles[0]
+        assert isinstance(handle, TranscriptHandle)
+        assert isinstance(handle, SpooledTranscriptHandle)
+        assert not isinstance(handle, Transcript)
 
     @pytest.mark.parametrize(
         ("payload", "field_name"),

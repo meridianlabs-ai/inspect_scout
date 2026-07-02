@@ -63,6 +63,7 @@ SCANNER_VERSION = "scanner_version"
 SCANNER_FILE_ATTR = "___scanner_file___"
 SCANNER_NAME_ATTR = "___scanner_name___"
 SCANNER_CONTENT_ATTR = "___scanner_content___"
+SCANNER_ACCEPTS_HANDLE_ATTR = "___scanner_accepts_handle___"
 
 # core types
 # Use bounded TypeVar (contravariant for scanner input)
@@ -465,6 +466,17 @@ def scanner_version(scanner: Scanner[Any]) -> int:
 
 def config_for_scanner(scanner: Scanner[Any]) -> ScannerConfig:
     return cast(ScannerConfig, registry_info(scanner).metadata[SCANNER_CONFIG])
+
+
+def scanner_accepts_handle(scanner: Scanner[Any]) -> bool:
+    """Whether a scanner accepts a `TranscriptHandle` directly.
+
+    A scanner opts in to streaming reads by setting
+    `SCANNER_ACCEPTS_HANDLE_ATTR` (truthy) on its scan function. When set,
+    the scan pipeline passes the shared `TranscriptHandle` to the scanner
+    rather than materializing a `Transcript`.
+    """
+    return bool(getattr(scanner, SCANNER_ACCEPTS_HANDLE_ATTR, False))
 
 
 def scanners_from_file(file: str, scanner_args: dict[str, Any]) -> list[Scanner[Any]]:

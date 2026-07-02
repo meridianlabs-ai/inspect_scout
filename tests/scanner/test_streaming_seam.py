@@ -1,16 +1,18 @@
 """Tests for the streaming scanner seam: input plumbing and dispatch."""
 
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 from inspect_scout import scanner
 from inspect_scout._concurrency.common import ScannerJob
-from inspect_scout._scan import _scan_one
+from inspect_scout._scan import _content_for_scanner, _scan_one, _streaming_eligible
 from inspect_scout._scanner.result import Result, _serialize_input
-from inspect_scout._scanner.scanner import SCANNER_ACCEPTS_HANDLE_ATTR
+from inspect_scout._scanner.scanner import SCANNER_ACCEPTS_HANDLE_ATTR, Scanner
 from inspect_scout._scanner.util import get_input_type_and_ids
 from inspect_scout._transcript.handle import MaterializedTranscriptHandle
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
+from inspect_scout._transcript.util import union_transcript_contents
 
 
 def test_input_type_for_transcript_info() -> None:
@@ -135,3 +137,65 @@ async def test_scan_one_on_complete_awaited_once_per_job(tmp_path: Path) -> None
     await _scan_one(follower, validation=None, fail_on_error=True)
     assert remaining == 0
     assert close_count == 1  # closed exactly once after the last job
+
+
+def _make_handle_scanner(messages: object) -> Scanner[Any]:
+    """Build a handle-accepting scanner with the given `messages` content filter."""
+
+    @scanner(messages=messages)  # type: ignore[arg-type]
+    def factory() -> "object":  # type: ignore[no-untyped-def]
+        async def scan(transcript: Transcript) -> Result:
+            return Result(value="ok")
+
+        setattr(scan, SCANNER_ACCEPTS_HANDLE_ATTR, True)
+        return scan
+
+    return cast(Scanner[Any], factory())
+
+
+def test_streaming_eligible_true_when_both_scanners_want_all() -> None:
+    s1 = _make_handle_scanner("all")
+    s2 = _make_handle_scanner("all")
+    union_content = union_transcript_contents(
+        [_content_for_scanner(s1), _content_for_scanner(s2)]
+    )
+    assert _streaming_eligible([s1, s2], union_content) is True
+
+
+def test_streaming_eligible_true_when_message_filters_match_ignoring_order() -> None:
+    s1 = _make_handle_scanner(["user", "assistant"])
+    s2 = _make_handle_scanner(["assistant", "user"])
+    union_content = union_transcript_contents(
+        [_content_for_scanner(s1), _content_for_scanner(s2)]
+    )
+    assert union_content.messages is not None
+    assert set(union_content.messages) == {"user", "assistant"}
+    assert _streaming_eligible([s1, s2], union_content) is True
+
+
+def test_streaming_eligible_false_when_scanner_narrower_than_union() -> None:
+    narrow = _make_handle_scanner(["user"])
+    wide = _make_handle_scanner(["user", "assistant"])
+    union_content = union_transcript_contents(
+        [_content_for_scanner(narrow), _content_for_scanner(wide)]
+    )
+    assert _streaming_eligible([narrow, wide], union_content) is False
+
+
+def test_streaming_eligible_false_when_any_scanner_wants_events_or_timeline() -> None:
+    s1 = _make_handle_scanner("all")
+
+    @scanner(messages="all", events="all")
+    def events_factory() -> "object":  # type: ignore[no-untyped-def]
+        async def scan(transcript: Transcript) -> Result:
+            return Result(value="ok")
+
+        setattr(scan, SCANNER_ACCEPTS_HANDLE_ATTR, True)
+        return scan
+
+    s2 = cast(Scanner[Any], events_factory())
+    union_content = union_transcript_contents(
+        [_content_for_scanner(s1), _content_for_scanner(s2)]
+    )
+    assert union_content.events is not None
+    assert _streaming_eligible([s1, s2], union_content) is False

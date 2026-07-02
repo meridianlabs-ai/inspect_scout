@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Generator, Literal, cast
 
@@ -9,6 +10,7 @@ from ijson.utils import coroutine as _ijson_coroutine  # type: ignore
 # Public constants / prefixes
 ATTACHMENT_PREFIX = "attachment://"
 ATTACHMENT_PREFIX_LEN = len(ATTACHMENT_PREFIX)
+ATTACHMENT_REF_PATTERN = re.compile(r"attachment://([a-f0-9]{32})")
 ATTACHMENTS_PREFIX = "attachments."
 MESSAGES_ITEM_PREFIX = "messages.item"
 EVENTS_ITEM_PREFIX = "events.item"
@@ -115,9 +117,12 @@ def _item_coroutine(
         except Exception:
             builder = None
             continue
-        if event == "string" and isinstance(value, str):
+        if event == "string" and isinstance(value, str) and ATTACHMENT_PREFIX in value:
             if len(value) == 45 and value.startswith(ATTACHMENT_PREFIX):
                 attachments.add(value[ATTACHMENT_PREFIX_LEN:])
+            else:
+                for m in ATTACHMENT_REF_PATTERN.finditer(value):
+                    attachments.add(m.group(1))
 
 
 def message_item_coroutine(
@@ -304,6 +309,7 @@ __all__ = [
     "TARGET_PREFIX",
     "ATTACHMENT_PREFIX",
     "ATTACHMENT_PREFIX_LEN",
+    "ATTACHMENT_REF_PATTERN",
     "ATTACHMENTS_PREFIX",
     "MESSAGES_ITEM_PREFIX",
     "EVENTS_ITEM_PREFIX",

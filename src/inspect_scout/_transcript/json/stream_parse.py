@@ -91,27 +91,25 @@ _MIN_SECTION_PREFIX_LEN = min(
 )
 
 
-class _SpoolSink(list):  # type: ignore[type-arg]
-    """List stand-in whose append writes to an ItemSpool."""
+class _SpoolSink:
+    """ItemSink whose append writes to an ItemSpool."""
 
     def __init__(self, spool: ItemSpool) -> None:
-        super().__init__()
         self._spool = spool
 
-    def append(self, item: Any) -> None:
+    def append(self, item: dict[str, Any]) -> None:
         self._spool.append(item)
 
 
-class _PoolSink(list):  # type: ignore[type-arg]
-    """List stand-in whose append writes positional pool entries to a BlobSpool."""
+class _PoolSink:
+    """ItemSink whose append writes positional pool entries to a BlobSpool."""
 
     def __init__(self, blobs: BlobSpool, pool_name: str) -> None:
-        super().__init__()
         self._blobs = blobs
         self._pool_name = pool_name
         self._i = 0
 
-    def append(self, item: Any) -> None:
+    def append(self, item: dict[str, Any]) -> None:
         self._blobs.put(
             (self._pool_name, self._i),
             json.dumps(item, ensure_ascii=False, separators=(",", ":")),
@@ -173,7 +171,7 @@ async def stream_parse_to_spool(
         ListProcessingConfig(
             array_item_prefix="messages.item",
             filter_field="role",
-            filter_list=messages_filter,  # type:ignore
+            filter_list=messages_filter,
         )
         if messages_filter is not None
         else None
@@ -183,7 +181,7 @@ async def stream_parse_to_spool(
         ListProcessingConfig(
             array_item_prefix="events.item",
             filter_field="event",
-            filter_list=events_filter,  # type:ignore
+            filter_list=events_filter,
         )
         if events_filter is not None
         else None
@@ -209,7 +207,7 @@ async def stream_parse_to_spool(
     timelines_coro = timeline_item_coroutine(state)
     attachments_coro = _spool_attachments_coroutine(blobs)
     metadata_coro = metadata_coroutine(state)
-    target_coro: Any = target_coroutine(state)
+    target_coro: CoroutineGen | None = target_coroutine(state)
     scores_coro = scores_coroutine(state)
     # Pools are spooled unconditionally (cost is negligible; keeps one path).
     message_pool_coros = [

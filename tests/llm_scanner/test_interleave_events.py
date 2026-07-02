@@ -1,7 +1,8 @@
 import re
 
 import pytest
-from inspect_ai.event import ModelEvent, ScoreEvent, Timeline, TimelineSpan
+from inspect_ai.event import ErrorEvent, ModelEvent, ScoreEvent, Timeline, TimelineSpan
+from inspect_ai.log import EvalError
 from inspect_ai.model import (
     ChatMessage,
     ChatMessageUser,
@@ -163,6 +164,27 @@ def test_multiple_events_on_one_anchor_preserve_order() -> None:
     assert result[3].text.startswith("SCORE (second)")
 
 
+def test_interleave_filters_to_selected_event_types() -> None:
+    out = ModelOutput.from_content(model="mockllm", content="ans")
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[ChatMessageUser(content="q"), out.choices[0].message],
+        events=[
+            _model_event("q", out),
+            ScoreEvent(score=Score(value="C"), scorer="match"),
+            ErrorEvent(
+                error=EvalError(message="boom", traceback="", traceback_ansi="")
+            ),
+        ],
+    )
+    result = interleave_events(transcript, events=["score"])
+    event_texts = [
+        m.text for m in result if m.metadata and m.metadata.get(EVENT_MARKER_KEY)
+    ]
+    assert len(event_texts) == 1
+    assert event_texts[0].startswith("SCORE")
+
+
 def _mock_model(captured: list[str]) -> Model:
     def _outputs(
         input: list[ChatMessage],
@@ -190,11 +212,41 @@ async def test_llm_scanner_interleaves_score() -> None:
         ],
     )
     captured: list[str] = []
-    scan = llm_scanner(question="Right?", answer="boolean", model=_mock_model(captured))
+    scan = llm_scanner(
+        question="Right?",
+        answer="boolean",
+        model=_mock_model(captured),
+        events=["score"],
+    )
     await scan(transcript)
     # Structural check only: the event renders as [E1] after both turns.
     # Exact renderer formatting is pinned by tests/transcript/test_event_text.py.
     assert re.search(r"\[M1\].*\[M2\].*\[E1\] SCORE", captured[0], re.DOTALL)
+
+
+@pytest.mark.anyio
+async def test_loaded_events_without_events_param_not_interleaved() -> None:
+    # Loading events via content= (e.g. for template_variables use) must not
+    # change the rendered prompt; interleaving requires the events= parameter.
+    out = ModelOutput.from_content(model="mockllm", content="4")
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[ChatMessageUser(content="2+2?"), out.choices[0].message],
+        events=[
+            _model_event("2+2?", out),
+            ScoreEvent(score=Score(value="C"), target="C", scorer="match"),
+        ],
+    )
+    captured: list[str] = []
+    scan = llm_scanner(
+        question="Right?",
+        answer="boolean",
+        model=_mock_model(captured),
+        content=TranscriptContent(events=["score", "model"]),
+    )
+    await scan(transcript)
+    assert "[E1]" not in captured[0]
+    assert "SCORE" not in captured[0]
 
 
 @pytest.mark.anyio
@@ -211,12 +263,27 @@ async def test_llm_scanner_no_events_has_no_event_entries() -> None:
     assert "[E1]" not in captured[0]
 
 
-def test_factory_augments_events_with_model() -> None:
-    scan = llm_scanner(
-        question="q", answer="boolean", content=TranscriptContent(events=["score"])
-    )
+def test_events_param_loads_selected_and_model_events() -> None:
+    scan = llm_scanner(question="q", answer="boolean", events=["score"])
     content = getattr(scan, SCANNER_CONTENT_ATTR)
     assert set(content.events) == {"score", "model"}
+
+
+def test_events_param_merges_with_content_events() -> None:
+    scan = llm_scanner(
+        question="q",
+        answer="boolean",
+        events=["score"],
+        content=TranscriptContent(events=["error"]),
+    )
+    content = getattr(scan, SCANNER_CONTENT_ATTR)
+    assert set(content.events) == {"score", "error", "model"}
+
+
+def test_events_all_loads_all_events() -> None:
+    scan = llm_scanner(question="q", answer="boolean", events="all")
+    content = getattr(scan, SCANNER_CONTENT_ATTR)
+    assert content.events == "all"
 
 
 @pytest.mark.anyio
@@ -236,7 +303,9 @@ async def test_interleave_with_timeline_raises() -> None:
             )
         ],
     )
-    scan = llm_scanner(question="q", answer="boolean", model=_mock_model([]))
+    scan = llm_scanner(
+        question="q", answer="boolean", model=_mock_model([]), events=["score"]
+    )
     with pytest.raises(ValueError, match="timeline"):
         await scan(transcript)
 
@@ -275,6 +344,7 @@ async def test_final_score_lands_in_last_chunk_when_split() -> None:
         answer="boolean",
         model=_mock_model(captured),
         context_window=350,
+        events=["score"],
     )
     await scan(transcript)
     assert len(captured) >= 2

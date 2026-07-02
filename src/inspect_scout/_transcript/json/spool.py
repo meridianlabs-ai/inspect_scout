@@ -34,7 +34,8 @@ class BlobSpool:
         self._write_offset = 0
 
     def put(self, key: SpoolKey, value: str) -> None:
-        assert self._fd is not None
+        if self._fd is None:
+            raise ValueError("spool is closed")
         data = value.encode("utf-8")
         os.pwrite(self._fd, data, self._write_offset)
         self._index[key] = (self._write_offset, len(data))
@@ -44,7 +45,8 @@ class BlobSpool:
             self._pool_counts[pool_name] = self._pool_counts.get(pool_name, 0) + 1
 
     def get(self, key: SpoolKey) -> str | None:
-        assert self._fd is not None
+        if self._fd is None:
+            raise ValueError("spool is closed")
         entry = self._index.get(key)
         if entry is None:
             return None
@@ -71,7 +73,8 @@ class ItemSpool:
         self._count = 0
 
     def append(self, item: dict[str, Any]) -> None:
-        assert self._fd is not None
+        if self._fd is None:
+            raise ValueError("spool is closed")
         line = json.dumps(item, ensure_ascii=False, separators=(",", ":")) + "\n"
         data = line.encode("utf-8")
         os.pwrite(self._fd, data, self._write_offset)
@@ -82,8 +85,8 @@ class ItemSpool:
         return self._count
 
     def items(self) -> Iterator[dict[str, Any]]:
-        assert self._fd is not None
-        fd = self._fd
+        if self._fd is None:
+            raise ValueError("spool is closed")
         end = self._write_offset
         offset = 0
         buffer = b""
@@ -94,7 +97,9 @@ class ItemSpool:
                 read_len = min(chunk_size, end - offset)
                 if read_len <= 0:
                     break
-                buffer += os.pread(fd, read_len, offset)
+                if self._fd is None:
+                    raise ValueError("spool is closed")
+                buffer += os.pread(self._fd, read_len, offset)
                 offset += read_len
                 continue
             line, buffer = buffer[:newline], buffer[newline + 1 :]

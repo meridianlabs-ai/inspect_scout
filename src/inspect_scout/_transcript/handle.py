@@ -218,10 +218,11 @@ class SpooledTranscriptHandle:
         return self._transcript
 
     async def aclose(self) -> None:
-        if self._result is not None:
-            self._result.close()
-            self._result = None
-        self._closed = True
+        async with self._lock:
+            if self._result is not None:
+                self._result.close()
+                self._result = None
+            self._closed = True
 
     async def __aenter__(self) -> "SpooledTranscriptHandle":
         return self

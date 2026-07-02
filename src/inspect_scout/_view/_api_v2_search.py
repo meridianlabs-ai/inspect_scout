@@ -252,6 +252,9 @@ def create_search_router() -> APIRouter:
                     word_boundary=request.word_boundary,
                 )(transcript)
             else:
+                # Keep the view (and its DB connection) open for the duration of
+                # the LLM call: the streaming handle reads through the view's
+                # resources, which must stay live until the handle is closed.
                 async with await view.open(infos[0], content) as handle:
                     # llm_scanner() is declared as returning Scanner[Transcript],
                     # but its scan function also accepts a TranscriptHandle

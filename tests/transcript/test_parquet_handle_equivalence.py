@@ -23,7 +23,7 @@ from inspect_scout._transcript.types import Transcript, TranscriptContent
 
 
 def _events_for(messages: list[ChatMessage]) -> list[Event]:
-    from inspect_ai.event._event import ModelEvent
+    from inspect_ai.event import ModelEvent
     from inspect_ai.model._generate_config import GenerateConfig
     from inspect_ai.model._model_output import ModelOutput
 

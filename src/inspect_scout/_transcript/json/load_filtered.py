@@ -274,7 +274,7 @@ async def _parse_and_filter(
         ListProcessingConfig(
             array_item_prefix="messages.item",
             filter_field="role",
-            filter_list=messages_filter,  # type:ignore
+            filter_list=messages_filter,
         )
         if messages_filter is not None
         else None
@@ -284,7 +284,7 @@ async def _parse_and_filter(
         ListProcessingConfig(
             array_item_prefix="events.item",
             filter_field="event",
-            filter_list=events_filter,  # type:ignore
+            filter_list=events_filter,
         )
         if events_filter is not None
         else None

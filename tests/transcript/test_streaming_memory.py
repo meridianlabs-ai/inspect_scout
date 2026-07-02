@@ -97,8 +97,11 @@ async def test_streamed_messages_no_accumulation_bounded(tmp_path: Path) -> None
 
     result = await stream_parse_to_spool(io.BytesIO(data), "all", None, tmp_path)
     try:
-        # Measure ONLY the consume path -- the parse-phase input buffering is
-        # inherent and orthogonal to the accumulation regression this guards.
+        # Measure ONLY the consume path. The parse phase transiently
+        # accumulates ijson ObjectBuilder reference-cycle garbage (closures
+        # over the in-progress dict) until a gc pass reclaims it -- a
+        # pre-existing ijson behavior that scales with message count/size
+        # and is orthogonal to the accumulation regression this guards.
         # Consume one at a time WITHOUT retaining any message.
         tracemalloc.start()
         count = sum(1 for _ in replay_messages(result))

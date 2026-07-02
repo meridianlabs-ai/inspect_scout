@@ -27,6 +27,7 @@ from pydantic import TypeAdapter
 
 from ..types import EventFilter, MessageFilter
 from .reducer import (
+    ATTACHMENT_REF_PATTERN,
     ATTACHMENTS_PREFIX,
     CALL_POOL_ITEM_PREFIX,
     EVENTS_DATA_CALLS_ITEM_PREFIX,
@@ -388,7 +389,6 @@ def _spool_attachments_coroutine(blobs: BlobSpool) -> CoroutineGen:  # pragma: n
         blobs.put(attachment_id, value)
 
 
-_ATTACHMENT_PATTERN = re.compile(r"attachment://([a-f0-9]{32})")
 _CHAT_MESSAGE_ADAPTER: TypeAdapter[ChatMessage] = TypeAdapter(ChatMessage)
 _EVENT_ADAPTER: TypeAdapter[Event] = TypeAdapter(Event)
 
@@ -408,7 +408,7 @@ def _resolve_strings(obj: Any, blobs: BlobSpool) -> Any:
             resolved = blobs.get(m.group(1))
             return m.group(0) if resolved is None else resolved
 
-        return _ATTACHMENT_PATTERN.sub(_sub, obj)
+        return ATTACHMENT_REF_PATTERN.sub(_sub, obj)
     if isinstance(obj, dict):
         for k, v in obj.items():
             obj[k] = _resolve_strings(v, blobs)

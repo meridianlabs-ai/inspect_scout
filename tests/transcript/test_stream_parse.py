@@ -250,6 +250,67 @@ async def test_resolve_item_dict_removes_call_refs_and_call_key(
 
 
 @pytest.mark.asyncio
+async def test_streamed_and_materialized_resolve_embedded_ref_the_same(
+    tmp_path: Path,
+) -> None:
+    """Regression guard: streamed and materialized paths must resolve an attachment ref embedded inside a larger string identically.
+
+    The streaming path (`_resolve_strings`) always resolves refs via
+    substring regex. The materialized path (`load_filtered_transcript`)
+    used to only collect a ref into the keep-set on an exact-match string,
+    so an embedded ref (e.g. "prefix attachment://<id> suffix") would
+    survive unresolved there while the streamed path resolved it --
+    producing different content for the same transcript depending on
+    which path was used.
+    """
+    from inspect_scout._transcript.json.load_filtered import load_filtered_transcript
+    from inspect_scout._transcript.json.stream_parse import replay_messages
+    from inspect_scout._transcript.types import TranscriptInfo
+
+    attachment_id = "d" * 32
+    sample: dict[str, Any] = {
+        "id": "s-embedded-ref",
+        "metadata": {},
+        "target": None,
+        "messages": [
+            {
+                "id": "m1",
+                "role": "user",
+                "content": f"prefix attachment://{attachment_id} suffix",
+            },
+        ],
+        "scores": {},
+        "events": [],
+        "attachments": {attachment_id: "VALUE"},
+    }
+
+    streamed_result = await stream_parse_to_spool(
+        _stream(sample), "all", None, tmp_path
+    )
+    try:
+        streamed_content = list(replay_messages(streamed_result))[0].content
+    finally:
+        streamed_result.close()
+
+    materialized = await load_filtered_transcript(
+        _stream(sample),
+        TranscriptInfo(
+            transcript_id="s-embedded-ref",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+        ),
+        "all",
+        "all",
+    )
+    materialized_content = materialized.messages[0].content
+
+    assert streamed_content == "prefix VALUE suffix"
+    assert materialized_content == "prefix VALUE suffix"
+    assert streamed_content == materialized_content
+
+
+@pytest.mark.asyncio
 async def test_resolve_strings_empty_string_attachment_not_treated_as_missing(
     tmp_path: Path,
 ) -> None:

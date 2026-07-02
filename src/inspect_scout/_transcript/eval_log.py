@@ -2,9 +2,11 @@ import hashlib
 import io
 import json
 import sqlite3
+import tempfile
 from datetime import datetime
 from logging import getLogger
 from os import PathLike
+from pathlib import Path
 from types import TracebackType
 from typing import (
     Any,
@@ -60,10 +62,17 @@ from .._scanspec import ScanTranscripts
 from .._transcript.transcripts import Transcripts
 from .._util.caching_async_zip import CachingAsyncZipReader
 from .._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
+from . import handle as handle_mod
 from .caching import samples_df_with_caching
 from .database.database import TranscriptsView
 from .database.schema import reserved_columns
+from .handle import (
+    MaterializedTranscriptHandle,
+    SpooledTranscriptHandle,
+    TranscriptHandle,
+)
 from .json.load_filtered import load_filtered_transcript
+from .json.stream_parse import StreamParseResult, stream_parse_to_spool
 from .local_files_cache import init_task_files_cache
 from .transcripts import TranscriptsReader
 from .types import (
@@ -195,6 +204,12 @@ class EvalLogTranscriptsReader(TranscriptsReader):
         self, transcript: TranscriptInfo, content: TranscriptContent
     ) -> Transcript:
         return await self._db.read(transcript, content)
+
+    @override
+    async def open(
+        self, transcript: TranscriptInfo, content: TranscriptContent
+    ) -> TranscriptHandle:
+        return await self._db.open(transcript, content)
 
     @override
     async def snapshot(self) -> ScanTranscripts:
@@ -528,6 +543,64 @@ class EvalLogTranscriptsView(TranscriptsView):
                 )
 
             return transcript
+
+    @override
+    async def open(
+        self,
+        t: TranscriptInfo,
+        content: TranscriptContent,
+    ) -> TranscriptHandle:
+        """Open a streaming handle to transcript content.
+
+        The returned handle's ``parse``/``load`` callables reference
+        ``self`` (e.g. ``self._fs``, ``self.read``) and so must only be
+        invoked while this view is still connected -- callers must use the
+        handle within the view's `connect()`/`disconnect()` lifetime (e.g.
+        inside the same `async with view:` block).
+
+        Note on remote sources: `_get_zip_reader_and_entry` already routes
+        through `LocalFilesCache.resolve_remote_uri_to_local`, which
+        downloads the whole ZIP to the local cache when it fits. If the
+        cache declines (full or unavailable), the spooled parse below
+        streams the member directly from the remote store. The only
+        scenario where this could mean streaming the same remote source
+        twice is if the streamed parse fails with malformed JSON (NaN/Inf)
+        and falls back to `read()` -- rare, and accepted for now rather
+        than building a dedicated member-spooling mechanism.
+        """
+        if not t.source_uri:
+            raise ValueError("source_uri must be set")
+        if recorder_type_for_location(t.source_uri) is not EvalRecorder:
+            # JSON format not yet supported for streaming reads.
+            return MaterializedTranscriptHandle(lambda: self.read(t, content), t)
+
+        zip_reader, entry = await self._get_zip_reader_and_entry(t)
+
+        # Small files, or timeline requests (which need the full in-memory
+        # event set to resolve stored timeline UUID references), use the
+        # existing materialized read path unchanged.
+        if (
+            entry.uncompressed_size <= handle_mod.STREAMING_THRESHOLD_BYTES
+            or content.timeline is not None
+        ):
+            return MaterializedTranscriptHandle(lambda: self.read(t, content), t)
+
+        spool_dir = (
+            self._files_cache.cache_dir
+            if self._files_cache
+            else Path(tempfile.gettempdir())
+        )
+
+        async def parse() -> StreamParseResult:
+            async with await zip_reader.open_member(entry) as json_iterable:
+                return await stream_parse_to_spool(
+                    json_iterable, content.messages, content.events, spool_dir
+                )
+
+        async def load_fallback() -> Transcript:
+            return await self.read(t, content)
+
+        return SpooledTranscriptHandle(t, parse, load_fallback)
 
     @override
     async def read_messages_events(

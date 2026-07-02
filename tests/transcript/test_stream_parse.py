@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from inspect_ai.event import ModelEvent
 from inspect_scout._transcript.json.stream_parse import stream_parse_to_spool
 
 
@@ -95,7 +96,7 @@ async def test_parse_message_filter(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_parse_nan_raises(tmp_path: Path) -> None:
-    import ijson
+    import ijson  # type: ignore[import-untyped]
 
     bad = io.BytesIO(b'{"id": "s", "messages": [], "x": NaN}')
     with pytest.raises(ijson.JSONError):
@@ -187,6 +188,7 @@ async def test_replay_events_expands_call_pool(tmp_path: Path) -> None:
         events = list(replay_events(result))
         assert len(events) == 1
         model_event = events[0]
+        assert isinstance(model_event, ModelEvent)
         assert model_event.call is not None
         assert model_event.call.request["messages"] == [
             {"role": "user", "content": "pooled call msg"}

@@ -31,7 +31,7 @@ def test_serialize_input_info_only() -> None:
 
 
 @scanner(messages="all", events="all")
-def _handle_scanner() -> "object":  # type: ignore[no-untyped-def]
+def _handle_scanner() -> Scanner[Transcript]:
     async def scan(transcript: Transcript) -> Result:
         return Result(value="ok")
 
@@ -40,7 +40,7 @@ def _handle_scanner() -> "object":  # type: ignore[no-untyped-def]
 
 
 @scanner(messages="all", events="all")
-def _plain_scanner() -> "object":  # type: ignore[no-untyped-def]
+def _plain_scanner() -> Scanner[Transcript]:
     async def scan(transcript: Transcript) -> Result:
         return Result(value="ok")
 
@@ -139,11 +139,11 @@ async def test_scan_one_on_complete_awaited_once_per_job(tmp_path: Path) -> None
     assert close_count == 1  # closed exactly once after the last job
 
 
-def _make_handle_scanner(messages: object) -> Scanner[Any]:
+def _make_handle_scanner(messages: Any) -> Scanner[Any]:
     """Build a handle-accepting scanner with the given `messages` content filter."""
 
-    @scanner(messages=messages)  # type: ignore[arg-type]
-    def factory() -> "object":  # type: ignore[no-untyped-def]
+    @scanner(messages=messages)
+    def factory() -> Scanner[Transcript]:
         async def scan(transcript: Transcript) -> Result:
             return Result(value="ok")
 
@@ -186,7 +186,7 @@ def test_streaming_eligible_false_when_any_scanner_wants_events_or_timeline() ->
     s1 = _make_handle_scanner("all")
 
     @scanner(messages="all", events="all")
-    def events_factory() -> "object":  # type: ignore[no-untyped-def]
+    def events_factory() -> Scanner[Transcript]:
         async def scan(transcript: Transcript) -> Result:
             return Result(value="ok")
 

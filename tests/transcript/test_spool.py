@@ -16,9 +16,7 @@ def test_blob_spool_roundtrip(tmp_path: Path) -> None:
         spool.put(("message_pool", 0), json.dumps({"role": "user"}))
         spool.put(("message_pool", 1), json.dumps({"role": "assistant"}))
         assert spool.get("att1") == "hello world"
-        assert json.loads(spool.get(("message_pool", 1)) or "") == {
-            "role": "assistant"
-        }
+        assert json.loads(spool.get(("message_pool", 1)) or "") == {"role": "assistant"}
         assert spool.get("missing") is None
         assert spool.pool_len("message_pool") == 2
         assert spool.pool_len("call_pool") == 0

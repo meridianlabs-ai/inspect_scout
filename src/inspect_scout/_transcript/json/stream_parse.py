@@ -13,13 +13,17 @@ resolution bug in the in-memory path.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import IO, Any, AsyncIterable
+from typing import IO, Any, AsyncIterable, Iterator
 
 import ijson  # type: ignore
 from ijson.utils import coroutine as _ijson_coroutine  # type: ignore
 from inspect_ai._util.async_bytes_reader import adapt_to_reader
+from inspect_ai.event._event import Event
+from inspect_ai.model._chat_message import ChatMessage
+from pydantic import TypeAdapter
 
 from ..types import EventFilter, MessageFilter
 from .reducer import (
@@ -382,3 +386,90 @@ def _spool_attachments_coroutine(blobs: BlobSpool) -> CoroutineGen:  # pragma: n
             else prefix[attachments_prefix_len:end]
         )
         blobs.put(attachment_id, value)
+
+
+_ATTACHMENT_PATTERN = re.compile(r"attachment://([a-f0-9]{32})")
+_CHAT_MESSAGE_ADAPTER: TypeAdapter[ChatMessage] = TypeAdapter(ChatMessage)
+_EVENT_ADAPTER: TypeAdapter[Event] = TypeAdapter(Event)
+
+
+def _resolve_strings(obj: Any, blobs: BlobSpool) -> Any:
+    """Recursively resolve ``attachment://<id>`` refs against ``blobs``.
+
+    Mirrors ``_resolve_dict_attachments`` in load_filtered.py but looks
+    up attachment ids in the on-disk BlobSpool rather than an in-memory
+    dict, mutating dict/list containers in place.
+    """
+    if isinstance(obj, str):
+        if "attachment://" not in obj:
+            return obj
+        return _ATTACHMENT_PATTERN.sub(
+            lambda m: blobs.get(m.group(1)) or m.group(0), obj
+        )
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            obj[k] = _resolve_strings(v, blobs)
+        return obj
+    if isinstance(obj, list):
+        for i, v in enumerate(obj):
+            obj[i] = _resolve_strings(v, blobs)
+        return obj
+    return obj
+
+
+def _expand_pool_range(
+    refs: list[list[int]], pool_name: str, blobs: BlobSpool
+) -> list[Any]:
+    """Expand range-encoded pool refs by fetching items from ``blobs``.
+
+    Each fetched pool item is resolved for attachment refs before being
+    returned -- pool items are spooled unresolved (attachments arrive
+    after pools in the JSON), so this fetch-then-resolve step is where
+    the pool-attachment bug fix lives.
+    """
+    result: list[Any] = []
+    for start, end_exclusive in refs:
+        for i in range(start, end_exclusive):
+            raw = blobs.get((pool_name, i))
+            if raw is not None:
+                result.append(_resolve_strings(json.loads(raw), blobs))
+    return result
+
+
+def resolve_item_dict(item: dict[str, Any], blobs: BlobSpool) -> dict[str, Any]:
+    """Resolve attachment refs and pool ranges on a spooled item, in place.
+
+    Expands ``input_refs``/``call_refs`` positional ranges (same semantics
+    as ``_resolve_events_pools`` in pool.py) by fetching pool entries from
+    ``blobs`` and resolving attachment refs inside them -- fixing the bug
+    where pool-item attachments were never resolved -- then resolves
+    ``attachment://`` refs throughout the rest of the item.
+    """
+    input_refs = item.get("input_refs")
+    if input_refs and blobs.pool_len("message_pool"):
+        item["input"] = _expand_pool_range(input_refs, "message_pool", blobs)
+        item.pop("input_refs", None)
+    call = item.get("call")
+    if call and call.get("call_refs") is not None and blobs.pool_len("call_pool"):
+        key = call.get("call_key", "messages")
+        call.setdefault("request", {})[key] = _expand_pool_range(
+            call["call_refs"], "call_pool", blobs
+        )
+        call.pop("call_refs", None)
+        call.pop("call_key", None)
+    _resolve_strings(item, blobs)
+    return item
+
+
+def replay_messages(result: StreamParseResult) -> Iterator[ChatMessage]:
+    """Replay spooled messages, resolving attachments and validating each."""
+    for item in result.messages.items():
+        yield _CHAT_MESSAGE_ADAPTER.validate_python(
+            resolve_item_dict(item, result.blobs)
+        )
+
+
+def replay_events(result: StreamParseResult) -> Iterator[Event]:
+    """Replay spooled events, resolving attachments/pools and validating each."""
+    for item in result.events.items():
+        yield _EVENT_ADAPTER.validate_python(resolve_item_dict(item, result.blobs))

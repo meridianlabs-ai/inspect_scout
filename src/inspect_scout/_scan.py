@@ -84,6 +84,7 @@ from ._transcript.handle import (
 )
 from ._transcript.transcripts import ScannerWork, Transcripts, TranscriptsReader
 from ._transcript.types import (
+    MessageFilter,
     Transcript,
     TranscriptContent,
     TranscriptInfo,
@@ -590,17 +591,22 @@ async def _scan_async_inner(
                 ) -> ParseFunctionResult:
                     try:
                         # Streaming is eligible when every scanner in this parse
-                        # job accepts handles and no timeline/events content is
-                        # required (phase 1: messages-only). The backend decides
+                        # job accepts handles, no timeline/events content is
+                        # required (phase 1: messages-only), and every scanner's
+                        # own content filter equals the union. The last
+                        # condition matters because streaming hands the shared
+                        # union-filtered handle directly to each scanner,
+                        # bypassing the per-scanner loader that would otherwise
+                        # re-narrow content via `filter_transcript` - a scanner
+                        # with a narrower filter than a sibling would otherwise
+                        # see union-broadened content. The backend decides
                         # spooled-vs-materialized internally in `open()`.
-                        streaming_eligible = (
-                            union_content.timeline is None
-                            and union_content.events is None
-                            and all(
-                                scanner_accepts_handle(scanners_list[idx])
-                                for idx in job.scanner_indices
-                            )
-                        )
+                        job_scanners = [
+                            scanners_list[idx] for idx in job.scanner_indices
+                        ]
+                        streaming_eligible = all(
+                            scanner_accepts_handle(scanner) for scanner in job_scanners
+                        ) and _streaming_eligible(job_scanners, union_content)
 
                         union_transcript: Transcript | TranscriptHandle
                         on_complete: Callable[[], Awaitable[None]] | None
@@ -1196,6 +1202,58 @@ def _content_for_scanner(scanner: Scanner[Any]) -> TranscriptContent:
     adopted the filter from the scanner as appropriate.
     """
     return config_for_loader(config_for_scanner(scanner).loader).content
+
+
+def _message_filters_equal(a: MessageFilter, b: MessageFilter) -> bool:
+    """Compare two message filters, ignoring list order.
+
+    ``TranscriptContent.messages`` is either ``None``, the literal ``"all"``,
+    or a sequence of message types. Sequences may be produced/reduced in
+    different orders (the common case is ``union_transcript_contents``
+    building up a set-like union), so equality must be order-insensitive
+    for sequences while still being exact for ``None``/``"all"``.
+    """
+    if (
+        isinstance(a, Sequence)
+        and not isinstance(a, str)
+        and isinstance(b, Sequence)
+        and not isinstance(b, str)
+    ):
+        return set(a) == set(b)
+    return a == b
+
+
+def _streaming_eligible(
+    scanners: list[Scanner[Any]], union_content: TranscriptContent
+) -> bool:
+    """Determine whether a job's scanners can safely share a streamed handle.
+
+    Streaming passes a single `TranscriptHandle`, opened with the union of
+    every scanner's content filter, directly to each handle-capable scanner
+    (bypassing the per-scanner loader that would otherwise re-filter content
+    via `filter_transcript`). That is only safe when every scanner's own
+    content requirement is *equal* to the union - otherwise a scanner with a
+    narrower filter (e.g. `messages=["user"]`) would see union-broadened
+    content from a sibling scanner (e.g. `messages=["user", "assistant"]`).
+
+    Args:
+        scanners: The scanners in the parse job (must all accept handles;
+            callers are expected to have already checked
+            `scanner_accepts_handle`).
+        union_content: The union of all scanners' content filters.
+
+    Returns:
+        True iff streaming is safe for this job.
+    """
+    if union_content.timeline is not None or union_content.events is not None:
+        return False
+    for scanner in scanners:
+        content = _content_for_scanner(scanner)
+        if content.timeline is not None or content.events is not None:
+            return False
+        if not _message_filters_equal(content.messages, union_content.messages):
+            return False
+    return True
 
 
 def _reports_for_parse_error(

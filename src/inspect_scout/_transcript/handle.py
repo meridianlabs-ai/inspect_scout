@@ -29,9 +29,6 @@ from inspect_ai.model._chat_message import ChatMessage
 from .json.stream_parse import StreamParseResult, replay_events, replay_messages
 from .types import Transcript, TranscriptInfo
 
-STREAMING_THRESHOLD_BYTES: int = 64 * 1024 * 1024
-"""Sample byte-size threshold above which streaming (spooled) reads are used."""
-
 _CHECKPOINT_INTERVAL = 64
 
 

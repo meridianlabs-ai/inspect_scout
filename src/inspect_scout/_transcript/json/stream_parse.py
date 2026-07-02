@@ -403,9 +403,12 @@ def _resolve_strings(obj: Any, blobs: BlobSpool) -> Any:
     if isinstance(obj, str):
         if "attachment://" not in obj:
             return obj
-        return _ATTACHMENT_PATTERN.sub(
-            lambda m: blobs.get(m.group(1)) or m.group(0), obj
-        )
+
+        def _sub(m: re.Match[str]) -> str:
+            resolved = blobs.get(m.group(1))
+            return m.group(0) if resolved is None else resolved
+
+        return _ATTACHMENT_PATTERN.sub(_sub, obj)
     if isinstance(obj, dict):
         for k, v in obj.items():
             obj[k] = _resolve_strings(v, blobs)

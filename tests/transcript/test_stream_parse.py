@@ -135,5 +135,144 @@ async def test_replay_events_expands_pools_and_pool_attachments(
         # THE BUG FIX: attachment ref inside a pool item is resolved.
         # (Requires "b"*32 in SAMPLE attachments — extend SAMPLE first.)
         assert inputs[1].content == "pool-attachment-resolved"
+        # multi-shot: second replay identical (re-iterable, not just replay_messages)
+        again = [e for e in replay_events(result) if e.event == "model"]
+        assert len(again) == len(model_events)
+        assert again[0].input[1].content == "pool-attachment-resolved"
+    finally:
+        result.close()
+
+
+@pytest.mark.asyncio
+async def test_replay_events_expands_call_pool(tmp_path: Path) -> None:
+    """call_refs/call_key on a model event's `call` are expanded from call_pool.
+
+    Mirrors test_call_pool_resolution in tests/scanner/test_load_filtered.py.
+    """
+    from inspect_scout._transcript.json.stream_parse import replay_events
+
+    sample: dict[str, Any] = {
+        "id": "test-pool-call",
+        "target": "expected",
+        "messages": [],
+        "scores": {},
+        "metadata": {},
+        "events": [
+            {
+                "span_id": "s1",
+                "timestamp": "2022-01-01T00:00:00+00:00",
+                "event": "model",
+                "model": "test-model",
+                "input": [{"role": "user", "content": "hi"}],
+                "output": {"model": "test-model", "choices": []},
+                "call": {
+                    "request": {"model": "test-model"},
+                    "response": {},
+                    "call_refs": [[0, 1]],
+                    "call_key": "messages",
+                },
+                "tools": [],
+                "tool_choice": "auto",
+                "config": {},
+            },
+        ],
+        "attachments": {},
+        "message_pool": [],
+        "call_pool": [
+            {"role": "user", "content": "pooled call msg"},
+        ],
+    }
+    result = await stream_parse_to_spool(_stream(sample), "all", "all", tmp_path)
+    try:
+        events = list(replay_events(result))
+        assert len(events) == 1
+        model_event = events[0]
+        assert model_event.call is not None
+        assert model_event.call.request["messages"] == [
+            {"role": "user", "content": "pooled call msg"}
+        ]
+    finally:
+        result.close()
+
+
+@pytest.mark.asyncio
+async def test_resolve_item_dict_removes_call_refs_and_call_key(
+    tmp_path: Path,
+) -> None:
+    """resolve_item_dict pops call_refs/call_key after expanding the pool range."""
+    from inspect_scout._transcript.json.stream_parse import resolve_item_dict
+
+    sample: dict[str, Any] = {
+        "id": "test-pool-call-2",
+        "target": None,
+        "messages": [],
+        "scores": {},
+        "metadata": {},
+        "events": [
+            {
+                "span_id": "s1",
+                "timestamp": "2022-01-01T00:00:00+00:00",
+                "event": "model",
+                "model": "test-model",
+                "input": [],
+                "output": {"model": "test-model", "choices": []},
+                "call": {
+                    "request": {},
+                    "response": {},
+                    "call_refs": [[0, 1]],
+                    "call_key": "messages",
+                },
+                "tools": [],
+                "tool_choice": "auto",
+                "config": {},
+            },
+        ],
+        "attachments": {},
+        "message_pool": [],
+        "call_pool": [
+            {"role": "user", "content": "pooled call msg"},
+        ],
+    }
+    result = await stream_parse_to_spool(_stream(sample), None, "all", tmp_path)
+    try:
+        raw_events = list(result.events.items())
+        assert len(raw_events) == 1
+        resolved = resolve_item_dict(raw_events[0], result.blobs)
+        assert resolved["call"]["request"]["messages"] == [
+            {"role": "user", "content": "pooled call msg"}
+        ]
+        assert "call_refs" not in resolved["call"]
+        assert "call_key" not in resolved["call"]
+    finally:
+        result.close()
+
+
+@pytest.mark.asyncio
+async def test_resolve_strings_empty_string_attachment_not_treated_as_missing(
+    tmp_path: Path,
+) -> None:
+    """An attachment resolving to "" must substitute "", not leave the ref text.
+
+    Regression test: `blobs.get(...) or m.group(0)` treats an empty-string
+    attachment value as falsy/missing; the fix must use an `is not None` check.
+    """
+    from inspect_scout._transcript.json.stream_parse import replay_messages
+
+    empty_id = "c" * 32
+    sample: dict[str, Any] = {
+        "id": "s-empty-attachment",
+        "metadata": {},
+        "target": None,
+        "messages": [
+            {"id": "m1", "role": "user", "content": "attachment://" + empty_id},
+        ],
+        "scores": {},
+        "events": [],
+        "attachments": {empty_id: ""},
+    }
+    result = await stream_parse_to_spool(_stream(sample), "all", None, tmp_path)
+    try:
+        messages = list(replay_messages(result))
+        assert messages[0].content == ""
     finally:
         result.close()

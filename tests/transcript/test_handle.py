@@ -208,6 +208,59 @@ async def test_spooled_handle_concurrent_first_use_parses_once(
 
 
 @pytest.mark.asyncio
+async def test_spooled_handle_aclose_during_first_parse_does_not_leak(
+    tmp_path: Path,
+) -> None:
+    """aclose() racing an in-flight first parse must not leak the spool fds.
+
+    aclose() takes the same lock as the first parse (``_ensure_parsed``), so
+    the two can never truly interleave: aclose() either runs to completion
+    before the parse starts (in which case the parse call below observes
+    ``self._closed`` and raises before producing a StreamParseResult at all),
+    or it blocks until the in-flight parse has stored its StreamParseResult,
+    then closes it immediately. Either way, no StreamParseResult can be
+    produced and left un-closed -- verified here by asserting the result
+    that *was* produced ends up with all of its spool fds released.
+    """
+    produced: list[StreamParseResult] = []
+
+    async def parse() -> StreamParseResult:
+        await anyio.sleep(0.05)
+        result = await stream_parse_to_spool(
+            io.BytesIO(json.dumps(SAMPLE).encode()), "all", None, tmp_path
+        )
+        produced.append(result)
+        return result
+
+    async def fallback() -> Transcript:
+        raise AssertionError("fallback should not be called")
+
+    handle = SpooledTranscriptHandle(INFO, parse, fallback)
+
+    async def start_parse() -> None:
+        try:
+            await handle.messages().__anext__()
+        except (StopAsyncIteration, RuntimeError):
+            pass
+
+    async with anyio.create_task_group() as tg:
+        tg.start_soon(start_parse)
+        await anyio.sleep(0.01)  # let the parse start before racing aclose()
+        tg.start_soon(handle.aclose)
+
+    assert handle._closed is True
+    assert handle._result is None  # closed, and not left dangling as "open"
+
+    # If the parse won the race and produced a result, aclose() must have
+    # closed it -- its spool fds must all be released, not leaked.
+    if produced:
+        result = produced[0]
+        assert result.messages._fd is None
+        assert result.events._fd is None
+        assert result.blobs._fd is None
+
+
+@pytest.mark.asyncio
 async def test_spooled_handle_is_transcript_handle(tmp_path: Path) -> None:
     handle = _spooled_handle(tmp_path)
     assert isinstance(handle, TranscriptHandle)

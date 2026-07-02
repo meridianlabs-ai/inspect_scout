@@ -25,10 +25,24 @@ SAMPLE: dict[str, Any] = {
     ],
     "scores": {"scorer": {"value": 1}},
     "events": [
-        {"event": "model", "timestamp": 1.0, "input_refs": [[0, 2]]},
+        {
+            "span_id": "s1",
+            "timestamp": "2022-01-01T00:00:00+00:00",
+            "event": "model",
+            "model": "test-model",
+            "input": [],
+            "input_refs": [[0, 2]],
+            "output": {"model": "test-model", "choices": []},
+            "tools": [],
+            "tool_choice": "auto",
+            "config": {},
+        },
         {"event": "info", "timestamp": 2.0, "data": "x"},
     ],
-    "attachments": {"a" * 32: "resolved-text"},
+    "attachments": {
+        "a" * 32: "resolved-text",
+        "b" * 32: "pool-attachment-resolved",
+    },
     "events_data": {
         "messages": [
             {"role": "user", "content": "pooled-1"},
@@ -87,3 +101,39 @@ async def test_parse_nan_raises(tmp_path: Path) -> None:
     with pytest.raises(ijson.JSONError):
         await stream_parse_to_spool(bad, "all", "all", tmp_path)
     assert list(tmp_path.iterdir()) == []  # spools closed/unlinked on error
+
+
+@pytest.mark.asyncio
+async def test_replay_messages_resolves_attachments(tmp_path: Path) -> None:
+    from inspect_scout._transcript.json.stream_parse import replay_messages
+
+    result = await stream_parse_to_spool(_stream(SAMPLE), "all", None, tmp_path)
+    try:
+        messages = list(replay_messages(result))
+        assert messages[1].content == "resolved-text"  # attachment resolved
+        assert messages[0].role == "user"
+        # multi-shot: second replay identical
+        again = list(replay_messages(result))
+        assert [m.id for m in again] == [m.id for m in messages]
+    finally:
+        result.close()
+
+
+@pytest.mark.asyncio
+async def test_replay_events_expands_pools_and_pool_attachments(
+    tmp_path: Path,
+) -> None:
+    from inspect_scout._transcript.json.stream_parse import replay_events
+
+    result = await stream_parse_to_spool(_stream(SAMPLE), None, "all", tmp_path)
+    try:
+        events = list(replay_events(result))
+        model_events = [e for e in events if e.event == "model"]
+        assert len(model_events) == 1
+        inputs = model_events[0].input
+        assert len(inputs) == 2  # input_refs [[0, 2]] expanded from pool
+        # THE BUG FIX: attachment ref inside a pool item is resolved.
+        # (Requires "b"*32 in SAMPLE attachments — extend SAMPLE first.)
+        assert inputs[1].content == "pool-attachment-resolved"
+    finally:
+        result.close()

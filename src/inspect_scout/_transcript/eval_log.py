@@ -60,9 +60,9 @@ from .._query.condition_sql import condition_as_sql, conditions_as_filter
 from .._query.sql import quote_identifier, validate_column
 from .._scanspec import ScanTranscripts
 from .._transcript.transcripts import Transcripts
+from .._util import constants as constants_mod
 from .._util.caching_async_zip import CachingAsyncZipReader
 from .._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
-from . import handle as handle_mod
 from .caching import samples_df_with_caching
 from .database.database import TranscriptsView
 from .database.schema import reserved_columns
@@ -580,7 +580,7 @@ class EvalLogTranscriptsView(TranscriptsView):
         # event set to resolve stored timeline UUID references), use the
         # existing materialized read path unchanged.
         if (
-            entry.uncompressed_size <= handle_mod.STREAMING_THRESHOLD_BYTES
+            entry.uncompressed_size <= constants_mod.STREAMING_THRESHOLD_BYTES
             or content.timeline is not None
         ):
             return MaterializedTranscriptHandle(lambda: self.read(t, content), t)

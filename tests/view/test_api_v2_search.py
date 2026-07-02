@@ -16,9 +16,9 @@ from google.genai.errors import ClientError as GoogleClientError
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai.model._chat_message import ChatMessageAssistant, ChatMessageUser
 from inspect_scout._scanner.result import Result
-from inspect_scout._transcript import handle as handle_mod
 from inspect_scout._transcript.handle import SpooledTranscriptHandle, TranscriptHandle
 from inspect_scout._transcript.types import Transcript
+from inspect_scout._util import constants as constants_mod
 from inspect_scout._view._api_v2 import v2_api_app
 from inspect_scout._view._api_v2_search import LLM_SEARCH_TEMPLATE
 from inspect_scout._view._api_v2_types import SearchRequest
@@ -298,7 +298,7 @@ class TestSearchEndpoint:
         """Forcing the spooled path still returns a valid SearchResponse."""
         # Force EvalLogTranscriptsView.open() to take the spooled-handle
         # branch regardless of sample size.
-        monkeypatch.setattr(handle_mod, "STREAMING_THRESHOLD_BYTES", 0)
+        monkeypatch.setattr(constants_mod, "STREAMING_THRESHOLD_BYTES", 0)
 
         transcript_id = asyncio.run(_first_eval_log_transcript_id(EVAL_LOG))
 

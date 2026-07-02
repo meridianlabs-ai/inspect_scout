@@ -13,13 +13,13 @@ from inspect_ai.model._chat_message import (
     ChatMessageUser,
 )
 from inspect_ai.tool._tool_call import ToolCall
-from inspect_scout._transcript import handle as handle_mod
 from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
 from inspect_scout._transcript.handle import (
     MaterializedTranscriptHandle,
     SpooledTranscriptHandle,
 )
 from inspect_scout._transcript.types import Transcript, TranscriptContent
+from inspect_scout._util import constants as constants_mod
 
 
 def _events_for(messages: list[ChatMessage]) -> list[Event]:
@@ -105,7 +105,7 @@ async def test_streamed_equals_materialized(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Force the spooled path regardless of content size.
-    monkeypatch.setattr(handle_mod, "STREAMING_THRESHOLD_BYTES", 0)
+    monkeypatch.setattr(constants_mod, "STREAMING_THRESHOLD_BYTES", 0)
     try:
         infos = {i.transcript_id: i async for i in parquet_db.select()}
         info = infos[transcript_id]
@@ -157,7 +157,7 @@ async def test_timeline_request_uses_materialized_handle(
 ) -> None:
     # Even with threshold forced to 0, a timeline request isn't
     # messages/events-only content, so it must use the materialized path.
-    monkeypatch.setattr(handle_mod, "STREAMING_THRESHOLD_BYTES", 0)
+    monkeypatch.setattr(constants_mod, "STREAMING_THRESHOLD_BYTES", 0)
     try:
         infos = [i async for i in parquet_db.select()]
         info = next(i for i in infos if i.transcript_id == "t-with-events")
@@ -177,7 +177,7 @@ async def test_unknown_transcript_uses_materialized_handle(
 ) -> None:
     from inspect_scout._transcript.types import TranscriptInfo
 
-    monkeypatch.setattr(handle_mod, "STREAMING_THRESHOLD_BYTES", 0)
+    monkeypatch.setattr(constants_mod, "STREAMING_THRESHOLD_BYTES", 0)
     try:
         missing = TranscriptInfo(
             transcript_id="does-not-exist",

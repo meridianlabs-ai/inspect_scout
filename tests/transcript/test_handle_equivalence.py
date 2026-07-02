@@ -5,9 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from inspect_scout._transcript import handle as handle_mod
 from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
 from inspect_scout._transcript.types import TranscriptContent
+from inspect_scout._util import constants as constants_mod
 
 LOGS_DIR = Path(__file__).parent.parent / "recorder" / "logs"
 LOGS = sorted(LOGS_DIR.glob("*.eval"))
@@ -36,7 +36,7 @@ async def test_streamed_equals_materialized(
     log: Path, content: TranscriptContent, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # Force the spooled path regardless of file size
-    monkeypatch.setattr(handle_mod, "STREAMING_THRESHOLD_BYTES", 0)
+    monkeypatch.setattr(constants_mod, "STREAMING_THRESHOLD_BYTES", 0)
     view = EvalLogTranscriptsView(str(log))
     await view.connect()
     try:

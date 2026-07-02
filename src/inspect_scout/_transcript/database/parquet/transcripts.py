@@ -34,6 +34,7 @@ from ...._query import Query
 from ...._query.condition import Condition, ScalarValue
 from ...._query.condition_sql import condition_as_sql
 from ...._query.sql import quote_identifier, validate_column
+from ...._util import constants as constants_mod
 from ...._util.duckdb import (
     create_parquet_view,
     drop_view,
@@ -43,7 +44,6 @@ from ...._util.duckdb import (
     relation_columns,
     restrict_external_access,
 )
-from ... import handle as handle_mod
 from ...handle import (
     MaterializedTranscriptHandle,
     SpooledTranscriptHandle,
@@ -907,7 +907,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         For messages/events-only content (no timeline requested) whose
         combined messages+events+events_data column size (via
-        `_get_content_size`) exceeds `handle_mod.STREAMING_THRESHOLD_BYTES`,
+        `_get_content_size`) exceeds `constants_mod.STREAMING_THRESHOLD_BYTES`,
         this returns a `SpooledTranscriptHandle` whose `parse` callable
         fetches the JSON cells and streams them through
         `stream_parse_to_spool`. Below threshold, content requesting a
@@ -938,7 +938,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         full_path = self._full_parquet_path(relative_filename)
 
         content_size = self._get_content_size(full_path, t.transcript_id)
-        if content_size <= handle_mod.STREAMING_THRESHOLD_BYTES:
+        if content_size <= constants_mod.STREAMING_THRESHOLD_BYTES:
             return MaterializedTranscriptHandle(lambda: self.read(t, content), t)
 
         files_cache = init_task_files_cache()

@@ -228,6 +228,144 @@ async def segment_messages(
         )
 
 
+async def segment_messages_stream(
+    source: AsyncIterator[ChatMessage],
+    *,
+    messages_as_str: MessagesAsStr,
+    model: Model | str | None = None,
+    context_window: int | None = None,
+    prompt_reserve: int | float = 0.2,
+) -> AsyncIterator[MessagesSegment]:
+    """Incrementally render and segment messages from an async iterator.
+
+    Streaming counterpart to ``segment_messages()``: instead of requiring
+    the full message list up front, consumes ``source`` one message at a
+    time and yields ``MessagesSegment`` instances as soon as enough
+    messages have accumulated to fill a segment. This lets callers (e.g.
+    ``llm_scanner``) start processing the first segment before the rest
+    of the transcript has been read.
+
+    Messages are rendered sequentially via ``messages_as_str`` (counter
+    ordering matters) and grouped into chunks up to ``chunk_char_target``
+    (same sizing formula as ``segment_messages()``). Each chunk is
+    counted with a single ``count_tokens`` call as soon as it closes —
+    calls are serialized rather than batched with bounded concurrency,
+    since chunks aren't known ahead of time.
+
+    Args:
+        source: An async iterator of ChatMessage.
+        messages_as_str: Rendering function from ``message_numbering()``.
+            Must be called sequentially to preserve counter ordering.
+        model: Model used for token counting.
+        context_window: Override for context window size. If None,
+            looked up via ``get_model_info(model)``.
+        prompt_reserve: Context-window allowance for prompt scaffolding
+            wrapped around the rendered messages (e.g. a scanner
+            template). A ``float`` reserves that fraction of the window;
+            an ``int`` reserves that many tokens and additionally
+            subtracts a small safety margin for ``count_tokens``
+            imprecision. Default ``0.2`` leaves 80% of the window for
+            messages.
+
+    Yields:
+        MessagesSegment instances, each fitting within the token budget
+        (except a single chunk that alone exceeds the budget, which is
+        still yielded on its own). Segment counter increments across
+        all yields.
+    """
+    # Resolve model
+    model = get_model(model)
+
+    # Compute effective budget
+    effective_budget = max(
+        1,
+        _effective_segment_budget(
+            model=model,
+            context_window=context_window,
+            prompt_reserve=prompt_reserve,
+        ),
+    )
+
+    chunk_char_target = max(
+        1,
+        int(
+            effective_budget * _COUNT_CHUNK_BUDGET_FRACTION * _COUNT_EST_CHARS_PER_TOKEN
+        ),
+    )
+
+    segment_counter = 0
+    current_messages: list[ChatMessage] = []
+    current_texts: list[str] = []
+    running_tokens = 0
+
+    pending_chunk: list[tuple[ChatMessage, str]] = []
+    pending_chars = 0
+
+    async def close_chunk() -> tuple[list[ChatMessage], list[str], int]:
+        """Count tokens for the pending chunk and return its contents."""
+        nonlocal pending_chunk, pending_chars
+        chunk_messages = [msg for msg, _ in pending_chunk]
+        chunk_texts = [text for _, text in pending_chunk]
+        chunk_str = "\n".join(chunk_texts)
+        tokens = await model.count_tokens(chunk_str)
+        pending_chunk = []
+        pending_chars = 0
+        return chunk_messages, chunk_texts, tokens
+
+    async for msg in source:
+        text = await messages_as_str([msg])
+        if not text:  # Skip empty renders (e.g. filtered system messages)
+            continue
+
+        if pending_chunk and pending_chars + len(text) > chunk_char_target:
+            chunk_messages, chunk_texts, tokens = await close_chunk()
+
+            if current_messages and running_tokens + tokens > effective_budget:
+                yield MessagesSegment(
+                    messages=current_messages,
+                    messages_str="\n".join(current_texts),
+                    segment=segment_counter,
+                )
+                segment_counter += 1
+                current_messages = []
+                current_texts = []
+                running_tokens = 0
+
+            current_messages.extend(chunk_messages)
+            current_texts.extend(chunk_texts)
+            running_tokens += tokens
+
+        pending_chunk.append((msg, text))
+        pending_chars += len(text)
+
+    # Flush the final pending chunk
+    if pending_chunk:
+        chunk_messages, chunk_texts, tokens = await close_chunk()
+
+        if current_messages and running_tokens + tokens > effective_budget:
+            yield MessagesSegment(
+                messages=current_messages,
+                messages_str="\n".join(current_texts),
+                segment=segment_counter,
+            )
+            segment_counter += 1
+            current_messages = []
+            current_texts = []
+            running_tokens = 0
+
+        current_messages.extend(chunk_messages)
+        current_texts.extend(chunk_texts)
+        running_tokens += tokens
+
+    # Yield the final segment
+    if current_messages:
+        yield MessagesSegment(
+            messages=current_messages,
+            messages_str="\n".join(current_texts),
+            segment=segment_counter,
+        )
+
+
 async def transcript_messages(
     transcript: "Transcript",
     *,

@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
 from inspect_scout._transcript.json.spool import BlobSpool, ItemSpool
 
 
@@ -78,3 +79,47 @@ def test_close_idempotent(tmp_path: Path) -> None:
     ispool = ItemSpool(tmp_path)
     ispool.close()
     ispool.close()
+
+
+def test_blob_spool_closed_guards_raise(tmp_path: Path) -> None:
+    spool = BlobSpool(tmp_path)
+    spool.put("k", "v")
+    spool.close()
+    with pytest.raises(ValueError, match="closed"):
+        spool.put("k2", "v2")
+    with pytest.raises(ValueError, match="closed"):
+        spool.get("k")
+
+
+def test_item_spool_closed_guards_raise(tmp_path: Path) -> None:
+    spool = ItemSpool(tmp_path)
+    spool.append({"n": 0})
+    spool.close()
+    with pytest.raises(ValueError, match="closed"):
+        spool.append({"n": 1})
+    with pytest.raises(ValueError, match="closed"):
+        list(spool.items())
+
+
+def test_item_spool_closed_mid_iteration_raises(tmp_path: Path) -> None:
+    """Closing between internal chunk-reads must also raise.
+
+    Not just resuming from an already-buffered chunk: items() reads in
+    256KiB chunks; pad each item so the first chunk read
+    yields exactly one item's worth of buffer, forcing a second internal
+    pread (which re-checks self._fd) to fetch the next item.
+    """
+    # Sized so the JSONL line (with trailing newline) for item 0 is exactly
+    # one 256KiB chunk -- item 0 is fully satisfied by the first pread, and
+    # fetching item 1 requires a second pread that re-checks self._fd.
+    chunk_size = 256 * 1024
+    prefix_len = len(json.dumps({"n": 0, "pad": ""}, separators=(",", ":"))) + 1
+    padded = "x" * (chunk_size - prefix_len)
+    spool = ItemSpool(tmp_path)
+    spool.append({"n": 0, "pad": padded})
+    spool.append({"n": 1})
+    it = spool.items()
+    assert next(it) == {"n": 0, "pad": padded}
+    spool.close()
+    with pytest.raises(ValueError, match="closed"):
+        next(it)

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Generator, Literal, cast
+from typing import Any, Generator, Literal, Protocol, cast
 
 from ijson import ObjectBuilder  # type: ignore
 from ijson.utils import coroutine as _ijson_coroutine  # type: ignore
@@ -26,7 +27,7 @@ METADATA_PREFIX = "metadata."
 
 
 def _should_skip(
-    filter_field_value: str, filter_list: None | Literal["all"] | list[str]
+    filter_field_value: str, filter_list: None | Literal["all"] | Sequence[str]
 ) -> bool:
     if filter_list is None:
         return True
@@ -39,7 +40,7 @@ def _should_skip(
 class ListProcessingConfig:
     array_item_prefix: str
     filter_field: str
-    filter_list: None | Literal["all"] | list[str]
+    filter_list: None | Literal["all"] | Sequence[str]
     filter_prefix: str = field(init=False)
 
     def __post_init__(self) -> None:
@@ -70,9 +71,20 @@ EventTuple = tuple[str, str, Any]
 CoroutineGen = Generator[None, EventTuple, None]
 
 
+class ItemSink(Protocol):
+    """Structural target for parsed items: anything with a list-like `append`.
+
+    `list[dict[str, Any]]` (used by `ParseState` fields) satisfies this
+    structurally; spooling sinks (see stream_parse.py) can implement it
+    directly without inheriting from `list`.
+    """
+
+    def append(self, item: dict[str, Any], /) -> None: ...
+
+
 @_ijson_coroutine  # type: ignore
 def _item_coroutine(
-    target_list: list[dict[str, Any]],
+    target_list: ItemSink,
     attachment_refs: set[str],
     config: ListProcessingConfig,
 ) -> CoroutineGen:  # pragma: no cover
@@ -143,7 +155,7 @@ def event_item_coroutine(
 
 @_ijson_coroutine  # type: ignore
 def _unfiltered_item_coroutine(
-    target_list: list[dict[str, Any]],
+    target_list: ItemSink,
     item_prefix: str,
 ) -> CoroutineGen:  # pragma: no cover
     """Collect items from the JSON stream without filtering."""
@@ -319,4 +331,5 @@ __all__ = [
     "EVENTS_DATA_MESSAGES_ITEM_PREFIX",
     "EVENTS_DATA_CALLS_ITEM_PREFIX",
     "METADATA_PREFIX",
+    "ItemSink",
 ]

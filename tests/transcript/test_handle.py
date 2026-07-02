@@ -260,6 +260,75 @@ async def test_spooled_handle_aclose_during_first_parse_does_not_leak(
         assert result.blobs._fd is None
 
 
+def _large_sample(n_messages: int) -> dict[str, Any]:
+    return {
+        "id": "t1",
+        "messages": [
+            {"id": f"m{i}", "role": "user", "content": f"message {i}"}
+            for i in range(n_messages)
+        ],
+        "events": [],
+        "attachments": {},
+    }
+
+
+@pytest.mark.asyncio
+async def test_spooled_handle_cancel_mid_stream_releases_fds(tmp_path: Path) -> None:
+    """Cancelling a mid-stream iterator then aclose() must release spool fds.
+
+    Iterate ``handle.messages()`` incrementally over a spool of ~200 messages,
+    cancel the task group after consuming only a few items (deterministically,
+    via a cancel scope -- no timing), then close the handle and assert every
+    spool fd is released. Mirrors the ``_fd is None`` inspection used by
+    ``test_spooled_handle_aclose_during_first_parse_does_not_leak``.
+    """
+    n_messages = 200
+    sample_bytes = json.dumps(_large_sample(n_messages)).encode()
+
+    async def parse() -> StreamParseResult:
+        return await stream_parse_to_spool(
+            io.BytesIO(sample_bytes), "all", None, tmp_path
+        )
+
+    async def fallback() -> Transcript:
+        raise AssertionError("fallback should not be called")
+
+    handle = SpooledTranscriptHandle(INFO, parse, fallback)
+
+    consumed: list[str | None] = []
+
+    async with anyio.create_task_group() as tg:
+
+        async def iterate_then_cancel() -> None:
+            async for message in handle.messages():
+                consumed.append(message.id)
+                if len(consumed) >= 3:
+                    # Deterministic cancellation once we've streamed a few
+                    # items -- the iterator is suspended mid-spool.
+                    tg.cancel_scope.cancel()
+                    return
+
+        tg.start_soon(iterate_then_cancel)
+
+    # We stopped well short of draining the spool.
+    assert 0 < len(consumed) < n_messages
+    assert consumed[:3] == ["m0", "m1", "m2"]
+
+    # The parse ran and produced a live result whose spool fds are open.
+    assert handle._result is not None
+    result = handle._result
+    assert result.messages._fd is not None
+
+    await handle.aclose()
+
+    # All spool fds released, nothing leaked.
+    assert result.messages._fd is None
+    assert result.events._fd is None
+    assert result.blobs._fd is None
+    assert handle._result is None
+    assert handle._closed is True
+
+
 @pytest.mark.asyncio
 async def test_spooled_handle_is_transcript_handle(tmp_path: Path) -> None:
     handle = _spooled_handle(tmp_path)

@@ -74,6 +74,8 @@ class MaterializedTranscriptHandle:
         self._load_fn = load_fn
         self._info = info
         self._transcript: Transcript | None = None
+        self._closed = False
+        self._lock = anyio.Lock()
 
     def __reduce__(self) -> NoReturn:
         raise TypeError(
@@ -85,8 +87,13 @@ class MaterializedTranscriptHandle:
         return self._info
 
     async def load(self) -> Transcript:
-        if self._transcript is None:
-            self._transcript = await self._load_fn()
+        if self._transcript is not None:
+            return self._transcript
+        async with self._lock:
+            if self._closed:
+                raise RuntimeError("TranscriptHandle is closed")
+            if self._transcript is None:
+                self._transcript = await self._load_fn()
         return self._transcript
 
     async def messages(self) -> AsyncIterator[ChatMessage]:
@@ -104,8 +111,8 @@ class MaterializedTranscriptHandle:
             yield event
 
     async def aclose(self) -> None:
-        """No-op: nothing to release for a materialized transcript."""
-        pass
+        """Marks the handle closed. No underlying resources to release."""
+        self._closed = True
 
     async def __aenter__(self) -> "MaterializedTranscriptHandle":
         return self
@@ -129,6 +136,8 @@ class SpooledTranscriptHandle:
         self._result: StreamParseResult | None = None
         self._fallback_transcript: Transcript | None = None
         self._transcript: Transcript | None = None
+        self._closed = False
+        self._lock = anyio.Lock()
 
     def __reduce__(self) -> NoReturn:
         raise TypeError(
@@ -141,16 +150,19 @@ class SpooledTranscriptHandle:
 
     async def _ensure_parsed(self) -> StreamParseResult | None:
         """Parse on first use (memoized). Returns None if the fallback was used."""
-        if self._result is not None:
+        async with self._lock:
+            if self._closed:
+                raise RuntimeError("TranscriptHandle is closed")
+            if self._result is not None:
+                return self._result
+            if self._fallback_transcript is not None:
+                return None
+            try:
+                self._result = await self._parse()
+            except ijson.JSONError:
+                self._fallback_transcript = await self._load_fallback()
+                return None
             return self._result
-        if self._fallback_transcript is not None:
-            return None
-        try:
-            self._result = await self._parse()
-        except ijson.JSONError:
-            self._fallback_transcript = await self._load_fallback()
-            return None
-        return self._result
 
     async def messages(self) -> AsyncIterator[ChatMessage]:
         result = await self._ensure_parsed()
@@ -183,6 +195,8 @@ class SpooledTranscriptHandle:
     async def load(self) -> Transcript:
         if self._transcript is not None:
             return self._transcript
+        if self._closed:
+            raise RuntimeError("TranscriptHandle is closed")
 
         result = await self._ensure_parsed()
         if result is None:
@@ -207,6 +221,7 @@ class SpooledTranscriptHandle:
         if self._result is not None:
             self._result.close()
             self._result = None
+        self._closed = True
 
     async def __aenter__(self) -> "SpooledTranscriptHandle":
         return self

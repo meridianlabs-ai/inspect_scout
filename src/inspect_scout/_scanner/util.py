@@ -6,7 +6,7 @@ from inspect_ai.event._base import BaseEvent
 from inspect_ai.model import ChatMessage, ChatMessageBase
 
 from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
-from inspect_scout._transcript.types import Transcript
+from inspect_scout._transcript.types import Transcript, TranscriptInfo
 
 
 def get_input_type_and_ids(
@@ -24,6 +24,8 @@ def get_input_type_and_ids(
     """
     if isinstance(loader_result, Transcript):
         return ("transcript", [loader_result.transcript_id])
+    elif isinstance(loader_result, TranscriptInfo):
+        return ("transcript_handle", [loader_result.transcript_id])
     elif isinstance(loader_result, ChatMessageBase):
         return ("message", [_message_id(loader_result)])
     elif isinstance(loader_result, BaseEvent):

@@ -11,6 +11,7 @@ from inspect_scout._query.condition_sql import conditions_as_filter
 from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_DATABASE
 
+from ..handle import TranscriptHandle
 from ..transcripts import TranscriptsReader
 from ..types import Transcript, TranscriptContent, TranscriptInfo
 from .database import TranscriptsView
@@ -71,6 +72,29 @@ class TranscriptsViewReader(TranscriptsReader):
             Full Transcript with content.
         """
         return await self._view.read(transcript, content)
+
+    @override
+    async def open(
+        self, transcript: TranscriptInfo, content: TranscriptContent
+    ) -> TranscriptHandle:
+        """Open a streaming handle to transcript content.
+
+        Delegates to the underlying `TranscriptsView`, which decides between
+        a spooled and a materialized handle (e.g. `ParquetTranscriptsDB.open`
+        spools when content size exceeds `SPOOL_THRESHOLD_BYTES`). Without
+        this override, the inherited `TranscriptsReader.open()` default would
+        always materialize, silently preventing database-backed transcripts
+        from ever streaming.
+
+        Args:
+            transcript: TranscriptInfo identifying the transcript.
+            content: Filter for which messages/events to load.
+
+        Returns:
+            TranscriptHandle: Async context manager providing streaming
+                access to the transcript's messages/events.
+        """
+        return await self._view.open(transcript, content)
 
     @override
     async def snapshot(self) -> ScanTranscripts:

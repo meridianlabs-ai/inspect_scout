@@ -17,14 +17,12 @@ from inspect_scout._transcript.util import union_transcript_contents
 
 def test_input_type_for_transcript_info() -> None:
     info = TranscriptInfo(transcript_id="t1")
-    assert get_input_type_and_ids(info) == ("transcript_handle", ["t1"])
+    assert get_input_type_and_ids(info) == ("transcript_info", ["t1"])
 
 
 def test_serialize_input_info_only() -> None:
     info = TranscriptInfo(transcript_id="t1", source_id="e1")
-    input_json, input_data = _serialize_input(
-        info, "transcript_handle", pool_dedup=True
-    )
+    input_json, input_data = _serialize_input(info, "transcript_info", pool_dedup=True)
     assert input_data is None
     assert '"transcript_id":"t1"' in input_json.replace(" ", "")
     assert "messages" not in input_json  # no content fields serialized
@@ -62,7 +60,7 @@ async def test_scan_one_with_handle_scanner(tmp_path: Path) -> None:
     job = ScannerJob(union_transcript=handle, scanner=s, scanner_name="hs")
     reports = await _scan_one(job, validation=None, fail_on_error=True)
     assert len(reports) == 1
-    assert reports[0].input_type == "transcript_handle"
+    assert reports[0].input_type == "transcript_info"
     assert reports[0].input == info  # info only, no content
 
 

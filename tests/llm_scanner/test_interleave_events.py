@@ -582,3 +582,11 @@ async def test_final_score_lands_in_last_chunk_when_split() -> None:
     assert len(captured) >= 2
     assert sum("[E1] SCORE" in c for c in captured) == 1
     assert "[E1] SCORE" in captured[-1]
+
+
+def test_interleave_primitives_shared_with_transcript() -> None:
+    from inspect_scout._llm_scanner import interleave as scanner_mod
+    from inspect_scout._transcript import interleave as transcript_mod
+
+    assert scanner_mod._AnchorWalk is transcript_mod._AnchorWalk
+    assert scanner_mod.EventsSpec is transcript_mod.EventsSpec

@@ -220,7 +220,7 @@ def _serialize_input(
 
     For "transcript" type (full Transcript object), events may be condensed and
     pooled separately if pool_dedup is True, returning event data in the second tuple element.
-    For "transcript_handle" (TranscriptInfo only) and other input types, returns None as the
+    For "transcript_info" (TranscriptInfo only) and other input types, returns None as the
     second element since no special pooling applies.
 
     Returns:

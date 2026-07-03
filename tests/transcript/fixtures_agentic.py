@@ -26,6 +26,7 @@ from inspect_ai.event import (
 )
 from inspect_ai.model import (
     ChatCompletionChoice,
+    ChatMessage,
     ChatMessageAssistant,
     ChatMessageSystem,
     ChatMessageUser,
@@ -59,6 +60,7 @@ def _model_event(
     output_text: str,
     tool_call: ToolCall | None = None,
     span_id: str | None,
+    input_messages: list[ChatMessage] | None = None,
 ) -> ModelEvent:
     """Build a ModelEvent with a distinct uuid and final assistant text.
 
@@ -70,6 +72,12 @@ def _model_event(
         tool_call: If given, attached as a tool call on the assistant
             message's output (drives `_has_tool_calls`).
         span_id: Span the event belongs to (None for root-level).
+        input_messages: If given, used verbatim as the event's ``input``
+            instead of the default ``[System(system_prompt), User(...)]``.
+            Used to construct precise trim-compaction overlaps (see the
+            ``pre-trim``/``post-trim`` events). Any supplied list must
+            still contain a ``ChatMessageSystem`` so ``timeline_build``'s
+            ``_get_system_prompt_for_event`` classification is unchanged.
 
     Returns:
         A fully constructed ModelEvent.
@@ -85,7 +93,9 @@ def _model_event(
         completed=ts,
         uuid=_uuid(label),
         model="mockllm/model",
-        input=[
+        input=input_messages
+        if input_messages is not None
+        else [
             ChatMessageSystem(content=system_prompt),
             ChatMessageUser(content=f"user-input-{label}"),
         ],
@@ -424,13 +434,34 @@ def agentic_events(*, big_payload: str = "x" * 200) -> list[Event]:
     )
 
     # --- compaction: "trim" with ModelEvents before/after (exercises the
-    # trim-first-event rule) ---
+    # trim-first-event rule).
+    #
+    # A trim compaction drops a *prefix* of the conversation. For
+    # `span_messages(compaction="all")` to reconstruct that dropped prefix
+    # (`_trim_prefix`, messages.py), the pre-trim event's input must contain
+    # leading messages that are ABSENT from the head of the post-trim event's
+    # input, and the post-trim input must START with a message shared with
+    # (i.e. found later in) the pre-trim input so the two can be aligned.
+    #
+    # Here `trim-shared` is the alignment anchor: it is the FIRST message of
+    # post-trim and the THIRD message of pre-trim, so `_trim_prefix` returns
+    # pre-trim's first two messages (`System("MAIN")` + `User("trim-dropped")`)
+    # as the trimmed prefix. `trim-dropped` is a distinctive marker that lets
+    # tests assert the prefix was actually reconstructed. Both events still
+    # carry a `System("MAIN")` message so `_get_system_prompt_for_event`
+    # classification is identical to their siblings.
+    trim_shared = ChatMessageUser(content="trim-shared-anchor")
     events.append(
         _model_event(
             label="pre-trim",
             system_prompt="MAIN",
             output_text="pre-trim-output",
             span_id="main",
+            input_messages=[
+                ChatMessageSystem(content="MAIN"),
+                ChatMessageUser(content="trim-dropped-marker"),
+                trim_shared,
+            ],
         )
     )
     events.append(
@@ -442,6 +473,11 @@ def agentic_events(*, big_payload: str = "x" * 200) -> list[Event]:
             system_prompt="MAIN",
             output_text="post-trim-output",
             span_id="main",
+            input_messages=[
+                trim_shared,
+                ChatMessageSystem(content="MAIN"),
+                ChatMessageUser(content="user-input-post-trim"),
+            ],
         )
     )
 

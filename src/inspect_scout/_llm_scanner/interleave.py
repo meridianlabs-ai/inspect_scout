@@ -55,6 +55,18 @@ def interleave_events(
     ``span_messages`` (honoring ``compaction``) and events are spliced into
     the reconstructed thread.
 
+    Warning:
+        The events-only reconstruction (``span_messages``) assumes a single
+        linear conversation: it keeps only the region-last ``ModelEvent``
+        per compaction region, and nested ``ToolEvent.events`` subagents are
+        not walked. With multiple parallel agents (or tool-spawned
+        subagents), this silently drops every agent but the last. Such
+        transcripts must go through the timeline machinery instead (see
+        ``inspect_scout._transcript.timeline`` / ``timeline_stream``), which
+        reconstructs per-span segments so every agent is visible.
+        ``llm_scanner`` routes events-only transcripts there automatically
+        and never reaches this fallback for multi-agent input.
+
     Args:
         transcript: Transcript providing messages and events.
         events: Which event types to interleave (``"all"`` or a list).
@@ -103,6 +115,18 @@ async def stream_interleave_events(
     already carries the region's conversation — the thread itself), plus a
     small op log of output-message ids and rendered entries so anchors
     resolve against the reconstructed thread in event order.
+
+    Warning:
+        The events-only reconstruction above assumes a single linear
+        conversation: keeping only the region-last ``ModelEvent`` per
+        compaction region silently drops every agent but the last when
+        multiple parallel agents are present, and nested
+        ``ToolEvent.events`` subagents are never walked. Such transcripts
+        must go through the timeline machinery instead (see
+        ``inspect_scout._transcript.timeline_stream.stream_timeline_messages``),
+        which reconstructs per-span segments so every agent is visible.
+        ``llm_scanner`` routes events-only transcripts there automatically
+        and never reaches this fallback for multi-agent input.
     """
     message_ids = [_message_id(m) async for m in handle.messages()]
     types = None if events == "all" else ["model", "compaction", *events]

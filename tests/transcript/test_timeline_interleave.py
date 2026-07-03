@@ -10,7 +10,9 @@ from inspect_ai.event import (
     ErrorEvent,
     Event,
     ModelEvent,
+    SampleLimitEvent,
     ScoreEvent,
+    Timeline,
     TimelineEvent,
     TimelineSpan,
 )
@@ -18,8 +20,9 @@ from inspect_ai.log import EvalError
 from inspect_ai.model import ChatMessage, ChatMessageUser, ModelOutput, get_model
 from inspect_ai.scorer import Score
 from inspect_scout._scanner.extract import message_numbering
-from inspect_scout._transcript.messages import segment_messages
+from inspect_scout._transcript.messages import segment_messages, transcript_messages
 from inspect_scout._transcript.timeline import TimelineMessages, timeline_messages
+from inspect_scout._transcript.types import Transcript
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -43,6 +46,52 @@ def _span(span_id: str, name: str, events: list[Event]) -> TimelineSpan:
         span_type="agent",
         content=[TimelineEvent.model_construct(type="event", event=e) for e in events],
     )
+
+
+def _span_of(
+    span_id: str,
+    name: str,
+    content: list[Event | TimelineSpan],
+    *,
+    span_type: str | None = "agent",
+) -> TimelineSpan:
+    """Like ``_span`` but accepts a mix of events and nested spans, and a span_type."""
+    items: list[TimelineEvent | TimelineSpan] = [
+        item
+        if isinstance(item, TimelineSpan)
+        else TimelineEvent.model_construct(type="event", event=item)
+        for item in content
+    ]
+    return TimelineSpan(id=span_id, name=name, span_type=span_type, content=items)
+
+
+async def _collect_transcript(
+    root: TimelineSpan,
+    *,
+    events: list[str] | str | None,
+    include_scorers: bool = False,
+    context_window: int = 10_000,
+) -> tuple[list[TimelineMessages], str]:
+    """Drive segments through transcript_messages() (exercises the collector)."""
+    transcript = Transcript(
+        transcript_id="t1",
+        timelines=[Timeline(name="Default", description="", root=root)],
+    )
+    msgs_as_str, _ = message_numbering()
+    model = get_model("mockllm/model")
+    results: list[TimelineMessages] = []
+    async for seg in transcript_messages(
+        transcript,
+        messages_as_str=msgs_as_str,
+        model=model,
+        context_window=context_window,
+        events=events,  # type: ignore[arg-type]
+        include_scorers=include_scorers,
+    ):
+        assert isinstance(seg, TimelineMessages)
+        results.append(seg)
+    combined = "\n".join(r.messages_str for r in results)
+    return results, combined
 
 
 async def _collect(
@@ -291,3 +340,108 @@ async def test_span_external_prepend_and_append() -> None:
     # Trailing entry lands after span-b's own messages.
     assert re.search(r"\[M\d+\].*\[E2\] TRAILING TEXT", span_b_text, re.DOTALL)
     assert "LEADING TEXT" not in span_b_text
+
+
+# ---------------------------------------------------------------------------
+# collect_span_external() via transcript_messages() (Task 3)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_scorers_span_score_event_attaches_to_last_scannable_span() -> None:
+    """A pruned `scorers` span's ScoreEvent surfaces after the last real span.
+
+    The scorers span also contains a grader ModelEvent, which must not
+    become its own thread (the span is pruned, by default).
+    """
+    out_a = ModelOutput.from_content(model="mockllm", content="answer-a")
+    span_a = _span_of(
+        "span-a", "agent-a", [_model_event([ChatMessageUser(content="qa")], out_a)]
+    )
+    grader_out = ModelOutput.from_content(model="mockllm", content="grader assessment")
+    grader_event = _model_event([ChatMessageUser(content="grade this")], grader_out)
+    score = ScoreEvent(score=Score(value=1), scorer="match")
+    scorers_span = _span_of(
+        "span-scorers", "scorers", [grader_event, score], span_type="scorers"
+    )
+    root = _span_of("root", "root", [span_a, scorers_span], span_type=None)
+
+    results, combined = await _collect_transcript(root, events=["score"])
+
+    assert len(results) == 1
+    assert results[0].span.id == "span-a"
+    assert re.search(r"answer-a.*\[E1\] SCORE \(match\)", combined, re.DOTALL)
+    # The grader's model call never becomes its own rendered thread.
+    assert "grader assessment" not in combined
+    assert "grade this" not in combined
+
+
+@pytest.mark.anyio
+async def test_root_level_event_between_spans_attaches_to_earlier_span() -> None:
+    """A root-level event between two scannable spans attaches to the earlier one."""
+    out_a = ModelOutput.from_content(model="mockllm", content="answer-a")
+    span_a = _span_of(
+        "span-a", "agent-a", [_model_event([ChatMessageUser(content="qa")], out_a)]
+    )
+    limit_event = SampleLimitEvent(type="operator", message="stopped early")
+    out_b = ModelOutput.from_content(model="mockllm", content="answer-b")
+    span_b = _span_of(
+        "span-b", "agent-b", [_model_event([ChatMessageUser(content="qb")], out_b)]
+    )
+    root = _span_of("root", "root", [span_a, limit_event, span_b], span_type=None)
+
+    results, _ = await _collect_transcript(root, events=["sample_limit"])
+
+    assert len(results) == 2
+    span_a_text = results[0].messages_str
+    span_b_text = results[1].messages_str
+
+    assert "LIMIT (operator): stopped early" in span_a_text
+    assert "LIMIT" not in span_b_text
+
+
+@pytest.mark.anyio
+async def test_event_before_any_scannable_span_leads_first_span() -> None:
+    """A root-level event before any scannable span leads the first span."""
+    limit_event = SampleLimitEvent(type="operator", message="pre-existing limit")
+    out_a = ModelOutput.from_content(model="mockllm", content="answer-a")
+    span_a = _span_of(
+        "span-a", "agent-a", [_model_event([ChatMessageUser(content="qa")], out_a)]
+    )
+    root = _span_of("root", "root", [limit_event, span_a], span_type=None)
+
+    results, _ = await _collect_transcript(root, events=["sample_limit"])
+
+    assert len(results) == 1
+    assert re.match(
+        r"\[E1\] LIMIT \(operator\): pre-existing limit", results[0].messages_str
+    )
+
+
+@pytest.mark.anyio
+async def test_include_scorers_true_renders_grader_thread_and_score_once() -> None:
+    """include_scorers=True: grader thread renders AND score interleaves, once."""
+    out_a = ModelOutput.from_content(model="mockllm", content="answer-a")
+    span_a = _span_of(
+        "span-a", "agent-a", [_model_event([ChatMessageUser(content="qa")], out_a)]
+    )
+    grader_out = ModelOutput.from_content(model="mockllm", content="grader assessment")
+    grader_event = _model_event([ChatMessageUser(content="grade this")], grader_out)
+    score = ScoreEvent(score=Score(value=1), scorer="match")
+    scorers_span = _span_of(
+        "span-scorers", "scorers", [grader_event, score], span_type="scorers"
+    )
+    root = _span_of("root", "root", [span_a, scorers_span], span_type=None)
+
+    results, combined = await _collect_transcript(
+        root, events=["score"], include_scorers=True
+    )
+
+    # Both the agent span and the scorers span (now unpruned) render.
+    assert len(results) == 2
+    assert results[1].span.id == "span-scorers"
+    # The grader's model call now renders as its own thread.
+    assert "grader assessment" in combined
+    # The score entry appears exactly once (spliced into the scorers
+    # span's own thread) -- not doubled by external collection.
+    assert combined.count("SCORE (match)") == 1

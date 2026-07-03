@@ -27,6 +27,7 @@ from inspect_ai.tool import ToolInfo
 from inspect_scout._scanner.extract import MessagesAsStr
 
 if TYPE_CHECKING:
+    from inspect_scout._transcript.interleave import EventsSpec
     from inspect_scout._transcript.types import Transcript
 
 DEFAULT_CONTEXT_WINDOW = 128_000
@@ -377,6 +378,7 @@ async def transcript_messages(
     depth: int | None = None,
     include_scorers: bool = False,
     prompt_reserve: int | float = 0.2,
+    events: EventsSpec | None = None,
 ) -> AsyncIterator[MessagesSegment]:
     """Yield pre-rendered message segments from a transcript.
 
@@ -422,6 +424,16 @@ async def transcript_messages(
             margin). Default ``0.2`` leaves 80% of the window for
             messages. Forwarded to ``segment_messages()`` /
             ``timeline_messages()``.
+        events: Which non-message event types to interleave into each
+            span's message thread as marked entries (``"all"``, a
+            list of event types, or ``None`` to disable interleaving).
+            Only affects the timeline path. When set, span-external
+            events (events outside any scannable span's direct
+            content, e.g. root-level events or a pruned ``scorers``
+            span's events) are collected from the unpruned timeline
+            via ``collect_span_external()`` before the ``scorers``
+            prune, then forwarded to ``timeline_messages()`` alongside
+            ``events`` so they are spliced into the appropriate span.
 
     Yields:
         ``MessagesSegment`` (or ``TimelineMessages``) for each segment.
@@ -453,6 +465,24 @@ async def transcript_messages(
         else:
             selected = timelines[0]
 
+        span_external: dict[str, list[tuple[str, str]]] | None = None
+        if events is not None:
+            from inspect_scout._transcript.interleave import collect_span_external
+
+            # See collect_span_external()'s docstring for why the
+            # scorers span is included here when it will be pruned
+            # below (its events must be collected before they're lost)
+            # but filtered out here when it will survive pruning (its
+            # events are instead spliced in directly as an ordinary
+            # scannable span, and collecting them here too would
+            # double-render them).
+            collection_source = (
+                timeline_filter(selected, lambda s: s.span_type != "scorers")
+                if include_scorers
+                else selected
+            )
+            span_external = collect_span_external(collection_source, events)
+
         if not include_scorers:
             selected = timeline_filter(selected, lambda s: s.span_type != "scorers")
 
@@ -464,6 +494,8 @@ async def transcript_messages(
             compaction=compaction,
             depth=depth,
             prompt_reserve=prompt_reserve,
+            events=events,
+            span_external=span_external,
         ):
             yield timeline_seg  # type: ignore[misc]
     else:

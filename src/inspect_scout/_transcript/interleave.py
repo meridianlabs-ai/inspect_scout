@@ -3,7 +3,7 @@
 from collections import defaultdict
 from typing import Literal
 
-from inspect_ai.event import Event, ModelEvent, TimelineEvent, TimelineSpan
+from inspect_ai.event import Event, ModelEvent, Timeline, TimelineEvent, TimelineSpan
 from inspect_ai.model import ChatMessage, ChatMessageUser
 
 from .._scanner.extract import EVENT_MARKER_KEY
@@ -143,3 +143,106 @@ def span_interleaved_messages(
         for event_id, text in walk.anchored.get(index, []):
             result.append(_event_message(event_id, text))
     return result
+
+
+def _span_has_direct_model_event(span: TimelineSpan) -> bool:
+    return any(
+        isinstance(item, TimelineEvent) and isinstance(item.event, ModelEvent)
+        for item in span.content
+    )
+
+
+def _collect_span_external(
+    span: TimelineSpan,
+    events: EventsSpec,
+    *,
+    last_scannable: str | None,
+    in_scorers: bool,
+    external: dict[str, list[tuple[str, str]]],
+) -> str | None:
+    """Depth-first helper for ``collect_span_external``; see its docstring."""
+    span_in_scorers = in_scorers or span.span_type == "scorers"
+    is_scannable = (
+        not span_in_scorers and not span.utility and _span_has_direct_model_event(span)
+    )
+    if is_scannable:
+        last_scannable = span.id
+
+    for item in span.content:
+        if isinstance(item, TimelineEvent):
+            if is_scannable:
+                continue  # owned by this span's own splice (span_interleaved_messages)
+            text = _interleavable_text(item.event, events)
+            if text is not None:
+                key = last_scannable if last_scannable is not None else ""
+                external[key].append((_event_id(item.event), text))
+        else:
+            last_scannable = _collect_span_external(
+                item,
+                events,
+                last_scannable=last_scannable,
+                in_scorers=span_in_scorers,
+                external=external,
+            )
+    return last_scannable
+
+
+def collect_span_external(
+    timeline: Timeline | TimelineSpan, events: EventsSpec
+) -> dict[str, list[tuple[str, str]]]:
+    """Collect span-external interleavable events from the unpruned timeline.
+
+    Companion to ``span_interleaved_messages()``: that function splices
+    events that live in a scannable span's own direct content; this
+    function walks the *whole* tree (spans and their ``TimelineEvent``
+    content, depth-first, in document order) to find every
+    interleavable event that is NOT owned by such a splice -- because
+    it sits in a utility span, a pure container span, root level, or a
+    ``scorers`` span -- and attributes each one to the most recently
+    reached scannable span (or the reserved key ``""`` if none has
+    been reached yet). The result is meant to be passed as
+    ``timeline_messages(..., span_external=...)``.
+
+    A span is scannable for this purpose when it is not a utility
+    span, has at least one direct ``ModelEvent``, and is not a
+    ``scorers`` span. ``scorers`` spans (and, recursively, all of
+    their descendants regardless of the descendants' own type) are
+    always treated as non-scannable here, even though a ``scorers``
+    span containing a grader ``ModelEvent`` would otherwise satisfy
+    the plain scannable predicate used by ``_walk_spans``. This is
+    deliberate: ``transcript_messages`` calls this collector on the
+    *unpruned* timeline before pruning the ``scorers`` span away (the
+    default, ``include_scorers=False``), so a ``scorers`` span's
+    events (e.g. the final ``ScoreEvent``) must be collected here or
+    they would be silently lost -- they would otherwise look "owned"
+    by a per-span splice that will never run, because the span is
+    pruned before ``timeline_messages`` ever walks it.
+
+    When ``include_scorers=True`` the ``scorers`` span is *not*
+    pruned and IS walked as an ordinary scannable span by
+    ``timeline_messages`` (whose ``_walk_spans`` predicate is not
+    ``scorers``-aware), so its events are spliced in directly by
+    ``span_interleaved_messages`` instead. To avoid double-rendering
+    in that case, callers must invoke this collector on a copy of the
+    timeline with ``scorers`` spans filtered out (e.g. via
+    ``timeline_filter``) rather than relying on a flag here --
+    keeping this function's behavior a pure, unconditional function of
+    the tree it is given.
+
+    Args:
+        timeline: The (unpruned, or selectively pre-filtered by the
+            caller) timeline or span subtree to walk.
+        events: Which event types to interleave (``"all"`` or a list),
+            passed through to ``_interleavable_text``.
+
+    Returns:
+        Mapping of scannable span id (or ``""`` for events preceding
+        the first scannable span) to a list of ``(event_id,
+        rendered_text)`` entries, in document order.
+    """
+    root = timeline.root if isinstance(timeline, Timeline) else timeline
+    external: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    _collect_span_external(
+        root, events, last_scannable=None, in_scorers=False, external=external
+    )
+    return dict(external)

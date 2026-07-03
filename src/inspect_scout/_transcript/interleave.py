@@ -219,15 +219,23 @@ def collect_span_external(
     pruned before ``timeline_messages`` ever walks it.
 
     When ``include_scorers=True`` the ``scorers`` span is *not*
-    pruned and IS walked as an ordinary scannable span by
+    pruned, but it is only walked as an ordinary scannable span by
     ``timeline_messages`` (whose ``_walk_spans`` predicate is not
-    ``scorers``-aware), so its events are spliced in directly by
-    ``span_interleaved_messages`` instead. To avoid double-rendering
-    in that case, callers must invoke this collector on a copy of the
-    timeline with ``scorers`` spans filtered out (e.g. via
-    ``timeline_filter``) rather than relying on a flag here --
-    keeping this function's behavior a pure, unconditional function of
-    the tree it is given.
+    ``scorers``-aware) when it has a direct ``ModelEvent`` -- in that
+    case its events are spliced in directly by
+    ``span_interleaved_messages`` instead, and must not also be
+    collected here or they would be double-rendered. A ``scorers``
+    span with no direct ``ModelEvent`` (e.g. a non-model-graded
+    scorer such as ``match`` or ``includes``) is never walked by
+    ``_walk_spans`` regardless of ``include_scorers``, so it must
+    remain in the tree passed here or its events (e.g. the final
+    ``ScoreEvent``) would be silently lost. Callers therefore must
+    invoke this collector on a copy of the timeline with only those
+    ``scorers`` spans that have a direct ``ModelEvent`` filtered out
+    (e.g. via ``timeline_filter`` combined with
+    ``_span_has_direct_model_event``) rather than filtering out every
+    ``scorers`` span -- keeping this function's behavior a pure,
+    unconditional function of the tree it is given.
 
     Args:
         timeline: The (unpruned, or selectively pre-filtered by the

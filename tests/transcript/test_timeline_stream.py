@@ -290,7 +290,7 @@ def test_trim_at_span_end_does_not_over_select() -> None:
     ).model_copy(update={"uuid": None})
     trim_event = _compaction_event(label="trim", type="trim", span_id=None)
 
-    span_events = [model_1, model_2_no_uuid, trim_event]
+    span_events: list[Event] = [model_1, model_2_no_uuid, trim_event]
 
     # Selection must not raise _StubSkeletonUnsupported on the uuid-less pre-trim event
     # (it should not try to add it at all, since no ModelEvent follows to consume it).

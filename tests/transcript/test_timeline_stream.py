@@ -158,6 +158,65 @@ def test_stub_tree_matches_full_tree_structure() -> None:
     assert "z" * 1000 not in handoff_span.model_dump_json()
 
 
+def test_stub_preserves_warmup_signal() -> None:
+    """Finding 1: stubbing must not destroy the warmup/cache-priming signal.
+
+    ``_wrap_utility_events`` wraps warmup calls (detected by
+    ``_is_warmup_call``: ``config.max_tokens <= 1`` plus a single-word
+    trailing ``ChatMessageUser`` content) as utility spans. Reducing a
+    ``ModelEvent`` stub's ``input`` to system messages only would destroy
+    that signal, so a stubbed warmup call would classify differently from
+    the materialized one -- inflating ``_is_single_turn`` counts and
+    potentially shifting region-last selection.
+
+    ``_is_warmup_call`` is the exact classifier ``timeline_build`` reads, so
+    assert directly that the stub preserves its verdict (and the other two
+    per-event signals ``_wrap_utility_events`` reads) for a warmup event
+    carrying bulk user content, while stripping that bulk.
+
+    (A full ``timeline_build`` over a warmup-containing agent span is not
+    exercised here because the upstream ``_wrap_utility_events`` recurses
+    into the utility wrapper it creates and re-detects the same warmup call,
+    recursing without bound -- a pre-existing ``inspect_ai`` bug that
+    crashes the *materialized* build identically to the stub build, so it is
+    orthogonal to stub fidelity. The signal-level assertions below are the
+    property the stubbing contract must uphold.)
+    """
+    from inspect_ai.event._timeline import _is_warmup_call
+    from inspect_ai.model import ChatMessageUser, GenerateConfig
+    from inspect_scout._transcript.timeline_stream import _PromptInterner, stub_event
+
+    # A warmup event built locally: max_tokens=1, single-word trailing user
+    # content, but with a leading bulk user turn that must not survive
+    # stubbing. `_is_warmup_call` keys on the *last* ChatMessageUser's
+    # single-word content, so the trailing "warmup" turn drives detection.
+    base = _last_model_event(agentic_events())
+    warmup = base.model_copy(
+        update={
+            "uuid": "evt-warmup-local",
+            "input": [
+                ChatMessageSystem(content="MAIN"),
+                ChatMessageUser(content="bulk conversation " + "w" * 100_000),
+                ChatMessageUser(content="warmup"),
+            ],
+            "config": GenerateConfig(max_tokens=1),
+        }
+    )
+    # Sanity: this really is a warmup call, and it carries strippable bulk.
+    assert _is_warmup_call(warmup)
+
+    stub = stub_event(warmup, _PromptInterner())
+    assert isinstance(stub, ModelEvent)
+
+    # The three per-event signals `_wrap_utility_events` reads are preserved.
+    assert _is_warmup_call(stub) == _is_warmup_call(warmup) is True
+    assert _get_system_prompt_for_event(stub) == _get_system_prompt_for_event(warmup)
+    assert _has_tool_calls(stub) == _has_tool_calls(warmup)
+
+    # Bulk user content did not survive stubbing.
+    assert "w" * 1000 not in stub.model_dump_json()
+
+
 def _blank_model_event(event: ModelEvent) -> ModelEvent:
     """Blank the content ``span_messages`` reads, preserving classification.
 

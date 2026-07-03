@@ -52,7 +52,7 @@ def test_scan_e2e_through_streaming_seam(monkeypatch: pytest.MonkeyPatch) -> Non
     limit = 2
 
     # Force the eval_log backend to choose the spooled path for every file.
-    monkeypatch.setattr("inspect_scout._util.constants.STREAMING_THRESHOLD_BYTES", 0)
+    monkeypatch.setattr("inspect_scout._util.constants.SPOOL_THRESHOLD_BYTES", 0)
 
     # Spy on SpooledTranscriptHandle create/close without re-implementing the
     # counter: wrap __init__ and aclose with per-instance counters.
@@ -137,7 +137,7 @@ def test_scan_e2e_single_handle_scanner_fallback(
     at 1 and the single job's completion closes the handle.
     """
     limit = 2
-    monkeypatch.setattr("inspect_scout._util.constants.STREAMING_THRESHOLD_BYTES", 0)
+    monkeypatch.setattr("inspect_scout._util.constants.SPOOL_THRESHOLD_BYTES", 0)
 
     created: list[handle_mod.SpooledTranscriptHandle] = []
     close_counts: dict[int, int] = {}

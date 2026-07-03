@@ -32,7 +32,7 @@ from .._transcript.handle import (
 )
 from .._transcript.messages import (
     _effective_segment_budget,
-    segment_messages_stream,
+    stream_segment_messages,
     transcript_messages,
 )
 from .._transcript.timeline import TimelineMessages
@@ -410,7 +410,7 @@ def llm_scanner(
             # always None. Only messages_str is passed into the closure so the
             # MessagesSegment isn't retained after start_soon.
             async def stream_source() -> AsyncIterator[tuple[str | None, str]]:
-                async for seg in segment_messages_stream(
+                async for seg in stream_segment_messages(
                     handle.messages(),
                     messages_as_str=messages_as_str_fn,
                     model=resolved_model,

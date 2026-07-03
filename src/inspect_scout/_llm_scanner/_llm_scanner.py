@@ -481,24 +481,31 @@ def llm_scanner(
         # Order matters for reduction (explanation concatenation, LLM synthesis
         # prompt assembly, majority tiebreak), so each result carries its
         # segment index and is sorted back into order before aggregation.
-        if handle is not None and content_has_events:
-            # Streaming events path: two-pass event streaming over the handle
-            # via stream_timeline_messages, yielding TimelineMessages segments
-            # (span ids reused for per-span grouping, exactly like the
-            # materialized timeline path). This branch wins over the flat
-            # `stream_interleave_events` branch below whenever the caller
-            # explicitly requested events content (`content_has_events`,
-            # captured at factory time from the caller's own `content=`
-            # before the factory's own `events=` augmentation) — i.e. the
-            # transcript-tab-with-spans shape. `events=` composes here: it is
-            # threaded straight through to `stream_timeline_messages`, which
-            # reconstructs per-span timelines and splices matching events
-            # into each span's own thread (span-external events attach to
-            # the last preceding span), exactly like the materialized
-            # timeline path.
+        async def stream_via_timeline(target: TranscriptHandle) -> Result:
+            """Streaming events path via `stream_timeline_messages`.
+
+            Two-pass streaming over `target`, yielding `TimelineMessages`
+            segments (span ids reused for per-span grouping, exactly like the
+            materialized timeline path). Reached either when the caller
+            explicitly requested events content (`content_has_events`) — the
+            transcript-tab-with-spans shape — or, from the flat events branch
+            below, whenever the handle turns out to carry no messages at all
+            (the events-only / transcript-tab-without-spans shape): multiple
+            parallel agents (and nested `ToolEvent.events` subagents) can
+            only be reconstructed correctly through this per-span machinery,
+            not the flat interleave below, which keeps only the
+            region-last `ModelEvent` per compaction region and would
+            silently drop every agent but the last one. `events=` composes
+            here: it is threaded straight through to `stream_timeline_messages`,
+            which reconstructs per-span timelines and splices matching events
+            into each span's own thread (span-external events attach to
+            the last preceding span), exactly like the materialized
+            timeline path.
+            """
+
             async def stream_timeline_source() -> AsyncIterator[tuple[str | None, str]]:
                 async for seg in stream_timeline_messages(
-                    handle,
+                    target,
                     messages_as_str=messages_as_str_fn,
                     model=resolved_model,
                     context_window=context_window,
@@ -525,10 +532,10 @@ def llm_scanner(
                 logger.info(
                     "Streaming events skeleton unsupported for transcript %s "
                     "(%s); falling back to materialized scan.",
-                    handle.info.transcript_id,
+                    target.info.transcript_id,
                     ex,
                 )
-                return await scan_materialized(await handle.load(), events=events)
+                return await scan_materialized(await target.load(), events=events)
             # Mirror the materialized path's `timeline=bool(...timelines)`
             # reduction flag: the handle carries events (not named timelines),
             # so info_transcript.timelines is empty — matching how the
@@ -541,13 +548,37 @@ def llm_scanner(
                 reducer=reducer,
             )
 
+        if handle is not None and content_has_events:
+            # Streaming events path: wins over the flat
+            # `stream_interleave_events` branch below whenever the caller
+            # explicitly requested events content (`content_has_events`,
+            # captured at factory time from the caller's own `content=`
+            # before the factory's own `events=` augmentation) — i.e. the
+            # transcript-tab-with-spans shape.
+            return await stream_via_timeline(handle)
+
         if handle is not None and events is not None:
+            # An events-only handle (no messages at all — the
+            # transcript-tab-without-spans shape) must also route through
+            # the timeline machinery above rather than the flat interleave
+            # below: probe cheaply (the multi-shot contract lets us call
+            # handle.messages() more than once) rather than assuming from
+            # content_has_events, since a caller can request `events=`
+            # interleaving without requesting `events` content.
+            has_messages = False
+            async for _ in handle.messages():
+                has_messages = True
+                break
+            if not has_messages:
+                return await stream_via_timeline(handle)
+
             # Flat streaming interleave path: three passes over the handle
             # (ids, anchor walk, splice) retaining only message ids and
             # rendered event text — never the bulk payloads. The spliced
             # stream then segments exactly like a plain message stream. Span
-            # id is always None (no timeline shape on this path — the branch
-            # above already claims handles that carry events content).
+            # id is always None (no timeline shape on this path — the
+            # branches above already claim handles that carry events content
+            # or no messages at all).
             async def stream_interleaved_source() -> AsyncIterator[
                 tuple[str | None, str]
             ]:
@@ -595,6 +626,7 @@ def llm_scanner(
         if (
             events is not None
             and has_interleavable_events(info_transcript, events)
+            and info_transcript.messages
             and not info_transcript.timelines
             and timeline is None
         ):
@@ -602,7 +634,13 @@ def llm_scanner(
 
             # Flat interleaved-events path: events are spliced into the
             # message list, then segmented like a plain message thread. No
-            # timeline, so span id is always None.
+            # timeline, so span id is always None. Only reached when the
+            # transcript carries top-level messages (a genuine flat/linear
+            # conversation) — an events-only transcript (no top-level
+            # messages) falls through to the branch below instead, since
+            # this reconstruction keeps only the region-last ModelEvent per
+            # compaction region and would silently drop every parallel agent
+            # but the last.
             async def interleaved_source() -> AsyncIterator[tuple[str | None, str]]:
                 async for seg in segment_messages(
                     spliced,
@@ -621,11 +659,19 @@ def llm_scanner(
                 reducer=reducer,
             )
 
-        if events is not None and (info_transcript.timelines or timeline is not None):
-            # Timeline-shaped materialized scan with events= set: thread
-            # events through transcript_messages(), which splices per-span
-            # (in-span events land in that span's own Result; span-external
-            # events, e.g. final scores, attach to the last preceding span).
+        if events is not None:
+            # Timeline-shaped or events-only materialized scan with events=
+            # set: thread events through transcript_messages(), which
+            # internally selects the timeline/events/messages strategy based
+            # on what's present on the transcript. For timeline-shaped data,
+            # events splice per-span (in-span events land in that span's own
+            # Result; span-external events, e.g. a final score, attach to the
+            # last preceding span). For an events-only transcript (no
+            # top-level messages), transcript_messages builds a synthetic
+            # timeline from the events and walks it the same way, so multiple
+            # parallel agents each get their own segment — unlike the flat
+            # interleave branch above. For a plain messages-only transcript,
+            # events= is inert (transcript_messages ignores it on that path).
             return await scan_materialized(info_transcript, events=events)
 
         return await scan_materialized(info_transcript)

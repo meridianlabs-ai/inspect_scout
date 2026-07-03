@@ -337,6 +337,122 @@ async def test_llm_scanner_events_only_scan_shows_thread_and_scores() -> None:
     assert re.search(r"\[M1\].*2\+2\?.*\[M2\].*\[E1\] SCORE", captured[0], re.DOTALL)
 
 
+def _two_agent_flat_events() -> list[Event]:
+    """Events-only, multi-agent flat event list (the Hawk "transcript tab" shape).
+
+    Two parallel agent spans, each with a single distinctive ModelEvent, plus
+    a root-level (span-external) score. Used by both the materialized and
+    streaming multi-agent regression tests below.
+    """
+    out_a = ModelOutput.from_content(model="mockllm", content="agent-a-answer")
+    out_b = ModelOutput.from_content(model="mockllm", content="agent-b-answer")
+    model_a = ModelEvent(
+        span_id="span-a",
+        model="mockllm",
+        input=[ChatMessageUser(content="agent-a-question")],
+        output=out_a,
+        role="assistant",
+        tools=[],
+        tool_choice="auto",
+        config=GenerateConfig(),
+    )
+    model_b = ModelEvent(
+        span_id="span-b",
+        model="mockllm",
+        input=[ChatMessageUser(content="agent-b-question")],
+        output=out_b,
+        role="assistant",
+        tools=[],
+        tool_choice="auto",
+        config=GenerateConfig(),
+    )
+    return [
+        SpanBeginEvent(
+            id="span-a", parent_id=None, type="agent", name="agent-a", span_id="span-a"
+        ),
+        SpanBeginEvent(
+            id="span-b", parent_id=None, type="agent", name="agent-b", span_id="span-b"
+        ),
+        model_a,
+        model_b,
+        SpanEndEvent(id="span-a", span_id="span-a"),
+        SpanEndEvent(id="span-b", span_id="span-b"),
+        ScoreEvent(scorer="match", score=Score(value="C")),
+    ]
+
+
+@pytest.mark.anyio
+async def test_events_only_multi_agent_renders_all_agents() -> None:
+    # Events-only transcript (messages=[], events present) with TWO parallel
+    # agent spans. The flat interleave reconstruction (span_messages) keeps
+    # only the region-last ModelEvent, so with multiple parallel agents only
+    # the last agent's turn survives -- agent A's question is silently
+    # dropped. The fix routes events-only transcripts through the timeline
+    # machinery instead, which builds one segment per agent span, so both
+    # agents (and the score) are visible across the captured prompts.
+    transcript = Transcript(
+        transcript_id="t", messages=[], events=_two_agent_flat_events()
+    )
+
+    captured: list[str] = []
+    scan = llm_scanner(
+        question="Right?",
+        answer="boolean",
+        model=_mock_model(captured),
+        events=["score"],
+    )
+    await scan(transcript)
+
+    combined = "\n".join(captured)
+    assert "agent-a-question" in combined
+    assert "agent-b-question" in combined
+    assert "SCORE" in combined
+
+
+@pytest.mark.anyio
+async def test_stream_events_only_multi_agent_renders_all_agents() -> None:
+    # Streaming twin of the above: a handle with NO messages and events for
+    # two parallel agents. Exercises the streaming flat-events branch's
+    # probe (handle.messages() is empty) rerouting into
+    # stream_timeline_messages instead of the flat stream_interleave_events
+    # reconstruction. ModelEvents get an auto-generated uuid from the
+    # regular constructor, so pass-2 substitution succeeds without
+    # materializing -- load() must never be called.
+    flat_events = _two_agent_flat_events()
+
+    class _NoLoadHandle(MaterializedTranscriptHandle):
+        async def messages(self, *, types: object = None) -> AsyncIterator[ChatMessage]:
+            no_messages: tuple[ChatMessage, ...] = ()
+            for message in no_messages:
+                yield message
+
+        async def events(self, *, types: object = None) -> AsyncIterator[Event]:
+            for e in flat_events:
+                yield e
+
+        async def load(self) -> Transcript:
+            raise AssertionError("streaming timeline interleave must not materialize")
+
+    async def load_fn() -> Transcript:
+        raise AssertionError("streaming timeline interleave must not materialize")
+
+    handle = _NoLoadHandle(load_fn, TranscriptInfo(transcript_id="t"))
+
+    captured: list[str] = []
+    scan = llm_scanner(
+        question="Right?",
+        answer="boolean",
+        model=_mock_model(captured),
+        events=["score"],
+    )
+    await scan(cast(Transcript, handle))
+
+    combined = "\n".join(captured)
+    assert "agent-a-question" in combined
+    assert "agent-b-question" in combined
+    assert "SCORE" in combined
+
+
 @pytest.mark.anyio
 async def test_stream_interleave_no_events_passthrough() -> None:
     transcript = Transcript(

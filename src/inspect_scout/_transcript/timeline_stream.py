@@ -315,6 +315,8 @@ def _needed_uuids_for_span(
     for event in events:
         if isinstance(event, ModelEvent):
             if pending_trim_pre is not None:
+                # Pre-trim input is read by `_trim_prefix` at this consumption point.
+                needed.add(_require_uuid(pending_trim_pre))
                 # `_trim_prefix` reads this (first post-trim) event's input.
                 needed.add(_require_uuid(event))
                 pending_trim_pre = None
@@ -326,8 +328,8 @@ def _needed_uuids_for_span(
                 current = []
             elif event.type == "trim":
                 if current:
-                    # Pre-trim input is read by `_trim_prefix`.
-                    needed.add(_require_uuid(current[-1]))
+                    # Save pre-trim event; only add to needed if a later ModelEvent
+                    # consumes it (mirrors span_messages' pending_trim_pre_input logic).
                     pending_trim_pre = current[-1]
                 current = []
             # edit: transparent, keep accumulating.

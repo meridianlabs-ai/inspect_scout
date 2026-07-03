@@ -27,9 +27,23 @@ from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 
 from .json.stream_parse import StreamParseResult, replay_events, replay_messages
-from .types import Transcript, TranscriptInfo
+from .types import EventFilter, MessageFilter, Transcript, TranscriptInfo
+from .util import _matches_filter
 
 _CHECKPOINT_INTERVAL = 64
+
+
+def _passes(item: ChatMessage | Event, types: MessageFilter | EventFilter) -> bool:
+    """Whether `item` passes an additional in-Python `types` filter.
+
+    Shared by both handle implementations and both iterator methods. A
+    ``types`` of ``None`` or ``"all"`` passes everything (the "no additional
+    narrowing" case); a sequence narrows on ``msg.role`` / ``event.event``
+    via the shared ``_matches_filter`` semantics.
+    """
+    if types is None or types == "all":
+        return True
+    return _matches_filter(item, types)
 
 
 @runtime_checkable
@@ -41,12 +55,34 @@ class TranscriptHandle(Protocol):
         """Transcript identifier, location, and metadata."""
         ...
 
-    def messages(self) -> AsyncIterator[ChatMessage]:
-        """Iterate messages. Multi-shot: may be called more than once."""
+    def messages(
+        self, *, types: MessageFilter | None = None
+    ) -> AsyncIterator[ChatMessage]:
+        """Iterate messages. Multi-shot: may be called more than once.
+
+        Args:
+            types: Additional message-type narrowing. Default ``None`` means
+                "everything the handle was opened with" (the content the
+                handle already carries, unchanged). Passing a non-None
+                ``types`` narrows further by filtering on ``msg.role``
+                (``"all"`` passes everything, like ``None``). Phase-2
+                columnar backends may push this down to storage; phase-1
+                filters post-hoc in Python.
+        """
         ...
 
-    def events(self) -> AsyncIterator[Event]:
-        """Iterate events. Multi-shot: may be called more than once."""
+    def events(self, *, types: EventFilter | None = None) -> AsyncIterator[Event]:
+        """Iterate events. Multi-shot: may be called more than once.
+
+        Args:
+            types: Additional event-type narrowing. Default ``None`` means
+                "everything the handle was opened with" (the content the
+                handle already carries, unchanged). Passing a non-None
+                ``types`` narrows further by filtering on ``event.event``
+                (``"all"`` passes everything, like ``None``). Phase-2
+                columnar backends may push this down to storage; phase-1
+                filters post-hoc in Python.
+        """
         ...
 
     async def load(self) -> Transcript:
@@ -93,19 +129,23 @@ class MaterializedTranscriptHandle:
                 self._transcript = await self._load_fn()
         return self._transcript
 
-    async def messages(self) -> AsyncIterator[ChatMessage]:
+    async def messages(
+        self, *, types: MessageFilter | None = None
+    ) -> AsyncIterator[ChatMessage]:
         transcript = await self.load()
         for i, message in enumerate(transcript.messages):
             if i % _CHECKPOINT_INTERVAL == 0:
                 await anyio.lowlevel.checkpoint()
-            yield message
+            if _passes(message, types):
+                yield message
 
-    async def events(self) -> AsyncIterator[Event]:
+    async def events(self, *, types: EventFilter | None = None) -> AsyncIterator[Event]:
         transcript = await self.load()
         for i, event in enumerate(transcript.events):
             if i % _CHECKPOINT_INTERVAL == 0:
                 await anyio.lowlevel.checkpoint()
-            yield event
+            if _passes(event, types):
+                yield event
 
     async def aclose(self) -> None:
         """Marks the handle closed. No underlying resources to release."""
@@ -161,33 +201,39 @@ class SpooledTranscriptHandle:
                 return None
             return self._result
 
-    async def messages(self) -> AsyncIterator[ChatMessage]:
+    async def messages(
+        self, *, types: MessageFilter | None = None
+    ) -> AsyncIterator[ChatMessage]:
         result = await self._ensure_parsed()
         if result is None:
             assert self._fallback_transcript is not None
             for i, message in enumerate(self._fallback_transcript.messages):
                 if i % _CHECKPOINT_INTERVAL == 0:
                     await anyio.lowlevel.checkpoint()
-                yield message
+                if _passes(message, types):
+                    yield message
             return
         for i, message in enumerate(replay_messages(result)):
             if i % _CHECKPOINT_INTERVAL == 0:
                 await anyio.lowlevel.checkpoint()
-            yield message
+            if _passes(message, types):
+                yield message
 
-    async def events(self) -> AsyncIterator[Event]:
+    async def events(self, *, types: EventFilter | None = None) -> AsyncIterator[Event]:
         result = await self._ensure_parsed()
         if result is None:
             assert self._fallback_transcript is not None
             for i, event in enumerate(self._fallback_transcript.events):
                 if i % _CHECKPOINT_INTERVAL == 0:
                     await anyio.lowlevel.checkpoint()
-                yield event
+                if _passes(event, types):
+                    yield event
             return
         for i, event in enumerate(replay_events(result)):
             if i % _CHECKPOINT_INTERVAL == 0:
                 await anyio.lowlevel.checkpoint()
-            yield event
+            if _passes(event, types):
+                yield event
 
     async def load(self) -> Transcript:
         if self._transcript is not None:

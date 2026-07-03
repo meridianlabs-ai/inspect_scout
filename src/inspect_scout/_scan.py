@@ -592,9 +592,10 @@ async def _scan_async_inner(
                 ) -> ParseFunctionResult:
                     try:
                         # Streaming is eligible when every scanner in this parse
-                        # job accepts handles, no timeline/events content is
-                        # required (phase 1: messages-only), and every scanner's
-                        # own content filter equals the union. The last
+                        # job accepts handles (events now stream via the
+                        # stub-skeleton path; only timeline content is excluded),
+                        # and every scanner's own content filter equals the
+                        # union. The last
                         # condition matters because streaming hands the shared
                         # union-filtered handle directly to each scanner,
                         # bypassing the per-scanner loader that would otherwise

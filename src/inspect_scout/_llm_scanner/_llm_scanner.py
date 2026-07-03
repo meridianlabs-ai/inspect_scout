@@ -1,4 +1,5 @@
 import sys
+from logging import getLogger
 from typing import Any, AsyncIterator, Awaitable, Callable, Literal, cast, overload
 
 import anyio
@@ -52,6 +53,8 @@ from .types import AnswerSpec
 
 if sys.version_info < (3, 11):
     from exceptiongroup import ExceptionGroup
+
+logger = getLogger(__name__)
 
 # Maximum number of segments scanned concurrently per transcript. Bounds
 # in-flight model calls (and hence retained segment memory) so a single
@@ -466,17 +469,23 @@ def llm_scanner(
 
             # The stub-skeleton streaming can surface _StubSkeletonUnsupported
             # lazily during segment iteration (uuid-less needed events, or a
-            # multi-shot contract violation). It propagates out of
-            # _scan_segments_bounded (which only returns a complete result list
-            # or raises — never partial results), so catching it here means no
-            # segment results have been recorded yet. On fallback we materialize
-            # the handle and re-run the full materialized path. scan_segment is
-            # an idempotent LLM call, so re-running is wasteful but correct.
+            # multi-shot contract violation). The raise happens in pass 1 --
+            # while building the stub skeleton and selecting needed uuids,
+            # before any segment is yielded and thus before scan_segment runs --
+            # so no LLM calls have been made when we catch it here. On fallback
+            # we materialize the handle and run the full materialized path from
+            # scratch; no scan work is duplicated.
             try:
                 results = await _scan_segments_bounded(
                     stream_timeline_source(), scan_segment
                 )
-            except _StubSkeletonUnsupported:
+            except _StubSkeletonUnsupported as ex:
+                logger.info(
+                    "Streaming events skeleton unsupported for transcript %s "
+                    "(%s); falling back to materialized scan.",
+                    handle.info.transcript_id,
+                    ex,
+                )
                 return await scan_materialized(await handle.load())
             # Mirror the materialized path's `timeline=bool(...timelines)`
             # reduction flag: the handle carries events (not named timelines),

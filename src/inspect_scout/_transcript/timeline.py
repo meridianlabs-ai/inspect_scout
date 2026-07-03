@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass
+from logging import getLogger
 from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
@@ -17,7 +18,6 @@ if TYPE_CHECKING:
     from inspect_scout._transcript.interleave import EventsSpec
 
 from inspect_ai.event import (
-    ModelEvent,
     Timeline,
     TimelineEvent,
     TimelineSpan,
@@ -34,6 +34,8 @@ from inspect_ai.event._timeline import (
     _timeline_content_discriminator,
 )
 from inspect_ai.model import ChatMessage, Model
+
+logger = getLogger(__name__)
 
 # Re-export everything that moved to inspect_ai.event
 __all__ = [
@@ -283,7 +285,7 @@ async def timeline_messages(
             messages_as_str=messages_as_str,
             model=model,
             context_window=context_window,
-            compaction=compaction,
+            # splice already resolved compaction; source is a message list
             prompt_reserve=prompt_reserve,
         ):
             yield TimelineMessages(
@@ -293,6 +295,14 @@ async def timeline_messages(
                 span=span,
             )
             counter += 1
+
+    if is_first_span and span_external:
+        dropped = sum(len(entries) for entries in span_external.values())
+        logger.debug(
+            "timeline_messages: no scannable span was walked; dropping "
+            "%d span-external event(s)",
+            dropped,
+        )
 
 
 def _walk_spans(
@@ -326,13 +336,12 @@ def _walk_spans(
     Yields:
         Scannable TimelineSpan nodes in depth-first order.
     """
+    from inspect_scout._transcript.interleave import span_is_scannable
+
     if depth is not None and depth <= 0:
         return
 
-    is_scannable = not span.utility and any(
-        isinstance(item, TimelineEvent) and isinstance(item.event, ModelEvent)
-        for item in span.content
-    )
+    is_scannable = span_is_scannable(span)
 
     if is_scannable:
         next_depth = _scannable_depth + 1

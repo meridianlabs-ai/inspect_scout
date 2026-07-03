@@ -152,6 +152,17 @@ def _span_has_direct_model_event(span: TimelineSpan) -> bool:
     )
 
 
+def span_is_scannable(span: TimelineSpan) -> bool:
+    """Return True if ``span`` is scannable: not a utility span, with a direct ModelEvent.
+
+    Shared by ``_walk_spans`` (``timeline.py``), which yields exactly the
+    spans this predicate matches, and ``_collect_span_external`` below,
+    which uses it (plus a ``scorers``-span exclusion) to decide when a
+    span's own splice owns its events.
+    """
+    return not span.utility and _span_has_direct_model_event(span)
+
+
 def _collect_span_external(
     span: TimelineSpan,
     events: EventsSpec,
@@ -164,9 +175,7 @@ def _collect_span_external(
 ) -> str | None:
     """Depth-first helper for ``collect_span_external``; see its docstring."""
     span_in_scorers = in_scorers or span.span_type == "scorers"
-    structurally_scannable = (
-        not span_in_scorers and not span.utility and _span_has_direct_model_event(span)
-    )
+    structurally_scannable = not span_in_scorers and span_is_scannable(span)
     # Mirrors `_walk_spans`' scannable-depth bookkeeping (`timeline.py`): a
     # structurally scannable span still consumes a depth level even when it
     # exceeds `depth` and is therefore never actually walked (and its own

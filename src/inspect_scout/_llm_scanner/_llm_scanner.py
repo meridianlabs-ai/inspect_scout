@@ -426,33 +426,16 @@ def llm_scanner(
         # fallback can reuse it after materializing the handle.
         async def scan_materialized(source_transcript: Transcript) -> Result:
             async def materialized_source() -> AsyncIterator[tuple[str | None, str]]:
-                if events is not None and has_interleavable_events(
-                    source_transcript, events
+                async for seg in transcript_messages(
+                    source_transcript,
+                    messages_as_str=messages_as_str_fn,
+                    model=resolved_model,
+                    context_window=context_window,
+                    timeline=timeline,
+                    compaction=compaction,
+                    depth=depth,
+                    prompt_reserve=template_tokens,
                 ):
-                    if source_transcript.timelines or timeline is not None:
-                        raise ValueError(
-                            "llm_scanner: interleaving events (via events=) is not "
-                            "supported together with timeline scanning."
-                        )
-                    segment_iter = segment_messages(
-                        interleave_events(source_transcript, events),
-                        messages_as_str=messages_as_str_fn,
-                        model=resolved_model,
-                        context_window=context_window,
-                        prompt_reserve=template_tokens,
-                    )
-                else:
-                    segment_iter = transcript_messages(
-                        source_transcript,
-                        messages_as_str=messages_as_str_fn,
-                        model=resolved_model,
-                        context_window=context_window,
-                        timeline=timeline,
-                        compaction=compaction,
-                        depth=depth,
-                        prompt_reserve=template_tokens,
-                    )
-                async for seg in segment_iter:
                     span_id = seg.span.id if isinstance(seg, TimelineMessages) else None
                     yield span_id, seg.messages_str
 
@@ -485,7 +468,7 @@ def llm_scanner(
                 tuple[str | None, str]
             ]:
                 async for seg in stream_segment_messages(
-                    stream_interleave_events(handle, events),
+                    stream_interleave_events(handle, events, compaction=compaction),
                     messages_as_str=messages_as_str_fn,
                     model=resolved_model,
                     context_window=context_window,
@@ -557,6 +540,35 @@ def llm_scanner(
                     yield None, seg.messages_str
 
             results = await _scan_segments_bounded(stream_source(), scan_segment)
+            return await aggregate_results(
+                results=results,
+                timeline=False,
+                answer=answer,
+                reducer=reducer,
+            )
+
+        if events is not None and has_interleavable_events(info_transcript, events):
+            if info_transcript.timelines or timeline is not None:
+                raise ValueError(
+                    "llm_scanner: interleaving events (via events=) is not "
+                    "supported together with timeline scanning."
+                )
+            spliced = interleave_events(info_transcript, events, compaction=compaction)
+
+            # Interleaved-events path: events are spliced into the message
+            # list, then segmented like a plain message thread. No timeline,
+            # so span id is always None.
+            async def interleaved_source() -> AsyncIterator[tuple[str | None, str]]:
+                async for seg in segment_messages(
+                    spliced,
+                    messages_as_str=messages_as_str_fn,
+                    model=resolved_model,
+                    context_window=context_window,
+                    prompt_reserve=template_tokens,
+                ):
+                    yield None, seg.messages_str
+
+            results = await _scan_segments_bounded(interleaved_source(), scan_segment)
             return await aggregate_results(
                 results=results,
                 timeline=False,

@@ -3,13 +3,14 @@
 from collections import defaultdict
 from typing import AsyncIterator, Literal
 
-from inspect_ai.event import Event, ModelEvent
+from inspect_ai.event import CompactionEvent, Event, ModelEvent
 from inspect_ai.model import ChatMessage, ChatMessageUser
 
 from .._scanner.extract import EVENT_MARKER_KEY
 from .._scanner.util import _event_id, _message_id
 from .._transcript.event_text import event_as_str
 from .._transcript.handle import TranscriptHandle
+from .._transcript.messages import span_messages
 from .._transcript.types import EventType, Transcript
 
 # Events that already appear in the message thread (model, tool) or are pure
@@ -24,6 +25,10 @@ EventsSpec = Literal["all"] | list[EventType | str]
 ``str`` is accepted alongside ``EventType`` (matching ``EventFilter``) for
 event types not yet in the literal, e.g. ``"score"``.
 """
+
+Compaction = Literal["all", "last"] | int
+"""How to handle compaction boundaries when the message thread is
+reconstructed from model events (events-only transcripts)."""
 
 
 def _interleavable_text(event: Event, events: EventsSpec = "all") -> str | None:
@@ -40,6 +45,13 @@ def _event_message(event_id: str, text: str) -> ChatMessage:
         content=text,
         metadata={EVENT_MARKER_KEY: True},
     )
+
+
+def _model_output_id(event: ModelEvent) -> str | None:
+    out = event.output
+    if out and out.choices and out.choices[0].message is not None:
+        return _message_id(out.choices[0].message)
+    return None
 
 
 class _AnchorWalk:
@@ -68,24 +80,28 @@ class _AnchorWalk:
         self.leading: list[tuple[str, str]] = []
         self.anchored: dict[int, list[tuple[str, str]]] = defaultdict(list)
 
-    def add(self, event: Event) -> None:
-        if isinstance(event, ModelEvent):
-            out = event.output
-            if out and out.choices and out.choices[0].message is not None:
-                mid = _message_id(out.choices[0].message)
-                position = self._next_occurrence[mid]
-                if position < len(self._occurrences.get(mid, [])):
-                    self._last_anchor = self._occurrences[mid][position]
-                    self._next_occurrence[mid] = position + 1
-            return
-        text = _interleavable_text(event, self._events)
-        if text is None:
-            return
-        entry = (_event_id(event), text)
+    def add_model_output(self, message_id: str) -> None:
+        position = self._next_occurrence[message_id]
+        if position < len(self._occurrences.get(message_id, [])):
+            self._last_anchor = self._occurrences[message_id][position]
+            self._next_occurrence[message_id] = position + 1
+
+    def add_rendered(self, event_id: str, text: str) -> None:
+        entry = (event_id, text)
         if self._last_anchor is None:
             self.leading.append(entry)
         else:
             self.anchored[self._last_anchor].append(entry)
+
+    def add(self, event: Event) -> None:
+        if isinstance(event, ModelEvent):
+            mid = _model_output_id(event)
+            if mid is not None:
+                self.add_model_output(mid)
+            return
+        text = _interleavable_text(event, self._events)
+        if text is not None:
+            self.add_rendered(_event_id(event), text)
 
 
 def has_interleavable_events(
@@ -95,7 +111,9 @@ def has_interleavable_events(
 
 
 def interleave_events(
-    transcript: Transcript, events: EventsSpec = "all"
+    transcript: Transcript,
+    events: EventsSpec = "all",
+    compaction: Compaction = "all",
 ) -> list[ChatMessage]:
     """Splice loaded non-message events into ``transcript.messages``.
 
@@ -103,13 +121,21 @@ def interleave_events(
     (the output of the most recent ``ModelEvent`` whose message is present in
     ``transcript.messages``). Events with no preceding turn are prepended.
 
+    When the transcript carries no top-level messages (events-only loads),
+    the message thread is reconstructed from model events via
+    ``span_messages`` (honoring ``compaction``) and events are spliced into
+    the reconstructed thread.
+
     Args:
         transcript: Transcript providing messages and events.
         events: Which event types to interleave (``"all"`` or a list).
+        compaction: Compaction handling for events-only thread reconstruction.
     """
     messages = list(transcript.messages)
     if not transcript.events:
         return messages
+    if not messages:
+        messages = span_messages(transcript.events, compaction=compaction)
 
     walk = _AnchorWalk([_message_id(m) for m in messages], events)
     for event in transcript.events:
@@ -126,35 +152,82 @@ def interleave_events(
 
 
 async def stream_interleave_events(
-    handle: TranscriptHandle, events: EventsSpec = "all"
+    handle: TranscriptHandle,
+    events: EventsSpec = "all",
+    compaction: Compaction = "all",
 ) -> AsyncIterator[ChatMessage]:
     """Streaming counterpart to ``interleave_events`` over a handle.
 
     Yields the same message sequence ``interleave_events`` would produce for
     the materialized transcript, without holding messages and event payloads
-    in memory at once. Three passes over the handle (multi-shot contract):
+    in memory at once.
 
-    1. ``messages()``: collect message ids only (anchor positions).
-    2. ``events()``: run the anchor walk, retaining just id + rendered text
-       per selected event (narrowed to ``model`` + selected types when the
-       selection is a list).
-    3. ``messages()``: yield each message, splicing anchored event entries.
+    Messages-present transcripts take three passes over the handle
+    (multi-shot contract): collect message ids, run the anchor walk
+    (retaining just id + rendered text per selected event), then re-stream
+    messages splicing anchored entries. Retained memory is one id per
+    message plus the rendered text of selected events.
 
-    Retained memory is one id per message plus the rendered text of selected
-    events — never the bulk model/tool payloads.
+    Events-only transcripts (empty ``messages()``) reconstruct the thread
+    from model events in a single events pass: only the most recent
+    ``ModelEvent`` per compaction region is retained (that event's input
+    already carries the region's conversation — the thread itself), plus a
+    small op log of output-message ids and rendered entries so anchors
+    resolve against the reconstructed thread in event order.
     """
     message_ids = [_message_id(m) async for m in handle.messages()]
-    walk = _AnchorWalk(message_ids, events)
+    types = None if events == "all" else ["model", "compaction", *events]
 
-    types = None if events == "all" else ["model", *events]
+    if message_ids:
+        walk = _AnchorWalk(message_ids, events)
+        async for event in handle.events(types=types):
+            walk.add(event)
+
+        for event_id, text in walk.leading:
+            yield _event_message(event_id, text)
+        index = 0
+        async for message in handle.messages():
+            yield message
+            for event_id, text in walk.anchored.get(index, []):
+                yield _event_message(event_id, text)
+            index += 1
+        return
+
+    # Events-only: reconstruct the thread from model events. `skeleton`
+    # keeps compaction events plus the most recent ModelEvent per region
+    # (span_messages only reads the region-last event); `ops` records the
+    # anchor walk's inputs in event order for replay once the thread exists.
+    # Each op is (kind, a, b): ("m", output_message_id, "") for a model
+    # event, ("e", event_id, rendered_text) for an interleavable event.
+    skeleton: list[Event] = []
+    ops: list[tuple[str, str, str]] = []
     async for event in handle.events(types=types):
-        walk.add(event)
+        if isinstance(event, ModelEvent):
+            mid = _model_output_id(event)
+            if mid is not None:
+                ops.append(("m", mid, ""))
+            if skeleton and isinstance(skeleton[-1], ModelEvent):
+                skeleton[-1] = event
+            else:
+                skeleton.append(event)
+        elif isinstance(event, CompactionEvent):
+            skeleton.append(event)
+        else:
+            rendered = _interleavable_text(event, events)
+            if rendered is not None:
+                ops.append(("e", _event_id(event), rendered))
+
+    thread = span_messages(skeleton, compaction=compaction)
+    walk = _AnchorWalk([_message_id(m) for m in thread], events)
+    for kind, a, b in ops:
+        if kind == "m":
+            walk.add_model_output(a)
+        else:
+            walk.add_rendered(a, b)
 
     for event_id, text in walk.leading:
         yield _event_message(event_id, text)
-    index = 0
-    async for message in handle.messages():
+    for index, message in enumerate(thread):
         yield message
         for event_id, text in walk.anchored.get(index, []):
             yield _event_message(event_id, text)
-        index += 1

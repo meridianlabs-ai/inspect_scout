@@ -2,7 +2,16 @@ import re
 from typing import AsyncIterator, cast
 
 import pytest
-from inspect_ai.event import ErrorEvent, ModelEvent, ScoreEvent, Timeline, TimelineSpan
+from inspect_ai.event import (
+    ErrorEvent,
+    ModelEvent,
+    ScoreEvent,
+    SpanBeginEvent,
+    SpanEndEvent,
+    Timeline,
+    TimelineEvent,
+    TimelineSpan,
+)
 from inspect_ai.event._event import Event
 from inspect_ai.log import EvalError
 from inspect_ai.model import (
@@ -23,6 +32,7 @@ from inspect_scout._llm_scanner.interleave import (
     stream_interleave_events,
 )
 from inspect_scout._scanner.extract import EVENT_MARKER_KEY
+from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import SCANNER_CONTENT_ATTR
 from inspect_scout._transcript.handle import MaterializedTranscriptHandle
 from inspect_scout._transcript.types import (
@@ -50,6 +60,17 @@ def _model_event(user_text: str, output: ModelOutput) -> ModelEvent:
         output=output,
         role="assistant",
     )
+
+
+def _span(span_id: str, name: str, content: list[Event | TimelineSpan]) -> TimelineSpan:
+    """Build a scannable ``TimelineSpan`` from a mix of events and nested spans."""
+    items: list[TimelineEvent | TimelineSpan] = [
+        item
+        if isinstance(item, TimelineSpan)
+        else TimelineEvent.model_construct(type="event", event=item)
+        for item in content
+    ]
+    return TimelineSpan(id=span_id, name=name, span_type="agent", content=items)
 
 
 def test_final_score_anchored_after_last_assistant() -> None:
@@ -519,27 +540,147 @@ def test_events_all_loads_all_events() -> None:
 
 
 @pytest.mark.anyio
-async def test_interleave_with_timeline_raises() -> None:
-    out = ModelOutput.from_content(model="mockllm", content="4")
-    transcript = Transcript(
-        transcript_id="t",
-        messages=[ChatMessageUser(content="2+2?"), out.choices[0].message],
-        events=[ScoreEvent(score=Score(value="C"), scorer="match")],
-        timelines=[
-            Timeline(
-                name="Default",
-                description="",
-                root=TimelineSpan(
-                    id="root", name="Transcript", span_type=None, content=[]
-                ),
-            )
+async def test_interleave_with_timeline_renders_per_span() -> None:
+    # Timeline-shaped transcript + events= must no longer raise: each span's
+    # own events render in that span's own thread, and the resultset shape
+    # matches an events=None run over the same transcript.
+    out_a = ModelOutput.from_content(model="mockllm", content="4")
+    out_b = ModelOutput.from_content(model="mockllm", content="9")
+    span_a = _span(
+        "span-a",
+        "agent-a",
+        [
+            _model_event("2+2?", out_a),
+            ScoreEvent(score=Score(value="C"), scorer="match"),
         ],
     )
-    scan = llm_scanner(
-        question="q", answer="boolean", model=_mock_model([]), events=["score"]
+    span_b = _span("span-b", "agent-b", [_model_event("3+3?", out_b)])
+    root = TimelineSpan(
+        id="root", name="Transcript", span_type=None, content=[span_a, span_b]
     )
-    with pytest.raises(ValueError, match="timeline"):
-        await scan(transcript)
+    transcript = Transcript(
+        transcript_id="t",
+        timelines=[Timeline(name="Default", description="", root=root)],
+    )
+
+    captured: list[str] = []
+    scan = llm_scanner(
+        question="q", answer="boolean", model=_mock_model(captured), events=["score"]
+    )
+    result = await scan(transcript)
+
+    assert any("2+2?" in c for c in captured)
+    assert any("3+3?" in c for c in captured)
+    assert sum("[E1] SCORE" in c for c in captured) == 1
+
+    captured_no_events: list[str] = []
+    scan_no_events = llm_scanner(
+        question="q", answer="boolean", model=_mock_model(captured_no_events)
+    )
+    result_no_events = await scan_no_events(transcript)
+
+    assert isinstance(result, Result)
+    assert isinstance(result_no_events, Result)
+    assert result.type == result_no_events.type == "resultset"
+    assert isinstance(result.value, list)
+    assert isinstance(result_no_events.value, list)
+    assert len(result.value) == len(result_no_events.value) == 2
+
+
+@pytest.mark.anyio
+async def test_llm_scanner_handle_events_content_interleaves_without_load() -> None:
+    # The transcript-tab-with-spans shape on a handle: content requests
+    # events="all" (timeline-shaped streaming) and events=["score"] asks for
+    # per-span score interleaving. Conversation and score must both render,
+    # and load() (full materialization) must never be called.
+    out = ModelOutput.from_content(model="mockllm", content="4")
+    model_event = ModelEvent(
+        span_id="main",
+        model="mockllm",
+        input=[ChatMessageUser(content="2+2?")],
+        output=out,
+        role="assistant",
+        tools=[],
+        tool_choice="auto",
+        config=GenerateConfig(),
+    )
+    score_event = ScoreEvent(span_id="main", scorer="match", score=Score(value="C"))
+    flat_events: list[Event] = [
+        SpanBeginEvent(
+            id="main", parent_id=None, type="agent", name="main", span_id="main"
+        ),
+        model_event,
+        score_event,
+        SpanEndEvent(id="main", span_id="main"),
+    ]
+
+    class _NoLoadHandle(MaterializedTranscriptHandle):
+        async def events(self, *, types: object = None) -> AsyncIterator[Event]:
+            for e in flat_events:
+                yield e
+
+        async def load(self) -> Transcript:
+            raise AssertionError("streaming timeline interleave must not materialize")
+
+    async def load_fn() -> Transcript:
+        raise AssertionError("streaming timeline interleave must not materialize")
+
+    handle = _NoLoadHandle(load_fn, TranscriptInfo(transcript_id="t"))
+
+    captured: list[str] = []
+    scan = llm_scanner(
+        question="Right?",
+        answer="boolean",
+        model=_mock_model(captured),
+        content=TranscriptContent(events="all"),
+        events=["score"],
+    )
+    await scan(cast(Transcript, handle))
+
+    assert any("2+2?" in c for c in captured)
+    assert any("[E1] SCORE" in c for c in captured)
+
+
+@pytest.mark.anyio
+async def test_interleave_with_timeline_depth_limit_attaches_to_parent() -> None:
+    # A nested scannable child span beyond `depth` is not walked as its own
+    # segment; its score is span-external, attached to the last span that IS
+    # within the depth limit (its parent), and renders exactly once.
+    out_parent = ModelOutput.from_content(model="mockllm", content="parent-ans")
+    out_child = ModelOutput.from_content(model="mockllm", content="child-ans")
+    child = _span(
+        "child",
+        "child-agent",
+        [
+            _model_event("child-q", out_child),
+            ScoreEvent(score=Score(value="C"), scorer="childscore"),
+        ],
+    )
+    parent = _span(
+        "parent", "parent-agent", [_model_event("parent-q", out_parent), child]
+    )
+    root = TimelineSpan(id="root", name="Transcript", span_type=None, content=[parent])
+    transcript = Transcript(
+        transcript_id="t",
+        timelines=[Timeline(name="Default", description="", root=root)],
+    )
+
+    captured: list[str] = []
+    scan = llm_scanner(
+        question="q",
+        answer="boolean",
+        model=_mock_model(captured),
+        events=["score"],
+        depth=1,
+    )
+    await scan(transcript)
+
+    # Only the parent is walked as its own segment -- the child (depth 2)
+    # never gets its own scan.
+    assert len(captured) == 1
+    assert "parent-q" in captured[0]
+    assert "child-q" not in captured[0]
+    assert captured[0].count("[E1] SCORE (childscore)") == 1
 
 
 @pytest.mark.anyio

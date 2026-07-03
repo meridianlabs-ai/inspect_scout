@@ -19,9 +19,9 @@ from inspect_scout._util.jinja import StrictOnUseUndefined
 from .._scanner.extract import MessagesPreprocessor, message_numbering
 from .._scanner.result import Result
 from .._scanner.scanner import (
-    SCANNER_ACCEPTS_HANDLE_ATTR,
     SCANNER_CONTENT_ATTR,
     SCANNER_NAME_ATTR,
+    SCANNER_SUPPORTS_STREAMING_ATTR,
     Scanner,
     scanner,
 )
@@ -473,7 +473,7 @@ def llm_scanner(
         and timeline is None
         and not content_forces_materialization
     ):
-        setattr(scan, SCANNER_ACCEPTS_HANDLE_ATTR, True)
+        setattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, True)
 
     return scan
 

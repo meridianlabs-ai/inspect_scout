@@ -1,8 +1,7 @@
-"""Event-stubbing primitives for the two-pass streaming events skeleton.
+"""Two-pass streaming timeline message extraction over a `TranscriptHandle`.
 
 Design context: see
-``docs/superpowers/specs/2026-07-03-streaming-events-scanning-design.md``
-(pass 1 of the two-pass skeleton).
+``docs/superpowers/specs/2026-07-03-streaming-events-scanning-design.md``.
 
 The streaming events path builds a "skeleton" event list by streaming a
 ``TranscriptHandle`` once and replacing bulk-content events with stripped
@@ -12,6 +11,9 @@ determine span structure and which spans/regions are scannable. A second
 pass later re-streams the handle and substitutes back the *full* events
 that pass 1 determined are actually needed (see
 ``inspect_ai.event._timeline.timeline_build`` for the classifier itself).
+``stream_timeline_messages`` is the end-to-end entry point orchestrating
+both passes and yielding the same ``TimelineMessages`` segments
+``timeline_messages`` would yield over a fully materialized transcript.
 
 For this to work, stubs must preserve every signal the classifier reads:
 
@@ -40,7 +42,7 @@ the scanning skeleton.
 from __future__ import annotations
 
 import dataclasses
-from typing import Literal
+from typing import TYPE_CHECKING, AsyncIterator, Literal
 
 from inspect_ai.event import (
     CompactionEvent,
@@ -49,10 +51,19 @@ from inspect_ai.event import (
     TimelineEvent,
     TimelineSpan,
     ToolEvent,
+    timeline_build,
 )
-from inspect_ai.model import ChatMessageSystem, ContentText
+from inspect_ai.model import ChatMessageSystem, ContentText, Model
 
-from inspect_scout._transcript.timeline import _walk_spans
+from inspect_scout._transcript.timeline import (
+    TimelineMessages,
+    _walk_spans,
+    timeline_messages,
+)
+
+if TYPE_CHECKING:
+    from inspect_scout._scanner.extract import MessagesAsStr
+    from inspect_scout._transcript.handle import TranscriptHandle
 
 
 class _StubSkeletonUnsupported(Exception):
@@ -383,3 +394,140 @@ def needed_model_event_uuids(
         ]
         needed |= _needed_uuids_for_span(span_events, compaction=compaction)
     return needed
+
+
+def _collect_needed_model_events(
+    event: Event, needed: set[str], out: dict[str, ModelEvent]
+) -> None:
+    """Recursively collect full `ModelEvent`s from `event` whose uuid is needed.
+
+    Recurses into `ToolEvent.events` so nested tool-spawned-agent
+    ModelEvents (e.g. inside a handoff tool's `.events`) are found too --
+    they never appear at the top level of a handle's flat event stream.
+    Only the matched `ModelEvent` objects are retained in `out`; the
+    (possibly large) `ToolEvent` payload each was found inside is not kept
+    beyond this call, so full nested tool payloads do not linger in memory
+    across the pass-2 walk.
+
+    Args:
+        event: A full (non-stubbed) event from pass 2's stream.
+        needed: uuids selected by ``needed_model_event_uuids`` in pass 1.
+        out: Accumulator mapping uuid -> full `ModelEvent`, updated in place.
+    """
+    if isinstance(event, ModelEvent):
+        if event.uuid is not None and event.uuid in needed:
+            out[event.uuid] = event
+    elif isinstance(event, ToolEvent) and event.events:
+        for nested in event.events:
+            _collect_needed_model_events(nested, needed, out)
+
+
+def _substitute_full_events(
+    span: TimelineSpan, full_by_uuid: dict[str, ModelEvent]
+) -> None:
+    """In-place: replace stub `ModelEvent`s in `span`'s tree with full ones.
+
+    Walks `span.content` (recursing into nested `TimelineSpan`s) and
+    `span.branches`, and for every `TimelineEvent` node wrapping a
+    `ModelEvent` whose uuid is a key of `full_by_uuid`, mutates
+    `node.event` to the full event. This reaches nested tool-spawned-agent
+    `ModelEvent`s too, since `inspect_ai`'s tree builder expands a
+    `ToolEvent` with nested `.events` into a nested `TimelineSpan` whose
+    `content` holds `TimelineEvent` nodes for each nested event (see
+    ``inspect_ai.event._timeline._event_to_node``).
+
+    Args:
+        span: A (sub)tree of the stub skeleton to mutate in place.
+        full_by_uuid: Full `ModelEvent`s collected in pass 2, by uuid.
+    """
+    for item in span.content:
+        if isinstance(item, TimelineEvent):
+            event = item.event
+            if isinstance(event, ModelEvent) and event.uuid in full_by_uuid:
+                item.event = full_by_uuid[event.uuid]
+        else:
+            _substitute_full_events(item, full_by_uuid)
+    for branch in span.branches:
+        _substitute_full_events(branch, full_by_uuid)
+
+
+async def stream_timeline_messages(
+    handle: TranscriptHandle,
+    *,
+    messages_as_str: MessagesAsStr,
+    model: Model | str | None = None,
+    context_window: int | None = None,
+    compaction: Literal["all", "last"] | int = "all",
+    depth: int | None = None,
+    prompt_reserve: int | float = 0.2,
+) -> AsyncIterator[TimelineMessages]:
+    """Yield timeline message segments by streaming a `TranscriptHandle` twice.
+
+    Pass 1 streams `handle.events()` once, stubbing bulk `ModelEvent`/
+    `ToolEvent` content (`stub_event`) while preserving every signal
+    `inspect_ai`'s timeline classifier reads, then builds the timeline from
+    the stub skeleton and determines exactly which `ModelEvent`s the
+    scanning path (`span_messages`, via `timeline_messages`) actually reads
+    (`needed_model_event_uuids`).
+
+    Pass 2 re-streams `handle.events()` (the multi-shot contract:
+    `TranscriptHandle.events()` may be called more than once) and collects
+    the full, un-stubbed `ModelEvent`s whose uuid was selected in pass 1
+    (recursing into `ToolEvent.events` for tool-spawned agents). Those full
+    events are substituted in place into the stub skeleton, which is then
+    handed to the unmodified `timeline_messages` to yield message segments
+    -- identical to running `timeline_messages` on a fully materialized
+    transcript, but never holding more than one pass's events plus the
+    (stubbed) skeleton in memory at once.
+
+    Args:
+        handle: Multi-shot streaming access to the transcript's events.
+        messages_as_str: Rendering function from `message_numbering()`.
+        model: The model used for scanning (for `count_tokens()`).
+        context_window: Override for the model's context window size.
+        compaction: How to handle compaction boundaries.
+        depth: Maximum nesting level of scannable spans to process.
+        prompt_reserve: Context-window allowance for prompt scaffolding.
+
+    Yields:
+        `TimelineMessages` segments, identical to calling `timeline_messages`
+        on the fully materialized transcript's built timeline.
+
+    Raises:
+        _StubSkeletonUnsupported: If pass 1 selects a `ModelEvent` lacking a
+            uuid (see `needed_model_event_uuids`), or if pass 2's stream
+            does not contain a full event for every uuid pass 1 selected
+            (a multi-shot contract violation: `handle.events()` returned
+            different content across the two calls).
+    """
+    interner = _PromptInterner()
+    stubs: list[Event] = [stub_event(ev, interner) async for ev in handle.events()]
+    tree = timeline_build(stubs)
+
+    needed = needed_model_event_uuids(tree.root, compaction=compaction, depth=depth)
+
+    full_by_uuid: dict[str, ModelEvent] = {}
+    async for ev in handle.events():
+        _collect_needed_model_events(ev, needed, full_by_uuid)
+
+    missing = needed - full_by_uuid.keys()
+    if missing:
+        raise _StubSkeletonUnsupported(
+            "pass 2 did not find a full event for every uuid selected in "
+            f"pass 1 (missing {sorted(missing)!r}); this indicates "
+            "handle.events() returned different content across its two "
+            "calls, violating the TranscriptHandle multi-shot contract"
+        )
+
+    _substitute_full_events(tree.root, full_by_uuid)
+
+    async for seg in timeline_messages(
+        tree,
+        messages_as_str=messages_as_str,
+        model=model,
+        context_window=context_window,
+        compaction=compaction,
+        depth=depth,
+        prompt_reserve=prompt_reserve,
+    ):
+        yield seg

@@ -481,7 +481,7 @@ def llm_scanner(
                 tuple[str | None, str]
             ]:
                 async for seg in stream_segment_messages(
-                    stream_interleave_events(handle, events),
+                    stream_interleave_events(handle, events, compaction=compaction),
                     messages_as_str=messages_as_str_fn,
                     model=resolved_model,
                     context_window=context_window,
@@ -576,7 +576,7 @@ def llm_scanner(
                     "llm_scanner: interleaving events (via events=) is not "
                     "supported together with timeline scanning."
                 )
-            spliced = interleave_events(info_transcript, events)
+            spliced = interleave_events(info_transcript, events, compaction=compaction)
 
             # Interleaved-events path: events are spliced into the message
             # list, then segmented like a plain message thread. No timeline,

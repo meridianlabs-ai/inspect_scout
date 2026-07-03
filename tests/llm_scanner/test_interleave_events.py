@@ -108,7 +108,29 @@ def test_duplicate_message_ids_do_not_duplicate_events() -> None:
     assert event_count == 2
 
 
-def test_events_render_when_messages_empty() -> None:
+def test_events_only_transcript_reconstructs_thread() -> None:
+    # An events-only load (e.g. content events="all", no messages) must
+    # reconstruct the conversation from model events and splice events into
+    # it — not emit floating event entries with no conversation.
+    out = ModelOutput.from_content(model="mockllm", content="4")
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[],
+        events=[
+            _model_event("2+2?", out),
+            ScoreEvent(score=Score(value="C"), target="C", scorer="match"),
+        ],
+    )
+    result = interleave_events(transcript)
+    assert [m.text for m in result[:2]] == ["2+2?", "4"]
+    assert result[2].metadata is not None
+    assert result[2].metadata[EVENT_MARKER_KEY] is True
+    assert result[2].text.startswith("SCORE (match)")
+
+
+def test_events_only_no_model_events_renders_leading() -> None:
+    # No model events at all -> nothing to reconstruct; events still render
+    # (leading) rather than being silently dropped.
     transcript = Transcript(
         transcript_id="t",
         messages=[],
@@ -221,6 +243,77 @@ async def test_stream_interleave_matches_materialized(
         )
     ]
     assert [(m.id, m.text) for m in streamed] == [(m.id, m.text) for m in expected]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("compaction", ["all", "last"])
+async def test_stream_interleave_events_only_matches_materialized(
+    compaction: str,
+) -> None:
+    # Events-only transcript with two turns (second ModelEvent's input carries
+    # the running thread) and a mid-thread + final score. The streaming
+    # reconstruction must equal the materialized one under both compaction
+    # modes.
+    out1 = ModelOutput.from_content(model="mockllm", content="first")
+    out2 = ModelOutput.from_content(model="mockllm", content="second")
+    ev1 = _model_event("q1", out1)
+    ev2 = ModelEvent.model_construct(
+        event="model",
+        model="mockllm",
+        input=[
+            ChatMessageUser(content="q1"),
+            out1.choices[0].message,
+            ChatMessageUser(content="q2"),
+        ],
+        output=out2,
+        role="assistant",
+    )
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[],
+        events=[
+            ev1,
+            ScoreEvent(score=Score(value=0.5), scorer="graded", intermediate=True),
+            ev2,
+            ScoreEvent(score=Score(value="C"), target="C", scorer="match"),
+        ],
+    )
+    expected = interleave_events(transcript, compaction=compaction)  # type: ignore[arg-type]
+    streamed = [
+        m
+        async for m in stream_interleave_events(
+            _handle_for(transcript),
+            compaction=compaction,  # type: ignore[arg-type]
+        )
+    ]
+    assert [(m.id, m.text) for m in streamed] == [(m.id, m.text) for m in expected]
+    # sanity: the reconstructed thread is present, and the final score last
+    assert any(m.text == "second" for m in streamed)
+    assert streamed[-1].text.startswith("SCORE (match)")
+
+
+@pytest.mark.anyio
+async def test_llm_scanner_events_only_scan_shows_thread_and_scores() -> None:
+    # The transcript-tab shape: content events="all", no messages loaded.
+    # The judge must see the ModelEvent-derived conversation AND the score.
+    out = ModelOutput.from_content(model="mockllm", content="4")
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[],
+        events=[
+            _model_event("2+2?", out),
+            ScoreEvent(score=Score(value="C"), target="C", scorer="match"),
+        ],
+    )
+    captured: list[str] = []
+    scan = llm_scanner(
+        question="Right?",
+        answer="boolean",
+        model=_mock_model(captured),
+        events=["score"],
+    )
+    await scan(transcript)
+    assert re.search(r"\[M1\].*2\+2\?.*\[M2\].*\[E1\] SCORE", captured[0], re.DOTALL)
 
 
 @pytest.mark.anyio

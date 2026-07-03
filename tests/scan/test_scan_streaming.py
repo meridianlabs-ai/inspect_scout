@@ -13,13 +13,17 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
+import anyio
 import pytest
 from inspect_ai.model import ModelOutput
 from inspect_scout import Scanner, llm_scanner, scan, scanner
 from inspect_scout._scanresults import scan_results_df
 from inspect_scout._transcript import handle as handle_mod
+from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
 from inspect_scout._transcript.factory import transcripts_from
-from inspect_scout._transcript.types import Transcript
+from inspect_scout._transcript.types import Transcript, TranscriptContent
+
+from tests.transcript.fixtures_agentic import agentic_transcript
 
 LOGS_DIR = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
 
@@ -187,3 +191,122 @@ def test_scan_e2e_single_handle_scanner_fallback(
     for h in created:
         assert close_counts[id(h)] == 1
         assert h._result is None
+        assert h._closed is True
+
+
+@scanner(name="streaming_events_scanner", events="all")
+def streaming_events_scanner_factory() -> Scanner[Transcript]:
+    """Events-content llm_scanner.
+
+    Exercises the two-pass event streaming seam (`stream_timeline_messages`)
+    rather than the messages-only path covered by the scanners above.
+    """
+    return llm_scanner(
+        question="Did the agent use any tools?",
+        answer="boolean",
+        content=TranscriptContent(events="all"),
+    )
+
+
+def _mock_responses(n: int) -> list[ModelOutput]:
+    return [
+        ModelOutput.from_content(model="mockllm", content="Reasoning.\n\nANSWER: yes")
+        for _ in range(n)
+    ]
+
+
+def test_scan_e2e_events_through_streaming_seam(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """An events-content llm_scanner scan streams through a spooled handle.
+
+    Agentic events (no top-level messages -- forces the events-content path)
+    are written to a real `ParquetTranscriptsDB`. Forcing the spool threshold
+    to 0 routes the transcript through `SpooledTranscriptHandle`, which
+    exercises `stream_timeline_messages`'s two-pass stub skeleton rather than
+    the materialized `transcript_messages` path. The streamed result must
+    match a control run over the same database without the threshold
+    override (materialized path), confirming streaming doesn't change the
+    scanner's output.
+    """
+    db_location = tmp_path / "transcripts_db"
+    db_location.mkdir()
+
+    async def _seed() -> None:
+        db = ParquetTranscriptsDB(str(db_location))
+        await db.connect()
+        try:
+            await db.insert([agentic_transcript()])
+        finally:
+            await db.disconnect()
+
+    anyio.run(_seed)
+
+    # Spy on SpooledTranscriptHandle create/close (same pattern as above).
+    created: list[handle_mod.SpooledTranscriptHandle] = []
+    close_counts: dict[int, int] = {}
+    real_init = handle_mod.SpooledTranscriptHandle.__init__
+    real_aclose = handle_mod.SpooledTranscriptHandle.aclose
+
+    def spy_init(
+        self: handle_mod.SpooledTranscriptHandle,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        real_init(self, *args, **kwargs)  # type: ignore[arg-type]
+        created.append(self)
+        close_counts[id(self)] = 0
+
+    async def spy_aclose(self: handle_mod.SpooledTranscriptHandle) -> None:
+        close_counts[id(self)] = close_counts.get(id(self), 0) + 1
+        await real_aclose(self)
+
+    monkeypatch.setattr(handle_mod.SpooledTranscriptHandle, "__init__", spy_init)
+    monkeypatch.setattr(handle_mod.SpooledTranscriptHandle, "aclose", spy_aclose)
+    monkeypatch.setattr("inspect_scout._util.constants.SPOOL_THRESHOLD_BYTES", 0)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        status = scan(
+            scanners=[streaming_events_scanner_factory()],
+            transcripts=transcripts_from(str(db_location)),
+            scans=tmpdir,
+            max_processes=1,  # in-process so the monkeypatched spies apply
+            model="mockllm/model",
+            model_args={"custom_outputs": _mock_responses(4)},
+            display="none",
+        )
+        assert status.complete
+        assert status.location is not None
+
+        results = scan_results_df(status.location, scanner="streaming_events_scanner")
+        df = results.scanners["streaming_events_scanner"]
+        assert len(df) == 1
+        streamed_values = df["value"].tolist()
+
+    # The streaming path was actually exercised.
+    assert len(created) == 1, "no SpooledTranscriptHandle was created -- not streaming"
+    assert close_counts[id(created[0])] == 1
+
+    # Control run: same database, same scanner, no threshold override ->
+    # small agentic fixture content uses MaterializedTranscriptHandle.
+    monkeypatch.undo()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        control_status = scan(
+            scanners=[streaming_events_scanner_factory()],
+            transcripts=transcripts_from(str(db_location)),
+            scans=tmpdir,
+            max_processes=1,
+            model="mockllm/model",
+            model_args={"custom_outputs": _mock_responses(4)},
+            display="none",
+        )
+        assert control_status.complete
+        assert control_status.location is not None
+
+        control_results = scan_results_df(
+            control_status.location, scanner="streaming_events_scanner"
+        )
+        control_df = control_results.scanners["streaming_events_scanner"]
+        control_values = control_df["value"].tolist()
+
+    assert streamed_values == control_values

@@ -470,7 +470,43 @@ def replay_messages(result: StreamParseResult) -> Iterator[ChatMessage]:
         )
 
 
+def _hydrate_nested_tool_events(item: dict[str, Any], blobs: BlobSpool) -> None:
+    """Recursively validate a `ToolEvent` item's nested `events`, in place.
+
+    `ToolEvent.events` is typed `list[Any]` in `inspect_ai` (a legacy field
+    for pre-flat-event transcripts representing tool-spawned agents), so
+    `TypeAdapter(Event).validate_python` on the outer item leaves its
+    entries as raw dicts instead of concrete `Event` subclass instances --
+    `inspect_ai` itself never re-validates this field either. Since
+    `inspect_scout`'s stubbing/selection code (`timeline_stream.py`)
+    recurses into `ToolEvent.events` expecting real `Event` instances
+    (`isinstance(event, ModelEvent)`/`isinstance(event, ToolEvent)`), each
+    nested dict must be resolved and validated the same way top-level
+    events are, recursively (a nested `ToolEvent` may itself carry further
+    nested events).
+
+    Known limitation (streaming is intentionally MORE faithful here): the
+    materialized read path never runs this hydration -- `inspect_ai`'s own
+    validation leaves legacy nested `ToolEvent.events` as raw dicts and it
+    never re-validates them. So for legacy tool-spawned-agent transcripts,
+    the streaming path surfaces the nested `ModelEvent`s (as real `Event`
+    instances) while the materialized path does not, which can make scan
+    results differ between the two paths on such legacy transcripts.
+    """
+    nested = item.get("events")
+    if not nested:
+        return
+    hydrated: list[Event] = []
+    for nested_item in nested:
+        resolved = resolve_item_dict(nested_item, blobs)
+        _hydrate_nested_tool_events(resolved, blobs)
+        hydrated.append(_EVENT_ADAPTER.validate_python(resolved))
+    item["events"] = hydrated
+
+
 def replay_events(result: StreamParseResult) -> Iterator[Event]:
     """Replay spooled events, resolving attachments/pools and validating each."""
     for item in result.events.items():
-        yield _EVENT_ADAPTER.validate_python(resolve_item_dict(item, result.blobs))
+        resolved = resolve_item_dict(item, result.blobs)
+        _hydrate_nested_tool_events(resolved, result.blobs)
+        yield _EVENT_ADAPTER.validate_python(resolved)

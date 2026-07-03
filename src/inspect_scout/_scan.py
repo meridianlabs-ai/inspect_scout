@@ -84,6 +84,7 @@ from ._transcript.handle import (
 )
 from ._transcript.transcripts import ScannerWork, Transcripts, TranscriptsReader
 from ._transcript.types import (
+    EventFilter,
     MessageFilter,
     Transcript,
     TranscriptContent,
@@ -591,9 +592,10 @@ async def _scan_async_inner(
                 ) -> ParseFunctionResult:
                     try:
                         # Streaming is eligible when every scanner in this parse
-                        # job accepts handles, no timeline/events content is
-                        # required (phase 1: messages-only), and every scanner's
-                        # own content filter equals the union. The last
+                        # job accepts handles (events now stream via the
+                        # stub-skeleton path; only timeline content is excluded),
+                        # and every scanner's own content filter equals the
+                        # union. The last
                         # condition matters because streaming hands the shared
                         # union-filtered handle directly to each scanner,
                         # bypassing the per-scanner loader that would otherwise
@@ -1205,14 +1207,19 @@ def _content_for_scanner(scanner: Scanner[Any]) -> TranscriptContent:
     return config_for_loader(config_for_scanner(scanner).loader).content
 
 
-def _message_filters_equal(a: MessageFilter, b: MessageFilter) -> bool:
-    """Compare two message filters, ignoring list order.
+def _filters_equal(
+    a: MessageFilter | EventFilter, b: MessageFilter | EventFilter
+) -> bool:
+    """Compare two content filters, ignoring list order.
 
-    ``TranscriptContent.messages`` is either ``None``, the literal ``"all"``,
-    or a sequence of message types. Sequences may be produced/reduced in
-    different orders (the common case is ``union_transcript_contents``
-    building up a set-like union), so equality must be order-insensitive
-    for sequences while still being exact for ``None``/``"all"``.
+    ``TranscriptContent.messages``/``.events`` is either ``None``, the
+    literal ``"all"``, or a sequence of type strings. Sequences may be
+    produced/reduced in different orders (the common case is
+    ``union_transcript_contents`` building up a set-like union), so equality
+    must be order-insensitive for sequences while still being exact for
+    ``None``/``"all"``. ``EventFilter`` sequences may contain arbitrary
+    strings beyond the literal ``EventType`` values; the same set-equality
+    shape covers them.
     """
     if (
         isinstance(a, Sequence)
@@ -1222,6 +1229,11 @@ def _message_filters_equal(a: MessageFilter, b: MessageFilter) -> bool:
     ):
         return set(a) == set(b)
     return a == b
+
+
+def _message_filters_equal(a: MessageFilter, b: MessageFilter) -> bool:
+    """Compare two message filters, ignoring list order (see ``_filters_equal``)."""
+    return _filters_equal(a, b)
 
 
 def _streaming_eligible(
@@ -1237,6 +1249,12 @@ def _streaming_eligible(
     narrower filter (e.g. `messages=["user"]`) would see union-broadened
     content from a sibling scanner (e.g. `messages=["user", "assistant"]`).
 
+    Messages-only and events content are both streamable (events flow through
+    ``stream_timeline_messages``' two-pass reader on the handle path). A
+    ``timeline`` filter still forces materialization: named-timeline
+    selection and timeline extraction need the full transcript, so any
+    ``timeline`` content makes the job ineligible.
+
     Args:
         scanners: The scanners in the parse job (must all accept handles;
             callers are expected to have already checked
@@ -1246,13 +1264,15 @@ def _streaming_eligible(
     Returns:
         True iff streaming is safe for this job.
     """
-    if union_content.timeline is not None or union_content.events is not None:
+    if union_content.timeline is not None:
         return False
     for scanner in scanners:
         content = _content_for_scanner(scanner)
-        if content.timeline is not None or content.events is not None:
+        if content.timeline is not None:
             return False
         if not _message_filters_equal(content.messages, union_content.messages):
+            return False
+        if not _filters_equal(content.events, union_content.events):
             return False
     return True
 

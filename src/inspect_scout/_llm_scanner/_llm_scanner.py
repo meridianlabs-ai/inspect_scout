@@ -1,4 +1,5 @@
 import sys
+from logging import getLogger
 from typing import Any, AsyncIterator, Awaitable, Callable, Literal, cast, overload
 
 import anyio
@@ -37,6 +38,10 @@ from .._transcript.messages import (
     transcript_messages,
 )
 from .._transcript.timeline import TimelineMessages
+from .._transcript.timeline_stream import (
+    _StubSkeletonUnsupported,
+    stream_timeline_messages,
+)
 from .._transcript.types import EventType, Transcript, TranscriptContent
 from ._reducer import aggregate_results
 from .answer import Answer, answer_from_argument
@@ -50,6 +55,8 @@ from .types import AnswerSpec
 
 if sys.version_info < (3, 11):
     from exceptiongroup import ExceptionGroup
+
+logger = getLogger(__name__)
 
 # Maximum number of segments scanned concurrently per transcript. Bounds
 # in-flight model calls (and hence retained segment memory) so a single
@@ -285,6 +292,14 @@ def llm_scanner(
 
     resolved_answer = answer_from_argument(answer)
 
+    # Whether this scanner's effective content includes events. The @scanner
+    # decorator declares only messages="all"; a content override is the only
+    # way events enter the effective filter. On the streaming handle path this
+    # decides whether to route through stream_timeline_messages (events) or
+    # stream_segment_messages (messages-only) — mirroring how the materialized
+    # transcript_messages path routes on events/timeline presence.
+    content_has_events = content is not None and content.events is not None
+
     # resolve retry_refusals
     retry_refusals = (
         retry_refusals
@@ -415,6 +430,36 @@ def llm_scanner(
                 "the scanner template."
             )
 
+        # Materialized Transcript path: segments stream from transcript_messages
+        # (an async generator) so only N are in flight at once. TimelineMessages
+        # segments carry a span id for per-span grouping in aggregate_results.
+        # Factored out so the events-streaming fallback (below) can reuse it
+        # after materializing the handle.
+        async def scan_materialized(source_transcript: Transcript) -> Result:
+            async def materialized_source() -> AsyncIterator[tuple[str | None, str]]:
+                async for seg in transcript_messages(
+                    source_transcript,
+                    messages_as_str=messages_as_str_fn,
+                    model=resolved_model,
+                    context_window=context_window,
+                    timeline=timeline,
+                    compaction=compaction,
+                    depth=depth,
+                    prompt_reserve=template_tokens,
+                ):
+                    span_id = seg.span.id if isinstance(seg, TimelineMessages) else None
+                    yield span_id, seg.messages_str
+
+            materialized_results = await _scan_segments_bounded(
+                materialized_source(), scan_segment
+            )
+            return await aggregate_results(
+                results=materialized_results,
+                timeline=bool(source_transcript.timelines),
+                answer=answer,
+                reducer=reducer,
+            )
+
         # Scan segments through a bounded concurrency window. At most
         # _SEGMENT_CONCURRENCY segments are scanned (and hence retained) at a
         # time, so a large transcript can't spawn one task per segment. The
@@ -424,6 +469,55 @@ def llm_scanner(
         # Order matters for reduction (explanation concatenation, LLM synthesis
         # prompt assembly, majority tiebreak), so each result carries its
         # segment index and is sorted back into order before aggregation.
+        if handle is not None and content_has_events:
+            # Streaming events path: two-pass event streaming over the handle
+            # via stream_timeline_messages, yielding TimelineMessages segments
+            # (span ids reused for per-span grouping, exactly like the
+            # materialized timeline path).
+            async def stream_timeline_source() -> AsyncIterator[tuple[str | None, str]]:
+                async for seg in stream_timeline_messages(
+                    handle,
+                    messages_as_str=messages_as_str_fn,
+                    model=resolved_model,
+                    context_window=context_window,
+                    compaction=compaction,
+                    depth=depth,
+                    prompt_reserve=template_tokens,
+                ):
+                    yield seg.span.id, seg.messages_str
+
+            # The stub-skeleton streaming can surface _StubSkeletonUnsupported
+            # lazily during segment iteration (uuid-less needed events, or a
+            # multi-shot contract violation). The raise happens in pass 1 --
+            # while building the stub skeleton and selecting needed uuids,
+            # before any segment is yielded and thus before scan_segment runs --
+            # so no LLM calls have been made when we catch it here. On fallback
+            # we materialize the handle and run the full materialized path from
+            # scratch; no scan work is duplicated.
+            try:
+                results = await _scan_segments_bounded(
+                    stream_timeline_source(), scan_segment
+                )
+            except _StubSkeletonUnsupported as ex:
+                logger.info(
+                    "Streaming events skeleton unsupported for transcript %s "
+                    "(%s); falling back to materialized scan.",
+                    handle.info.transcript_id,
+                    ex,
+                )
+                return await scan_materialized(await handle.load())
+            # Mirror the materialized path's `timeline=bool(...timelines)`
+            # reduction flag: the handle carries events (not named timelines),
+            # so info_transcript.timelines is empty — matching how the
+            # materialized events-only path (transcript with events, no
+            # timelines) aggregates, so both paths produce the same Result.
+            return await aggregate_results(
+                results=results,
+                timeline=bool(info_transcript.timelines),
+                answer=answer,
+                reducer=reducer,
+            )
+
         if handle is not None:
             # Streaming handle path: messages-only, no timeline. Span id is
             # always None. Only messages_str is passed into the closure so the
@@ -446,7 +540,6 @@ def llm_scanner(
                 reducer=reducer,
             )
 
-        source: AsyncIterator[tuple[str | None, str]]
         if events is not None and has_interleavable_events(info_transcript, events):
             if info_transcript.timelines or timeline is not None:
                 raise ValueError(
@@ -468,37 +561,15 @@ def llm_scanner(
                 ):
                     yield None, seg.messages_str
 
-            source = interleaved_source()
-        else:
-            # Materialized Transcript path: segments stream from
-            # transcript_messages (an async generator) so only N are in flight
-            # at once. TimelineMessages segments carry a span id for per-span
-            # grouping in aggregate_results.
-            async def materialized_source() -> AsyncIterator[tuple[str | None, str]]:
-                async for seg in transcript_messages(
-                    info_transcript,
-                    messages_as_str=messages_as_str_fn,
-                    model=resolved_model,
-                    context_window=context_window,
-                    timeline=timeline,
-                    compaction=compaction,
-                    depth=depth,
-                    prompt_reserve=template_tokens,
-                ):
-                    span_id = (
-                        seg.span.id if isinstance(seg, TimelineMessages) else None
-                    )
-                    yield span_id, seg.messages_str
+            results = await _scan_segments_bounded(interleaved_source(), scan_segment)
+            return await aggregate_results(
+                results=results,
+                timeline=False,
+                answer=answer,
+                reducer=reducer,
+            )
 
-            source = materialized_source()
-
-        results = await _scan_segments_bounded(source, scan_segment)
-        return await aggregate_results(
-            results=results,
-            timeline=bool(info_transcript.timelines),
-            answer=answer,
-            reducer=reducer,
-        )
+        return await scan_materialized(info_transcript)
 
     # set name for collection by @scanner if specified
     if name is not None:
@@ -526,15 +597,19 @@ def llm_scanner(
 
     # Opt in to streaming handle input only when the scan can run without the
     # full transcript: no callable question/template_variables (they take a
-    # Transcript), no timeline extraction, and no content override requesting
-    # events/timeline (which the pipeline would treat as ineligible anyway).
-    content_forces_materialization = content is not None and (
-        content.events is not None or content.timeline is not None
+    # Transcript), no named-timeline extraction, and no event interleaving
+    # (events= splices loaded events into the message list). Events content is
+    # now streamable (the handle path consumes it via stream_timeline_messages),
+    # so only a content-level `timeline` filter still forces materialization
+    # (named-timeline selection needs the full transcript).
+    content_forces_materialization = (
+        content is not None and content.timeline is not None
     )
     if (
         not callable(question)
         and not callable(template_variables)
         and timeline is None
+        and events is None
         and not content_forces_materialization
     ):
         setattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, True)

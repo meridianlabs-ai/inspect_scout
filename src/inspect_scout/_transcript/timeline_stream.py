@@ -40,9 +40,19 @@ the scanning skeleton.
 from __future__ import annotations
 
 import dataclasses
+from typing import Literal
 
-from inspect_ai.event import Event, ModelEvent, ToolEvent
+from inspect_ai.event import (
+    CompactionEvent,
+    Event,
+    ModelEvent,
+    TimelineEvent,
+    TimelineSpan,
+    ToolEvent,
+)
 from inspect_ai.model import ChatMessageSystem, ContentText
+
+from inspect_scout._transcript.timeline import _walk_spans
 
 
 class _StubSkeletonUnsupported(Exception):
@@ -218,3 +228,156 @@ def stub_event(event: Event, interner: _PromptInterner) -> Event:
     if isinstance(event, ToolEvent):
         return _stub_tool_event(event, interner)
     return event
+
+
+def _require_uuid(event: ModelEvent) -> str:
+    """Return `event.uuid`, or raise `_StubSkeletonUnsupported` if absent.
+
+    A selected ModelEvent whose full content pass 2 must substitute back
+    can only be targeted by uuid. An event lacking one cannot be faithfully
+    represented by the stub skeleton, so selection fails loudly rather than
+    silently dropping the event's content.
+    """
+    if event.uuid is None:
+        raise _StubSkeletonUnsupported(
+            "selected ModelEvent has no uuid; cannot target it for pass-2 substitution"
+        )
+    return event.uuid
+
+
+def _needed_uuids_for_span(
+    span_events: list[Event],
+    *,
+    compaction: Literal["all", "last"] | int,
+) -> set[str]:
+    """Select the ModelEvents whose content `span_messages` reads for one span.
+
+    Mirrors `span_messages` (`_transcript/messages.py`) exactly, in
+    merge mode, so the returned set is precisely the ModelEvents whose
+    ``input``/``output`` that function touches for ``compaction``:
+
+    - ``"last"`` / ``n == 1``: only the span's final ModelEvent.
+    - otherwise: normalize ``n``; when ``n`` is an int smaller than the
+      region count, slice ``span_events`` from the same ``cut_index``
+      (the CompactionEvent at that position is kept, matching
+      ``messages.py``); then replay the merge loop, marking as needed the
+      last pre-compaction ModelEvent grafted at each ``summary``/``trim``
+      boundary, the first post-``trim`` ModelEvent whose input
+      ``_trim_prefix`` reads, and the final accumulation's last ModelEvent.
+      ``edit`` boundaries are transparent (they do not split a region),
+      exactly as in ``span_messages``.
+
+    Args:
+        span_events: A span's DIRECT events (Model/Compaction and others),
+            in order. Non-Model/Compaction events are ignored, as in
+            ``span_messages``.
+        compaction: Same semantics as ``span_messages``' parameter.
+
+    Returns:
+        The set of selected ModelEvent uuids. Raises
+        ``_StubSkeletonUnsupported`` if any selected ModelEvent lacks a
+        uuid.
+    """
+    model_events = [e for e in span_events if isinstance(e, ModelEvent)]
+    if not model_events:
+        return set()
+
+    # Normalize compaction to n (mirrors span_messages).
+    n: int | None
+    if compaction == "last":
+        n = 1
+    elif compaction == "all":
+        n = None
+    else:
+        n = compaction
+
+    # "last 1" shortcut: only the final ModelEvent.
+    if n == 1:
+        return {_require_uuid(model_events[-1])}
+
+    # Slice to the last n regions if n is specified (mirrors span_messages:
+    # the CompactionEvent at cut_index is INCLUDED in the slice).
+    events = span_events
+    if n is not None:
+        compaction_indices = [
+            i for i, event in enumerate(events) if isinstance(event, CompactionEvent)
+        ]
+        num_regions = len(compaction_indices) + 1
+        if n < num_regions:
+            cut_index = compaction_indices[-(n)]
+            events = events[cut_index:]
+
+    # Replay the merge loop, collecting the ModelEvents whose content is read.
+    needed: set[str] = set()
+    current: list[ModelEvent] = []
+    pending_trim_pre: ModelEvent | None = None
+
+    for event in events:
+        if isinstance(event, ModelEvent):
+            if pending_trim_pre is not None:
+                # `_trim_prefix` reads this (first post-trim) event's input.
+                needed.add(_require_uuid(event))
+                pending_trim_pre = None
+            current.append(event)
+        elif isinstance(event, CompactionEvent):
+            if event.type == "summary":
+                if current:
+                    needed.add(_require_uuid(current[-1]))
+                current = []
+            elif event.type == "trim":
+                if current:
+                    # Pre-trim input is read by `_trim_prefix`.
+                    needed.add(_require_uuid(current[-1]))
+                    pending_trim_pre = current[-1]
+                current = []
+            # edit: transparent, keep accumulating.
+
+    if current:
+        needed.add(_require_uuid(current[-1]))
+
+    return needed
+
+
+def needed_model_event_uuids(
+    root: TimelineSpan,
+    *,
+    compaction: Literal["all", "last"] | int,
+    depth: int | None,
+) -> set[str]:
+    """Select every ModelEvent whose content the scanning path reads.
+
+    Walks scannable spans exactly like ``timeline_messages``
+    (``_walk_spans(root, depth=depth)``) and, per span, mirrors
+    ``span_messages``' kept-region logic over that span's DIRECT events
+    (child spans are separate walks, matching ``span_messages``' per-span
+    view of ``span.content``). The union across spans is the set of
+    ModelEvents whose ``input``/``output`` ``span_messages`` touches for
+    the given ``compaction`` -- i.e. the events whose full content pass 2
+    must substitute back into the stub skeleton.
+
+    Note: ``span_messages`` reads no tool definitions in this path
+    (``segment_messages`` -> ``span_messages`` never calls ``span_tools``,
+    and the ``llm_scanner`` segment flow does not either), so ModelEvents
+    selected purely to carry ``tools`` are not needed; stubs dropping
+    ``tools`` is irrelevant to message reconstruction.
+
+    Args:
+        root: Root ``TimelineSpan`` of the built (stub) timeline.
+        compaction: Compaction strategy, forwarded per-span to the mirror
+            of ``span_messages`` (``"all"``, ``"last"``, or an int N).
+        depth: Scannable-span nesting limit, forwarded to ``_walk_spans``
+            (``None`` = unlimited).
+
+    Returns:
+        The set of selected ModelEvent uuids across all scannable spans.
+
+    Raises:
+        _StubSkeletonUnsupported: If any selected ModelEvent lacks a uuid.
+    """
+    needed: set[str] = set()
+    for span in _walk_spans(root, depth=depth):
+        span_events = [
+            item.event for item in span.content if isinstance(item, TimelineEvent)
+        ]
+        needed |= _needed_uuids_for_span(span_events, compaction=compaction)
+    return needed

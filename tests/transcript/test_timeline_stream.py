@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Literal
 
 import pytest
@@ -9,11 +10,13 @@ from inspect_ai.event import Event, ModelEvent, TimelineEvent, ToolEvent, timeli
 from inspect_ai.model import ChatMessage, ChatMessageSystem, ContentText
 from inspect_scout._transcript.messages import span_messages
 from inspect_scout._transcript.timeline import TimelineSpan, _walk_spans
+from inspect_scout._transcript.types import Transcript, TranscriptInfo
 
 from tests.transcript.fixtures_agentic import (
     _compaction_event,
     _model_event,
     agentic_events,
+    agentic_transcript,
 )
 
 try:
@@ -439,3 +442,108 @@ def test_stub_model_event_interns_list_content_system_prompt() -> None:
     assert isinstance(part_a, ContentText)
     assert isinstance(part_b, ContentText)
     assert part_a.text is part_b.text
+
+
+def _info(transcript: Transcript) -> TranscriptInfo:
+    return TranscriptInfo(transcript_id=transcript.transcript_id)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("compaction", ["all", "last", 2])
+@pytest.mark.parametrize("depth", [None, 1])
+async def test_stream_equals_materialized_segments(
+    compaction: Literal["all", "last"] | int, depth: int | None
+) -> None:
+    from inspect_scout._scanner.extract import message_numbering
+    from inspect_scout._transcript.handle import MaterializedTranscriptHandle
+    from inspect_scout._transcript.timeline import timeline_messages
+    from inspect_scout._transcript.timeline_stream import stream_timeline_messages
+
+    transcript = agentic_transcript()
+
+    async def load() -> Transcript:
+        return transcript
+
+    handle = MaterializedTranscriptHandle(load, _info(transcript))
+
+    def numbering() -> Any:  # fresh numbering scope per path
+        return message_numbering()[0]
+
+    streamed = [
+        (seg.span.id, seg.messages_str)
+        async for seg in stream_timeline_messages(
+            handle,
+            messages_as_str=numbering(),
+            model="mockllm/model",
+            compaction=compaction,
+            depth=depth,
+        )
+    ]
+    materialized = [
+        (seg.span.id, seg.messages_str)
+        async for seg in timeline_messages(
+            timeline_build(transcript.events).root,
+            messages_as_str=numbering(),
+            model="mockllm/model",
+            compaction=compaction,
+            depth=depth,
+        )
+    ]
+    assert streamed == materialized
+
+
+LOGS_DIR = Path(__file__).parent.parent / "recorder" / "logs"
+LOGS = sorted(LOGS_DIR.glob("*.eval"))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("log", LOGS, ids=[log.name for log in LOGS])
+async def test_stream_equals_materialized_segments_eval_logs(
+    log: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Fidelity over real `.eval` fixtures, forced through the spooled path."""
+    from inspect_scout._scanner.extract import message_numbering
+    from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
+    from inspect_scout._transcript.timeline import timeline_build, timeline_messages
+    from inspect_scout._transcript.timeline_stream import stream_timeline_messages
+    from inspect_scout._transcript.types import TranscriptContent
+    from inspect_scout._util import constants as constants_mod
+
+    monkeypatch.setattr(constants_mod, "SPOOL_THRESHOLD_BYTES", 0)
+    content = TranscriptContent(events="all")
+
+    view = EvalLogTranscriptsView(str(log))
+    await view.connect()
+    try:
+        infos = [i async for i in view.select()]
+        assert infos
+        info = infos[0]
+        materialized = await view.read(info, content)
+
+        def numbering() -> Any:  # fresh numbering scope per path
+            return message_numbering()[0]
+
+        async with await view.open(info, content) as handle:
+            streamed = [
+                (seg.span.id, seg.messages_str)
+                async for seg in stream_timeline_messages(
+                    handle,
+                    messages_as_str=numbering(),
+                    model="mockllm/model",
+                    compaction="all",
+                    depth=None,
+                )
+            ]
+        materialized_segments = [
+            (seg.span.id, seg.messages_str)
+            async for seg in timeline_messages(
+                timeline_build(materialized.events).root,
+                messages_as_str=numbering(),
+                model="mockllm/model",
+                compaction="all",
+                depth=None,
+            )
+        ]
+        assert streamed == materialized_segments
+    finally:
+        await view.disconnect()

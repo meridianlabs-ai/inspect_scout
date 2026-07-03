@@ -298,7 +298,7 @@ class TestSearchEndpoint:
         """Forcing the spooled path still returns a valid SearchResponse."""
         # Force EvalLogTranscriptsView.open() to take the spooled-handle
         # branch regardless of sample size.
-        monkeypatch.setattr(constants_mod, "STREAMING_THRESHOLD_BYTES", 0)
+        monkeypatch.setattr(constants_mod, "SPOOL_THRESHOLD_BYTES", 0)
 
         transcript_id = asyncio.run(_first_eval_log_transcript_id(EVAL_LOG))
 

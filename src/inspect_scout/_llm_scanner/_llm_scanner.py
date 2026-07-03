@@ -46,7 +46,11 @@ from .._transcript.types import EventType, Transcript, TranscriptContent
 from ._reducer import aggregate_results
 from .answer import Answer, answer_from_argument
 from .generate import generate_answer
-from .interleave import has_interleavable_events, interleave_events
+from .interleave import (
+    has_interleavable_events,
+    interleave_events,
+    stream_interleave_events,
+)
 from .prompt import (
     DEFAULT_SCANNER_TEMPLATE_PREFIX,
     DEFAULT_SCANNER_TEMPLATE_SUFFIX,
@@ -325,15 +329,13 @@ def llm_scanner(
         )
 
         # Streaming can only work without materializing when the full transcript
-        # isn't needed for template resolution, timeline extraction, or event
-        # interleaving (which splices loaded events into the message list). The
-        # preprocessor receives per-segment message lists (see message_numbering)
-        # so it is streaming-safe and does NOT force materialization.
+        # isn't needed for template resolution or timeline extraction. Event
+        # interleaving streams too (stream_interleave_events retains only
+        # message ids and rendered event text, not payloads). The preprocessor
+        # receives per-segment message lists (see message_numbering) so it is
+        # streaming-safe and does NOT force materialization.
         full_transcript_needed = (
-            callable(question)
-            or callable(template_variables)
-            or timeline is not None
-            or events is not None
+            callable(question) or callable(template_variables) or timeline is not None
         )
         if handle is not None and full_transcript_needed:
             # Fall back to the materialized Transcript path.
@@ -469,6 +471,34 @@ def llm_scanner(
         # Order matters for reduction (explanation concatenation, LLM synthesis
         # prompt assembly, majority tiebreak), so each result carries its
         # segment index and is sorted back into order before aggregation.
+        if handle is not None and events is not None:
+            # Streaming interleave path: three passes over the handle (ids,
+            # anchor walk, splice) retaining only message ids and rendered
+            # event text — never the bulk payloads. The spliced stream then
+            # segments exactly like a plain message stream. Span id is always
+            # None (no timeline on this path; guard above the branches).
+            async def stream_interleaved_source() -> AsyncIterator[
+                tuple[str | None, str]
+            ]:
+                async for seg in stream_segment_messages(
+                    stream_interleave_events(handle, events),
+                    messages_as_str=messages_as_str_fn,
+                    model=resolved_model,
+                    context_window=context_window,
+                    prompt_reserve=template_tokens,
+                ):
+                    yield None, seg.messages_str
+
+            results = await _scan_segments_bounded(
+                stream_interleaved_source(), scan_segment
+            )
+            return await aggregate_results(
+                results=results,
+                timeline=False,
+                answer=answer,
+                reducer=reducer,
+            )
+
         if handle is not None and content_has_events:
             # Streaming events path: two-pass event streaming over the handle
             # via stream_timeline_messages, yielding TimelineMessages segments
@@ -597,11 +627,11 @@ def llm_scanner(
 
     # Opt in to streaming handle input only when the scan can run without the
     # full transcript: no callable question/template_variables (they take a
-    # Transcript), no named-timeline extraction, and no event interleaving
-    # (events= splices loaded events into the message list). Events content is
-    # now streamable (the handle path consumes it via stream_timeline_messages),
-    # so only a content-level `timeline` filter still forces materialization
-    # (named-timeline selection needs the full transcript).
+    # Transcript) and no named-timeline extraction. Events content streams via
+    # stream_timeline_messages, and events= interleaving streams via
+    # stream_interleave_events, so only a content-level `timeline` filter
+    # still forces materialization (named-timeline selection needs the full
+    # transcript).
     content_forces_materialization = (
         content is not None and content.timeline is not None
     )
@@ -609,7 +639,6 @@ def llm_scanner(
         not callable(question)
         and not callable(template_variables)
         and timeline is None
-        and events is None
         and not content_forces_materialization
     ):
         setattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, True)

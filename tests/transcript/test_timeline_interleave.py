@@ -503,9 +503,9 @@ async def test_include_scorers_true_non_model_graded_score_collected_once() -> N
 
 
 def _agentic_events_with_scores() -> list[Event]:
-    """``agentic_events()`` augmented with in-span/external/scorers scores.
+    """``agentic_events()`` augmented with in-span/external/scorers/nested scores.
 
-    Exercises all three attachment paths ``collect_span_external``
+    Exercises all four attachment paths ``collect_span_external``
     distinguishes:
 
     - An in-span ``ScoreEvent(span_id="main")`` lands directly in "main"'s
@@ -514,13 +514,25 @@ def _agentic_events_with_scores() -> list[Event]:
     - A ``ScoreEvent(span_id="sub")`` lands inside the "sub" utility span
       (not scannable), so it is collected externally and attributed to the
       last scannable span reached before "sub" ("main").
-    - A top-level "scorers" phase span (sibling of "solvers", matching how
-      real eval transcripts are shaped -- see ``timeline_build``'s
-      phase-span detection) with a direct grader ``ModelEvent`` plus its
-      own ``ScoreEvent``: since it has a direct ``ModelEvent``, it is
-      walked as an ordinary scannable span (its score splices into its own
-      thread, matching ``include_scorers=True`` semantics) rather than
-      being collected externally.
+    - A ``ScoreEvent(span_id="sub2")`` lands inside "sub2", a nested
+      *scannable* span (its own direct ``ModelEvent``s, not utility) two
+      scannable levels deep under the synthetic root (root == "main" here,
+      since ``timeline_build`` collapses the trivial "solvers" wrapper --
+      see ``_materialized_collection_source``'s tree). This is the case
+      where the ``depth`` axis genuinely matters for collection: at
+      ``depth=None`` "sub2" is walked directly and the score is owned by
+      its own splice; at ``depth=1`` "sub2" exceeds the depth limit and is
+      never walked, so the score must instead surface via external
+      collection, attributed to the last span actually walked ("main").
+    - A "scorers" span with a direct grader ``ModelEvent`` plus its own
+      ``ScoreEvent``, appended at the end of "main"'s content (per
+      ``timeline_build``'s phase-span handling, a "scorers" span with no
+      other siblings ends up nested as the last child of "main", not a
+      top-level sibling of "solvers"): since it has a direct
+      ``ModelEvent``, it is walked as an ordinary scannable span (its
+      score splices into its own thread, matching
+      ``include_scorers=True`` semantics) rather than being collected
+      externally.
     """
     events = list(agentic_events())
 
@@ -549,6 +561,21 @@ def _agentic_events_with_scores() -> list[Event]:
             span_id="sub",
             scorer="sub-external",
             score=Score(value=0),
+        ),
+    )
+
+    sub2_end = next(
+        i
+        for i, e in enumerate(events)
+        if isinstance(e, SpanEndEvent) and e.id == "sub2"
+    )
+    events.insert(
+        sub2_end,
+        ScoreEvent(
+            uuid="evt-sub2-nested-score",
+            span_id="sub2",
+            scorer="sub2-nested",
+            score=Score(value=0.75),
         ),
     )
 
@@ -629,7 +656,7 @@ async def test_stream_timeline_messages_events_parity(
 
     materialized_tree = timeline_build(events)
     collection_source = _materialized_collection_source(materialized_tree)
-    span_external = collect_span_external(collection_source, ["score"])
+    span_external = collect_span_external(collection_source, ["score"], depth=depth)
 
     materialized_numbering, _ = message_numbering()
     materialized = [

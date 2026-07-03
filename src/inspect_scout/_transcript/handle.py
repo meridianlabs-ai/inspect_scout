@@ -7,6 +7,9 @@ loaded, but fully in-memory once loaded) ``Transcript`` -- the small-file
 path. ``SpooledTranscriptHandle`` wraps a disk-spool-backed
 ``StreamParseResult`` -- the large-file path -- deferring the parse until
 first use so prefetched handles don't pin resources.
+
+Deliberately not exported from ``inspect_scout.__init__`` -- the shape must
+survive phase 2 (``types=`` pushdown, region-level access) before freezing.
 """
 
 from __future__ import annotations
@@ -48,7 +51,20 @@ def _passes(item: ChatMessage | Event, types: MessageFilter | EventFilter) -> bo
 
 @runtime_checkable
 class TranscriptHandle(Protocol):
-    """Streaming access to transcript content. Async context manager."""
+    """Streaming access to transcript content. Async context manager.
+
+    Multi-shot contract:
+        Each ``messages()``/``events()`` call opens a fresh iteration;
+        implementations must retain replay capability (e.g. the spool) for
+        the handle's lifetime. Future forward-cursor backends must either
+        spool locally or document single-shot deviation before this protocol
+        is exported.
+
+    Reservation note:
+        Phase 2 will add a region-level accessor (e.g. ``conversations()``)
+        for compaction-aware event streaming; keep this protocol unexported
+        until then.
+    """
 
     @property
     def info(self) -> TranscriptInfo:
@@ -86,7 +102,12 @@ class TranscriptHandle(Protocol):
         ...
 
     async def load(self) -> Transcript:
-        """Materialize the full transcript. Memoized."""
+        """Materialize the full transcript. Memoized.
+
+        Materializes the full requested content in memory (may parse a
+        multi-GB sample); memoized. Prefer ``messages()``/``events()`` for
+        bounded-memory access.
+        """
         ...
 
     async def __aenter__(self) -> "TranscriptHandle": ...

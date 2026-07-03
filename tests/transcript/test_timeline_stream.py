@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, AsyncIterator, Literal
 
 import pytest
 from inspect_ai.event import Event, ModelEvent, TimelineEvent, ToolEvent, timeline_build
@@ -504,6 +504,7 @@ async def test_stream_equals_materialized_segments_eval_logs(
     """Fidelity over real `.eval` fixtures, forced through the spooled path."""
     from inspect_scout._scanner.extract import message_numbering
     from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
+    from inspect_scout._transcript.handle import SpooledTranscriptHandle
     from inspect_scout._transcript.timeline import timeline_build, timeline_messages
     from inspect_scout._transcript.timeline_stream import stream_timeline_messages
     from inspect_scout._transcript.types import TranscriptContent
@@ -524,6 +525,7 @@ async def test_stream_equals_materialized_segments_eval_logs(
             return message_numbering()[0]
 
         async with await view.open(info, content) as handle:
+            assert isinstance(handle, SpooledTranscriptHandle)
             streamed = [
                 (seg.span.id, seg.messages_str)
                 async for seg in stream_timeline_messages(
@@ -544,6 +546,66 @@ async def test_stream_equals_materialized_segments_eval_logs(
                 depth=None,
             )
         ]
+        assert streamed  # non-vacuous: the fixture must yield >=1 segment
         assert streamed == materialized_segments
     finally:
         await view.disconnect()
+
+
+class _FlakyHandle:
+    """Test double violating the `TranscriptHandle` multi-shot contract.
+
+    `events()` returns the full event list (including a needed `ModelEvent`)
+    on its first call, but omits that same event on the second call. Pass 1
+    of `stream_timeline_messages` selects the event's uuid from the first
+    stream; pass 2 must fail to find a full event for it on the second
+    stream, which should surface as `_StubSkeletonUnsupported` rather than
+    silently substituting a stub or crashing.
+    """
+
+    def __init__(self, events: list[Event], *, omit_uuid: str) -> None:
+        self._events = events
+        self._omit_uuid = omit_uuid
+        self._call_count = 0
+
+    async def events(self, *, types: object = None) -> AsyncIterator[Event]:
+        self._call_count += 1
+        first_call = self._call_count == 1
+        for event in self._events:
+            if not first_call and getattr(event, "uuid", None) == self._omit_uuid:
+                continue
+            yield event
+
+
+@pytest.mark.asyncio
+async def test_stream_raises_on_multi_shot_violation() -> None:
+    """Pass 2 must raise `_StubSkeletonUnsupported` if `events()` is flaky.
+
+    Regression guard for the multi-shot contract check in
+    `stream_timeline_messages`: if a handle's second `events()` call omits
+    a `ModelEvent` that pass 1 selected from the first call, pass 2 cannot
+    find a full event for that uuid and must raise rather than silently
+    dropping content.
+    """
+    from inspect_scout._scanner.extract import message_numbering
+    from inspect_scout._transcript.timeline_stream import (
+        _StubSkeletonUnsupported,
+        stream_timeline_messages,
+    )
+
+    events = agentic_events()
+    omit_uuid = _last_model_event(events).uuid
+    assert omit_uuid is not None
+    handle = _FlakyHandle(events, omit_uuid=omit_uuid)
+
+    with pytest.raises(_StubSkeletonUnsupported):
+        [
+            seg
+            async for seg in stream_timeline_messages(
+                handle,  # type: ignore[arg-type]
+                messages_as_str=message_numbering()[0],
+                model="mockllm/model",
+                compaction="last",
+                depth=None,
+            )
+        ]

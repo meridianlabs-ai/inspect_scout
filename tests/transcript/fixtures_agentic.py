@@ -183,7 +183,9 @@ def _span_end(*, span_id: str) -> SpanEndEvent:
     return SpanEndEvent(id=span_id, timestamp=_next_ts(), span_id=span_id)
 
 
-def agentic_events(*, big_payload: str = "x" * 200) -> list[Event]:
+def agentic_events(
+    *, big_payload: str = "x" * 200, bulk_model_turns: int = 0
+) -> list[Event]:
     """Build a deterministic flat event list exercising `timeline_build`.
 
     Structure (see module docstring and task brief for the classification
@@ -212,10 +214,19 @@ def agentic_events(*, big_payload: str = "x" * 200) -> list[Event]:
           tool_calls) directly in main -> wrapped as a utility span.
         - two CompactionEvents ("summary" then "trim"), each with
           ModelEvents before/after.
+        - if `bulk_model_turns` > 0, that many extra ModelEvents inserted
+          directly before the final ("main-3") ModelEvent, each carrying
+          `big_payload` in its (non-system) input content and a small,
+          distinct output. With `compaction="last"`, only the span's final
+          ModelEvent is selected, so these turns are never selected --
+          their bulk lives entirely in non-selected conversations.
 
     Args:
         big_payload: Payload string embedded in ToolEvent arguments/results
             in the "main" span, to exercise large-content handling.
+        bulk_model_turns: Number of extra bulk-carrying ModelEvents to
+            insert in "main" immediately before the final ModelEvent.
+            Defaults to 0 (no change to existing callers).
 
     Returns:
         A flat, chronologically-ordered list of `Event` objects.
@@ -480,6 +491,24 @@ def agentic_events(*, big_payload: str = "x" * 200) -> list[Event]:
             ],
         )
     )
+
+    # Optional bulk ModelEvents, inserted directly before the closing turn.
+    # With compaction="last" only the final ModelEvent in the span is
+    # selected, so these are always non-selected -- their (big_payload-
+    # carrying) conversations must never be retained by the stub skeleton.
+    for i in range(bulk_model_turns):
+        events.append(
+            _model_event(
+                label=f"bulk-{i}",
+                system_prompt="MAIN",
+                output_text=f"bulk-output-{i}",
+                span_id="main",
+                input_messages=[
+                    ChatMessageSystem(content="MAIN"),
+                    ChatMessageUser(content=f"{big_payload}-{i}"),
+                ],
+            )
+        )
 
     # ModelEvent 3 (main, closing turn, no tool calls)
     events.append(

@@ -63,7 +63,7 @@ SCANNER_VERSION = "scanner_version"
 SCANNER_FILE_ATTR = "___scanner_file___"
 SCANNER_NAME_ATTR = "___scanner_name___"
 SCANNER_CONTENT_ATTR = "___scanner_content___"
-SCANNER_ACCEPTS_HANDLE_ATTR = "___scanner_accepts_handle___"
+SCANNER_SUPPORTS_STREAMING_ATTR = "___scanner_supports_streaming___"
 
 # core types
 # Use bounded TypeVar (contravariant for scanner input)
@@ -98,6 +98,14 @@ class ScannerConfig:
     content: TranscriptContent = field(default_factory=TranscriptContent)
     # TODO: I want to make loader non-optional, but this obviously isn't right
     loader: Loader[ScannerInput] = field(default=cast(Loader[ScannerInput], None))
+    supports_streaming: bool = False
+    """Whether the scanner can operate on a streaming `TranscriptHandle`
+    without a materialized `Transcript`.
+
+    Set per-instance (rather than as a class-level capability) because
+    streaming-safety depends on runtime config - e.g. callable question
+    templates require full transcripts.
+    """
 
 
 ScannerFactory = Callable[P, Scanner[T]]
@@ -414,6 +422,14 @@ def scanner(
                     scanner_fn, scanner_config.content
                 )
 
+            # Carry the per-instance streaming capability set by the scan fn
+            # (e.g. llm_scanner sets this when the runtime config is
+            # streaming-safe) into the typed config.
+            if hasattr(scanner_fn, SCANNER_SUPPORTS_STREAMING_ATTR):
+                scanner_config.supports_streaming = bool(
+                    getattr(scanner_fn, SCANNER_SUPPORTS_STREAMING_ATTR)
+                )
+
             registry_tag(
                 factory_fn,
                 scanner_fn,
@@ -468,15 +484,26 @@ def config_for_scanner(scanner: Scanner[Any]) -> ScannerConfig:
     return cast(ScannerConfig, registry_info(scanner).metadata[SCANNER_CONFIG])
 
 
-def scanner_accepts_handle(scanner: Scanner[Any]) -> bool:
-    """Whether a scanner accepts a `TranscriptHandle` directly.
+def scanner_supports_streaming(scanner: Scanner[Any]) -> bool:
+    """Whether a scanner can operate on a streaming `TranscriptHandle` without a materialized `Transcript`.
 
     A scanner opts in to streaming reads by setting
-    `SCANNER_ACCEPTS_HANDLE_ATTR` (truthy) on its scan function. When set,
-    the scan pipeline passes the shared `TranscriptHandle` to the scanner
-    rather than materializing a `Transcript`.
+    `SCANNER_SUPPORTS_STREAMING_ATTR` (truthy) on its scan function; the
+    `@scanner` decorator carries that into `ScannerConfig.supports_streaming`.
+    When set, the scan pipeline passes the shared `TranscriptHandle` to the
+    scanner rather than materializing a `Transcript`.
+
+    Set per-instance (rather than as a class-level capability) because
+    streaming-safety depends on runtime config - e.g. callable question
+    templates require full transcripts. Prefers the registered
+    `ScannerConfig` (available once the scanner is registered); falls back to
+    reading the attr directly off the scan function for direct-call cases
+    where no config has been registered yet.
     """
-    return bool(getattr(scanner, SCANNER_ACCEPTS_HANDLE_ATTR, False))
+    try:
+        return config_for_scanner(scanner).supports_streaming
+    except (ValueError, KeyError):
+        return bool(getattr(scanner, SCANNER_SUPPORTS_STREAMING_ATTR, False))
 
 
 def scanners_from_file(file: str, scanner_args: dict[str, Any]) -> list[Scanner[Any]]:

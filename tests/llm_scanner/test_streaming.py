@@ -4,7 +4,7 @@ Covers the streaming-segmentation rewire of ``llm_scanner``:
 
 - A ``TranscriptHandle`` input produces a Result equivalent to a
   ``Transcript`` input over the same content.
-- The ``SCANNER_ACCEPTS_HANDLE_ATTR`` capability attr is set only when
+- The ``SCANNER_SUPPORTS_STREAMING_ATTR`` capability attr is set only when
   streaming can work without the full transcript (static config), and not
   when a callable ``question``/``template_variables`` or event/timeline
   content would force materialization.
@@ -30,7 +30,7 @@ from inspect_ai.tool import ToolChoice, ToolInfo
 from inspect_scout import llm_scanner
 from inspect_scout._llm_scanner import _llm_scanner as llm_scanner_mod
 from inspect_scout._scanner.result import Result
-from inspect_scout._scanner.scanner import SCANNER_ACCEPTS_HANDLE_ATTR, Scanner
+from inspect_scout._scanner.scanner import SCANNER_SUPPORTS_STREAMING_ATTR, Scanner
 from inspect_scout._transcript.handle import MaterializedTranscriptHandle
 from inspect_scout._transcript.types import (
     Transcript,
@@ -117,7 +117,7 @@ async def test_handle_input_equivalent_to_transcript_input() -> None:
 
 def test_static_config_sets_handle_attr() -> None:
     scan_fn = llm_scanner(question="static?", answer="boolean")
-    assert getattr(scan_fn, SCANNER_ACCEPTS_HANDLE_ATTR, False) is True
+    assert getattr(scan_fn, SCANNER_SUPPORTS_STREAMING_ATTR, False) is True
 
 
 def test_callable_question_does_not_set_handle_attr() -> None:
@@ -125,7 +125,7 @@ def test_callable_question_does_not_set_handle_attr() -> None:
         return "dynamic?"
 
     scan_fn = llm_scanner(question=question, answer="boolean")
-    assert getattr(scan_fn, SCANNER_ACCEPTS_HANDLE_ATTR, False) is False
+    assert getattr(scan_fn, SCANNER_SUPPORTS_STREAMING_ATTR, False) is False
 
 
 def test_callable_template_variables_does_not_set_handle_attr() -> None:
@@ -137,12 +137,12 @@ def test_callable_template_variables_does_not_set_handle_attr() -> None:
         answer="boolean",
         template_variables=template_variables,
     )
-    assert getattr(scan_fn, SCANNER_ACCEPTS_HANDLE_ATTR, False) is False
+    assert getattr(scan_fn, SCANNER_SUPPORTS_STREAMING_ATTR, False) is False
 
 
 def test_timeline_does_not_set_handle_attr() -> None:
     scan_fn = llm_scanner(question="static?", answer="boolean", timeline="agent")
-    assert getattr(scan_fn, SCANNER_ACCEPTS_HANDLE_ATTR, False) is False
+    assert getattr(scan_fn, SCANNER_SUPPORTS_STREAMING_ATTR, False) is False
 
 
 def test_content_with_events_does_not_set_handle_attr() -> None:
@@ -151,7 +151,7 @@ def test_content_with_events_does_not_set_handle_attr() -> None:
         answer="boolean",
         content=TranscriptContent(events="all"),
     )
-    assert getattr(scan_fn, SCANNER_ACCEPTS_HANDLE_ATTR, False) is False
+    assert getattr(scan_fn, SCANNER_SUPPORTS_STREAMING_ATTR, False) is False
 
 
 def test_content_messages_only_still_sets_handle_attr() -> None:
@@ -160,7 +160,7 @@ def test_content_messages_only_still_sets_handle_attr() -> None:
         answer="boolean",
         content=TranscriptContent(messages="all"),
     )
-    assert getattr(scan_fn, SCANNER_ACCEPTS_HANDLE_ATTR, False) is True
+    assert getattr(scan_fn, SCANNER_SUPPORTS_STREAMING_ATTR, False) is True
 
 
 # ---------------------------------------------------------------------------

@@ -8,7 +8,7 @@ from inspect_scout import scanner
 from inspect_scout._concurrency.common import ScannerJob
 from inspect_scout._scan import _content_for_scanner, _scan_one, _streaming_eligible
 from inspect_scout._scanner.result import Result, _serialize_input
-from inspect_scout._scanner.scanner import SCANNER_ACCEPTS_HANDLE_ATTR, Scanner
+from inspect_scout._scanner.scanner import SCANNER_SUPPORTS_STREAMING_ATTR, Scanner
 from inspect_scout._scanner.util import get_input_type_and_ids
 from inspect_scout._transcript.handle import MaterializedTranscriptHandle
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
@@ -33,7 +33,7 @@ def _handle_scanner() -> Scanner[Transcript]:
     async def scan(transcript: Transcript) -> Result:
         return Result(value="ok")
 
-    setattr(scan, SCANNER_ACCEPTS_HANDLE_ATTR, True)
+    setattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, True)
     return scan
 
 
@@ -145,7 +145,7 @@ def _make_handle_scanner(messages: Any) -> Scanner[Any]:
         async def scan(transcript: Transcript) -> Result:
             return Result(value="ok")
 
-        setattr(scan, SCANNER_ACCEPTS_HANDLE_ATTR, True)
+        setattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, True)
         return scan
 
     return cast(Scanner[Any], factory())
@@ -188,7 +188,7 @@ def test_streaming_eligible_false_when_any_scanner_wants_events_or_timeline() ->
         async def scan(transcript: Transcript) -> Result:
             return Result(value="ok")
 
-        setattr(scan, SCANNER_ACCEPTS_HANDLE_ATTR, True)
+        setattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, True)
         return scan
 
     s2 = cast(Scanner[Any], events_factory())

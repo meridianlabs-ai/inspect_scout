@@ -73,7 +73,7 @@ from ._scanjob import (
 from ._scanjob_config import ScanJobConfig
 from ._scanner.loader import config_for_loader
 from ._scanner.result import Error, Result, ResultReport, ResultValidation, as_resultset
-from ._scanner.scanner import Scanner, config_for_scanner, scanner_accepts_handle
+from ._scanner.scanner import Scanner, config_for_scanner, scanner_supports_streaming
 from ._scanner.types import ScannerInput, ScannerInputNames
 from ._scanner.util import get_input_type_and_ids
 from ._scanspec import ScanSpec, Worklist
@@ -605,7 +605,8 @@ async def _scan_async_inner(
                             scanners_list[idx] for idx in job.scanner_indices
                         ]
                         streaming_eligible = all(
-                            scanner_accepts_handle(scanner) for scanner in job_scanners
+                            scanner_supports_streaming(scanner)
+                            for scanner in job_scanners
                         ) and _streaming_eligible(job_scanners, union_content)
 
                         union_transcript: Transcript | TranscriptHandle
@@ -1077,7 +1078,7 @@ async def _scan_one(
         if isinstance(job.union_transcript, Transcript):
             # Legacy path: materialized Transcript through the loader.
             loader_iterations = loader(job.union_transcript)
-        elif scanner_accepts_handle(job.scanner):
+        elif scanner_supports_streaming(job.scanner):
             # Streaming path: pass the handle itself straight to the scanner.
             loader_iterations = _single_item_iter(job.union_transcript)
         else:
@@ -1239,7 +1240,7 @@ def _streaming_eligible(
     Args:
         scanners: The scanners in the parse job (must all accept handles;
             callers are expected to have already checked
-            `scanner_accepts_handle`).
+            `scanner_supports_streaming`).
         union_content: The union of all scanners' content filters.
 
     Returns:

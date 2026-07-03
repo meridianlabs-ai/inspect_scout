@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from inspect_scout._scanner.extract import MessagesAsStr
+    from inspect_scout._transcript.interleave import EventsSpec
 
 from inspect_ai.event import (
     ModelEvent,
@@ -172,6 +173,8 @@ async def timeline_messages(
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     prompt_reserve: int | float = 0.2,
+    events: EventsSpec | None = None,
+    span_external: dict[str, list[tuple[str, str]]] | None = None,
 ) -> AsyncIterator[TimelineMessages]:
     """Yield pre-rendered message segments from timeline spans.
 
@@ -211,6 +214,23 @@ async def timeline_messages(
             an ``int`` reserves that many tokens (plus a small safety
             margin). Default ``0.2`` leaves 80% of the window for
             messages. Forwarded to ``segment_messages()``.
+        events: Which non-message event types to interleave into each
+            span's message thread as marked entries (``"all"``, a list
+            of event types, or ``None`` to disable interleaving). When
+            ``None`` (default), behavior is unchanged from before this
+            parameter existed: each span is passed to
+            ``segment_messages()`` as a ``TimelineSpan``. When set,
+            each span's thread is built via
+            ``span_interleaved_messages()`` (events spliced in) and the
+            resulting message list is passed to ``segment_messages()``
+            instead.
+        span_external: Optional mapping of span id to a list of
+            ``(event_id, rendered_text)`` entries to append, as marked
+            event messages, after that span's own messages (before
+            segmentation), so they count toward the token budget and
+            land in the span's final segment. The reserved key ``""``
+            instead prepends its entries as leading entries on the
+            first scannable span. Ignored when ``events`` is ``None``.
 
     Yields:
         TimelineMessages for each segment. Empty spans are skipped.
@@ -219,10 +239,47 @@ async def timeline_messages(
 
     root = timeline.root if isinstance(timeline, Timeline) else timeline
 
+    if events is None:
+        counter = 0
+        for span in _walk_spans(root, depth=depth):
+            async for seg in segment_messages(
+                span,
+                messages_as_str=messages_as_str,
+                model=model,
+                context_window=context_window,
+                compaction=compaction,
+                prompt_reserve=prompt_reserve,
+            ):
+                yield TimelineMessages(
+                    messages=seg.messages,
+                    messages_str=seg.messages_str,
+                    segment=counter,
+                    span=span,
+                )
+                counter += 1
+        return
+
+    from inspect_scout._transcript.interleave import (
+        _event_message,
+        span_interleaved_messages,
+    )
+
+    span_external = span_external or {}
     counter = 0
+    is_first_span = True
     for span in _walk_spans(root, depth=depth):
+        source = span_interleaved_messages(span, events=events, compaction=compaction)
+        if is_first_span:
+            leading = span_external.get("", [])
+            if leading:
+                source = [_event_message(eid, text) for eid, text in leading] + source
+            is_first_span = False
+        trailing = span_external.get(span.id, [])
+        if trailing:
+            source = source + [_event_message(eid, text) for eid, text in trailing]
+
         async for seg in segment_messages(
-            span,
+            source,
             messages_as_str=messages_as_str,
             model=model,
             context_window=context_window,

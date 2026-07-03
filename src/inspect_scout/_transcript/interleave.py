@@ -3,12 +3,13 @@
 from collections import defaultdict
 from typing import Literal
 
-from inspect_ai.event import Event, ModelEvent
+from inspect_ai.event import Event, ModelEvent, TimelineEvent, TimelineSpan
 from inspect_ai.model import ChatMessage, ChatMessageUser
 
 from .._scanner.extract import EVENT_MARKER_KEY
 from .._scanner.util import _event_id, _message_id
 from .event_text import event_as_str
+from .messages import span_messages
 from .types import EventType
 
 # Events that already appear in the message thread (model, tool) or are pure
@@ -100,3 +101,45 @@ class _AnchorWalk:
         text = _interleavable_text(event, self._events)
         if text is not None:
             self.add_rendered(_event_id(event), text)
+
+
+def span_interleaved_messages(
+    span: TimelineSpan, *, events: EventsSpec, compaction: Compaction
+) -> list[ChatMessage]:
+    """Splice a span's interleavable events into its message thread.
+
+    Per-span counterpart to ``interleave_events``: draws ``ModelEvent``s
+    and interleavable events from the span's direct ``TimelineEvent``
+    content (descendant spans are not considered), reconstructs the
+    span's message thread via ``span_messages`` (honoring ``compaction``),
+    then anchors and splices events into that thread with ``_AnchorWalk``.
+
+    Anchoring walks the span's full, unfiltered content in order, so an
+    event whose anchoring ``ModelEvent`` output was dropped by compaction
+    is not found in the (possibly truncated) thread and falls back to
+    being anchored to the previous surviving turn, or leads the span if
+    none survived.
+
+    Args:
+        span: The scannable span to process.
+        events: Which event types to interleave (``"all"`` or a list).
+        compaction: Compaction handling for the span's message thread.
+
+    Returns:
+        The span's messages with marked event entries spliced in.
+    """
+    messages = span_messages(span, compaction=compaction)
+
+    walk = _AnchorWalk([_message_id(m) for m in messages], events)
+    for item in span.content:
+        if isinstance(item, TimelineEvent):
+            walk.add(item.event)
+
+    result: list[ChatMessage] = [
+        _event_message(event_id, text) for event_id, text in walk.leading
+    ]
+    for index, message in enumerate(messages):
+        result.append(message)
+        for event_id, text in walk.anchored.get(index, []):
+            result.append(_event_message(event_id, text))
+    return result

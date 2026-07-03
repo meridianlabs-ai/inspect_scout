@@ -212,6 +212,27 @@ def test_stub_preserves_warmup_signal() -> None:
     assert _is_warmup_call(stub) == _is_warmup_call(warmup) is True
     assert _get_system_prompt_for_event(stub) == _get_system_prompt_for_event(warmup)
     assert _has_tool_calls(stub) == _has_tool_calls(warmup)
+    # Bulk stripped: the leading 100KB user turn must not survive stubbing.
+    assert "w" * 1000 not in stub.model_dump_json()
+
+    # False direction: a max_tokens=1 event whose trailing user content is
+    # MULTI-word (the classic single-token judge/classifier call) is NOT a
+    # warmup, and stubbing must not flip it into one (a one-token truncation
+    # would: `_is_warmup_call` tests `len(content.split()) <= 1`).
+    judge = base.model_copy(
+        update={
+            "uuid": "evt-judge-local",
+            "input": [
+                ChatMessageSystem(content="MAIN"),
+                ChatMessageUser(content="Is the answer correct? Reply yes or no."),
+            ],
+            "config": GenerateConfig(max_tokens=1),
+        }
+    )
+    assert not _is_warmup_call(judge)
+    judge_stub = stub_event(judge, _PromptInterner())
+    assert isinstance(judge_stub, ModelEvent)
+    assert _is_warmup_call(judge_stub) == _is_warmup_call(judge) is False
 
     # Bulk user content did not survive stubbing.
     assert "w" * 1000 not in stub.model_dump_json()

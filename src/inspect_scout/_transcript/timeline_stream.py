@@ -167,13 +167,17 @@ def _stub_model_event(event: ModelEvent, interner: _PromptInterner) -> ModelEven
     # Retain the warmup signal for `_is_warmup_call` (max_tokens <= 1 plus a
     # single-word trailing user message). Append the last ChatMessageUser
     # after the system messages so it remains the trailing user message the
-    # classifier finds when scanning `reversed(input)`.
+    # classifier finds when scanning `reversed(input)`. Keep up to TWO
+    # whitespace tokens: the classifier tests `len(content.split()) <= 1`,
+    # so two tokens preserve the single-vs-multi-word distinction in BOTH
+    # directions (a one-token truncation would flip multi-word judge calls
+    # into false warmups) while still stripping bulk.
     if event.config.max_tokens is not None and event.config.max_tokens <= 1:
         for msg in reversed(event.input):
             if isinstance(msg, ChatMessageUser):
                 if isinstance(msg.content, str):
                     tokens = msg.content.split()
-                    truncated = tokens[0] if tokens else ""
+                    truncated = " ".join(tokens[:2])
                     stub_input.append(msg.model_copy(update={"content": truncated}))
                 # Non-string user content never qualifies as a warmup call
                 # (`_is_warmup_call` returns False for it), so it is dropped.

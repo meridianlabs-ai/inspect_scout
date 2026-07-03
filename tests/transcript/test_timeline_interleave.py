@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from typing import Literal
 
 import pytest
 from inspect_ai.event import (
@@ -12,17 +13,36 @@ from inspect_ai.event import (
     ModelEvent,
     SampleLimitEvent,
     ScoreEvent,
+    SpanEndEvent,
     Timeline,
     TimelineEvent,
     TimelineSpan,
+    timeline_build,
+    timeline_filter,
 )
 from inspect_ai.log import EvalError
 from inspect_ai.model import ChatMessage, ChatMessageUser, ModelOutput, get_model
 from inspect_ai.scorer import Score
 from inspect_scout._scanner.extract import message_numbering
+from inspect_scout._transcript.handle import MaterializedTranscriptHandle
+from inspect_scout._transcript.interleave import (
+    _span_has_direct_model_event,
+    collect_span_external,
+)
 from inspect_scout._transcript.messages import segment_messages, transcript_messages
 from inspect_scout._transcript.timeline import TimelineMessages, timeline_messages
-from inspect_scout._transcript.types import Transcript
+from inspect_scout._transcript.timeline_stream import stream_timeline_messages
+from inspect_scout._transcript.types import Transcript, TranscriptInfo
+
+from tests.transcript.fixtures_agentic import (
+    _model_event as _agentic_model_event,
+)
+from tests.transcript.fixtures_agentic import (
+    _span_begin,
+    _span_end,
+    agentic_events,
+    agentic_transcript,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -474,3 +494,246 @@ async def test_include_scorers_true_non_model_graded_score_collected_once() -> N
     assert len(results) == 1
     assert results[0].span.id == "span-a"
     assert combined.count("SCORE (match)") == 1
+
+
+# ---------------------------------------------------------------------------
+# Streaming parity (Task 4): stream_timeline_messages(events=...) vs the
+# materialized timeline_messages(events=...) call it must match.
+# ---------------------------------------------------------------------------
+
+
+def _agentic_events_with_scores() -> list[Event]:
+    """``agentic_events()`` augmented with in-span/external/scorers scores.
+
+    Exercises all three attachment paths ``collect_span_external``
+    distinguishes:
+
+    - An in-span ``ScoreEvent(span_id="main")`` lands directly in "main"'s
+      own content, owned by "main"'s own ``span_interleaved_messages``
+      splice (never externally collected).
+    - A ``ScoreEvent(span_id="sub")`` lands inside the "sub" utility span
+      (not scannable), so it is collected externally and attributed to the
+      last scannable span reached before "sub" ("main").
+    - A top-level "scorers" phase span (sibling of "solvers", matching how
+      real eval transcripts are shaped -- see ``timeline_build``'s
+      phase-span detection) with a direct grader ``ModelEvent`` plus its
+      own ``ScoreEvent``: since it has a direct ``ModelEvent``, it is
+      walked as an ordinary scannable span (its score splices into its own
+      thread, matching ``include_scorers=True`` semantics) rather than
+      being collected externally.
+    """
+    events = list(agentic_events())
+
+    main_end = next(
+        i
+        for i, e in enumerate(events)
+        if isinstance(e, SpanEndEvent) and e.id == "main"
+    )
+    events.insert(
+        main_end,
+        ScoreEvent(
+            uuid="evt-in-span-score",
+            span_id="main",
+            scorer="in-span",
+            score=Score(value=1),
+        ),
+    )
+
+    sub_end = next(
+        i for i, e in enumerate(events) if isinstance(e, SpanEndEvent) and e.id == "sub"
+    )
+    events.insert(
+        sub_end,
+        ScoreEvent(
+            uuid="evt-sub-external-score",
+            span_id="sub",
+            scorer="sub-external",
+            score=Score(value=0),
+        ),
+    )
+
+    grader_event = _agentic_model_event(
+        label="grader-1",
+        system_prompt="GRADER",
+        output_text="grader-output",
+        span_id="scorers",
+    )
+    events += [
+        _span_begin(
+            span_id="scorers", name="scorers", span_type="scorers", parent_id=None
+        ),
+        grader_event,
+        ScoreEvent(
+            uuid="evt-scorers-score",
+            span_id="scorers",
+            scorer="graded",
+            score=Score(value=0.5),
+        ),
+        _span_end(span_id="scorers"),
+    ]
+    return events
+
+
+def _materialized_collection_source(tree: Timeline) -> Timeline | TimelineSpan:
+    """Mirror ``stream_timeline_messages``' events collection source.
+
+    ``stream_timeline_messages`` never prunes ``scorers`` spans, so its
+    collection source matches ``transcript_messages(...,
+    include_scorers=True)``'s: only a ``scorers`` span with a direct
+    ``ModelEvent`` is filtered out (it is walked as an ordinary scannable
+    span instead, splicing its own events).
+    """
+    return timeline_filter(
+        tree,
+        lambda s: not (s.span_type == "scorers" and _span_has_direct_model_event(s)),
+    )
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("compaction", ["all", "last", 2])
+@pytest.mark.parametrize("depth", [None, 1])
+async def test_stream_timeline_messages_events_parity(
+    compaction: Literal["all", "last"] | int, depth: int | None
+) -> None:
+    """``stream_timeline_messages(events=...)`` matches the materialized path.
+
+    Drives a multi-span fixture with an in-span score, a span-external
+    score (collected via a utility span), and a scorers-span score through
+    both the streaming and materialized ``timeline_messages`` call and
+    asserts the yielded ``(span.id, messages_str)`` sequences match --
+    across every ``compaction``/``depth`` combination.
+    """
+    events = _agentic_events_with_scores()
+    transcript = agentic_transcript(events=events)
+
+    async def load() -> Transcript:
+        return transcript
+
+    handle = MaterializedTranscriptHandle(
+        load, TranscriptInfo(transcript_id=transcript.transcript_id)
+    )
+
+    # Fresh message_numbering() per side so [M#]/[E#] ordinals match.
+    streamed_numbering, _ = message_numbering()
+    streamed = [
+        (seg.span.id, seg.messages_str)
+        async for seg in stream_timeline_messages(
+            handle,
+            messages_as_str=streamed_numbering,
+            model="mockllm/model",
+            events=["score"],
+            compaction=compaction,
+            depth=depth,
+        )
+    ]
+
+    materialized_tree = timeline_build(events)
+    collection_source = _materialized_collection_source(materialized_tree)
+    span_external = collect_span_external(collection_source, ["score"])
+
+    materialized_numbering, _ = message_numbering()
+    materialized = [
+        (seg.span.id, seg.messages_str)
+        async for seg in timeline_messages(
+            materialized_tree.root,
+            messages_as_str=materialized_numbering,
+            model="mockllm/model",
+            events=["score"],
+            span_external=span_external,
+            compaction=compaction,
+            depth=depth,
+        )
+    ]
+
+    assert streamed  # non-vacuous
+    assert streamed == materialized
+
+
+@pytest.mark.anyio
+async def test_stream_timeline_messages_events_none_unchanged() -> None:
+    """``events=None`` on the streaming path is byte-identical to before.
+
+    Regression guard: adding the ``events`` parameter must not perturb the
+    default (``events=None``) streaming behavior already covered by
+    ``test_stream_equals_materialized_segments`` in
+    ``test_timeline_stream.py``.
+    """
+    events = _agentic_events_with_scores()
+    transcript = agentic_transcript(events=events)
+
+    async def load() -> Transcript:
+        return transcript
+
+    handle = MaterializedTranscriptHandle(
+        load, TranscriptInfo(transcript_id=transcript.transcript_id)
+    )
+
+    numbering, _ = message_numbering()
+    streamed = [
+        (seg.span.id, seg.messages_str)
+        async for seg in stream_timeline_messages(
+            handle, messages_as_str=numbering, model="mockllm/model"
+        )
+    ]
+
+    materialized_tree = timeline_build(events)
+    numbering2, _ = message_numbering()
+    materialized = [
+        (seg.span.id, seg.messages_str)
+        async for seg in timeline_messages(
+            materialized_tree.root, messages_as_str=numbering2, model="mockllm/model"
+        )
+    ]
+
+    assert streamed == materialized
+    # Sanity: the score events truly are not interleaved when events=None.
+    assert not any("SCORE" in text for _, text in streamed)
+
+
+@pytest.mark.anyio
+async def test_stream_timeline_messages_events_uuidless_raises() -> None:
+    """``_StubSkeletonUnsupported`` still raises with ``events`` set.
+
+    Companion to ``test_selection_uuidless_raises``
+    (``test_timeline_stream.py``): a needed ``ModelEvent`` lacking a uuid
+    makes pass 1 fail regardless of ``events``, since events never add
+    needed uuids (they don't contribute thread messages) and the raise
+    happens in pass 1, before ``events``/``span_external`` are ever
+    consulted.
+
+    This stands in for extending the llm_scanner-level
+    ``test_stub_unsupported_falls_back`` fallback test
+    (``tests/llm_scanner/test_streaming.py``) with ``events=["score"]``:
+    that test drives ``llm_scanner()``, whose routing does not yet thread
+    an ``events`` argument into its ``stream_timeline_messages`` call (that
+    wiring is Task 5), so passing ``events`` there today would not
+    exercise this parameter at all. Testing directly against
+    ``stream_timeline_messages`` instead proves the property Task 5's test
+    will rely on: passing ``events`` cannot mask or change a
+    ``_StubSkeletonUnsupported`` raise.
+    """
+    from inspect_scout._transcript.timeline_stream import _StubSkeletonUnsupported
+
+    events = agentic_events()
+    target = next(e for e in reversed(events) if isinstance(e, ModelEvent))
+    events = [e.model_copy(update={"uuid": None}) if e is target else e for e in events]
+    transcript = agentic_transcript(events=events)
+
+    async def load() -> Transcript:
+        return transcript
+
+    handle = MaterializedTranscriptHandle(
+        load, TranscriptInfo(transcript_id=transcript.transcript_id)
+    )
+
+    with pytest.raises(_StubSkeletonUnsupported):
+        [
+            seg
+            async for seg in stream_timeline_messages(
+                handle,
+                messages_as_str=message_numbering()[0],
+                model="mockllm/model",
+                events=["score"],
+                compaction="last",
+            )
+        ]

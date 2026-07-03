@@ -70,6 +70,7 @@ from inspect_scout._transcript.timeline import (
 if TYPE_CHECKING:
     from inspect_scout._scanner.extract import MessagesAsStr
     from inspect_scout._transcript.handle import TranscriptHandle
+    from inspect_scout._transcript.interleave import EventsSpec
 
 
 class _StubSkeletonUnsupported(Exception):
@@ -496,6 +497,7 @@ async def stream_timeline_messages(
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     prompt_reserve: int | float = 0.2,
+    events: EventsSpec | None = None,
 ) -> AsyncIterator[TimelineMessages]:
     """Yield timeline message segments by streaming a `TranscriptHandle` twice.
 
@@ -524,10 +526,28 @@ async def stream_timeline_messages(
         compaction: How to handle compaction boundaries.
         depth: Maximum nesting level of scannable spans to process.
         prompt_reserve: Context-window allowance for prompt scaffolding.
+        events: Which non-message event types to interleave into each
+            span's message thread, forwarded to `timeline_messages()`
+            (`"all"`, a list of event types, or `None` to disable
+            interleaving). When set, span-external events (events outside
+            any scannable span's direct content) are collected from the
+            substituted skeleton via `collect_span_external()` and
+            forwarded alongside `events`. This path never prunes `scorers`
+            spans (see the module-level note in `stream_timeline_messages`'
+            implementation), so the collection source matches
+            `transcript_messages(..., include_scorers=True)`'s semantics: a
+            `scorers` span with a direct `ModelEvent` is walked as an
+            ordinary scannable span (its own events splice into its own
+            thread) and is excluded from external collection to avoid
+            double-rendering its score; a `scorers` span without one is
+            never walked by `_walk_spans` and its events are collected
+            externally instead. `events=None` (default) is byte-identical
+            to behavior before this parameter existed.
 
     Yields:
         `TimelineMessages` segments, identical to calling `timeline_messages`
-        on the fully materialized transcript's built timeline.
+        on the fully materialized transcript's built timeline with the same
+        `events` value.
 
     Raises:
         _StubSkeletonUnsupported: If pass 1 selects a `ModelEvent` lacking a
@@ -557,6 +577,36 @@ async def stream_timeline_messages(
 
     _substitute_full_events(tree.root, full_by_uuid)
 
+    span_external: dict[str, list[tuple[str, str]]] | None = None
+    if events is not None:
+        # `stream_timeline_messages` never prunes `scorers` spans before
+        # handing the tree to `timeline_messages` (unlike
+        # `transcript_messages`'s default `include_scorers=False`, which
+        # prunes them after collecting their events here). So the
+        # collection source below mirrors
+        # `transcript_messages(..., include_scorers=True)`'s: filter out
+        # only `scorers` spans that have a direct `ModelEvent` (those are
+        # walked normally by `timeline_messages` and splice their own
+        # events via `span_interleaved_messages`; collecting them here too
+        # would double-render their score). A `scorers` span without a
+        # direct `ModelEvent` is never walked by `_walk_spans` regardless,
+        # so it must stay in the collection source or its events (e.g. the
+        # final `ScoreEvent`) would be silently lost.
+        from inspect_ai.event import timeline_filter
+
+        from inspect_scout._transcript.interleave import (
+            _span_has_direct_model_event,
+            collect_span_external,
+        )
+
+        collection_source = timeline_filter(
+            tree,
+            lambda s: (
+                not (s.span_type == "scorers" and _span_has_direct_model_event(s))
+            ),
+        )
+        span_external = collect_span_external(collection_source, events)
+
     async for seg in timeline_messages(
         tree,
         messages_as_str=messages_as_str,
@@ -565,5 +615,7 @@ async def stream_timeline_messages(
         compaction=compaction,
         depth=depth,
         prompt_reserve=prompt_reserve,
+        events=events,
+        span_external=span_external,
     ):
         yield seg

@@ -445,3 +445,32 @@ async def test_include_scorers_true_renders_grader_thread_and_score_once() -> No
     # The score entry appears exactly once (spliced into the scorers
     # span's own thread) -- not doubled by external collection.
     assert combined.count("SCORE (match)") == 1
+
+
+@pytest.mark.anyio
+async def test_include_scorers_true_non_model_graded_score_collected_once() -> None:
+    """include_scorers=True: score from a scorers span with no ModelEvent.
+
+    A scorers span with no ModelEvent (e.g. a non-model-graded scorer like
+    ``match``) is never walked by ``_walk_spans``, so its ScoreEvent must
+    still surface via span-external collection rather than being silently
+    dropped.
+    """
+    out_a = ModelOutput.from_content(model="mockllm", content="answer-a")
+    span_a = _span_of(
+        "span-a", "agent-a", [_model_event([ChatMessageUser(content="qa")], out_a)]
+    )
+    score = ScoreEvent(score=Score(value=1), scorer="match")
+    scorers_span = _span_of("span-scorers", "scorers", [score], span_type="scorers")
+    root = _span_of("root", "root", [span_a, scorers_span], span_type=None)
+
+    results, combined = await _collect_transcript(
+        root, events=["score"], include_scorers=True
+    )
+
+    # The scorers span has no direct ModelEvent, so it is never walked as
+    # its own scannable span; its score must instead surface as an
+    # external event attached to the last scannable span (span-a).
+    assert len(results) == 1
+    assert results[0].span.id == "span-a"
+    assert combined.count("SCORE (match)") == 1

@@ -467,17 +467,32 @@ async def transcript_messages(
 
         span_external: dict[str, list[tuple[str, str]]] | None = None
         if events is not None:
-            from inspect_scout._transcript.interleave import collect_span_external
+            from inspect_scout._transcript.interleave import (
+                _span_has_direct_model_event,
+                collect_span_external,
+            )
 
             # See collect_span_external()'s docstring for why the
             # scorers span is included here when it will be pruned
             # below (its events must be collected before they're lost)
-            # but filtered out here when it will survive pruning (its
-            # events are instead spliced in directly as an ordinary
-            # scannable span, and collecting them here too would
-            # double-render them).
+            # but filtered out here when it will survive pruning AND
+            # be walked as an ordinary scannable span by
+            # timeline_messages (its events are instead spliced in
+            # directly by span_interleaved_messages, and collecting
+            # them here too would double-render them). A scorers span
+            # without a direct ModelEvent is never walked by
+            # _walk_spans even when include_scorers=True, so it must
+            # stay in the collection source or its events would be
+            # silently dropped.
             collection_source = (
-                timeline_filter(selected, lambda s: s.span_type != "scorers")
+                timeline_filter(
+                    selected,
+                    lambda s: (
+                        not (
+                            s.span_type == "scorers" and _span_has_direct_model_event(s)
+                        )
+                    ),
+                )
                 if include_scorers
                 else selected
             )

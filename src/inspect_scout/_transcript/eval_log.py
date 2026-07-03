@@ -580,7 +580,7 @@ class EvalLogTranscriptsView(TranscriptsView):
         # event set to resolve stored timeline UUID references), use the
         # existing materialized read path unchanged.
         if (
-            entry.uncompressed_size <= constants_mod.STREAMING_THRESHOLD_BYTES
+            entry.uncompressed_size <= constants_mod.SPOOL_THRESHOLD_BYTES
             or content.timeline is not None
         ):
             return MaterializedTranscriptHandle(lambda: self.read(t, content), t)

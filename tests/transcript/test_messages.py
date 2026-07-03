@@ -23,9 +23,9 @@ from inspect_scout._transcript.messages import (
     MessagesSegment,
     _effective_segment_budget,
     segment_messages,
-    segment_messages_stream,
     span_messages,
     span_tools,
+    stream_segment_messages,
     transcript_messages,
 )
 from inspect_scout._transcript.timeline import (
@@ -708,7 +708,7 @@ async def test_segment_messages_skips_empty_renders() -> None:
     assert "[M1]" in results[0].messages_str
 
 
-# -- segment_messages_stream tests --
+# -- stream_segment_messages tests --
 
 
 async def _make_source(
@@ -724,11 +724,11 @@ async def _collect_stream(
     *,
     context_window: int | None = None,
 ) -> list[MessagesSegment]:
-    """Helper to collect all MessagesSegment from segment_messages_stream."""
+    """Helper to collect all MessagesSegment from stream_segment_messages."""
     model = get_model("mockllm/model")
     msgs_as_str, _ = message_numbering()
     results: list[MessagesSegment] = []
-    async for seg in segment_messages_stream(
+    async for seg in stream_segment_messages(
         _make_source(msgs),
         messages_as_str=msgs_as_str,
         model=model,
@@ -739,7 +739,7 @@ async def _collect_stream(
 
 
 @pytest.mark.anyio
-async def test_segment_messages_stream_single_segment() -> None:
+async def test_stream_segment_messages_single_segment() -> None:
     """Small message list fits in budget → single MessagesSegment."""
     msgs: list[ChatMessage] = [_user1, _asst1, _user2]
     results = await _collect_stream(msgs, context_window=10_000)
@@ -753,14 +753,14 @@ async def test_segment_messages_stream_single_segment() -> None:
 
 
 @pytest.mark.anyio
-async def test_segment_messages_stream_empty_input() -> None:
+async def test_stream_segment_messages_empty_input() -> None:
     """Empty source yields nothing."""
     results = await _collect_stream([], context_window=10_000)
     assert results == []
 
 
 @pytest.mark.anyio
-async def test_segment_messages_stream_skips_empty_renders() -> None:
+async def test_stream_segment_messages_skips_empty_renders() -> None:
     """System messages excluded by default preprocessor are skipped."""
     msgs: list[ChatMessage] = [_sys, _user1]
     results = await _collect_stream(msgs, context_window=10_000)
@@ -772,7 +772,7 @@ async def test_segment_messages_stream_skips_empty_renders() -> None:
 
 
 @pytest.mark.anyio
-async def test_segment_messages_stream_chunking() -> None:
+async def test_stream_segment_messages_chunking() -> None:
     """Large messages exceeding budget → multiple segments."""
     long_text = "word " * 100  # ~100 tokens
     msgs: list[ChatMessage] = [
@@ -793,7 +793,7 @@ async def test_segment_messages_stream_chunking() -> None:
 
 
 @pytest.mark.anyio
-async def test_segment_messages_stream_continuous_numbering() -> None:
+async def test_stream_segment_messages_continuous_numbering() -> None:
     """Message numbering is continuous across chunks."""
     long_text = "word " * 100
     msgs: list[ChatMessage] = [
@@ -808,7 +808,7 @@ async def test_segment_messages_stream_continuous_numbering() -> None:
 
 
 @pytest.mark.anyio
-async def test_segment_messages_stream_counts_serially(
+async def test_stream_segment_messages_counts_serially(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Token counting happens once per closed chunk, serialized."""
@@ -831,7 +831,7 @@ async def test_segment_messages_stream_counts_serially(
     ]
     msgs_as_str, _ = message_numbering()
     results: list[MessagesSegment] = []
-    async for seg in segment_messages_stream(
+    async for seg in stream_segment_messages(
         _make_source(msgs),
         messages_as_str=msgs_as_str,
         model=model,
@@ -846,7 +846,7 @@ async def test_segment_messages_stream_counts_serially(
 
 
 @pytest.mark.anyio
-async def test_segment_messages_stream_releases_early() -> None:
+async def test_stream_segment_messages_releases_early() -> None:
     """First segment is yielded before the source iterator is exhausted."""
     long_text = "word " * 100  # ~100 tokens, forces one message per segment
     total_messages = 6
@@ -862,7 +862,7 @@ async def test_segment_messages_stream_releases_early() -> None:
     msgs_as_str, _ = message_numbering()
 
     segments_seen = 0
-    async for _seg in segment_messages_stream(
+    async for _seg in stream_segment_messages(
         source(),
         messages_as_str=msgs_as_str,
         model=model,
@@ -879,7 +879,7 @@ async def test_segment_messages_stream_releases_early() -> None:
 
 
 @pytest.mark.anyio
-async def test_segment_messages_stream_equivalence() -> None:
+async def test_stream_segment_messages_equivalence() -> None:
     """Streamed segmentation matches batch segmentation on the same input."""
     msgs: list[ChatMessage] = [
         ChatMessageUser(content=f"Message number {i} " * 10, id=f"m-{i}")
@@ -903,7 +903,7 @@ async def test_segment_messages_stream_equivalence() -> None:
     stream_model = get_model("mockllm/model")
     stream_msgs_as_str, _ = message_numbering()
     stream_results: list[MessagesSegment] = []
-    async for seg in segment_messages_stream(
+    async for seg in stream_segment_messages(
         _make_source(msgs),
         messages_as_str=stream_msgs_as_str,
         model=stream_model,

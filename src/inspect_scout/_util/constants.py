@@ -16,5 +16,5 @@ DEFAULT_SCANS_DIR = "./scans"
 TRANSCRIPT_SOURCE_EVAL_LOG: Literal["eval_log", "database"] = "eval_log"
 TRANSCRIPT_SOURCE_DATABASE: Literal["eval_log", "database"] = "database"
 
-STREAMING_THRESHOLD_BYTES: int = 64 * 1024 * 1024
+SPOOL_THRESHOLD_BYTES: int = 64 * 1024 * 1024
 """Byte-size threshold above which transcript reads stream via disk spool instead of materializing."""

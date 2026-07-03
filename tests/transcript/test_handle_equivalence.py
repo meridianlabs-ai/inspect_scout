@@ -36,7 +36,7 @@ async def test_streamed_equals_materialized(
     log: Path, content: TranscriptContent, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # Force the spooled path regardless of file size
-    monkeypatch.setattr(constants_mod, "STREAMING_THRESHOLD_BYTES", 0)
+    monkeypatch.setattr(constants_mod, "SPOOL_THRESHOLD_BYTES", 0)
     view = EvalLogTranscriptsView(str(log))
     await view.connect()
     try:

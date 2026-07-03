@@ -228,7 +228,7 @@ async def segment_messages(
         )
 
 
-async def segment_messages_stream(
+async def stream_segment_messages(
     source: AsyncIterator[ChatMessage],
     *,
     messages_as_str: MessagesAsStr,

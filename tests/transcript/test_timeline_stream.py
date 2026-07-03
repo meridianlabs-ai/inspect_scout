@@ -10,7 +10,11 @@ from inspect_ai.model import ChatMessage, ChatMessageSystem, ContentText
 from inspect_scout._transcript.messages import span_messages
 from inspect_scout._transcript.timeline import TimelineSpan, _walk_spans
 
-from tests.transcript.fixtures_agentic import agentic_events
+from tests.transcript.fixtures_agentic import (
+    _compaction_event,
+    _model_event,
+    agentic_events,
+)
 
 try:
     from inspect_ai.event._timeline import (
@@ -242,6 +246,65 @@ def test_selection_covers_span_messages_reads(
         assert _dump(span_messages(span, compaction=compaction)) == _dump(
             span_messages(blanked_span, compaction=compaction)
         )
+
+
+def test_trim_at_span_end_does_not_over_select() -> None:
+    """Regression: trailing trim (no post-trim ModelEvent) must not over-select uuid-less pre-trim.
+
+    Builds a minimal span ending with:
+    ``[ModelEvent(uuid), ModelEvent(uuid=None via model_copy), trim]``
+
+    The pre-trim event (the one with uuid=None) should only be selected if a
+    *later* ModelEvent consumes it via _trim_prefix. Since there is no
+    post-trim ModelEvent, the uuid-less pre-trim event should NOT be selected.
+
+    Previously, the code eagerly selected the pre-trim event on encountering
+    the trim, which would raise _StubSkeletonUnsupported when the pre-trim
+    event had no uuid. The fix defers pre-trim selection to the consumption
+    point (when a post-trim ModelEvent is encountered), so a trailing trim
+    with no post-trim ModelEvent does not try to select the pre-trim uuid.
+
+    This test ensures that:
+    1. Selection does not raise _StubSkeletonUnsupported on the uuid-less pre-trim
+    2. The uuid-less pre-trim event is not selected (and nothing else is either,
+       since the span ends after the trim)
+    3. Equivalence still holds for any selected events (vacuously true here)
+    """
+    from inspect_scout._transcript.timeline_stream import (
+        _needed_uuids_for_span,
+        _StubSkeletonUnsupported,
+    )
+
+    # Build events for a single span: ModelEvent(uuid) -> ModelEvent(no uuid) -> trim
+    model_1 = _model_event(
+        label="trim-pre-1",
+        system_prompt="TEST",
+        output_text="before trim",
+        span_id=None,
+    )
+    model_2_no_uuid = _model_event(
+        label="trim-pre-2-no-uuid",
+        system_prompt="TEST",
+        output_text="trimmed away",
+        span_id=None,
+    ).model_copy(update={"uuid": None})
+    trim_event = _compaction_event(label="trim", type="trim", span_id=None)
+
+    span_events = [model_1, model_2_no_uuid, trim_event]
+
+    # Selection must not raise _StubSkeletonUnsupported on the uuid-less pre-trim event
+    # (it should not try to add it at all, since no ModelEvent follows to consume it).
+    try:
+        needed = _needed_uuids_for_span(span_events, compaction="all")
+    except _StubSkeletonUnsupported:
+        pytest.fail(
+            "_needed_uuids_for_span raised on trailing trim with uuid-less pre-trim; "
+            "should only add pre-trim uuid if later ModelEvent consumes it"
+        )
+
+    # After the trim clears current and there's no post-trim ModelEvent,
+    # nothing is added. The set should be empty.
+    assert needed == set()
 
 
 def test_selection_is_minimal_all() -> None:

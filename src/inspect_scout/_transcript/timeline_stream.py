@@ -23,7 +23,13 @@ For this to work, stubs must preserve every signal the classifier reads:
   event has tool calls (read by ``_has_tool_calls``, ``_timeline.py:1143``).
   ``_is_single_turn`` (``_timeline.py:1280``) counts direct ModelEvents and
   ToolEvents per span, which is why stubbing never collapses or drops
-  events -- one stub per original event, always.
+  events -- one stub per original event, always. The warmup/cache-priming
+  signal read by ``_is_warmup_call`` (``_timeline.py:1240``) --
+  ``config.max_tokens <= 1`` plus a single-word trailing ``ChatMessageUser``
+  content -- is preserved by retaining that trailing user message (truncated
+  to its first whitespace-separated token) when ``max_tokens <= 1``, so
+  ``_wrap_utility_events`` classifies warmup calls as utility spans
+  identically on the stub and materialized paths.
 - For ``ToolEvent``: ``agent`` / ``agent_span_id`` / ``function`` (read by
   ``_is_agent_span`` and ``_extract_agent_results``, ``_timeline.py:1038``).
 
@@ -53,7 +59,7 @@ from inspect_ai.event import (
     ToolEvent,
     timeline_build,
 )
-from inspect_ai.model import ChatMessageSystem, ContentText, Model
+from inspect_ai.model import ChatMessageSystem, ChatMessageUser, ContentText, Model
 
 from inspect_scout._transcript.timeline import (
     TimelineMessages,
@@ -115,6 +121,19 @@ def _stub_model_event(event: ModelEvent, interner: _PromptInterner) -> ModelEven
     `_has_tool_calls` only checks truthiness of the list -- content
     emptied; other choices dropped).
 
+    When `event.config.max_tokens <= 1`, the last `ChatMessageUser` from
+    `event.input` is also retained (appended after the system messages so
+    it stays the trailing user message the classifier finds). This
+    preserves the signal `_is_warmup_call` (`_timeline.py:1240`) reads: it
+    scans `reversed(event.input)` for the first `ChatMessageUser` and, for
+    string content, tests `len(content.split()) <= 1`. To avoid retaining
+    bulk while keeping that predicate's result identical, string content is
+    truncated to its first whitespace-separated token (empty string when the
+    content is empty/whitespace-only). Non-string (list) content is dropped,
+    matching `_is_warmup_call`'s own behaviour of returning `False` for
+    non-string user content -- so a stubbed list-content user message would
+    never have qualified as a warmup call anyway.
+
     Args:
         event: The `ModelEvent` to stub.
         interner: Interner used to dedupe system-prompt content strings.
@@ -122,11 +141,11 @@ def _stub_model_event(event: ModelEvent, interner: _PromptInterner) -> ModelEven
     Returns:
         A `model_copy` of `event` with bulk content removed.
     """
-    system_messages: list[ChatMessageSystem] = []
+    stub_input: list[ChatMessageSystem | ChatMessageUser] = []
     for msg in event.input:
         if isinstance(msg, ChatMessageSystem):
             if isinstance(msg.content, str):
-                system_messages.append(
+                stub_input.append(
                     msg.model_copy(update={"content": interner.intern(msg.content)})
                 )
             else:
@@ -143,9 +162,22 @@ def _stub_model_event(event: ModelEvent, interner: _PromptInterner) -> ModelEven
                     else part
                     for part in msg.content
                 ]
-                system_messages.append(
-                    msg.model_copy(update={"content": interned_content})
-                )
+                stub_input.append(msg.model_copy(update={"content": interned_content}))
+
+    # Retain the warmup signal for `_is_warmup_call` (max_tokens <= 1 plus a
+    # single-word trailing user message). Append the last ChatMessageUser
+    # after the system messages so it remains the trailing user message the
+    # classifier finds when scanning `reversed(input)`.
+    if event.config.max_tokens is not None and event.config.max_tokens <= 1:
+        for msg in reversed(event.input):
+            if isinstance(msg, ChatMessageUser):
+                if isinstance(msg.content, str):
+                    tokens = msg.content.split()
+                    truncated = tokens[0] if tokens else ""
+                    stub_input.append(msg.model_copy(update={"content": truncated}))
+                # Non-string user content never qualifies as a warmup call
+                # (`_is_warmup_call` returns False for it), so it is dropped.
+                break
 
     if event.output.choices:
         first_choice = event.output.choices[0]
@@ -169,7 +201,7 @@ def _stub_model_event(event: ModelEvent, interner: _PromptInterner) -> ModelEven
 
     return event.model_copy(
         update={
-            "input": system_messages,
+            "input": stub_input,
             "input_refs": None,
             "tools": [],
             "call": None,

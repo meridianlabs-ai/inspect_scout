@@ -196,4 +196,62 @@ def test_streaming_eligible_false_when_any_scanner_wants_events_or_timeline() ->
         [_content_for_scanner(s1), _content_for_scanner(s2)]
     )
     assert union_content.events is not None
+    # s1 has events=None (narrower than the union's events="all"): not eligible.
     assert _streaming_eligible([s1, s2], union_content) is False
+
+
+def _make_events_handle_scanner(events: Any) -> Scanner[Any]:
+    """Build a handle-accepting scanner with the given `events` content filter."""
+
+    @scanner(messages="all", events=events)
+    def factory() -> Scanner[Transcript]:
+        async def scan(transcript: Transcript) -> Result:
+            return Result(value="ok")
+
+        setattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, True)
+        return scan
+
+    return cast(Scanner[Any], factory())
+
+
+def test_streaming_eligible_events_content_true_when_equal_to_union() -> None:
+    # Two scanners with identical events filters (order-insensitive): the
+    # union equals each scanner's own events filter, so streaming is safe.
+    s1 = _make_events_handle_scanner(["model", "compaction", "span_begin", "span_end"])
+    s2 = _make_events_handle_scanner(["span_end", "span_begin", "compaction", "model"])
+    union_content = union_transcript_contents(
+        [_content_for_scanner(s1), _content_for_scanner(s2)]
+    )
+    assert union_content.events is not None
+    assert set(union_content.events) == {
+        "model",
+        "compaction",
+        "span_begin",
+        "span_end",
+    }
+    assert _streaming_eligible([s1, s2], union_content) is True
+
+
+def test_streaming_eligible_events_content_false_when_scanner_narrower() -> None:
+    # One scanner requests a narrower events filter than a sibling; the union
+    # broadens beyond the narrow scanner's own filter, so streaming (which
+    # shares the union-filtered handle) is unsafe.
+    narrow = _make_events_handle_scanner(["model"])
+    wide = _make_events_handle_scanner(
+        ["model", "compaction", "span_begin", "span_end"]
+    )
+    union_content = union_transcript_contents(
+        [_content_for_scanner(narrow), _content_for_scanner(wide)]
+    )
+    assert union_content.events is not None
+    assert _streaming_eligible([narrow, wide], union_content) is False
+
+
+def test_streaming_eligible_events_all_true() -> None:
+    s1 = _make_events_handle_scanner("all")
+    s2 = _make_events_handle_scanner("all")
+    union_content = union_transcript_contents(
+        [_content_for_scanner(s1), _content_for_scanner(s2)]
+    )
+    assert union_content.events == "all"
+    assert _streaming_eligible([s1, s2], union_content) is True

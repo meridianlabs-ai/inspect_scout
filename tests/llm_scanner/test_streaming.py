@@ -23,6 +23,7 @@ from inspect_ai.model import (
     ChatMessage,
     ChatMessageUser,
     GenerateConfig,
+    Model,
     ModelOutput,
     get_model,
 )
@@ -145,11 +146,25 @@ def test_timeline_does_not_set_handle_attr() -> None:
     assert getattr(scan_fn, SCANNER_SUPPORTS_STREAMING_ATTR, False) is False
 
 
-def test_content_with_events_does_not_set_handle_attr() -> None:
+def test_content_with_events_sets_handle_attr() -> None:
+    # Events content is now streaming-eligible (consumed via
+    # stream_timeline_messages on the handle path), so a static config with
+    # events content still opts in to streaming.
     scan_fn = llm_scanner(
         question="static?",
         answer="boolean",
         content=TranscriptContent(events="all"),
+    )
+    assert getattr(scan_fn, SCANNER_SUPPORTS_STREAMING_ATTR, False) is True
+
+
+def test_content_with_timeline_does_not_set_handle_attr() -> None:
+    # A timeline content filter still forces materialization (named-timeline
+    # selection and timeline extraction need the full transcript).
+    scan_fn = llm_scanner(
+        question="static?",
+        answer="boolean",
+        content=TranscriptContent(timeline="all"),
     )
     assert getattr(scan_fn, SCANNER_SUPPORTS_STREAMING_ATTR, False) is False
 
@@ -318,6 +333,105 @@ async def test_segment_order_preserved_in_reduction() -> None:
     # Extract the leading index from each recorded answer ("seg0", "seg3", ...)
     indices = [int(ans.removeprefix("seg")) for ans in _recorded_order]
     assert indices == sorted(indices), f"segment order not preserved: {indices}"
+
+
+# ---------------------------------------------------------------------------
+# (e) events content: handle path via stream_timeline_messages
+# ---------------------------------------------------------------------------
+
+
+def _handle_for_transcript(transcript: Transcript) -> MaterializedTranscriptHandle:
+    """Build a MaterializedTranscriptHandle for an arbitrary transcript."""
+
+    async def load_fn() -> Transcript:
+        return transcript
+
+    info = TranscriptInfo(
+        **transcript.model_dump(exclude={"messages", "events", "timelines"})
+    )
+    return MaterializedTranscriptHandle(load_fn, info)
+
+
+def _yes_model() -> Model:
+    def capture(
+        input_msgs: list[ChatMessage],
+        tools: list[ToolInfo],
+        tool_choice: ToolChoice,
+        config: GenerateConfig,
+    ) -> ModelOutput:
+        return ModelOutput.from_content(
+            model="mockllm",
+            content="Reasoning.\n\nANSWER: yes",
+            stop_reason="stop",
+        )
+
+    return get_model("mockllm/model", custom_outputs=capture, memoize=False)
+
+
+@pytest.mark.anyio
+async def test_handle_events_scan_equals_transcript_scan() -> None:
+    """An events-content handle scan equals the materialized Transcript scan.
+
+    The agentic fixture carries events (no top-level messages). Scanning it
+    through a handle routes to ``stream_timeline_messages`` (two-pass event
+    streaming); scanning the same ``Transcript`` routes to the materialized
+    ``transcript_messages`` path. Both must produce the same Result.
+    """
+    from tests.transcript.fixtures_agentic import agentic_transcript
+
+    transcript = agentic_transcript()
+
+    scan_fn = llm_scanner(
+        question="Did the agent use tools?",
+        answer="boolean",
+        model=_yes_model(),
+        content=TranscriptContent(events="all"),
+    )
+
+    result_transcript = await _scan(scan_fn, transcript)
+    result_handle = await _scan(scan_fn, _handle_for_transcript(transcript))
+
+    assert result_handle.value == result_transcript.value
+    assert result_handle.answer == result_transcript.answer
+    assert result_handle.explanation == result_transcript.explanation
+
+
+@pytest.mark.anyio
+async def test_stub_unsupported_falls_back(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A _StubSkeletonUnsupported during streaming falls back to materialized.
+
+    Monkeypatching ``needed_model_event_uuids`` to raise
+    ``_StubSkeletonUnsupported`` forces the handle events path to abort; the
+    scanner must recover by materializing the transcript and produce the same
+    Result the fully materialized path would.
+    """
+    from inspect_scout._transcript import timeline_stream
+    from inspect_scout._transcript.timeline_stream import _StubSkeletonUnsupported
+
+    from tests.transcript.fixtures_agentic import agentic_transcript
+
+    transcript = agentic_transcript()
+
+    scan_fn = llm_scanner(
+        question="Did the agent use tools?",
+        answer="boolean",
+        model=_yes_model(),
+        content=TranscriptContent(events="all"),
+    )
+
+    # Baseline: fully materialized Result.
+    expected = await _scan(scan_fn, transcript)
+
+    def _raise(*_args: object, **_kwargs: object) -> set[str]:
+        raise _StubSkeletonUnsupported("forced for test")
+
+    monkeypatch.setattr(timeline_stream, "needed_model_event_uuids", _raise)
+
+    fallback = await _scan(scan_fn, _handle_for_transcript(transcript))
+
+    assert fallback.value == expected.value
+    assert fallback.answer == expected.answer
+    assert fallback.explanation == expected.explanation
 
 
 _recorded_order: list[str] = []

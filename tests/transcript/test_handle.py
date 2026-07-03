@@ -329,6 +329,108 @@ async def test_spooled_handle_cancel_mid_stream_releases_fds(tmp_path: Path) -> 
     assert handle._closed is True
 
 
+def _mixed_messages() -> list[dict[str, Any]]:
+    return [
+        {"id": "m1", "role": "system", "content": "sys"},
+        {"id": "m2", "role": "user", "content": "hello"},
+        {"id": "m3", "role": "assistant", "content": "world"},
+        {"id": "m4", "role": "user", "content": "again"},
+    ]
+
+
+def _mixed_events() -> list[dict[str, Any]]:
+    from inspect_ai.event._info import InfoEvent
+    from inspect_ai.event._state import StateEvent
+
+    # Two `info` events bracketing one `state` event, serialized from real
+    # objects so both the spooled replay path and the materialized-validate
+    # path accept them.
+    return [
+        InfoEvent(data="a").model_dump(mode="json"),
+        StateEvent(changes=[]).model_dump(mode="json"),
+        InfoEvent(data="b").model_dump(mode="json"),
+    ]
+
+
+def _mixed_spooled_handle(tmp_path: Path) -> SpooledTranscriptHandle:
+    sample: dict[str, Any] = {
+        "id": "t1",
+        "messages": _mixed_messages(),
+        "events": _mixed_events(),
+        "attachments": {},
+    }
+
+    async def parse() -> Any:
+        return await stream_parse_to_spool(
+            io.BytesIO(json.dumps(sample).encode()), "all", "all", tmp_path
+        )
+
+    async def fallback() -> Transcript:
+        raise AssertionError("fallback should not be called")
+
+    return SpooledTranscriptHandle(INFO, parse, fallback)
+
+
+def _mixed_materialized_handle() -> MaterializedTranscriptHandle:
+    from inspect_ai.event._event import Event
+    from inspect_ai.model._chat_message import ChatMessage
+    from pydantic import TypeAdapter
+
+    messages = TypeAdapter(list[ChatMessage]).validate_python(_mixed_messages())
+    events = TypeAdapter(list[Event]).validate_python(_mixed_events())
+    transcript = Transcript.model_construct(
+        transcript_id="t1",
+        messages=messages,
+        events=events,
+        timelines=[],
+        metadata={},
+    )
+
+    async def load_fn() -> Transcript:
+        return transcript
+
+    return MaterializedTranscriptHandle(load_fn, INFO)
+
+
+@pytest.mark.asyncio
+async def test_messages_types_filters_to_role(tmp_path: Path) -> None:
+    for handle in (_mixed_spooled_handle(tmp_path), _mixed_materialized_handle()):
+        async with handle:
+            users = [m async for m in handle.messages(types=["user"])]
+            assert [m.role for m in users] == ["user", "user"]
+            assert [m.id for m in users] == ["m2", "m4"]
+
+
+@pytest.mark.asyncio
+async def test_events_types_filters_to_event(tmp_path: Path) -> None:
+    for handle in (_mixed_spooled_handle(tmp_path), _mixed_materialized_handle()):
+        async with handle:
+            infos = [e async for e in handle.events(types=["info"])]
+            assert [e.event for e in infos] == ["info", "info"]
+
+
+@pytest.mark.asyncio
+async def test_types_none_yields_everything(tmp_path: Path) -> None:
+    for handle in (_mixed_spooled_handle(tmp_path), _mixed_materialized_handle()):
+        async with handle:
+            msgs = [m async for m in handle.messages()]
+            msgs_explicit = [m async for m in handle.messages(types=None)]
+            evts = [e async for e in handle.events()]
+            assert [m.id for m in msgs] == ["m1", "m2", "m3", "m4"]
+            assert [m.id for m in msgs_explicit] == ["m1", "m2", "m3", "m4"]
+            assert [e.event for e in evts] == ["info", "state", "info"]
+
+
+@pytest.mark.asyncio
+async def test_types_all_behaves_like_none(tmp_path: Path) -> None:
+    for handle in (_mixed_spooled_handle(tmp_path), _mixed_materialized_handle()):
+        async with handle:
+            msgs = [m async for m in handle.messages(types="all")]
+            evts = [e async for e in handle.events(types="all")]
+            assert [m.id for m in msgs] == ["m1", "m2", "m3", "m4"]
+            assert [e.event for e in evts] == ["info", "state", "info"]
+
+
 @pytest.mark.asyncio
 async def test_spooled_handle_is_transcript_handle(tmp_path: Path) -> None:
     handle = _spooled_handle(tmp_path)

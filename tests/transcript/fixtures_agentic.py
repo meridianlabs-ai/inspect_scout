@@ -107,8 +107,21 @@ def _tool_event(
     function: str,
     payload: str,
     span_id: str | None,
+    agent: str | None = None,
+    events: list[Event] | None = None,
 ) -> ToolEvent:
-    """Build a ToolEvent whose arguments/result embed `payload`."""
+    """Build a ToolEvent whose arguments/result embed `payload`.
+
+    Args:
+        label: Unique label used to derive the event's uuid.
+        function: Tool function name.
+        payload: Payload embedded in `arguments`/`result`.
+        span_id: Span the event belongs to (None for root-level).
+        agent: If given, marks this as a tool-spawned agent handoff (see
+            `inspect_ai.event._timeline._event_to_node`).
+        events: Nested events for a tool-spawned agent (`ToolEvent.events`).
+            Only meaningful together with `agent`.
+    """
     ts = _next_ts()
     return ToolEvent(
         span_id=span_id,
@@ -119,6 +132,8 @@ def _tool_event(
         function=function,
         arguments={"payload": payload},
         result=f"result-{payload}",
+        agent=agent,
+        events=events if events is not None else [],
     )
 
 
@@ -177,6 +192,12 @@ def agentic_events(*, big_payload: str = "x" * 200) -> list[Event]:
           (prompt "MAIN") -> unrolled into main's content.
         - ``type="tool"`` span "browser" containing one ModelEvent (prompt
           "MAIN", tool_calls) -> classified as a tool-spawned agent.
+        - a flat ``ToolEvent`` "handoff-tool" with ``agent="handoff_agent"``
+          and 2 nested ModelEvents in ``.events`` (prompt "MAIN", multi-turn)
+          -> classified as a tool-spawned agent via
+          ``inspect_ai.event._timeline._event_to_node`` (distinct from the
+          "browser" span-based path: no begin/end span wrapping the nested
+          events).
         - one foreign-prompt helper ModelEvent (prompt "HELPER", no
           tool_calls) directly in main -> wrapped as a utility span.
         - two CompactionEvents ("summary" then "trim"), each with
@@ -336,6 +357,39 @@ def agentic_events(*, big_payload: str = "x" * 200) -> list[Event]:
         )
     )
     events.append(_span_end(span_id="browser"))
+
+    # --- flat ToolEvent with `agent` set and nested `.events` -> tool-spawned
+    # agent per inspect_ai's `_event_to_node` (distinct from the "browser"
+    # span-based path above: no SpanBeginEvent/SpanEndEvent wrapping, the
+    # nested agent's ModelEvents live inside `ToolEvent.events` itself).
+    # Multi-turn, same "MAIN" prompt as parent -> scannable, not utility.
+    # The second nested ModelEvent's output carries `big_payload` so
+    # stripping is assertable.
+    handoff_events: list[Event] = [
+        _model_event(
+            label="handoff-1",
+            system_prompt="MAIN",
+            output_text="handoff-output-1",
+            tool_call=ToolCall(id="call-handoff-1", function="lookup", arguments={}),
+            span_id="main",
+        ),
+        _model_event(
+            label="handoff-2",
+            system_prompt="MAIN",
+            output_text=big_payload,
+            span_id="main",
+        ),
+    ]
+    events.append(
+        _tool_event(
+            label="handoff-tool",
+            function="handoff",
+            payload=big_payload,
+            span_id="main",
+            agent="handoff_agent",
+            events=handoff_events,
+        )
+    )
 
     # --- foreign-prompt helper ModelEvent directly in main (no tool_calls)
     # -> wrapped by _wrap_utility_events as a synthetic utility span ---

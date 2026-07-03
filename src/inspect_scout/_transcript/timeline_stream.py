@@ -42,7 +42,7 @@ from __future__ import annotations
 import dataclasses
 
 from inspect_ai.event import Event, ModelEvent, ToolEvent
-from inspect_ai.model import ChatMessageSystem
+from inspect_ai.model import ChatMessageSystem, ContentText
 
 
 class _StubSkeletonUnsupported(Exception):
@@ -87,7 +87,8 @@ def _stub_model_event(event: ModelEvent, interner: _PromptInterner) -> ModelEven
     """Return a stripped copy of `event` preserving classification signals.
 
     Keeps `uuid`, `span_id`, timestamps, `input` reduced to only its
-    `ChatMessageSystem` entries (string content interned), and `output`
+    `ChatMessageSystem` entries (string content interned; list content has
+    each `ContentText` part's text interned in place), and `output`
     reduced to preserve `_has_tool_calls` (first choice's message with
     `tool_calls` kept -- but with each call's `arguments` emptied, since
     `_has_tool_calls` only checks truthiness of the list -- content
@@ -108,10 +109,22 @@ def _stub_model_event(event: ModelEvent, interner: _PromptInterner) -> ModelEven
                     msg.model_copy(update={"content": interner.intern(msg.content)})
                 )
             else:
-                # Preserve as-is: `_get_system_prompt_for_event` reads each
-                # part's `.text`, and non-text parts (e.g. images) are
-                # already small relative to bulk conversation content.
-                system_messages.append(msg)
+                # `_get_system_prompt_for_event` reads each part's `.text`
+                # (only `ContentText` parts have one; other content types,
+                # e.g. images, are already small relative to bulk
+                # conversation content and are kept as-is). Intern each
+                # `ContentText` part's text so repeated list-content
+                # system prompts are deduped the same way string-content
+                # ones are.
+                interned_content = [
+                    part.model_copy(update={"text": interner.intern(part.text)})
+                    if isinstance(part, ContentText)
+                    else part
+                    for part in msg.content
+                ]
+                system_messages.append(
+                    msg.model_copy(update={"content": interned_content})
+                )
 
     if event.output.choices:
         first_choice = event.output.choices[0]
@@ -144,22 +157,40 @@ def _stub_model_event(event: ModelEvent, interner: _PromptInterner) -> ModelEven
     )
 
 
-def _stub_tool_event(event: ToolEvent) -> ToolEvent:
+def _stub_tool_event(event: ToolEvent, interner: _PromptInterner) -> ToolEvent:
     """Return a stripped copy of `event` preserving classification signals.
 
-    Keeps everything except `arguments`, `result`, `events`, and `view`,
-    which carry the bulk tool-call payload. `agent`, `agent_span_id`,
-    `function`, and `id` -- read by `_is_agent_span` /
-    `_extract_agent_results` -- are preserved unchanged.
+    Keeps everything except `arguments`, `result`, and `view`, which carry
+    the bulk tool-call payload. `agent`, `agent_span_id`, `function`, and
+    `id` -- read by `_is_agent_span` / `_extract_agent_results` -- are
+    preserved unchanged.
+
+    `events` is NOT emptied: `inspect_ai`'s `_event_to_node` treats a
+    `ToolEvent` with both `.agent` set and non-empty `.events` as a
+    tool-spawned agent, recursively expanding `.events` into a nested
+    `TimelineSpan` (see `_timeline.py`'s `_event_to_node`). Emptying it
+    would collapse that nested span, hiding its `ModelEvent`s from pass-1
+    selection. Instead, each nested event is recursively stubbed via
+    `stub_event`, which still strips bulk content (nested `ModelEvent`s
+    lose their bulk input/output, nested `ToolEvent`s are stripped the
+    same way, recursively) while preserving the uuids and structure the
+    classifier and pass-2 substitution need.
 
     Args:
         event: The `ToolEvent` to stub.
+        interner: Interner used to dedupe nested `ModelEvent` system-prompt
+            content strings across the transcript.
 
     Returns:
         A `model_copy` of `event` with bulk content removed.
     """
     return event.model_copy(
-        update={"arguments": {}, "result": "", "events": [], "view": None}
+        update={
+            "arguments": {},
+            "result": "",
+            "events": [stub_event(e, interner) for e in event.events],
+            "view": None,
+        }
     )
 
 
@@ -185,5 +216,5 @@ def stub_event(event: Event, interner: _PromptInterner) -> Event:
     if isinstance(event, ModelEvent):
         return _stub_model_event(event, interner)
     if isinstance(event, ToolEvent):
-        return _stub_tool_event(event)
+        return _stub_tool_event(event, interner)
     return event

@@ -1,7 +1,9 @@
 import re
+from typing import AsyncIterator, cast
 
 import pytest
 from inspect_ai.event import ErrorEvent, ModelEvent, ScoreEvent, Timeline, TimelineSpan
+from inspect_ai.event._event import Event
 from inspect_ai.log import EvalError
 from inspect_ai.model import (
     ChatMessage,
@@ -15,12 +17,29 @@ from inspect_ai.scorer import Score
 from inspect_ai.tool import ToolChoice, ToolInfo
 from inspect_scout import llm_scanner
 from inspect_scout._llm_scanner.interleave import (
+    EventsSpec,
     has_interleavable_events,
     interleave_events,
+    stream_interleave_events,
 )
 from inspect_scout._scanner.extract import EVENT_MARKER_KEY
 from inspect_scout._scanner.scanner import SCANNER_CONTENT_ATTR
-from inspect_scout._transcript.types import Transcript, TranscriptContent
+from inspect_scout._transcript.handle import MaterializedTranscriptHandle
+from inspect_scout._transcript.types import (
+    Transcript,
+    TranscriptContent,
+    TranscriptInfo,
+)
+
+
+def _handle_for(transcript: Transcript) -> MaterializedTranscriptHandle:
+    async def load_fn() -> Transcript:
+        return transcript
+
+    info = TranscriptInfo(
+        **transcript.model_dump(exclude={"messages", "events", "timelines"})
+    )
+    return MaterializedTranscriptHandle(load_fn, info)
 
 
 def _model_event(user_text: str, output: ModelOutput) -> ModelEvent:
@@ -164,6 +183,55 @@ def test_multiple_events_on_one_anchor_preserve_order() -> None:
     assert result[3].text.startswith("SCORE (second)")
 
 
+@pytest.mark.anyio
+@pytest.mark.parametrize("events_spec", ["all", ["score"]])
+async def test_stream_interleave_matches_materialized(
+    events_spec: EventsSpec,
+) -> None:
+    # Duplicate id=None assistant turns exercise the position-based anchoring
+    # through the streaming walk as well.
+    out1 = ModelOutput.from_content(model="mockllm", content="yes")
+    out2 = ModelOutput.from_content(model="mockllm", content="yes")
+    a1, a2 = out1.choices[0].message, out2.choices[0].message
+    a1.id = None
+    a2.id = None
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[
+            ChatMessageUser(content="q1", id="u1"),
+            a1,
+            ChatMessageUser(content="q2", id="u2"),
+            a2,
+        ],
+        events=[
+            _model_event("q1", out1),
+            ScoreEvent(score=Score(value=0.5), scorer="graded", intermediate=True),
+            _model_event("q2", out2),
+            ScoreEvent(score=Score(value="C"), target="C", scorer="match"),
+            ErrorEvent(
+                error=EvalError(message="boom", traceback="", traceback_ansi="")
+            ),
+        ],
+    )
+    expected = interleave_events(transcript, events=events_spec)
+    streamed = [
+        m
+        async for m in stream_interleave_events(
+            _handle_for(transcript), events=events_spec
+        )
+    ]
+    assert [(m.id, m.text) for m in streamed] == [(m.id, m.text) for m in expected]
+
+
+@pytest.mark.anyio
+async def test_stream_interleave_no_events_passthrough() -> None:
+    transcript = Transcript(
+        transcript_id="t", messages=[ChatMessageUser(content="hi", id="u1")], events=[]
+    )
+    streamed = [m async for m in stream_interleave_events(_handle_for(transcript))]
+    assert [m.id for m in streamed] == ["u1"]
+
+
 def test_interleave_filters_to_selected_event_types() -> None:
     out = ModelOutput.from_content(model="mockllm", content="ans")
     transcript = Transcript(
@@ -261,6 +329,77 @@ async def test_llm_scanner_no_events_has_no_event_entries() -> None:
     scan = llm_scanner(question="Right?", answer="boolean", model=_mock_model(captured))
     await scan(transcript)
     assert "[E1]" not in captured[0]
+
+
+@pytest.mark.anyio
+async def test_llm_scanner_handle_scan_interleaves_without_load() -> None:
+    # A handle input with events= streams: same prompt as the Transcript
+    # input, and load() (full materialization) is never called. Uses a stub
+    # handle that raises on load() — MaterializedTranscriptHandle can't
+    # prove this since its messages()/events() call load() internally.
+    out = ModelOutput.from_content(model="mockllm", content="4")
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[ChatMessageUser(content="2+2?"), out.choices[0].message],
+        events=[
+            _model_event("2+2?", out),
+            ScoreEvent(score=Score(value="C"), target="C", scorer="match"),
+        ],
+    )
+
+    # Subclass (scan() narrows on the concrete handle classes): iteration
+    # reads the transcript directly; load() — full materialization — raises.
+    class _NoLoadHandle(MaterializedTranscriptHandle):
+        async def messages(self, *, types: object = None) -> AsyncIterator[ChatMessage]:
+            for m in transcript.messages:
+                yield m
+
+        async def events(self, *, types: object = None) -> AsyncIterator[Event]:
+            for e in transcript.events:
+                if types is None or e.event in cast(list[str], types):
+                    yield e
+
+        async def load(self) -> Transcript:
+            raise AssertionError("streaming interleave must not materialize")
+
+    async def load_fn() -> Transcript:
+        return transcript
+
+    handle = _NoLoadHandle(
+        load_fn,
+        TranscriptInfo(
+            **transcript.model_dump(exclude={"messages", "events", "timelines"})
+        ),
+    )
+
+    captured_handle: list[str] = []
+    captured_transcript: list[str] = []
+
+    scan_h = llm_scanner(
+        question="Right?",
+        answer="boolean",
+        model=_mock_model(captured_handle),
+        events=["score"],
+    )
+    await scan_h(cast(Transcript, handle))
+
+    scan_t = llm_scanner(
+        question="Right?",
+        answer="boolean",
+        model=_mock_model(captured_transcript),
+        events=["score"],
+    )
+    await scan_t(transcript)
+
+    assert captured_handle == captured_transcript
+    assert "[E1] SCORE" in captured_handle[0]
+
+
+def test_events_param_opts_in_to_streaming() -> None:
+    from inspect_scout._scanner.scanner import SCANNER_SUPPORTS_STREAMING_ATTR
+
+    scan = llm_scanner(question="q", answer="boolean", events=["score"])
+    assert getattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, False) is True
 
 
 def test_events_param_loads_selected_and_model_events() -> None:

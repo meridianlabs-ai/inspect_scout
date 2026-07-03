@@ -46,7 +46,11 @@ from .._transcript.types import EventType, Transcript, TranscriptContent
 from ._reducer import aggregate_results
 from .answer import Answer, answer_from_argument
 from .generate import generate_answer
-from .interleave import has_interleavable_events, interleave_events
+from .interleave import (
+    has_interleavable_events,
+    interleave_events,
+    stream_interleave_events,
+)
 from .prompt import (
     DEFAULT_SCANNER_TEMPLATE_PREFIX,
     DEFAULT_SCANNER_TEMPLATE_SUFFIX,
@@ -316,9 +320,12 @@ def llm_scanner(
             else None
         )
 
-        # Streaming needs the full transcript only for callable template inputs
-        # or timeline extraction. (The preprocessor gets per-segment message
-        # lists, so it stays streaming-safe.)
+        # Streaming can only work without materializing when the full transcript
+        # isn't needed for template resolution or timeline extraction. Event
+        # interleaving streams too (stream_interleave_events retains only
+        # message ids and rendered event text, not payloads). The preprocessor
+        # receives per-segment message lists (see message_numbering) so it is
+        # streaming-safe and does NOT force materialization.
         full_transcript_needed = (
             callable(question) or callable(template_variables) or timeline is not None
         )
@@ -459,6 +466,43 @@ def llm_scanner(
                 reducer=reducer,
             )
 
+        # Scan segments through a bounded concurrency window. At most
+        # _SEGMENT_CONCURRENCY segments are scanned (and hence retained) at a
+        # time, so a large transcript can't spawn one task per segment. The
+        # segment source streams lazily on both paths, so unstarted segments
+        # aren't materialized either.
+        #
+        # Order matters for reduction (explanation concatenation, LLM synthesis
+        # prompt assembly, majority tiebreak), so each result carries its
+        # segment index and is sorted back into order before aggregation.
+        if handle is not None and events is not None:
+            # Streaming interleave path: three passes over the handle (ids,
+            # anchor walk, splice) retaining only message ids and rendered
+            # event text — never the bulk payloads. The spliced stream then
+            # segments exactly like a plain message stream. Span id is always
+            # None (no timeline on this path; guard above the branches).
+            async def stream_interleaved_source() -> AsyncIterator[
+                tuple[str | None, str]
+            ]:
+                async for seg in stream_segment_messages(
+                    stream_interleave_events(handle, events),
+                    messages_as_str=messages_as_str_fn,
+                    model=resolved_model,
+                    context_window=context_window,
+                    prompt_reserve=template_tokens,
+                ):
+                    yield None, seg.messages_str
+
+            results = await _scan_segments_bounded(
+                stream_interleaved_source(), scan_segment
+            )
+            return await aggregate_results(
+                results=results,
+                timeline=False,
+                answer=answer,
+                reducer=reducer,
+            )
+
         if handle is not None and content_has_events:
             # Streaming events path: two-pass event streaming over the handle
             # via stream_timeline_messages, yielding TimelineMessages segments
@@ -548,6 +592,7 @@ def llm_scanner(
 
     # Opt in per-instance when the scan needs no full transcript (must mirror
     # `full_transcript_needed` in scan(), plus the content `timeline` case).
+    # Events content and events= interleaving both stream.
     content_forces_materialization = (
         content is not None and content.timeline is not None
     )

@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+from typing import Any, Literal
+
+import pytest
 from inspect_ai.event import Event, ModelEvent, TimelineEvent, ToolEvent, timeline_build
-from inspect_ai.model import ChatMessageSystem, ContentText
+from inspect_ai.model import ChatMessage, ChatMessageSystem, ContentText
+from inspect_scout._transcript.messages import span_messages
 from inspect_scout._transcript.timeline import TimelineSpan, _walk_spans
 
 from tests.transcript.fixtures_agentic import agentic_events
@@ -145,6 +149,183 @@ def test_stub_tree_matches_full_tree_structure() -> None:
     nested_uuids = _span_model_event_uuids(handoff_span)
     assert nested_uuids == ["evt-handoff-1", "evt-handoff-2"]
     assert "z" * 1000 not in handoff_span.model_dump_json()
+
+
+def _blank_model_event(event: ModelEvent) -> ModelEvent:
+    """Blank the content ``span_messages`` reads, preserving classification.
+
+    Reuses ``stub_event`` (with a private, per-call interner): the stub
+    reduces ``input`` to system messages only and empties the output
+    message's content while keeping ``tool_calls`` truthiness and the
+    system prompt -- exactly the classification signals ``timeline_build``
+    reads. That makes it the right blanking operator for the selection
+    property test: an event whose content ``span_messages`` never touches
+    can be blanked with zero effect on the reconstructed messages, while
+    an event whose content *is* touched changes the output the moment it
+    is blanked.
+    """
+    from inspect_scout._transcript.timeline_stream import _PromptInterner, stub_event
+
+    blanked = stub_event(event, _PromptInterner())
+    assert isinstance(blanked, ModelEvent)
+    return blanked
+
+
+def _blank_events_except(events: list[Event], keep: set[str]) -> list[Event]:
+    """Return ``events`` with every ModelEvent whose uuid is NOT in ``keep`` blanked.
+
+    Recurses into ``ToolEvent.events`` so nested tool-spawned-agent
+    ModelEvents (e.g. those inside the ``handoff-tool``) are blanked too;
+    they are not present at the top level of the flat event list.
+    """
+    out: list[Event] = []
+    for event in events:
+        if isinstance(event, ModelEvent):
+            out.append(event if event.uuid in keep else _blank_model_event(event))
+        elif isinstance(event, ToolEvent) and event.events:
+            out.append(
+                event.model_copy(
+                    update={"events": _blank_events_except(event.events, keep)}
+                )
+            )
+        else:
+            out.append(event)
+    return out
+
+
+def _all_model_uuids(events: list[Event]) -> set[str]:
+    """Collect every ModelEvent uuid, recursing into ``ToolEvent.events``."""
+    uuids: set[str] = set()
+    for event in events:
+        if isinstance(event, ModelEvent) and event.uuid is not None:
+            uuids.add(event.uuid)
+        elif isinstance(event, ToolEvent) and event.events:
+            uuids |= _all_model_uuids(event.events)
+    return uuids
+
+
+def _dump(msgs: list[ChatMessage]) -> list[dict[str, Any]]:
+    return [m.model_dump() for m in msgs]
+
+
+def _last_model_event(events: list[Event]) -> ModelEvent:
+    for event in reversed(events):
+        if isinstance(event, ModelEvent):
+            return event
+    raise AssertionError("fixture contains no ModelEvent")
+
+
+@pytest.mark.parametrize("compaction", ["all", "last", 2])
+def test_selection_covers_span_messages_reads(
+    compaction: Literal["all", "last"] | int,
+) -> None:
+    """Every ModelEvent whose data span_messages uses is selected.
+
+    Property: blanking every *non-selected* ModelEvent's content must leave
+    ``span_messages`` output over every scannable span byte-for-byte
+    unchanged. If selection missed an event whose content span_messages
+    reads, blanking it would perturb the output and this assertion fails.
+    """
+    from inspect_scout._transcript.timeline_stream import needed_model_event_uuids
+
+    events = agentic_events()
+    tree = timeline_build(events)
+    needed = needed_model_event_uuids(tree.root, compaction=compaction, depth=None)
+
+    blanked = _blank_events_except(events, needed)
+    blanked_tree = timeline_build(blanked)
+    for span, blanked_span in zip(
+        _walk_spans(tree.root, depth=None),
+        _walk_spans(blanked_tree.root, depth=None),
+        strict=True,
+    ):
+        assert _dump(span_messages(span, compaction=compaction)) == _dump(
+            span_messages(blanked_span, compaction=compaction)
+        )
+
+
+def test_selection_is_minimal_all() -> None:
+    """Blanking any *selected* ModelEvent must change span_messages output.
+
+    Complements the coverage test: proves selection is not merely a
+    superset. Every selected event is load-bearing -- blanking it alone
+    perturbs the reconstructed messages of some scannable span.
+    """
+    from inspect_scout._transcript.timeline_stream import needed_model_event_uuids
+
+    events = agentic_events()
+    tree = timeline_build(events)
+    needed = needed_model_event_uuids(tree.root, compaction="all", depth=None)
+    assert needed  # sanity
+
+    baseline = [
+        _dump(span_messages(span, compaction="all"))
+        for span in _walk_spans(tree.root, depth=None)
+    ]
+
+    all_uuids = _all_model_uuids(events)
+    for target in needed:
+        # Keep everything except `target`: blanking exactly one selected
+        # event must perturb some span's reconstructed messages.
+        blanked = _blank_events_except(events, all_uuids - {target})
+        blanked_tree = timeline_build(blanked)
+        blanked_dump = [
+            _dump(span_messages(span, compaction="all"))
+            for span in _walk_spans(blanked_tree.root, depth=None)
+        ]
+        assert blanked_dump != baseline, (
+            f"blanking selected event {target!r} did not change output; "
+            "selection is not minimal"
+        )
+
+
+def test_selection_includes_first_post_trim_event() -> None:
+    """The first ModelEvent after a kept trim compaction is load-bearing.
+
+    Proves both that the fixture's trim compaction now produces a non-empty
+    trimmed prefix (the Task-1 review finding), and that selection retains
+    the first post-trim ModelEvent whose input ``_trim_prefix`` reads to
+    reconstruct that prefix.
+    """
+    from inspect_scout._transcript.timeline_stream import needed_model_event_uuids
+
+    events = agentic_events()
+    tree = timeline_build(events)
+
+    # The fixture's trim actually drops a prefix: compaction="all" surfaces
+    # the trimmed marker message.
+    main = next(s for s in _walk_spans(tree.root, depth=None) if s.name == "main")
+    all_text = [m.text for m in span_messages(main, compaction="all")]
+    assert any("trim-dropped-marker" in t for t in all_text)
+
+    needed = needed_model_event_uuids(tree.root, compaction="all", depth=None)
+    assert "evt-post-trim" in needed
+    assert "evt-pre-trim" in needed
+
+    # Blanking the first post-trim event changes output (the prefix can no
+    # longer be reconstructed), confirming its selection is load-bearing.
+    blanked = _blank_events_except(events, _all_model_uuids(events) - {"evt-post-trim"})
+    blanked_tree = timeline_build(blanked)
+    blanked_main = next(
+        s for s in _walk_spans(blanked_tree.root, depth=None) if s.name == "main"
+    )
+    assert _dump(span_messages(main, compaction="all")) != _dump(
+        span_messages(blanked_main, compaction="all")
+    )
+
+
+def test_selection_uuidless_raises() -> None:
+    from inspect_scout._transcript.timeline_stream import (
+        _StubSkeletonUnsupported,
+        needed_model_event_uuids,
+    )
+
+    events = agentic_events()
+    target = _last_model_event(events)
+    events = [e.model_copy(update={"uuid": None}) if e is target else e for e in events]
+    tree = timeline_build(events)
+    with pytest.raises(_StubSkeletonUnsupported):
+        needed_model_event_uuids(tree.root, compaction="last", depth=None)
 
 
 def test_stub_model_event_interns_list_content_system_prompt() -> None:

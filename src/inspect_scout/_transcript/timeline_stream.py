@@ -605,7 +605,7 @@ async def stream_timeline_messages(
                 not (s.span_type == "scorers" and _span_has_direct_model_event(s))
             ),
         )
-        span_external = collect_span_external(collection_source, events)
+        span_external = collect_span_external(collection_source, events, depth=depth)
 
     async for seg in timeline_messages(
         tree,

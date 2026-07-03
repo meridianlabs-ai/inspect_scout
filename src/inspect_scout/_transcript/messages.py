@@ -496,7 +496,9 @@ async def transcript_messages(
                 if include_scorers
                 else selected
             )
-            span_external = collect_span_external(collection_source, events)
+            span_external = collect_span_external(
+                collection_source, events, depth=depth
+            )
 
         if not include_scorers:
             selected = timeline_filter(selected, lambda s: s.span_type != "scorers")

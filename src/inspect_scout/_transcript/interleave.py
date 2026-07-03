@@ -159,12 +159,27 @@ def _collect_span_external(
     last_scannable: str | None,
     in_scorers: bool,
     external: dict[str, list[tuple[str, str]]],
+    depth: int | None = None,
+    _scannable_depth: int = 0,
 ) -> str | None:
     """Depth-first helper for ``collect_span_external``; see its docstring."""
     span_in_scorers = in_scorers or span.span_type == "scorers"
-    is_scannable = (
+    structurally_scannable = (
         not span_in_scorers and not span.utility and _span_has_direct_model_event(span)
     )
+    # Mirrors `_walk_spans`' scannable-depth bookkeeping (`timeline.py`): a
+    # structurally scannable span still consumes a depth level even when it
+    # exceeds `depth` and is therefore never actually walked (and its own
+    # splice never runs). `next_scannable_depth` only grows, so once a span
+    # exceeds `depth` every descendant does too -- their events fall through
+    # to external collection, attributed to the last span that IS walked.
+    if structurally_scannable:
+        next_scannable_depth = _scannable_depth + 1
+        is_scannable = depth is None or next_scannable_depth <= depth
+    else:
+        next_scannable_depth = _scannable_depth
+        is_scannable = False
+
     if is_scannable:
         last_scannable = span.id
 
@@ -183,12 +198,14 @@ def _collect_span_external(
                 last_scannable=last_scannable,
                 in_scorers=span_in_scorers,
                 external=external,
+                depth=depth,
+                _scannable_depth=next_scannable_depth,
             )
     return last_scannable
 
 
 def collect_span_external(
-    timeline: Timeline | TimelineSpan, events: EventsSpec
+    timeline: Timeline | TimelineSpan, events: EventsSpec, *, depth: int | None = None
 ) -> dict[str, list[tuple[str, str]]]:
     """Collect span-external interleavable events from the unpruned timeline.
 
@@ -242,6 +259,15 @@ def collect_span_external(
             caller) timeline or span subtree to walk.
         events: Which event types to interleave (``"all"`` or a list),
             passed through to ``_interleavable_text``.
+        depth: Maximum nesting level of scannable spans, matching the
+            ``depth`` passed to ``timeline_messages()`` /
+            ``_walk_spans()``. A structurally scannable span beyond this
+            limit is never actually walked (its own splice never runs),
+            so its events -- and its descendants' events -- are treated
+            as external here too, attributed to the last span that IS
+            within the depth limit. ``None`` (default) matches
+            ``_walk_spans``' unlimited depth and preserves prior
+            behavior exactly.
 
     Returns:
         Mapping of scannable span id (or ``""`` for events preceding
@@ -251,6 +277,11 @@ def collect_span_external(
     root = timeline.root if isinstance(timeline, Timeline) else timeline
     external: dict[str, list[tuple[str, str]]] = defaultdict(list)
     _collect_span_external(
-        root, events, last_scannable=None, in_scorers=False, external=external
+        root,
+        events,
+        last_scannable=None,
+        in_scorers=False,
+        external=external,
+        depth=depth,
     )
     return dict(external)

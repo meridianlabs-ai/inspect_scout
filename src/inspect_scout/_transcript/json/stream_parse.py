@@ -484,6 +484,14 @@ def _hydrate_nested_tool_events(item: dict[str, Any], blobs: BlobSpool) -> None:
     nested dict must be resolved and validated the same way top-level
     events are, recursively (a nested `ToolEvent` may itself carry further
     nested events).
+
+    Known limitation (streaming is intentionally MORE faithful here): the
+    materialized read path never runs this hydration -- `inspect_ai`'s own
+    validation leaves legacy nested `ToolEvent.events` as raw dicts and it
+    never re-validates them. So for legacy tool-spawned-agent transcripts,
+    the streaming path surfaces the nested `ModelEvent`s (as real `Event`
+    instances) while the materialized path does not, which can make scan
+    results differ between the two paths on such legacy transcripts.
     """
     nested = item.get("events")
     if not nested:

@@ -8435,7 +8435,7 @@
           "input_type": {
             "enum": [
               "transcript",
-              "transcript_handle",
+              "transcript_info",
               "event",
               "events",
               "message",

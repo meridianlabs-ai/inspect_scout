@@ -1051,7 +1051,7 @@ async def _scan_one(
             input_type: ScannerInputNames = "transcript"
         else:
             report_input = union.info
-            input_type = "transcript_handle"
+            input_type = "transcript_info"
         return ResultReport(
             input_type=input_type,
             input_ids=[_job_transcript_id(job)],

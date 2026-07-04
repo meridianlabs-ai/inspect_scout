@@ -23,6 +23,7 @@ from inspect_ai.event import (
 from inspect_ai.log import EvalError
 from inspect_ai.model import (
     ChatMessage,
+    ChatMessageSystem,
     ChatMessageUser,
     ContentReasoning,
     ModelOutput,
@@ -41,13 +42,14 @@ from inspect_scout._transcript.timeline_stream import stream_timeline_messages
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
 
 from tests.transcript.fixtures_agentic import (
-    _model_event as _agentic_model_event,
-)
-from tests.transcript.fixtures_agentic import (
+    _compaction_event,
     _span_begin,
     _span_end,
     agentic_events,
     agentic_transcript,
+)
+from tests.transcript.fixtures_agentic import (
+    _model_event as _agentic_model_event,
 )
 
 # ---------------------------------------------------------------------------
@@ -840,6 +842,147 @@ async def test_stream_timeline_messages_events_parity(
     combined = "\n".join(text for _, text in streamed)
     assert "MODEL (BRANCH)" in combined
     assert "fork-output-1" in combined
+
+
+def _cumulative_compaction_events() -> list[Event]:
+    """A single "main" span with genuinely CUMULATIVE, multi-region compaction.
+
+    - Region 1: turn "t1" (fresh input), then turn "t2" whose input is
+      cumulative -- it literally embeds "t1"'s own output message object
+      (``[System, user1, assistant1, user2]``), mirroring how a real
+      transcript's ``ModelEvent.input`` grows turn over turn. "t2" is
+      region 1's last event.
+    - A ``CompactionEvent(type="summary")`` boundary.
+    - Region 2: turn "t3" alone (fresh input).
+    - A second ``CompactionEvent(type="summary")`` boundary.
+    - Region 3: a genuine off-thread fork ("fork", fresh, unrelated input)
+      whose output never joins ANY reconstructed thread (it is not any
+      region's last event), then turn "t4" (fresh input) -- region 3's
+      (and the whole span's) last event.
+    - A trailing in-span ``ScoreEvent``.
+
+    Reproduces the streaming compaction-discriminator bug: under
+    ``compaction in ("last", 2)``, region 1 is pruned from the actual kept
+    thread, but ``span_interleaved_messages``' ``excluded_ids`` can only
+    recover "t1"'s output through "t2"'s cumulative input -- so "t2" must
+    be retained in full (not output-only) by the streaming path for the
+    discriminator to classify "t1" as compaction-pruned rather than a
+    genuine fork.
+    """
+    ev_t1 = _agentic_model_event(
+        label="cc-t1", system_prompt="MAIN", output_text="turn1-output", span_id="main"
+    )
+    a1 = ev_t1.output.choices[0].message
+    ev_t2 = _agentic_model_event(
+        label="cc-t2",
+        system_prompt="MAIN",
+        output_text="turn2-output",
+        span_id="main",
+        input_messages=[
+            ChatMessageSystem(content="MAIN"),
+            ev_t1.input[1],
+            a1,
+            ChatMessageUser(content="user-input-cc-t2b"),
+        ],
+    )
+    compaction1 = _compaction_event(label="cc-c1", type="summary", span_id="main")
+    ev_t3 = _agentic_model_event(
+        label="cc-t3", system_prompt="MAIN", output_text="turn3-output", span_id="main"
+    )
+    compaction2 = _compaction_event(label="cc-c2", type="summary", span_id="main")
+    fork_ev = _agentic_model_event(
+        label="cc-fork", system_prompt="MAIN", output_text="fork-output", span_id="main"
+    )
+    ev_t4 = _agentic_model_event(
+        label="cc-t4", system_prompt="MAIN", output_text="turn4-output", span_id="main"
+    )
+    score = ScoreEvent(
+        uuid="evt-cc-score", span_id="main", scorer="final", score=Score(value=1)
+    )
+    return [
+        _span_begin(span_id="main", name="main", span_type="agent", parent_id=None),
+        ev_t1,
+        ev_t2,
+        compaction1,
+        ev_t3,
+        compaction2,
+        fork_ev,
+        ev_t4,
+        score,
+        _span_end(span_id="main"),
+    ]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("compaction", ["last", 2, "all"])
+async def test_stream_timeline_messages_cumulative_compaction_discriminator_parity(
+    compaction: Literal["all", "last"] | int,
+) -> None:
+    """Cumulative region-last inputs must not corrupt the streaming discriminator.
+
+    Regression test for the bug where pass 2 substituted only the ACTUAL
+    compaction's ``needed`` ModelEvents in full, leaving every other
+    region's last ModelEvent output-only (``input=[]``). Because
+    ``span_interleaved_messages`` computes ``excluded_ids`` by
+    reconstructing the ``compaction="all"`` thread -- which reads every
+    region-last ModelEvent's ``input`` -- and "t2" (region 1's last event)
+    has a cumulative input embedding "t1"'s output, stripping "t2"'s input
+    made "t1"'s output vanish from the "all" reconstruction. It then missed
+    ``excluded_ids`` and misrendered as a spurious ``[E#] MODEL (BRANCH):``
+    entry under ``compaction in ("last", 2)``. ``compaction="all"`` never
+    prunes anything and is included for completeness/non-regression.
+    """
+    events = _cumulative_compaction_events()
+    transcript = agentic_transcript(events=events)
+
+    async def load() -> Transcript:
+        return transcript
+
+    handle = MaterializedTranscriptHandle(
+        load, TranscriptInfo(transcript_id=transcript.transcript_id)
+    )
+
+    streamed_numbering, _ = message_numbering()
+    streamed = [
+        (seg.span.id, seg.messages_str)
+        async for seg in stream_timeline_messages(
+            handle,
+            messages_as_str=streamed_numbering,
+            model="mockllm/model",
+            events=["score"],
+            compaction=compaction,
+        )
+    ]
+
+    materialized_tree = timeline_build(events)
+    materialized_numbering, _ = message_numbering()
+    materialized = [
+        (seg.span.id, seg.messages_str)
+        async for seg in timeline_messages(
+            materialized_tree.root,
+            messages_as_str=materialized_numbering,
+            model="mockllm/model",
+            events=["score"],
+            compaction=compaction,
+        )
+    ]
+
+    assert streamed  # non-vacuous
+    assert streamed == materialized
+
+    combined = "\n".join(text for _, text in streamed)
+    if compaction != "all":
+        # Region 1 ("t1"/"t2") is compaction-pruned under both "last" and 2;
+        # it must stay fully hidden on both paths, never resurrected as a
+        # branch entry.
+        assert "turn1-output" not in combined
+        assert "turn2-output" not in combined
+    if compaction == "last":
+        assert "turn3-output" not in combined  # only the final region survives
+
+    # The genuine fork always renders, exactly once, on both paths.
+    assert combined.count("MODEL (BRANCH)") == 1
+    assert combined.count("fork-output") == 1
 
 
 @pytest.mark.anyio

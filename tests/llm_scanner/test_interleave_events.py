@@ -3,6 +3,7 @@ from typing import AsyncIterator, cast
 
 import pytest
 from inspect_ai.event import (
+    CompactionEvent,
     ErrorEvent,
     ModelEvent,
     ScoreEvent,
@@ -191,6 +192,91 @@ def test_off_thread_model_event_renders_as_branch_entry() -> None:
     assert result[2].metadata[EVENT_MARKER_KEY] is True
     assert "MODEL (BRANCH):" in result[2].text
     assert "forked answer" in result[2].text
+
+
+def _compaction_pruned_and_fork_transcript() -> Transcript:
+    """Messages-present transcript with a compaction-pruned turn and a genuine fork.
+
+    `transcript.messages` carries only the live, post-compaction thread
+    (`q2`/`a2`) -- the common shape: append-only `ModelEvent`s (including
+    pre-compaction ones) in `events`, with `messages` reflecting whatever
+    compaction the original run already applied.
+
+    - `ev1`'s output (`a1`, "first") is compacted away: it IS a member of
+      the untruncated `compaction="all"` reconstruction of `events` (as the
+      region-1 last event) but is NOT in `transcript.messages` -- the
+      compaction-pruned case. It must stay hidden, never rendered as a
+      branch entry.
+    - `fork_ev` is a genuine fork: same prompt as `ev1` re-asked with a
+      fresh (unchained) input after the compaction boundary, whose output
+      is superseded within its own region by `ev2` (the region's actual
+      last event) and therefore never joins the thread at any `compaction`
+      value, unlike `ev1`. It must render exactly once as a
+      `[E#] MODEL (BRANCH):` entry.
+    """
+    out1 = ModelOutput.from_content(model="mockllm", content="first")
+    ev1 = _model_event("q1", out1)
+    compaction_event = CompactionEvent(type="summary")
+    fork_out = ModelOutput.from_content(model="mockllm", content="forked")
+    fork_ev = _model_event("q1", fork_out)
+    out2 = ModelOutput.from_content(model="mockllm", content="second")
+    a2 = out2.choices[0].message
+    ev2 = _model_event("q2", out2)
+    u2 = ChatMessageUser(content="q2")
+
+    return Transcript(
+        transcript_id="t",
+        messages=[u2, a2],
+        events=[ev1, compaction_event, fork_ev, ev2],
+    )
+
+
+def test_messages_present_hides_compaction_pruned_turn() -> None:
+    """Messages-present path: compaction-pruned turn hidden, genuine fork still renders.
+
+    Regression test: `excluded_ids` used to be computed only on the
+    events-only reconstruction branches of `interleave_events`, so on the
+    messages-present path (the common shape) it was always `frozenset()` --
+    every compacted-away turn's output leaked through as a spurious
+    `[E#] MODEL (BRANCH):` entry. See `_compaction_pruned_and_fork_transcript`.
+    """
+    transcript = _compaction_pruned_and_fork_transcript()
+    result = interleave_events(transcript)
+
+    combined = "\n".join(m.text for m in result)
+    assert "first" not in combined  # compaction-pruned turn stays hidden
+
+    branch_entries = [m for m in result if "MODEL (BRANCH):" in m.text]
+    assert len(branch_entries) == 1  # genuine fork renders exactly once
+    assert "forked" in branch_entries[0].text
+
+    # The live thread itself renders unaffected, exactly once each.
+    non_branch_texts = [m.text for m in result if "MODEL (BRANCH):" not in m.text]
+    assert non_branch_texts == ["q2", "second"]
+
+
+@pytest.mark.anyio
+async def test_stream_messages_present_hides_compaction_pruned_turn() -> None:
+    """Streaming counterpart: matches the materialized fix exactly.
+
+    Same fixture and invariants as
+    `test_messages_present_hides_compaction_pruned_turn`, driven through
+    `stream_interleave_events`'s messages-present branch (the dedicated
+    extra pass that reconstructs `excluded_ids` from a
+    `model`/`compaction`-filtered skeleton).
+    """
+    transcript = _compaction_pruned_and_fork_transcript()
+    expected = interleave_events(transcript)
+    streamed = [m async for m in stream_interleave_events(_handle_for(transcript))]
+
+    assert [(m.id, m.text) for m in streamed] == [(m.id, m.text) for m in expected]
+
+    combined = "\n".join(m.text for m in streamed)
+    assert "first" not in combined  # compaction-pruned turn stays hidden
+
+    branch_entries = [m for m in streamed if "MODEL (BRANCH):" in m.text]
+    assert len(branch_entries) == 1  # genuine fork renders exactly once
+    assert "forked" in branch_entries[0].text
 
 
 def test_grader_model_event_in_scorers_span_excluded() -> None:
@@ -1267,5 +1353,9 @@ def test_interleave_primitives_shared_with_transcript() -> None:
     from inspect_scout._llm_scanner import interleave as scanner_mod
     from inspect_scout._transcript import interleave as transcript_mod
 
-    assert scanner_mod._AnchorWalk is transcript_mod._AnchorWalk
+    # `_AnchorWalk` is intentionally absent from `interleave.__all__` (it is
+    # an internal re-export, not part of the module's public interface) --
+    # accessed here only to assert the two modules share the same class
+    # object, not to use it as a supported import.
+    assert scanner_mod._AnchorWalk is transcript_mod._AnchorWalk  # type: ignore[attr-defined]
     assert scanner_mod.EventsSpec is transcript_mod.EventsSpec

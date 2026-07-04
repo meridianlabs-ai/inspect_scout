@@ -159,16 +159,31 @@ class _AnchorWalk:
     turns) and each ModelEvent must consume the next occurrence rather than
     re-anchoring to the first.
 
-    A ModelEvent whose output message id is NOT found in the thread (a
-    fork/branch experiment or a retry whose output never joined the final
-    conversation) is off-thread: rather than being silently dropped, `add`
-    renders it via `_off_thread_model_text` and anchors it at the current
-    position (`add_rendered`, which does not itself advance the anchor) --
-    it is always rendered, regardless of the `events` selection, since it
-    is model content that would otherwise be invisible entirely.
+    A ModelEvent whose output message id is NOT found in the thread splits
+    into two cases, distinguished by `excluded_ids`:
+
+    - Fork: the id is in NEITHER the thread NOR `excluded_ids` -- a
+      fork/branch experiment or a retry whose output never joined the
+      final conversation. Rather than being silently dropped, `add`
+      renders it via `_off_thread_model_text` and anchors it at the
+      current position (`add_rendered`, which does not itself advance the
+      anchor) -- it is always rendered, regardless of the `events`
+      selection, since it is model content that would otherwise be
+      invisible entirely.
+    - Compaction-pruned: the id IS in `excluded_ids` -- the turn belongs to
+      a superseded region that the caller's compaction strategy
+      deliberately dropped (e.g. `compaction="last"` keeping only the
+      final region). `add` does nothing: no branch entry, no anchor
+      advance -- the turn stays hidden, honoring the caller's explicit
+      request to compact it away rather than resurrecting it as a "fork".
     """
 
-    def __init__(self, message_ids: list[str], events: EventsSpec) -> None:
+    def __init__(
+        self,
+        message_ids: list[str],
+        events: EventsSpec,
+        excluded_ids: frozenset[str] = frozenset(),
+    ) -> None:
         self._events = events
         occurrences: dict[str, list[int]] = defaultdict(list)
         for index, message_id in enumerate(message_ids):
@@ -176,6 +191,7 @@ class _AnchorWalk:
         self._occurrences = occurrences
         self._next_occurrence: dict[str, int] = defaultdict(int)
         self._last_anchor: int | None = None
+        self._excluded_ids = excluded_ids
         self.leading: list[tuple[str, str]] = []
         self.anchored: dict[int, list[tuple[str, str]]] = defaultdict(list)
 
@@ -206,6 +222,8 @@ class _AnchorWalk:
             mid = _model_output_id(event)
             consumed = mid is not None and self.add_model_output(mid)
             if not consumed:
+                if mid is not None and mid in self._excluded_ids:
+                    return  # compaction-pruned: stays hidden, no branch entry
                 text = _off_thread_model_text(event)
                 if text is not None:
                     self.add_rendered(_event_id(event), text)
@@ -232,6 +250,14 @@ def span_interleaved_messages(
     being anchored to the previous surviving turn, or leads the span if
     none survived.
 
+    When ``compaction`` truncates the thread (anything but ``"all"``), a
+    ``ModelEvent`` whose output fell outside the kept region is only ever
+    a genuine off-thread fork if it is ALSO absent from the untruncated
+    ``compaction="all"`` thread -- see ``_AnchorWalk``'s ``excluded_ids``
+    discriminator. Ids present in the ``"all"`` thread but not the current
+    (possibly truncated) one are computed here and passed through so those
+    turns stay hidden rather than resurfacing as ``MODEL (BRANCH)`` entries.
+
     Args:
         span: The scannable span to process.
         events: Which event types to interleave (``"all"`` or a list).
@@ -242,7 +268,16 @@ def span_interleaved_messages(
     """
     messages = span_messages(span, compaction=compaction)
 
-    walk = _AnchorWalk([_message_id(m) for m in messages], events)
+    excluded_ids: frozenset[str] = frozenset()
+    if compaction != "all":
+        all_messages = span_messages(span, compaction="all")
+        excluded_ids = frozenset(_message_id(m) for m in all_messages) - frozenset(
+            _message_id(m) for m in messages
+        )
+
+    walk = _AnchorWalk(
+        [_message_id(m) for m in messages], events, excluded_ids=excluded_ids
+    )
     for item in span.content:
         if isinstance(item, TimelineEvent):
             walk.add(item.event)

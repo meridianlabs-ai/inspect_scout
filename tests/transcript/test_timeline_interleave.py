@@ -312,12 +312,11 @@ async def test_events_none_matches_direct_segment_messages() -> None:
 async def test_compaction_last_drops_anchor_event_becomes_leading() -> None:
     """compaction='last': an event anchored to a compacted-away turn leads.
 
-    The compacted-away turn's own output id is, mechanically, exactly the
-    off-thread case (not found in the compaction="last"-truncated thread):
-    it is no longer silently dropped either, and now surfaces as its own
-    leading `MODEL (BRANCH)` entry ahead of the score -- both lead, in
-    event order, since neither a rendered branch entry nor a same-position
-    interleaved event ever advances the anchor.
+    The compacted-away turn's output id IS present in the untruncated
+    compaction="all" thread (it is simply the region "last" pruned away),
+    so the discriminator (`_AnchorWalk`'s `excluded_ids`) recognizes it as
+    compaction-pruned rather than a genuine fork: it stays fully hidden,
+    not resurrected as a `MODEL (BRANCH)` entry.
     """
     out1 = ModelOutput.from_content(model="mockllm", content="first")
     a1 = out1.choices[0].message
@@ -334,14 +333,54 @@ async def test_compaction_last_drops_anchor_event_becomes_leading() -> None:
     results, combined = await _collect(root, events=["score"], compaction="last")
 
     assert len(results) == 1
-    # The compacted-away turn's output leads as a branch entry, then the
-    # score, then the surviving M1/M2 turns.
+    # The score leads (renders before the surviving M1/M2 turns).
+    assert re.search(r"\[E1\] SCORE.*\[M1\].*\[M2\]", combined, re.DOTALL)
+    assert a1.text not in combined  # confirms the anchor turn really was dropped
+
+
+@pytest.mark.anyio
+async def test_compaction_last_drops_anchor_event_fork_still_renders() -> None:
+    """compaction='last': a genuine fork still renders while the pruned turn hides.
+
+    Same fixture as `test_compaction_last_drops_anchor_event_becomes_leading`,
+    plus a genuine fork ModelEvent inserted after the compaction boundary
+    whose output never joins ANY thread (not even compaction="all"'s,
+    unlike `ev1`, which is merely the compacted-away region "last"). The
+    discriminator must tell them apart: `ev1` stays hidden (compaction-
+    pruned), `fork_ev` still renders as a `MODEL (BRANCH)` entry.
+    """
+    out1 = ModelOutput.from_content(model="mockllm", content="first")
+    a1 = out1.choices[0].message
+    ev1 = _model_event([_u1], out1)
+    score = ScoreEvent(score=Score(value=0.5), scorer="graded", intermediate=True)
+    compaction_event = CompactionEvent(type="summary")
+
+    fork_out = ModelOutput.from_content(model="mockllm", content="forked")
+    fork_ev = _model_event([_u1, a1], fork_out)
+
+    out2 = ModelOutput.from_content(model="mockllm", content="second")
+    # Fresh input (no history carried) -- mirrors what remains post-compaction.
+    # fork_ev sits between the boundary and ev2 without ev2 consuming its
+    # output, so fork_ev never joins compaction="last" NOR compaction="all"'s
+    # thread (only ev2, the region's last, is kept in either case).
+    ev2 = _model_event([_u2], out2)
+
+    span = _span("span-a", "agent-a", [ev1, score, compaction_event, fork_ev, ev2])
+    root = TimelineSpan(id="root", name="root", span_type=None, content=[span])
+
+    results, combined = await _collect(root, events=["score"], compaction="last")
+
+    assert len(results) == 1
+    # ev1 (compaction-pruned) stays hidden; fork_ev (genuine fork) renders as
+    # a branch entry, leading alongside the score, ahead of the surviving
+    # M1/M2 turns.
     assert re.search(
-        r"\[E1\] MODEL \(BRANCH\):\n.*first.*\[E2\] SCORE.*\[M1\].*\[M2\]",
+        r"\[E1\] SCORE.*\[E2\] MODEL \(BRANCH\):\n.*forked.*\[M1\].*\[M2\]",
         combined,
         re.DOTALL,
     )
-    assert a1.text in combined  # surfaces via the branch entry, not dropped
+    assert a1.text not in combined  # the compacted-away turn stays absent
+    assert "forked" in combined  # the genuine fork still surfaces
 
 
 @pytest.mark.anyio
@@ -624,8 +663,39 @@ def _agentic_events_with_scores() -> list[Event]:
       score splices into its own thread, matching
       ``include_scorers=True`` semantics) rather than being collected
       externally.
+
+    Also inserts a genuine off-thread fork ``ModelEvent`` ("fork-1") into
+    "main", immediately before its closing turn, so streaming/materialized
+    parity coverage genuinely exercises a ``[E#] MODEL (BRANCH):`` entry
+    rather than relying on incidental non-cumulative fixture inputs.
     """
     events = list(agentic_events())
+
+    # Genuine off-thread fork: a "main"-prompt ModelEvent inserted right
+    # before the closing "main-3" turn, with the default fresh (non-
+    # cumulative) input `_model_event()` builds absent an explicit
+    # `input_messages=` override. Its output id therefore never joins ANY
+    # reconstructed thread, at any `compaction` value -- unlike a
+    # compaction-pruned turn (which IS a member of the untruncated
+    # `compaction="all"` thread). Exercises the fork/compaction-pruned
+    # discriminator (`_AnchorWalk`'s `excluded_ids`,
+    # `_transcript/interleave.py`) end-to-end on both the streaming and
+    # materialized paths: it must render as `[E#] MODEL (BRANCH):` with its
+    # real output text on both, never as an empty stub.
+    main3_index = next(
+        i
+        for i, e in enumerate(events)
+        if isinstance(e, ModelEvent) and e.uuid == "evt-main-3"
+    )
+    events.insert(
+        main3_index,
+        _agentic_model_event(
+            label="fork-1",
+            system_prompt="MAIN",
+            output_text="fork-output-1",
+            span_id="main",
+        ),
+    )
 
     main_end = next(
         i
@@ -765,6 +835,11 @@ async def test_stream_timeline_messages_events_parity(
 
     assert streamed  # non-vacuous
     assert streamed == materialized
+    # The "fork-1" off-thread ModelEvent must render as a branch entry with
+    # its real output text, not an empty stub, on the streaming path.
+    combined = "\n".join(text for _, text in streamed)
+    assert "MODEL (BRANCH)" in combined
+    assert "fork-output-1" in combined
 
 
 @pytest.mark.anyio

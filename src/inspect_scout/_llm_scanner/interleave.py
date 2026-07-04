@@ -15,6 +15,7 @@ from .._transcript.interleave import (
     _event_message,
     _interleavable_text,
     _model_output_id,
+    _off_thread_model_text,
     _scorers_model_event_ids,
 )
 from .._transcript.messages import span_messages
@@ -50,15 +51,22 @@ def interleave_events(
     Each event is anchored after the most recent preceding assistant message
     (the output of the most recent ``ModelEvent`` whose message is present in
     ``transcript.messages``). Events with no preceding turn are prepended.
-    A ``ModelEvent`` whose output never joined the thread (a fork/branch
-    experiment, or a retry) is off-thread and renders instead as an always-on
-    ``[E#] MODEL (BRANCH):`` entry, anchored at the current position -- see
-    ``_AnchorWalk``/``_off_thread_model_text`` (``_transcript/interleave.py``).
+    A ``ModelEvent`` whose output never joined the thread splits into two
+    cases (see ``_AnchorWalk``'s ``excluded_ids`` discriminator,
+    ``_transcript/interleave.py``): a genuine fork/branch experiment (or a
+    retry whose output never joined any thread) renders as an always-on
+    ``[E#] MODEL (BRANCH):`` entry, anchored at the current position; a
+    turn that ``compaction`` deliberately pruned (present in the
+    untruncated ``compaction="all"`` thread but not the current one) stays
+    hidden instead, honoring the caller's compaction request rather than
+    resurrecting it as a fork.
 
     When the transcript carries no top-level messages (events-only loads),
     the message thread is reconstructed from model events via
-    ``span_messages`` (honoring ``compaction``) and events are spliced into
-    the reconstructed thread.
+    ``span_messages`` (honoring ``compaction``); when ``compaction`` is not
+    ``"all"``, the untruncated ``compaction="all"`` reconstruction is also
+    computed to derive the excluded-ids set above. Events are then spliced
+    into the (possibly truncated) reconstructed thread.
 
     Grader model calls (``ModelEvent``s nested under a top-level ``scorers``
     span, if the event list carries span structure) are excluded from the
@@ -90,11 +98,19 @@ def interleave_events(
     messages = list(transcript.messages)
     if not transcript.events:
         return messages
+    excluded_ids: frozenset[str] = frozenset()
     if not messages:
         messages = span_messages(transcript.events, compaction=compaction)
+        if compaction != "all":
+            all_messages = span_messages(transcript.events, compaction="all")
+            excluded_ids = frozenset(_message_id(m) for m in all_messages) - frozenset(
+                _message_id(m) for m in messages
+            )
 
     excluded = _scorers_model_event_ids(transcript.events)
-    walk = _AnchorWalk([_message_id(m) for m in messages], events)
+    walk = _AnchorWalk(
+        [_message_id(m) for m in messages], events, excluded_ids=excluded_ids
+    )
     for event in transcript.events:
         if excluded and _event_id(event) in excluded:
             continue
@@ -131,8 +147,18 @@ async def stream_interleave_events(
     from model events in a single events pass: only the most recent
     ``ModelEvent`` per compaction region is retained (that event's input
     already carries the region's conversation — the thread itself), plus a
-    small op log of output-message ids and rendered entries so anchors
-    resolve against the reconstructed thread in event order.
+    small op log of output-message ids, each paired with that same
+    ``ModelEvent``'s rendered off-thread text (or ``""`` if it has none), so
+    anchors resolve against the reconstructed thread in event order and any
+    op whose model output does not anchor can still render as a branch
+    entry without re-visiting the (already discarded) original event.
+    Because ``skeleton`` always retains every compaction region's *last*
+    ``ModelEvent`` in full (never stubbed), it carries enough content to
+    also reconstruct the untruncated ``compaction="all"`` thread -- used to
+    compute the excluded-ids set that keeps compaction-pruned turns hidden
+    (see ``_AnchorWalk``). Memory: one rendered output string per
+    ``ModelEvent``, which is bounded and is exactly the content that would
+    be rendered anyway for genuine forks.
 
     Warning:
         The events-only reconstruction above assumes a single linear
@@ -168,15 +194,17 @@ async def stream_interleave_events(
     # keeps compaction events plus the most recent ModelEvent per region
     # (span_messages only reads the region-last event); `ops` records the
     # anchor walk's inputs in event order for replay once the thread exists.
-    # Each op is (kind, a, b): ("m", output_message_id, "") for a model
-    # event, ("e", event_id, rendered_text) for an interleavable event.
+    # Each op is (kind, a, b): ("m", output_message_id, rendered_text_or_"")
+    # for a model event -- the rendered text is precomputed since the full
+    # event itself is not retained past this loop -- or ("e", event_id,
+    # rendered_text) for an interleavable event.
     skeleton: list[Event] = []
     ops: list[tuple[str, str, str]] = []
     async for event in handle.events(types=types):
         if isinstance(event, ModelEvent):
             mid = _model_output_id(event)
             if mid is not None:
-                ops.append(("m", mid, ""))
+                ops.append(("m", mid, _off_thread_model_text(event) or ""))
             if skeleton and isinstance(skeleton[-1], ModelEvent):
                 skeleton[-1] = event
             else:
@@ -189,10 +217,21 @@ async def stream_interleave_events(
                 ops.append(("e", _event_id(event), rendered))
 
     thread = span_messages(skeleton, compaction=compaction)
-    walk = _AnchorWalk([_message_id(m) for m in thread], events)
+    excluded_ids: frozenset[str] = frozenset()
+    if compaction != "all":
+        all_thread = span_messages(skeleton, compaction="all")
+        excluded_ids = frozenset(_message_id(m) for m in all_thread) - frozenset(
+            _message_id(m) for m in thread
+        )
+
+    walk = _AnchorWalk(
+        [_message_id(m) for m in thread], events, excluded_ids=excluded_ids
+    )
     for kind, a, b in ops:
         if kind == "m":
-            walk.add_model_output(a)
+            consumed = walk.add_model_output(a)
+            if not consumed and a not in excluded_ids and b:
+                walk.add_rendered(a, b)
         else:
             walk.add_rendered(a, b)
 

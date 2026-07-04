@@ -598,14 +598,27 @@ async def stream_timeline_messages(
             never walked by `_walk_spans` and its events are collected
             externally instead. `events=None` (default) is byte-identical
             to behavior before this parameter existed. When `events` is
-            not `None`, pass 2 additionally retains, for every `ModelEvent`
-            not selected by `needed_model_event_uuids`, ONLY its rendered
-            output message (`_output_only_model_event`) -- never its input
-            -- so off-thread outputs (forks, or turns a non-`"all"`
-            `compaction` pruned) render identically to the materialized
-            path instead of appearing as empty `MODEL (BRANCH)` stubs.
-            Memory: one output message per off-thread `ModelEvent`, in
-            addition to the (already bounded) `needed` set.
+            not `None` and `compaction != "all"`, pass 1's `needed` set is
+            widened to `needed | needed_model_event_uuids(..., compaction="all")`
+            before pass 2 substitutes full events back in: `_AnchorWalk`'s
+            `excluded_ids` discriminator (`span_interleaved_messages`,
+            `interleave.py`) tells a compaction-pruned turn apart from a
+            genuine fork by reconstructing the untruncated
+            `compaction="all"` thread, which reads every region's *last*
+            `ModelEvent`'s `input` (`span_messages`' merge). A region-last
+            event not needed by the actual `compaction` would otherwise be
+            substituted output-only (`input=[]`); with a cumulative input
+            (later turns' `input` embedding earlier turns' output messages,
+            as real transcripts do), that strips the only surviving record
+            of an earlier turn's output from the "all" reconstruction, so it
+            misses `excluded_ids` and misrenders as a spurious
+            `[E#] MODEL (BRANCH):` entry. Every OTHER `ModelEvent` not
+            selected by the widened `needed` set still retains only its
+            rendered output message (`_output_only_model_event`), never its
+            input. Memory: the extra retentions are bounded to one full
+            `ModelEvent` per pruned region (its region-last event, already a
+            small multiple of region count) in addition to the (already
+            bounded) `needed` and off-thread-output sets.
 
     Yields:
         `TimelineMessages` segments, identical to calling `timeline_messages`
@@ -624,6 +637,17 @@ async def stream_timeline_messages(
     tree = timeline_build(stubs)
 
     needed = needed_model_event_uuids(tree.root, compaction=compaction, depth=depth)
+    if events is not None and compaction != "all":
+        # `span_interleaved_messages`' `excluded_ids` discriminator
+        # reconstructs the untruncated `compaction="all"` thread, which
+        # reads every region's last ModelEvent's `input`. Retain those in
+        # full too (not just the actual `compaction`'s `needed` set), or a
+        # pruned region's last event -- substituted output-only otherwise --
+        # can silently drop an earlier turn's output from the "all"
+        # reconstruction when inputs are cumulative, misclassifying it as a
+        # genuine fork instead of compaction-pruned (see the `events`
+        # parameter's docstring above).
+        needed |= needed_model_event_uuids(tree.root, compaction="all", depth=depth)
 
     full_by_uuid: dict[str, ModelEvent] = {}
     # Populated only when `events` interleaving is enabled: off-thread

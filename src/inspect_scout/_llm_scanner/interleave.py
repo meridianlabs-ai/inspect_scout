@@ -15,6 +15,7 @@ from .._transcript.interleave import (
     _event_message,
     _interleavable_text,
     _model_output_id,
+    _scorers_model_event_ids,
 )
 from .._transcript.messages import span_messages
 from .._transcript.types import Transcript
@@ -49,23 +50,37 @@ def interleave_events(
     Each event is anchored after the most recent preceding assistant message
     (the output of the most recent ``ModelEvent`` whose message is present in
     ``transcript.messages``). Events with no preceding turn are prepended.
+    A ``ModelEvent`` whose output never joined the thread (a fork/branch
+    experiment, or a retry) is off-thread and renders instead as an always-on
+    ``[E#] MODEL (BRANCH):`` entry, anchored at the current position -- see
+    ``_AnchorWalk``/``_off_thread_model_text`` (``_transcript/interleave.py``).
 
     When the transcript carries no top-level messages (events-only loads),
     the message thread is reconstructed from model events via
     ``span_messages`` (honoring ``compaction``) and events are spliced into
     the reconstructed thread.
 
+    Grader model calls (``ModelEvent``s nested under a top-level ``scorers``
+    span, if the event list carries span structure) are excluded from the
+    walk entirely -- they neither render as branch entries nor advance the
+    anchor -- preserving the invariant that scorer/grader activity never
+    surfaces in scanned content (see ``_scorers_model_event_ids``).
+
     Warning:
         The events-only reconstruction (``span_messages``) assumes a single
         linear conversation: it keeps only the region-last ``ModelEvent``
         per compaction region, and nested ``ToolEvent.events`` subagents are
         not walked. With multiple parallel agents (or tool-spawned
-        subagents), this silently drops every agent but the last. Such
-        transcripts must go through the timeline machinery instead (see
-        ``inspect_scout._transcript.timeline`` / ``timeline_stream``), which
-        reconstructs per-span segments so every agent is visible.
-        ``llm_scanner`` routes events-only transcripts there automatically
-        and never reaches this fallback for multi-agent input.
+        subagents), this silently drops every agent but the last from the
+        reconstructed thread -- though each off-thread agent's model
+        outputs still surface individually as ``[E#] MODEL (BRANCH):``
+        entries rather than vanishing, their original conversational
+        context is not recovered. Such transcripts must go through the
+        timeline machinery instead (see ``inspect_scout._transcript.timeline``
+        / ``timeline_stream``), which reconstructs per-span segments so
+        every agent is visible with its own context. ``llm_scanner`` routes
+        events-only transcripts there automatically and never reaches this
+        fallback for multi-agent input.
 
     Args:
         transcript: Transcript providing messages and events.
@@ -78,8 +93,11 @@ def interleave_events(
     if not messages:
         messages = span_messages(transcript.events, compaction=compaction)
 
+    excluded = _scorers_model_event_ids(transcript.events)
     walk = _AnchorWalk([_message_id(m) for m in messages], events)
     for event in transcript.events:
+        if excluded and _event_id(event) in excluded:
+            continue
         walk.add(event)
 
     result: list[ChatMessage] = [

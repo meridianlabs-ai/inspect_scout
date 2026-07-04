@@ -21,7 +21,13 @@ from inspect_ai.event import (
     timeline_filter,
 )
 from inspect_ai.log import EvalError
-from inspect_ai.model import ChatMessage, ChatMessageUser, ModelOutput, get_model
+from inspect_ai.model import (
+    ChatMessage,
+    ChatMessageUser,
+    ContentReasoning,
+    ModelOutput,
+    get_model,
+)
 from inspect_ai.scorer import Score
 from inspect_scout._scanner.extract import message_numbering
 from inspect_scout._transcript.handle import MaterializedTranscriptHandle
@@ -304,7 +310,15 @@ async def test_events_none_matches_direct_segment_messages() -> None:
 
 @pytest.mark.anyio
 async def test_compaction_last_drops_anchor_event_becomes_leading() -> None:
-    """compaction='last': an event anchored to a compacted-away turn leads."""
+    """compaction='last': an event anchored to a compacted-away turn leads.
+
+    The compacted-away turn's own output id is, mechanically, exactly the
+    off-thread case (not found in the compaction="last"-truncated thread):
+    it is no longer silently dropped either, and now surfaces as its own
+    leading `MODEL (BRANCH)` entry ahead of the score -- both lead, in
+    event order, since neither a rendered branch entry nor a same-position
+    interleaved event ever advances the anchor.
+    """
     out1 = ModelOutput.from_content(model="mockllm", content="first")
     a1 = out1.choices[0].message
     ev1 = _model_event([_u1], out1)
@@ -320,9 +334,86 @@ async def test_compaction_last_drops_anchor_event_becomes_leading() -> None:
     results, combined = await _collect(root, events=["score"], compaction="last")
 
     assert len(results) == 1
-    # The score leads (renders before the surviving M1/M2 turns).
-    assert re.search(r"\[E1\] SCORE.*\[M1\].*\[M2\]", combined, re.DOTALL)
-    assert a1.text not in combined  # confirms the anchor turn really was dropped
+    # The compacted-away turn's output leads as a branch entry, then the
+    # score, then the surviving M1/M2 turns.
+    assert re.search(
+        r"\[E1\] MODEL \(BRANCH\):\n.*first.*\[E2\] SCORE.*\[M1\].*\[M2\]",
+        combined,
+        re.DOTALL,
+    )
+    assert a1.text in combined  # surfaces via the branch entry, not dropped
+
+
+@pytest.mark.anyio
+async def test_off_thread_model_event_renders_as_branch_entry() -> None:
+    """A fork's ModelEvent output that never joins the thread still renders.
+
+    span-a has model events A1, FORK, A2 where FORK's output is not part
+    of A2's input (A1's is): FORK is an off-thread branch that diverged
+    and was discarded. It must render as a `[E1] MODEL (BRANCH):` entry
+    anchored right after A1, not be silently dropped.
+    """
+    out1 = ModelOutput.from_content(model="mockllm", content="first")
+    a1 = out1.choices[0].message
+    ev1 = _model_event([_u1], out1)
+
+    fork_out = ModelOutput.from_content(model="mockllm", content="forked reasoning")
+    fork_ev = _model_event([_u1, a1], fork_out)
+
+    out2 = ModelOutput.from_content(model="mockllm", content="second")
+    ev2 = _model_event([_u1, a1, _u2], out2)
+
+    span = _span("span-a", "agent-a", [ev1, fork_ev, ev2])
+    root = TimelineSpan(id="root", name="root", span_type=None, content=[span])
+
+    # events=[] still renders off-thread outputs -- they are always-on and
+    # not gated by the `events` selection.
+    results, combined = await _collect(root, events=[])
+
+    assert len(results) == 1
+    assert re.search(
+        r"\[M2\].*\[E1\] MODEL \(BRANCH\):\n.*forked reasoning.*\[M3\]",
+        combined,
+        re.DOTALL,
+    )
+    # Not double-counted as a normal turn.
+    assert combined.count("forked reasoning") == 1
+
+
+@pytest.mark.anyio
+async def test_off_thread_model_event_with_reasoning_only_content_renders() -> None:
+    """A fork output with only reasoning content (empty `.completion`) still renders.
+
+    Rendering must go through `message_as_str` on the output message, not
+    `event.output.completion`: a message whose content is entirely
+    `ContentReasoning` parts has an empty `.completion`/`.text`, so relying
+    on `completion` would silently drop the branch entirely.
+    """
+    out1 = ModelOutput.from_content(model="mockllm", content="first")
+    a1 = out1.choices[0].message
+    ev1 = _model_event([_u1], out1)
+
+    fork_out = ModelOutput.from_content(
+        model="mockllm",
+        content=[ContentReasoning(reasoning="secret forked plan")],
+    )
+    assert fork_out.completion == ""  # sanity: the trap this test guards against
+    fork_ev = _model_event([_u1, a1], fork_out)
+
+    out2 = ModelOutput.from_content(model="mockllm", content="second")
+    ev2 = _model_event([_u1, a1, _u2], out2)
+
+    span = _span("span-a", "agent-a", [ev1, fork_ev, ev2])
+    root = TimelineSpan(id="root", name="root", span_type=None, content=[span])
+
+    results, combined = await _collect(root, events=[])
+
+    assert len(results) == 1
+    assert re.search(
+        r"\[M2\].*\[E1\] MODEL \(BRANCH\):\n.*<thinking>secret forked plan</thinking>.*\[M3\]",
+        combined,
+        re.DOTALL,
+    )
 
 
 @pytest.mark.anyio

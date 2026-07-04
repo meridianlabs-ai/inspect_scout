@@ -433,30 +433,85 @@ def needed_model_event_uuids(
     return needed
 
 
-def _collect_needed_model_events(
-    event: Event, needed: set[str], out: dict[str, ModelEvent]
+def _output_only_model_event(event: ModelEvent) -> ModelEvent:
+    """Return a copy of `event` retaining only its first-choice output message.
+
+    Used for `ModelEvent`s pass 1 determined are NOT needed to build the
+    scanned thread (i.e. not in `needed_model_event_uuids`'s result) when
+    `events` interleaving is enabled. `_AnchorWalk.add`
+    (`_transcript/interleave.py`) still needs every off-thread
+    `ModelEvent`'s `output.choices[0].message` to render it as a
+    `[E#] MODEL (BRANCH):` entry, or to recognize its id as a member of the
+    untruncated `compaction="all"` thread when deciding it is actually a
+    compaction-pruned turn that should stay hidden instead (see
+    `_AnchorWalk`'s `excluded_ids`). Nothing else is retained: `input`,
+    `tools`, and any output choice beyond the first are dropped, so pass 2
+    never holds more than one rendered output message per off-thread
+    `ModelEvent` -- never its (potentially huge) input.
+
+    Args:
+        event: A full (non-stubbed) `ModelEvent` from pass 2's stream.
+
+    Returns:
+        A `model_copy` of `event` with only the first output choice kept
+        and input/tools removed.
+    """
+    output = event.output
+    kept_choices = output.choices[:1] if output.choices else []
+    return event.model_copy(
+        update={
+            "input": [],
+            "input_refs": None,
+            "tools": [],
+            "call": None,
+            "output": output.model_copy(update={"choices": kept_choices}),
+        }
+    )
+
+
+def _collect_pass2_model_events(
+    event: Event,
+    needed: set[str],
+    full_by_uuid: dict[str, ModelEvent],
+    offthread_by_uuid: dict[str, ModelEvent] | None,
 ) -> None:
-    """Recursively collect full `ModelEvent`s from `event` whose uuid is needed.
+    """Recursively collect full and off-thread-output `ModelEvent`s from `event`.
 
     Recurses into `ToolEvent.events` so nested tool-spawned-agent
     ModelEvents (e.g. inside a handoff tool's `.events`) are found too --
     they never appear at the top level of a handle's flat event stream.
-    Only the matched `ModelEvent` objects are retained in `out`; the
-    (possibly large) `ToolEvent` payload each was found inside is not kept
-    beyond this call, so full nested tool payloads do not linger in memory
-    across the pass-2 walk.
+
+    Populates two accumulators from a single pass-2 walk:
+
+    - `full_by_uuid`: every `ModelEvent` whose uuid is in `needed`, kept in
+      full -- the content the scanned thread's message reconstruction
+      reads. The (possibly large) `ToolEvent` payload a nested match was
+      found inside is not kept beyond this call.
+    - `offthread_by_uuid` (only populated when not `None`, i.e. when
+      `events` interleaving is enabled): every OTHER `ModelEvent`, reduced
+      via `_output_only_model_event` to just its rendered output message
+      -- bounded, since only the output (never the input) is retained.
+      `None` skips this collection entirely, matching `events=None`'s
+      byte-identical-to-before behavior.
 
     Args:
         event: A full (non-stubbed) event from pass 2's stream.
         needed: uuids selected by ``needed_model_event_uuids`` in pass 1.
-        out: Accumulator mapping uuid -> full `ModelEvent`, updated in place.
+        full_by_uuid: Accumulator mapping uuid -> full `ModelEvent`,
+            updated in place.
+        offthread_by_uuid: Accumulator mapping uuid -> output-only
+            `ModelEvent` for off-thread events, updated in place, or
+            `None` to skip this collection.
     """
     if isinstance(event, ModelEvent):
-        if event.uuid is not None and event.uuid in needed:
-            out[event.uuid] = event
+        if event.uuid is not None:
+            if event.uuid in needed:
+                full_by_uuid[event.uuid] = event
+            elif offthread_by_uuid is not None:
+                offthread_by_uuid[event.uuid] = _output_only_model_event(event)
     elif isinstance(event, ToolEvent) and event.events:
         for nested in event.events:
-            _collect_needed_model_events(nested, needed, out)
+            _collect_pass2_model_events(nested, needed, full_by_uuid, offthread_by_uuid)
 
 
 def _substitute_full_events(
@@ -542,7 +597,15 @@ async def stream_timeline_messages(
             double-rendering its score; a `scorers` span without one is
             never walked by `_walk_spans` and its events are collected
             externally instead. `events=None` (default) is byte-identical
-            to behavior before this parameter existed.
+            to behavior before this parameter existed. When `events` is
+            not `None`, pass 2 additionally retains, for every `ModelEvent`
+            not selected by `needed_model_event_uuids`, ONLY its rendered
+            output message (`_output_only_model_event`) -- never its input
+            -- so off-thread outputs (forks, or turns a non-`"all"`
+            `compaction` pruned) render identically to the materialized
+            path instead of appearing as empty `MODEL (BRANCH)` stubs.
+            Memory: one output message per off-thread `ModelEvent`, in
+            addition to the (already bounded) `needed` set.
 
     Yields:
         `TimelineMessages` segments, identical to calling `timeline_messages`
@@ -563,8 +626,13 @@ async def stream_timeline_messages(
     needed = needed_model_event_uuids(tree.root, compaction=compaction, depth=depth)
 
     full_by_uuid: dict[str, ModelEvent] = {}
+    # Populated only when `events` interleaving is enabled: off-thread
+    # ModelEvents' output messages, so part-A's branch-entry rendering (and
+    # Job 1's compaction-pruned/fork discriminator) sees real content
+    # instead of empty stubs, without retaining off-thread inputs.
+    offthread_by_uuid: dict[str, ModelEvent] | None = {} if events is not None else None
     async for ev in handle.events():
-        _collect_needed_model_events(ev, needed, full_by_uuid)
+        _collect_pass2_model_events(ev, needed, full_by_uuid, offthread_by_uuid)
 
     missing = needed - full_by_uuid.keys()
     if missing:
@@ -576,6 +644,8 @@ async def stream_timeline_messages(
         )
 
     _substitute_full_events(tree.root, full_by_uuid)
+    if offthread_by_uuid:
+        _substitute_full_events(tree.root, offthread_by_uuid)
 
     span_external: dict[str, list[tuple[str, str]]] | None = None
     if events is not None:

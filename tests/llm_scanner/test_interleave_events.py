@@ -367,6 +367,63 @@ async def test_stream_interleave_matches_materialized(
 
 
 @pytest.mark.anyio
+async def test_stream_multi_agent_branch_entries_match_materialized() -> None:
+    """Flat streaming messages-present path: two off-thread agents both surface.
+
+    `transcript.messages` carries only agent A's on-thread conversation.
+    Agent B contributes two entirely separate ``ModelEvent``s -- genuine
+    forks, since their outputs never join ``transcript.messages`` at all
+    (there is no compaction here, so this is unambiguously the fork case,
+    not a compaction-pruned turn). The messages-present branch of
+    ``stream_interleave_events`` streams full events with no stub
+    skeleton, so both materialized ``interleave_events`` and the streaming
+    driver must surface agent B's outputs as ``[E#] MODEL (BRANCH):``
+    entries, and the two outputs must match exactly.
+    """
+    out_a = ModelOutput.from_content(model="mockllm", content="agent-a-answer")
+    a = out_a.choices[0].message
+    user_a = ChatMessageUser(content="agent-a-question")
+
+    out_b1 = ModelOutput.from_content(model="mockllm", content="agent-b-answer-1")
+    out_b2 = ModelOutput.from_content(model="mockllm", content="agent-b-answer-2")
+
+    model_a = _model_event("agent-a-question", out_a)
+    model_b1 = ModelEvent.model_construct(
+        event="model",
+        model="mockllm",
+        input=[ChatMessageUser(content="agent-b-question-1")],
+        output=out_b1,
+        role="assistant",
+    )
+    model_b2 = ModelEvent.model_construct(
+        event="model",
+        model="mockllm",
+        input=[ChatMessageUser(content="agent-b-question-2")],
+        output=out_b2,
+        role="assistant",
+    )
+
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[user_a, a],
+        events=[model_a, model_b1, model_b2],
+    )
+
+    expected = interleave_events(transcript)
+    streamed = [m async for m in stream_interleave_events(_handle_for(transcript))]
+
+    assert [(m.id, m.text) for m in streamed] == [(m.id, m.text) for m in expected]
+
+    event_texts = [
+        m.text for m in streamed if m.metadata and m.metadata.get(EVENT_MARKER_KEY)
+    ]
+    assert sum("MODEL (BRANCH):" in t for t in event_texts) == 2
+    combined = "\n".join(event_texts)
+    assert "agent-b-answer-1" in combined
+    assert "agent-b-answer-2" in combined
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize("compaction", ["all", "last"])
 async def test_stream_interleave_events_only_matches_materialized(
     compaction: str,

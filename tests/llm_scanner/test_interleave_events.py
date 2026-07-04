@@ -163,6 +163,106 @@ def test_events_only_no_model_events_renders_leading() -> None:
     assert result[0].metadata[EVENT_MARKER_KEY] is True
 
 
+def test_off_thread_model_event_renders_as_branch_entry() -> None:
+    """A ModelEvent whose output is not in `transcript.messages` still renders.
+
+    The second `_model_event("2+2?", fork_out)` produces a different output
+    message than the one actually present in `transcript.messages` -- a
+    fork/retry whose result was never joined to the final conversation.
+    """
+    out = ModelOutput.from_content(model="mockllm", content="4")
+    assistant = out.choices[0].message
+    user = ChatMessageUser(content="2+2?")
+    fork_out = ModelOutput.from_content(model="mockllm", content="forked answer")
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[user, assistant],
+        events=[
+            _model_event("2+2?", out),
+            _model_event("2+2?", fork_out),
+        ],
+    )
+    result = interleave_events(transcript)
+    assert len(result) == 3
+    assert [m.text for m in result[:2]] == [user.text, assistant.text]
+    assert result[2].metadata is not None
+    assert result[2].metadata[EVENT_MARKER_KEY] is True
+    assert "MODEL (BRANCH):" in result[2].text
+    assert "forked answer" in result[2].text
+
+
+def test_grader_model_event_in_scorers_span_excluded() -> None:
+    """A grader ModelEvent inside a top-level `scorers` span never renders.
+
+    Mirrors the timeline-path invariant
+    (`test_scorers_span_score_event_attaches_to_last_scannable_span` in
+    `test_timeline_interleave.py`) on the flat `interleave_events` driver:
+    grader model calls must never surface as branch entries even though,
+    unlike the per-span path, there is no structural span boundary to stop
+    the walk -- `_scorers_model_event_ids` must exclude them explicitly.
+    The scorer's own `ScoreEvent` is unaffected and still renders once.
+    """
+    out = ModelOutput.from_content(model="mockllm", content="4")
+    assistant = out.choices[0].message
+    user = ChatMessageUser(content="2+2?")
+    model_event = ModelEvent(
+        span_id="span-main",
+        model="mockllm",
+        input=[user],
+        output=out,
+        role="assistant",
+        tools=[],
+        tool_choice="auto",
+        config=GenerateConfig(),
+    )
+    grader_out = ModelOutput.from_content(model="mockllm", content="grader assessment")
+    grader_event = ModelEvent(
+        span_id="span-scorers",
+        model="mockllm",
+        input=[ChatMessageUser(content="grade this")],
+        output=grader_out,
+        role="assistant",
+        tools=[],
+        tool_choice="auto",
+        config=GenerateConfig(),
+    )
+    score_event = ScoreEvent(
+        span_id="span-scorers", scorer="match", score=Score(value="C")
+    )
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[user, assistant],
+        events=[
+            SpanBeginEvent(
+                id="span-main",
+                parent_id=None,
+                type="agent",
+                name="main",
+                span_id="span-main",
+            ),
+            model_event,
+            SpanEndEvent(id="span-main", span_id="span-main"),
+            SpanBeginEvent(
+                id="span-scorers",
+                parent_id=None,
+                type="scorers",
+                name="scorers",
+                span_id="span-scorers",
+            ),
+            grader_event,
+            score_event,
+            SpanEndEvent(id="span-scorers", span_id="span-scorers"),
+        ],
+    )
+    result = interleave_events(transcript)
+    event_texts = [
+        m.text for m in result if m.metadata and m.metadata.get(EVENT_MARKER_KEY)
+    ]
+    assert sum("MODEL (BRANCH)" in t for t in event_texts) == 0
+    assert "grader assessment" not in "\n".join(event_texts)
+    assert sum(t.startswith("SCORE (match)") for t in event_texts) == 1
+
+
 def test_has_interleavable_events() -> None:
     out = ModelOutput.from_content(model="mockllm", content="x")
     with_score = Transcript(
@@ -406,6 +506,105 @@ async def test_events_only_multi_agent_renders_all_agents() -> None:
     combined = "\n".join(captured)
     assert "agent-a-question" in combined
     assert "agent-b-question" in combined
+    assert "SCORE" in combined
+
+
+def _spanless_two_agent_flat_events() -> list[Event]:
+    """Events-only, multi-agent flat event list with NO span structure at all.
+
+    Four interleaved ``ModelEvent``s (A1, B1, A2, B2, chronological) for two
+    agents with no ``SpanBeginEvent``/``SpanEndEvent`` markers -- the
+    "fork-heavy eval" repro shape: ``timeline_build`` wraps this into a
+    single synthetic "main" span, and ``span_messages`` (with no
+    ``CompactionEvent`` to bound regions) keeps only the region-last
+    ``ModelEvent`` (B2) to derive the thread. B2's input carries B1's
+    output (so agent B's exchange is on-thread), but neither of agent A's
+    turns ever appear in B2's input -- both are off-thread.
+    """
+    out_a1 = ModelOutput.from_content(model="mockllm", content="agent-a-answer-1")
+    out_b1 = ModelOutput.from_content(model="mockllm", content="agent-b-answer-1")
+    a1 = out_a1.choices[0].message
+    b1 = out_b1.choices[0].message
+    out_a2 = ModelOutput.from_content(model="mockllm", content="agent-a-answer-2")
+    out_b2 = ModelOutput.from_content(model="mockllm", content="agent-b-answer-2")
+
+    model_a1 = ModelEvent.model_construct(
+        event="model",
+        model="mockllm",
+        input=[ChatMessageUser(content="agent-a-question-1")],
+        output=out_a1,
+        role="assistant",
+    )
+    model_b1 = ModelEvent.model_construct(
+        event="model",
+        model="mockllm",
+        input=[ChatMessageUser(content="agent-b-question-1")],
+        output=out_b1,
+        role="assistant",
+    )
+    model_a2 = ModelEvent.model_construct(
+        event="model",
+        model="mockllm",
+        input=[
+            ChatMessageUser(content="agent-a-question-1"),
+            a1,
+            ChatMessageUser(content="agent-a-question-2"),
+        ],
+        output=out_a2,
+        role="assistant",
+    )
+    model_b2 = ModelEvent.model_construct(
+        event="model",
+        model="mockllm",
+        input=[
+            ChatMessageUser(content="agent-b-question-1"),
+            b1,
+            ChatMessageUser(content="agent-b-question-2"),
+        ],
+        output=out_b2,
+        role="assistant",
+    )
+    return [
+        model_a1,
+        model_b1,
+        model_a2,
+        model_b2,
+        ScoreEvent(scorer="match", score=Score(value="C")),
+    ]
+
+
+@pytest.mark.anyio
+async def test_spanless_multi_agent_off_thread_agent_renders_via_branch_entries() -> (
+    None
+):
+    # Minimal repro from the task background: a fork-heavy eval with no span
+    # structure at all. Agent A's entire exchange is off-thread relative to
+    # the region-last ModelEvent (agent B's second turn) that
+    # `span_messages` uses to derive "the" thread. Before rendering
+    # off-thread outputs as branch entries, agent A's content was silently
+    # dropped entirely; now it surfaces via `[E#] MODEL (BRANCH):` entries.
+    transcript = Transcript(
+        transcript_id="t", messages=[], events=_spanless_two_agent_flat_events()
+    )
+
+    captured: list[str] = []
+    scan = llm_scanner(
+        question="Right?",
+        answer="boolean",
+        model=_mock_model(captured),
+        events=["score"],
+    )
+    await scan(transcript)
+
+    combined = "\n".join(captured)
+    # Agent B's exchange is on-thread as ordinary turns.
+    assert "agent-b-question-1" in combined
+    assert "agent-b-answer-1" in combined
+    assert "agent-b-question-2" in combined
+    # Agent A's off-thread outputs now surface via branch entries.
+    assert "MODEL (BRANCH):" in combined
+    assert "agent-a-answer-1" in combined
+    assert "agent-a-answer-2" in combined
     assert "SCORE" in combined
 
 

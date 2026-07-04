@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from inspect_scout._scanner.extract import MessagesAsStr
-    from inspect_scout._transcript.interleave import EventsSpec
+    from inspect_scout._transcript.interleave import EventsSpec, SpanExternalEvents
 
 from inspect_ai.event import (
     Timeline,
@@ -176,7 +176,7 @@ async def timeline_messages(
     depth: int | None = None,
     prompt_reserve: int | float = 0.2,
     events: EventsSpec | None = None,
-    span_external: dict[str, list[tuple[str, str]]] | None = None,
+    span_external: SpanExternalEvents | None = None,
 ) -> AsyncIterator[TimelineMessages]:
     """Yield pre-rendered message segments from timeline spans.
 

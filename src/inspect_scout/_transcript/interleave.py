@@ -339,14 +339,43 @@ def _collect_span_external(
     if is_scannable:
         last_scannable = span.id
 
+    # A ModelEvent reached here (`is_scannable` False) has no thread of its
+    # own to be "on" or "off" -- unlike `_AnchorWalk.add`, which anchors a
+    # ModelEvent against a reconstructed thread and only renders it when its
+    # output id is NOT found there, this collector always renders it (via
+    # `_off_thread_model_text`, ignoring `events` -- model content is
+    # always-on, matching `_AnchorWalk`'s off-thread case). Two distinct
+    # situations land here, both rendered identically as `MODEL (BRANCH)`
+    # entries attached to `last_scannable`:
+    #   - Utility spans, pure containers, root level, or a `scorers` span:
+    #     genuinely non-scannable locations with no thread at all.
+    #   - A structurally scannable span excluded purely by `depth`: its
+    #     ModelEvents (including ones that WOULD be on-thread if the span
+    #     were walked) are surfaced as branch entries after the last span
+    #     actually walked -- the same "below-depth content surfaces as
+    #     span-external" semantics `_walk_spans` already applies to
+    #     everything else in such a span.
+    # `scorers` spans are the one exception: their grader ModelEvents must
+    # never render, so `span_in_scorers` (computed above, propagated to
+    # descendants regardless of the descendants' own type) short-circuits
+    # them. Scannable spans' own direct ModelEvents are never seen here at
+    # all -- the `is_scannable` branch above `continue`s past them first,
+    # leaving them owned by that span's own `span_interleaved_messages`
+    # splice.
     for item in span.content:
         if isinstance(item, TimelineEvent):
             if is_scannable:
                 continue  # owned by this span's own splice (span_interleaved_messages)
-            text = _interleavable_text(item.event, events)
+            event = item.event
+            if isinstance(event, ModelEvent):
+                if span_in_scorers:
+                    continue  # grader ModelEvents never render, even as branches
+                text = _off_thread_model_text(event)
+            else:
+                text = _interleavable_text(event, events)
             if text is not None:
                 key = last_scannable if last_scannable is not None else ""
-                external[key].append((_event_id(item.event), text))
+                external[key].append((_event_id(event), text))
         else:
             last_scannable = _collect_span_external(
                 item,
@@ -375,6 +404,20 @@ def collect_span_external(
     reached scannable span (or the reserved key ``""`` if none has
     been reached yet). The result is meant to be passed as
     ``timeline_messages(..., span_external=...)``.
+
+    ``ModelEvent``s reached this way (a fork/branch inside a utility span,
+    root-level model calls, or -- see ``depth`` below -- on-thread turns of
+    a span that is never walked) are never silently dropped: each renders
+    unconditionally as a ``MODEL (BRANCH)`` entry via
+    ``_off_thread_model_text``, exactly like ``_AnchorWalk``'s off-thread
+    case, except there is no thread here to be "off" from -- location alone
+    (not on-thread/off-thread status) is what routes a ModelEvent through
+    this collector instead of a span's own splice. The one exception is a
+    ``scorers`` span's grader ``ModelEvent``s, which are always excluded
+    (see below). A scannable span's own direct ``ModelEvent``s are never
+    visited here at all -- they are skipped in favor of that span's own
+    ``span_interleaved_messages`` splice, whether or not the span is
+    actually within ``depth`` (see ``depth``'s docs for the latter case).
 
     A span is scannable for this purpose when it is not a utility
     span, has at least one direct ``ModelEvent``, and is not a
@@ -421,8 +464,14 @@ def collect_span_external(
             limit is never actually walked (its own splice never runs),
             so its events -- and its descendants' events -- are treated
             as external here too, attributed to the last span that IS
-            within the depth limit. ``None`` (default) matches
-            ``_walk_spans``' unlimited depth and preserves prior
+            within the depth limit. This includes the span's own
+            ``ModelEvent``s, even ones that would have been ordinary
+            on-thread turns had the span been walked: with no splice ever
+            reconstructing that span's thread, there is nothing for them
+            to be "on"; they render as ``MODEL (BRANCH)`` entries after
+            the parent, matching the depth semantics already applied to
+            every other event type in such a span. ``None`` (default)
+            matches ``_walk_spans``' unlimited depth and preserves prior
             behavior exactly.
 
     Returns:

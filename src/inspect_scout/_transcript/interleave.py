@@ -3,10 +3,21 @@
 from collections import defaultdict
 from typing import Literal
 
-from inspect_ai.event import Event, ModelEvent, Timeline, TimelineEvent, TimelineSpan
+from inspect_ai.event import (
+    Event,
+    EventTreeSpan,
+    ModelEvent,
+    SpanBeginEvent,
+    SpanEndEvent,
+    Timeline,
+    TimelineEvent,
+    TimelineSpan,
+    event_sequence,
+    event_tree,
+)
 from inspect_ai.model import ChatMessage, ChatMessageUser
 
-from .._scanner.extract import EVENT_MARKER_KEY
+from .._scanner.extract import EVENT_MARKER_KEY, message_as_str
 from .._scanner.util import _event_id, _message_id
 from .event_text import event_as_str
 from .messages import span_messages
@@ -53,6 +64,87 @@ def _model_output_id(event: ModelEvent) -> str | None:
     return None
 
 
+def _off_thread_model_text(event: ModelEvent) -> str | None:
+    """Render a ModelEvent's output as a `[E#] MODEL (BRANCH):` entry.
+
+    Used when the event's output message id is not found in the
+    reconstructed thread -- a fork/branch experiment or a retry whose
+    output never joined the final conversation. Rather than silently
+    dropping the output, it is rendered on a copy of the output message
+    with `metadata["role_label"]` set to `"model (branch)"` (read by
+    `_role_label` in `_scanner/extract.py`, which uppercases it into the
+    `MODEL (BRANCH):` prefix).
+
+    Renders via `message_as_str` on the message itself -- never
+    `event.output.completion` -- because fork outputs often carry an
+    empty `completion` with their real content living in reasoning-summary
+    content parts, which only rendering the message's content surfaces.
+
+    Args:
+        event: The off-thread ModelEvent.
+
+    Returns:
+        The rendered text, or None if there is no output message, or the
+        render is empty (e.g. nothing renderable in the message content).
+    """
+    out = event.output
+    if out is None or not out.choices or out.choices[0].message is None:
+        return None
+    message = out.choices[0].message
+    branch_message = message.model_copy(
+        update={
+            "metadata": {**(message.metadata or {}), "role_label": "model (branch)"}
+        }
+    )
+    text = message_as_str(branch_message)
+    return text if text else None
+
+
+def _scorers_model_event_ids(events: list[Event]) -> frozenset[str]:
+    """Ids of ModelEvents nested under a top-level ``scorers`` span, if any.
+
+    On timeline paths, a ``scorers`` span's grader ``ModelEvent``s never
+    join a scanned thread structurally: the span is either pruned entirely
+    (default ``include_scorers=False``) or, when included, walked as its
+    *own* scannable span (see ``collect_span_external``'s docstring) --
+    either way they are never direct content of some other span, so they
+    are never seen by that span's own `_AnchorWalk` at all.
+
+    On the flat/events-only path there is no such structural boundary: a
+    grader ``ModelEvent`` is just another item in the flat event list, so
+    without this check it would be picked up by `_AnchorWalk.add` like any
+    other off-thread model call and rendered as a branch entry -- breaking
+    the original invariant that a scorer's own model calls never surface
+    in scanned content. This mirrors `_exclude_scorers` (`messages.py`) in
+    assuming a single top-level ``scorers`` span.
+
+    Args:
+        events: The flat event list to scan.
+
+    Returns:
+        Ids (`_event_id`) of every ModelEvent nested under the top-level
+        ``scorers`` span. Empty if the event list carries no span
+        structure at all (nothing to detect) or no top-level ``scorers``
+        span is found.
+    """
+    if not any(isinstance(e, (SpanBeginEvent, SpanEndEvent)) for e in events):
+        return frozenset()
+    tree = event_tree(events)
+    scorers_span = next(
+        (
+            item
+            for item in tree
+            if isinstance(item, EventTreeSpan) and item.name == "scorers"
+        ),
+        None,
+    )
+    if scorers_span is None:
+        return frozenset()
+    return frozenset(
+        _event_id(e) for e in event_sequence(scorers_span) if isinstance(e, ModelEvent)
+    )
+
+
 class _AnchorWalk:
     """Incremental anchor walk shared by the materialized and streaming drivers.
 
@@ -66,6 +158,14 @@ class _AnchorWalk:
     to a text hash, so duplicate ids are real (e.g. two identical "yes"
     turns) and each ModelEvent must consume the next occurrence rather than
     re-anchoring to the first.
+
+    A ModelEvent whose output message id is NOT found in the thread (a
+    fork/branch experiment or a retry whose output never joined the final
+    conversation) is off-thread: rather than being silently dropped, `add`
+    renders it via `_off_thread_model_text` and anchors it at the current
+    position (`add_rendered`, which does not itself advance the anchor) --
+    it is always rendered, regardless of the `events` selection, since it
+    is model content that would otherwise be invisible entirely.
     """
 
     def __init__(self, message_ids: list[str], events: EventsSpec) -> None:
@@ -79,11 +179,20 @@ class _AnchorWalk:
         self.leading: list[tuple[str, str]] = []
         self.anchored: dict[int, list[tuple[str, str]]] = defaultdict(list)
 
-    def add_model_output(self, message_id: str) -> None:
+    def add_model_output(self, message_id: str) -> bool:
+        """Consume the next occurrence of `message_id` as the current anchor.
+
+        Returns:
+            True if an occurrence was found and consumed (the anchor
+            advanced to it). False if no (further) occurrence exists --
+            the output is off-thread and the anchor is left unchanged.
+        """
         position = self._next_occurrence[message_id]
         if position < len(self._occurrences.get(message_id, [])):
             self._last_anchor = self._occurrences[message_id][position]
             self._next_occurrence[message_id] = position + 1
+            return True
+        return False
 
     def add_rendered(self, event_id: str, text: str) -> None:
         entry = (event_id, text)
@@ -95,8 +204,11 @@ class _AnchorWalk:
     def add(self, event: Event) -> None:
         if isinstance(event, ModelEvent):
             mid = _model_output_id(event)
-            if mid is not None:
-                self.add_model_output(mid)
+            consumed = mid is not None and self.add_model_output(mid)
+            if not consumed:
+                text = _off_thread_model_text(event)
+                if text is not None:
+                    self.add_rendered(_event_id(event), text)
             return
         text = _interleavable_text(event, self._events)
         if text is not None:

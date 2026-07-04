@@ -267,6 +267,22 @@ class _AnchorWalk:
       final region). `add` does nothing: no branch entry, no anchor
       advance -- the turn stays hidden, honoring the caller's explicit
       request to compact it away rather than resurrecting it as a "fork".
+
+    Known limitation (id-less messages only): when messages lack real ids,
+    the text-hash fallback makes occurrence consumption order-based rather
+    than identity-aware. A fork whose output text equals a later on-thread
+    turn's text steals that turn's occurrence: the fork is silently
+    dropped and the real turn misrenders as a branch entry (pinned by
+    ``test_idless_duplicate_text_fork_steals_anchor_known_limitation``).
+    The fallback also keys on ``message.text``, which is coarser than the
+    rendered output (reasoning content is invisible to it), so visually
+    distinct messages can collide. Inspect auto-mints message ids at
+    construction and on deserialization (a sweep of >2M real messages
+    found none missing), so this is unreachable for Inspect logs; it can
+    only affect synthetic transcripts or non-Inspect importers that
+    construct id-less messages. If such an importer appears, escalate to
+    uuid-keyed anchoring on the reconstruction paths rather than patching
+    the order-based heuristic.
     """
 
     def __init__(

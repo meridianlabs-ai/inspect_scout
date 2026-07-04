@@ -132,6 +132,59 @@ def test_duplicate_message_ids_do_not_duplicate_events() -> None:
     assert event_count == 2
 
 
+def test_idless_duplicate_text_fork_steals_anchor_known_limitation() -> None:
+    """Pins a KNOWN LIMITATION of the id-less text-hash fallback.
+
+    When messages lack real ids and a fork's output text equals a later
+    on-thread turn's text, the fork consumes the occurrence meant for the
+    real turn (occurrence consumption is order-based, not identity-aware):
+    the fork's own content vanishes and the real turn misrenders as a
+    ``MODEL (BRANCH)`` entry. Inspect auto-mints message ids at
+    construction and deserialization, so this input shape is only
+    constructible synthetically (or by a non-Inspect importer that emits
+    id-less messages). See ``_AnchorWalk``'s docstring for the escalation
+    path (uuid-keyed anchoring) if such an importer appears.
+
+    This test asserts the CURRENT (wrong-but-accepted) behavior so any
+    change to it — fix or further regression — is a deliberate, visible
+    decision rather than a silent one.
+    """
+    out1 = ModelOutput.from_content(model="mockllm", content="yes")
+    fork_out = ModelOutput.from_content(model="mockllm", content="yes")
+    out2 = ModelOutput.from_content(model="mockllm", content="yes")
+    a1, a2 = out1.choices[0].message, out2.choices[0].message
+    a1.id = None
+    a2.id = None
+    fork_out.choices[0].message.id = None
+    u1 = ChatMessageUser(content="q1", id="u1")
+    u2 = ChatMessageUser(content="q2", id="u2")
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[u1, a1, u2, a2],
+        events=[
+            _model_event("q1", out1),
+            _model_event("FORK", fork_out),
+            _model_event("q2", out2),
+        ],
+    )
+    result = interleave_events(transcript)
+    # The fork steals a2's occurrence and is itself absorbed (no entry of
+    # its own); the REAL second turn's event then finds no occurrence left
+    # and misrenders as a branch entry appended after a2.
+    branch_entries = [
+        m for m in result if m.metadata and m.metadata.get(EVENT_MARKER_KEY)
+    ]
+    assert len(branch_entries) == 1
+    assert "MODEL (BRANCH):" in branch_entries[0].text
+    # The real thread itself is still rendered intact.
+    assert [m.text for m in result if m not in branch_entries] == [
+        u1.text,
+        a1.text,
+        u2.text,
+        a2.text,
+    ]
+
+
 def test_events_only_transcript_reconstructs_thread() -> None:
     # An events-only load (e.g. content events="all", no messages) must
     # reconstruct the conversation from model events and splice events into

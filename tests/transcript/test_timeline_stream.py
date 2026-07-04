@@ -582,6 +582,7 @@ async def test_stream_equals_materialized_segments_eval_logs(
     log: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Fidelity over real `.eval` fixtures, forced through the spooled path."""
+    from inspect_ai.event import timeline_filter
     from inspect_scout._scanner.extract import message_numbering
     from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
     from inspect_scout._transcript.handle import SpooledTranscriptHandle
@@ -616,10 +617,18 @@ async def test_stream_equals_materialized_segments_eval_logs(
                     depth=None,
                 )
             ]
+        # `stream_timeline_messages`' default `include_scorers=False` prunes
+        # `scorers` spans before walking (mirroring `transcript_messages`'
+        # default); prune the materialized comparison tree the same way so
+        # this fidelity check compares like with like.
+        materialized_tree = timeline_filter(
+            timeline_build(materialized.events),
+            lambda s: s.span_type != "scorers",
+        )
         materialized_segments = [
             (seg.span.id, seg.messages_str)
             async for seg in timeline_messages(
-                timeline_build(materialized.events).root,
+                materialized_tree.root,
                 messages_as_str=numbering(),
                 model="mockllm/model",
                 compaction="all",

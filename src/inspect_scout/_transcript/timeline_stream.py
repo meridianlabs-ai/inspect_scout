@@ -58,6 +58,7 @@ from inspect_ai.event import (
     TimelineSpan,
     ToolEvent,
     timeline_build,
+    timeline_filter,
 )
 from inspect_ai.model import ChatMessageSystem, ChatMessageUser, ContentText, Model
 
@@ -553,6 +554,7 @@ async def stream_timeline_messages(
     depth: int | None = None,
     prompt_reserve: int | float = 0.2,
     events: EventsSpec | None = None,
+    include_scorers: bool = False,
 ) -> AsyncIterator[TimelineMessages]:
     """Yield timeline message segments by streaming a `TranscriptHandle` twice.
 
@@ -585,21 +587,15 @@ async def stream_timeline_messages(
             span's message thread, forwarded to `timeline_messages()`
             (`"all"`, a list of event types, or `None` to disable
             interleaving). When set, span-external events (events outside
-            any scannable span's direct content) are collected from the
-            substituted skeleton via `collect_span_external()` and
-            forwarded alongside `events`. This path never prunes `scorers`
-            spans (see the module-level note in `stream_timeline_messages`'
-            implementation), so the collection source matches
-            `transcript_messages(..., include_scorers=True)`'s semantics: a
-            `scorers` span with a direct `ModelEvent` is walked as an
-            ordinary scannable span (its own events splice into its own
-            thread) and is excluded from external collection to avoid
-            double-rendering its score; a `scorers` span without one is
-            never walked by `_walk_spans` and its events are collected
-            externally instead. `events=None` (default) is byte-identical
-            to behavior before this parameter existed. When `events` is
-            not `None` and `compaction != "all"`, pass 1's `needed` set is
-            widened to `needed | needed_model_event_uuids(..., compaction="all")`
+            any scannable span's direct content, e.g. root-level events or
+            a pruned `scorers` span's events) are collected from the
+            unpruned skeleton via `collect_span_external()` before the
+            `scorers` prune (see `include_scorers`), then forwarded
+            alongside `events` so they are spliced into the appropriate
+            span. `events=None` (default) is byte-identical to behavior
+            before this parameter existed. When `events` is not `None` and
+            `compaction != "all"`, pass 1's `needed` set is widened to
+            `needed | needed_model_event_uuids(..., compaction="all")`
             before pass 2 substitutes full events back in: `_AnchorWalk`'s
             `excluded_ids` discriminator (`span_interleaved_messages`,
             `interleave.py`) tells a compaction-pruned turn apart from a
@@ -619,6 +615,31 @@ async def stream_timeline_messages(
             `ModelEvent` per pruned region (its region-last event, already a
             small multiple of region count) in addition to the (already
             bounded) `needed` and off-thread-output sets.
+        include_scorers: Whether to include scorer spans in message
+            extraction, mirroring `transcript_messages`' parameter of the
+            same name. Defaults to `False`: after pass 2 substitutes full
+            events back into the stub skeleton, `scorers` spans are pruned
+            (`timeline_filter(tree, lambda s: s.span_type != "scorers")`)
+            from the tree pass 1's selection and the final walk both use,
+            so a `scorers` span's `ModelEvent`s (e.g. a grader's call) are
+            never selected for full substitution and never appear in any
+            span's message thread; the *un*pruned skeleton is still used as
+            the `events`-interleaving collection source, so a pruned
+            `scorers` span's non-`ModelEvent` events (e.g. its final
+            `ScoreEvent`) still surface as span-external entries instead of
+            being silently dropped. Pass 1 seeing the same pruned tree as
+            the final walk (rather than the unpruned tree) is intentional:
+            it is what is actually walked, so it avoids needlessly
+            retaining a `scorers` span's `ModelEvent`s in pass 2 only to
+            never use them (a memory optimization, not a correctness
+            requirement -- retaining them would be harmless since they
+            would just never be read). When `True`: no pruning; the
+            collection source instead filters out only `scorers` spans that
+            have a direct `ModelEvent` (those are walked normally and
+            splice their own events via `span_interleaved_messages`, so
+            collecting them again here would double-render their score) --
+            matching `transcript_messages(..., include_scorers=True)`'s
+            semantics exactly.
 
     Yields:
         `TimelineMessages` segments, identical to calling `timeline_messages`
@@ -636,7 +657,24 @@ async def stream_timeline_messages(
     stubs: list[Event] = [stub_event(ev, interner) async for ev in handle.events()]
     tree = timeline_build(stubs)
 
-    needed = needed_model_event_uuids(tree.root, compaction=compaction, depth=depth)
+    # Mirrors `transcript_messages`' default `include_scorers=False`: prune
+    # `scorers` spans from the tree that gets walked, so a grader's
+    # `ModelEvent`s never enter any span's message thread. Pass 1's
+    # selection (`needed_model_event_uuids`, below) intentionally sees this
+    # same pruned tree rather than the unpruned one -- it mirrors exactly
+    # what the final walk sees, so a `scorers` span's `ModelEvent`s are
+    # never selected for full substitution in the first place (see the
+    # `include_scorers` parameter's docstring above for why this is a
+    # memory optimization, not a correctness requirement).
+    walk_tree = (
+        tree
+        if include_scorers
+        else timeline_filter(tree, lambda s: s.span_type != "scorers")
+    )
+
+    needed = needed_model_event_uuids(
+        walk_tree.root, compaction=compaction, depth=depth
+    )
     if events is not None and compaction != "all":
         # `span_interleaved_messages`' `excluded_ids` discriminator
         # reconstructs the untruncated `compaction="all"` thread, which
@@ -647,7 +685,9 @@ async def stream_timeline_messages(
         # reconstruction when inputs are cumulative, misclassifying it as a
         # genuine fork instead of compaction-pruned (see the `events`
         # parameter's docstring above).
-        needed |= needed_model_event_uuids(tree.root, compaction="all", depth=depth)
+        needed |= needed_model_event_uuids(
+            walk_tree.root, compaction="all", depth=depth
+        )
 
     full_by_uuid: dict[str, ModelEvent] = {}
     # Populated only when `events` interleaving is enabled: off-thread
@@ -667,42 +707,52 @@ async def stream_timeline_messages(
             "calls, violating the TranscriptHandle multi-shot contract"
         )
 
-    _substitute_full_events(tree.root, full_by_uuid)
+    # `timeline_filter` copies `TimelineSpan` nodes but keeps the same
+    # `TimelineEvent` leaf object references, so substituting into
+    # `walk_tree.root` also mutates every kept event still reachable from
+    # the unpruned `tree` (used below as the `events`-collection source
+    # when `not include_scorers`). Events inside a pruned-away `scorers`
+    # span are unreachable from `walk_tree` and so are never substituted --
+    # they stay stubbed in `tree` too, which is fine: they are never walked
+    # into a message thread, and if `events` interleaving ever surfaced one
+    # externally it would render only stub content, never the real one.
+    _substitute_full_events(walk_tree.root, full_by_uuid)
     if offthread_by_uuid:
-        _substitute_full_events(tree.root, offthread_by_uuid)
+        _substitute_full_events(walk_tree.root, offthread_by_uuid)
 
     span_external: dict[str, list[tuple[str, str]]] | None = None
     if events is not None:
-        # `stream_timeline_messages` never prunes `scorers` spans before
-        # handing the tree to `timeline_messages` (unlike
-        # `transcript_messages`'s default `include_scorers=False`, which
-        # prunes them after collecting their events here). So the
-        # collection source below mirrors
-        # `transcript_messages(..., include_scorers=True)`'s: filter out
-        # only `scorers` spans that have a direct `ModelEvent` (those are
-        # walked normally by `timeline_messages` and splice their own
-        # events via `span_interleaved_messages`; collecting them here too
-        # would double-render their score). A `scorers` span without a
-        # direct `ModelEvent` is never walked by `_walk_spans` regardless,
-        # so it must stay in the collection source or its events (e.g. the
-        # final `ScoreEvent`) would be silently lost.
-        from inspect_ai.event import timeline_filter
-
         from inspect_scout._transcript.interleave import (
             _span_has_direct_model_event,
             collect_span_external,
         )
 
-        collection_source = timeline_filter(
-            tree,
-            lambda s: (
-                not (s.span_type == "scorers" and _span_has_direct_model_event(s))
-            ),
+        # Matches `transcript_messages`' collection-source choice: when
+        # `scorers` spans are about to be pruned from the walk (the
+        # default), the unpruned `tree` is the collection source, so a
+        # pruned span's non-`ModelEvent` events (e.g. its final
+        # `ScoreEvent`) still surface as span-external entries instead of
+        # being silently dropped. When `include_scorers=True`, filter out
+        # only `scorers` spans that have a direct `ModelEvent` -- those are
+        # walked normally by `timeline_messages` and splice their own
+        # events via `span_interleaved_messages`, so collecting them again
+        # here would double-render their score. A `scorers` span without a
+        # direct `ModelEvent` is never walked by `_walk_spans` regardless,
+        # so it must stay in the collection source either way.
+        collection_source = (
+            timeline_filter(
+                tree,
+                lambda s: (
+                    not (s.span_type == "scorers" and _span_has_direct_model_event(s))
+                ),
+            )
+            if include_scorers
+            else tree
         )
         span_external = collect_span_external(collection_source, events, depth=depth)
 
     async for seg in timeline_messages(
-        tree,
+        walk_tree,
         messages_as_str=messages_as_str,
         model=model,
         context_window=context_window,

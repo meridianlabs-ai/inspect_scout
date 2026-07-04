@@ -32,10 +32,7 @@ from inspect_ai.model import (
 from inspect_ai.scorer import Score
 from inspect_scout._scanner.extract import message_numbering
 from inspect_scout._transcript.handle import MaterializedTranscriptHandle
-from inspect_scout._transcript.interleave import (
-    _span_has_direct_model_event,
-    collect_span_external,
-)
+from inspect_scout._transcript.interleave import collect_span_external
 from inspect_scout._transcript.messages import segment_messages, transcript_messages
 from inspect_scout._transcript.timeline import TimelineMessages, timeline_messages
 from inspect_scout._transcript.timeline_stream import stream_timeline_messages
@@ -660,11 +657,11 @@ def _agentic_events_with_scores() -> list[Event]:
       ``ScoreEvent``, appended at the end of "main"'s content (per
       ``timeline_build``'s phase-span handling, a "scorers" span with no
       other siblings ends up nested as the last child of "main", not a
-      top-level sibling of "solvers"): since it has a direct
-      ``ModelEvent``, it is walked as an ordinary scannable span (its
-      score splices into its own thread, matching
-      ``include_scorers=True`` semantics) rather than being collected
-      externally.
+      top-level sibling of "solvers"): under the default
+      ``include_scorers=False``, this span is pruned from the walked tree
+      entirely, so the grader ``ModelEvent`` never renders and the
+      ``ScoreEvent`` instead surfaces via external collection from the
+      unpruned tree, attributed to the last span actually walked ("main").
 
     Also inserts a genuine off-thread fork ``ModelEvent`` ("fork-1") into
     "main", immediately before its closing turn, so streaming/materialized
@@ -764,19 +761,18 @@ def _agentic_events_with_scores() -> list[Event]:
     return events
 
 
-def _materialized_collection_source(tree: Timeline) -> Timeline | TimelineSpan:
-    """Mirror ``stream_timeline_messages``' events collection source.
+def _materialized_walk_tree(tree: Timeline) -> Timeline:
+    """Mirror ``stream_timeline_messages``' default (``include_scorers=False``) walk tree.
 
-    ``stream_timeline_messages`` never prunes ``scorers`` spans, so its
-    collection source matches ``transcript_messages(...,
-    include_scorers=True)``'s: only a ``scorers`` span with a direct
-    ``ModelEvent`` is filtered out (it is walked as an ordinary scannable
-    span instead, splicing its own events).
+    ``scorers`` spans are pruned from the tree that gets walked, matching
+    ``transcript_messages``' default: a ``scorers`` span's own events (e.g.
+    a grader ``ModelEvent``) never enter any span's message thread. The
+    UNPRUNED ``tree`` remains the events collection source (passed directly
+    to ``collect_span_external`` by callers), so a pruned ``scorers``
+    span's non-``ModelEvent`` events (e.g. its final ``ScoreEvent``) still
+    surface externally instead of being silently dropped.
     """
-    return timeline_filter(
-        tree,
-        lambda s: not (s.span_type == "scorers" and _span_has_direct_model_event(s)),
-    )
+    return timeline_filter(tree, lambda s: s.span_type != "scorers")
 
 
 @pytest.mark.anyio
@@ -817,15 +813,17 @@ async def test_stream_timeline_messages_events_parity(
         )
     ]
 
+    # `stream_timeline_messages`' default (`include_scorers=False`) prunes
+    # `scorers` spans from the walked tree but collects events from the
+    # UNPRUNED tree; mirror both sides here.
     materialized_tree = timeline_build(events)
-    collection_source = _materialized_collection_source(materialized_tree)
-    span_external = collect_span_external(collection_source, ["score"], depth=depth)
+    span_external = collect_span_external(materialized_tree, ["score"], depth=depth)
 
     materialized_numbering, _ = message_numbering()
     materialized = [
         (seg.span.id, seg.messages_str)
         async for seg in timeline_messages(
-            materialized_tree.root,
+            _materialized_walk_tree(materialized_tree).root,
             messages_as_str=materialized_numbering,
             model="mockllm/model",
             events=["score"],
@@ -842,6 +840,11 @@ async def test_stream_timeline_messages_events_parity(
     combined = "\n".join(text for _, text in streamed)
     assert "MODEL (BRANCH)" in combined
     assert "fork-output-1" in combined
+    # The scorers span's grader ModelEvent is pruned from the walk (default
+    # include_scorers=False); its own ScoreEvent still surfaces exactly
+    # once via external collection.
+    assert "grader-output" not in combined
+    assert combined.count("SCORE (graded)") == 1
 
 
 def _cumulative_compaction_events() -> list[Event]:
@@ -987,12 +990,14 @@ async def test_stream_timeline_messages_cumulative_compaction_discriminator_pari
 
 @pytest.mark.anyio
 async def test_stream_timeline_messages_events_none_unchanged() -> None:
-    """``events=None`` on the streaming path is byte-identical to before.
+    """``events=None`` on the streaming path prunes `scorers` spans like the materialized path.
 
     Regression guard: adding the ``events`` parameter must not perturb the
     default (``events=None``) streaming behavior already covered by
     ``test_stream_equals_materialized_segments`` in
-    ``test_timeline_stream.py``.
+    ``test_timeline_stream.py``, and the ``include_scorers=False`` default
+    (unconditional, regardless of ``events``) must still match
+    ``transcript_messages``' pruning of ``scorers`` spans.
     """
     events = _agentic_events_with_scores()
     transcript = agentic_transcript(events=events)
@@ -1017,13 +1022,18 @@ async def test_stream_timeline_messages_events_none_unchanged() -> None:
     materialized = [
         (seg.span.id, seg.messages_str)
         async for seg in timeline_messages(
-            materialized_tree.root, messages_as_str=numbering2, model="mockllm/model"
+            _materialized_walk_tree(materialized_tree).root,
+            messages_as_str=numbering2,
+            model="mockllm/model",
         )
     ]
 
     assert streamed == materialized
     # Sanity: the score events truly are not interleaved when events=None.
     assert not any("SCORE" in text for _, text in streamed)
+    # The scorers span (and its grader ModelEvent) is pruned by default.
+    combined = "\n".join(text for _, text in streamed)
+    assert "grader-output" not in combined
 
 
 @pytest.mark.anyio

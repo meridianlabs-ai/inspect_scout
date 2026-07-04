@@ -8,10 +8,10 @@ from inspect_ai.model import ChatMessage
 from .._scanner.util import _event_id, _message_id
 from .._transcript.handle import TranscriptHandle
 from .._transcript.interleave import (
-    _NON_INTERLEAVED,
     Compaction,
     EventsSpec,
     _AnchorWalk,
+    _compaction_excluded_ids,
     _event_message,
     _interleavable_text,
     _model_output_id,
@@ -24,11 +24,6 @@ from .._transcript.types import Transcript
 __all__ = [
     "EventsSpec",
     "Compaction",
-    "_NON_INTERLEAVED",
-    "_interleavable_text",
-    "_event_message",
-    "_model_output_id",
-    "_AnchorWalk",
     "has_interleavable_events",
     "interleave_events",
     "stream_interleave_events",
@@ -60,6 +55,14 @@ def interleave_events(
     untruncated ``compaction="all"`` thread but not the current one) stays
     hidden instead, honoring the caller's compaction request rather than
     resurrecting it as a fork.
+
+    When the transcript carries top-level messages, those messages ARE the
+    current thread; the untruncated ``compaction="all"`` reconstruction
+    (from ``transcript.events``) needed to derive the excluded-ids set above
+    is only computed when ``transcript.events`` actually contains a
+    ``CompactionEvent`` (a cheap check) -- transcripts with no compaction
+    history pay no extra cost and get an empty excluded-ids set, exactly as
+    before this discriminator existed.
 
     When the transcript carries no top-level messages (events-only loads),
     the message thread is reconstructed from model events via
@@ -99,13 +102,28 @@ def interleave_events(
     if not transcript.events:
         return messages
     excluded_ids: frozenset[str] = frozenset()
-    if not messages:
-        messages = span_messages(transcript.events, compaction=compaction)
-        if compaction != "all":
-            all_messages = span_messages(transcript.events, compaction="all")
-            excluded_ids = frozenset(_message_id(m) for m in all_messages) - frozenset(
-                _message_id(m) for m in messages
+    if messages:
+        # `compaction` doesn't apply here -- `messages` is the transcript's
+        # own live thread, already shaped by whatever compaction the
+        # original run applied, independent of this function's `compaction`
+        # argument (which only governs events-only reconstruction below).
+        # Compute the exclusion set unconditionally whenever the events
+        # actually contain a CompactionEvent (cheap presence check); a
+        # `compaction="last"` sentinel (rather than the real, irrelevant
+        # `compaction` argument) forces `_compaction_excluded_ids` past its
+        # own `compaction == "all"` fast path so the computation actually
+        # runs -- see that function's docstring.
+        if any(isinstance(e, CompactionEvent) for e in transcript.events):
+            excluded_ids = _compaction_excluded_ids(
+                transcript.events,
+                (_message_id(m) for m in messages),
+                compaction="last",
             )
+    else:
+        messages = span_messages(transcript.events, compaction=compaction)
+        excluded_ids = _compaction_excluded_ids(
+            transcript.events, (_message_id(m) for m in messages), compaction
+        )
 
     excluded = _scorers_model_event_ids(transcript.events)
     walk = _AnchorWalk(
@@ -137,11 +155,18 @@ async def stream_interleave_events(
     the materialized transcript, without holding messages and event payloads
     in memory at once.
 
-    Messages-present transcripts take three passes over the handle
-    (multi-shot contract): collect message ids, run the anchor walk
-    (retaining just id + rendered text per selected event), then re-stream
-    messages splicing anchored entries. Retained memory is one id per
-    message plus the rendered text of selected events.
+    Messages-present transcripts take four passes over the handle
+    (multi-shot contract): collect message ids; a dedicated pass filtered to
+    ``model``/``compaction`` events that builds a region-last-``ModelEvent``
+    skeleton (mirroring the events-only branch below) to derive the
+    compaction-pruned ``excluded_ids`` set (see ``_compaction_excluded_ids``)
+    -- skipped past the cheap type-filtered scan itself whenever no
+    ``CompactionEvent`` is present; the anchor walk (retaining just id +
+    rendered text per selected event); then re-stream messages splicing
+    anchored entries. Retained memory is one id per message, the rendered
+    text of selected events, plus (only while a ``CompactionEvent`` is
+    present) one full ``ModelEvent`` per compaction region for the extra
+    pass, discarded once ``excluded_ids`` is computed.
 
     Events-only transcripts (empty ``messages()``) reconstruct the thread
     from model events in a single events pass: only the most recent
@@ -176,7 +201,37 @@ async def stream_interleave_events(
     types = None if events == "all" else ["model", "compaction", *events]
 
     if message_ids:
-        walk = _AnchorWalk(message_ids, events)
+        # A dedicated fourth pass, filtered to just "model"/"compaction",
+        # builds the same region-last-ModelEvent `skeleton` as the
+        # events-only branch below -- solely to reconstruct the untruncated
+        # `compaction="all"` thread and derive `excluded_ids` (see
+        # `_compaction_excluded_ids`), so a compaction-pruned turn stays
+        # hidden here exactly as it does on the materialized path
+        # (`interleave_events`). `message_ids` (not full `ChatMessage`s) is
+        # already all that's retained of the current thread, so the diff is
+        # taken directly against it. Skipped whenever the transcript has no
+        # `CompactionEvent` at all: `excluded_ids` stays empty and this
+        # pass's only cost is the (typically small) scan for compaction
+        # events itself.
+        excluded_ids: frozenset[str] = frozenset()
+        compaction_skeleton: list[Event] = []
+        saw_compaction = False
+        async for event in handle.events(types=["model", "compaction"]):
+            if isinstance(event, CompactionEvent):
+                saw_compaction = True
+                compaction_skeleton.append(event)
+            elif compaction_skeleton and isinstance(
+                compaction_skeleton[-1], ModelEvent
+            ):
+                compaction_skeleton[-1] = event
+            else:
+                compaction_skeleton.append(event)
+        if saw_compaction:
+            excluded_ids = _compaction_excluded_ids(
+                compaction_skeleton, message_ids, compaction="last"
+            )
+
+        walk = _AnchorWalk(message_ids, events, excluded_ids=excluded_ids)
         async for event in handle.events(types=types):
             walk.add(event)
 
@@ -217,12 +272,9 @@ async def stream_interleave_events(
                 ops.append(("e", _event_id(event), rendered))
 
     thread = span_messages(skeleton, compaction=compaction)
-    excluded_ids: frozenset[str] = frozenset()
-    if compaction != "all":
-        all_thread = span_messages(skeleton, compaction="all")
-        excluded_ids = frozenset(_message_id(m) for m in all_thread) - frozenset(
-            _message_id(m) for m in thread
-        )
+    excluded_ids = _compaction_excluded_ids(
+        skeleton, (_message_id(m) for m in thread), compaction
+    )
 
     walk = _AnchorWalk(
         [_message_id(m) for m in thread], events, excluded_ids=excluded_ids

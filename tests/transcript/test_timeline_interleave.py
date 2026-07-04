@@ -42,6 +42,7 @@ from tests.transcript.fixtures_agentic import (
     _compaction_event,
     _span_begin,
     _span_end,
+    _tool_event,
     agentic_events,
     agentic_transcript,
 )
@@ -96,6 +97,7 @@ async def _collect_transcript(
     events: list[str] | str | None,
     include_scorers: bool = False,
     context_window: int = 10_000,
+    depth: int | None = None,
 ) -> tuple[list[TimelineMessages], str]:
     """Drive segments through transcript_messages() (exercises the collector)."""
     transcript = Transcript(
@@ -112,6 +114,7 @@ async def _collect_transcript(
         context_window=context_window,
         events=events,  # type: ignore[arg-type]
         include_scorers=include_scorers,
+        depth=depth,
     ):
         assert isinstance(seg, TimelineMessages)
         results.append(seg)
@@ -625,6 +628,197 @@ async def test_include_scorers_true_non_model_graded_score_collected_once() -> N
     assert combined.count("SCORE (match)") == 1
 
 
+@pytest.mark.anyio
+async def test_grader_model_event_in_scorers_span_never_renders_as_branch() -> None:
+    """A ``scorers`` span's grader ModelEvent is excluded even under the new always-render-ModelEvents behavior of ``_collect_span_external``.
+
+    Fix B makes every off-thread/location-excluded ModelEvent render as a
+    ``MODEL (BRANCH)`` entry -- except a ``scorers`` span's grader
+    ModelEvent, which must remain excluded (``span_in_scorers`` short-
+    circuits it before ``_off_thread_model_text`` is ever called). This
+    pins that guard directly against the new branch, independent of
+    ``test_scorers_span_score_event_attaches_to_last_scannable_span``
+    (which exercises the same guard incidentally, via the default
+    ``include_scorers=False`` pruning path).
+    """
+    out_a = ModelOutput.from_content(model="mockllm", content="answer-a")
+    span_a = _span_of(
+        "span-a", "agent-a", [_model_event([ChatMessageUser(content="qa")], out_a)]
+    )
+    grader_out = ModelOutput.from_content(model="mockllm", content="grader verdict")
+    grader_event = _model_event([ChatMessageUser(content="grade this")], grader_out)
+    score = ScoreEvent(score=Score(value=1), scorer="match")
+    scorers_span = _span_of(
+        "span-scorers", "scorers", [grader_event, score], span_type="scorers"
+    )
+    root = _span_of("root", "root", [span_a, scorers_span], span_type=None)
+
+    external = collect_span_external(root, ["score"], depth=None)
+
+    rendered = [text for entries in external.values() for _, text in entries]
+    assert not any("grader verdict" in text for text in rendered)
+    assert not any("MODEL (BRANCH)" in text for text in rendered)
+    assert any("SCORE (match)" in text for text in rendered)
+
+
+@pytest.mark.anyio
+async def test_depth_excluded_scannable_span_model_output_renders_after_parent() -> (
+    None
+):
+    """A depth-excluded but structurally scannable span's own ModelEvent renders as a branch entry after the parent.
+
+    The event is an on-thread turn, had the span been walked, and renders
+    as a ``MODEL (BRANCH)`` entry after the parent, exactly like every
+    other event type already excluded by ``depth`` -- there is no splice
+    reconstructing the child's thread for it to be "on".
+    """
+    out_parent = ModelOutput.from_content(model="mockllm", content="parent-answer")
+    out_child = ModelOutput.from_content(model="mockllm", content="child-answer")
+    child = _span_of(
+        "child",
+        "child-agent",
+        [_model_event([ChatMessageUser(content="child-q")], out_child)],
+    )
+    parent = _span_of(
+        "parent",
+        "parent-agent",
+        [_model_event([ChatMessageUser(content="parent-q")], out_parent), child],
+    )
+    root = _span_of("root", "root", [parent], span_type=None)
+
+    results, combined = await _collect_transcript(root, events=[], depth=1)
+
+    assert len(results) == 1
+    assert results[0].span.id == "parent"
+    assert re.search(
+        r"parent-answer.*\[E1\] MODEL \(BRANCH\):\nchild-answer",
+        combined,
+        re.DOTALL,
+    )
+
+
+@pytest.mark.anyio
+async def test_stream_tool_event_nested_subagent_depth_excluded_parity() -> None:
+    """A ``ToolEvent``-hoisted nested subagent's on-thread turns render as branch entries when ``depth``-excluded, with materialized and streaming parity.
+
+    Pins down the ToolEvent.events investigation for this fix: `timeline_
+    build` (inspect_ai) already hoists a flat `ToolEvent` carrying `agent`/
+    `events` into its own nested `TimelineSpan` (`tool_invoked=True`, never
+    classified utility) via `_event_to_node`; no changes to `timeline_build`
+    are needed. Once hoisted, this nested span is handled identically to
+    any other structurally scannable span: walked directly when within
+    `depth`, or -- as exercised here -- excluded by `depth` and surfaced
+    via `_collect_span_external`'s ModelEvent branch as `MODEL (BRANCH)`
+    entries attached to its parent. The streaming path already recurses
+    into `ToolEvent.events` for both full- and off-thread-event
+    substitution (`_collect_pass2_model_events`, `timeline_stream.py`), so
+    no changes were needed there either.
+    """
+    main_1 = _agentic_model_event(
+        label="main-1",
+        system_prompt="MAIN",
+        output_text="main-output-1",
+        span_id="main",
+    )
+    # main-2's input embeds main-1's own output message, making it a
+    # genuine cumulative on-thread continuation (matching how a real
+    # transcript's ModelEvent.input grows turn over turn) -- otherwise the
+    # pre-existing `_AnchorWalk` off-thread/fork detection (Fix A) would
+    # itself classify main-1 as a fork, independent of anything under test
+    # here (see `_two_turn_events`/`_cumulative_compaction_events` above).
+    main_2 = _agentic_model_event(
+        label="main-2",
+        system_prompt="MAIN",
+        output_text="main-output-2",
+        span_id="main",
+        input_messages=[
+            ChatMessageSystem(content="MAIN"),
+            main_1.input[1],
+            main_1.output.choices[0].message,
+            ChatMessageUser(content="user-input-main-2-followup"),
+        ],
+    )
+    events: list[Event] = [
+        _span_begin(span_id="main", name="main", span_type="agent", parent_id=None),
+        main_1,
+        _tool_event(
+            label="handoff-tool",
+            function="handoff",
+            payload="p",
+            span_id="main",
+            agent="handoff_agent",
+            events=[
+                _agentic_model_event(
+                    label="handoff-1",
+                    system_prompt="MAIN",
+                    output_text="handoff-output-1",
+                    span_id="main",
+                ),
+                _agentic_model_event(
+                    label="handoff-2",
+                    system_prompt="MAIN",
+                    output_text="handoff-output-2",
+                    span_id="main",
+                ),
+            ],
+        ),
+        main_2,
+        _span_end(span_id="main"),
+    ]
+    transcript = agentic_transcript(events=events)
+
+    async def load() -> Transcript:
+        return transcript
+
+    handle = MaterializedTranscriptHandle(
+        load, TranscriptInfo(transcript_id=transcript.transcript_id)
+    )
+
+    streamed_numbering, _ = message_numbering()
+    streamed = [
+        (seg.span.id, seg.messages_str)
+        async for seg in stream_timeline_messages(
+            handle,
+            messages_as_str=streamed_numbering,
+            model="mockllm/model",
+            events="all",
+            depth=1,
+        )
+    ]
+
+    materialized_tree = timeline_build(events)
+    span_external = collect_span_external(materialized_tree, "all", depth=1)
+    materialized_numbering, _ = message_numbering()
+    materialized = [
+        (seg.span.id, seg.messages_str)
+        async for seg in timeline_messages(
+            materialized_tree.root,
+            messages_as_str=materialized_numbering,
+            model="mockllm/model",
+            events="all",
+            span_external=span_external,
+            depth=1,
+        )
+    ]
+
+    assert streamed
+    assert streamed == materialized
+    combined = "\n".join(text for _, text in streamed)
+    # Both nested on-thread turns render as branch entries (no thread of
+    # their own reconstructed, since the hoisted span is depth-excluded),
+    # attached to "main" -- the last (and only) span actually walked.
+    assert combined.count("MODEL (BRANCH)") == 2
+    assert "handoff-output-1" in combined
+    assert "handoff-output-2" in combined
+    main_text = next(text for span_id, text in streamed if span_id == "main")
+    assert "handoff-output-1" in main_text
+    assert "handoff-output-2" in main_text
+    # The span's own on-thread turns are unaffected -- still rendered
+    # inline as ordinary messages, not as branch entries.
+    assert "main-output-1" in main_text
+    assert "main-output-2" in main_text
+
+
 # ---------------------------------------------------------------------------
 # Streaming parity (Task 4): stream_timeline_messages(events=...) vs the
 # materialized timeline_messages(events=...) call it must match.
@@ -667,6 +861,16 @@ def _agentic_events_with_scores() -> list[Event]:
     "main", immediately before its closing turn, so streaming/materialized
     parity coverage genuinely exercises a ``[E#] MODEL (BRANCH):`` entry
     rather than relying on incidental non-cumulative fixture inputs.
+
+    Also exercises (unmodified, via plain ``agentic_events()``) the "sub"
+    utility span's two ``ModelEvent``s ("sub-1"/"sub-2", outputs
+    "sub-output-1"/"sub-output-2"): a utility span is never scannable, so
+    these are span-external ModelEvents with no thread of their own,
+    landing squarely in ``_collect_span_external``'s ModelEvent branch (the
+    bug this fixture-level parity test was extended to cover). They render
+    as ``MODEL (BRANCH)`` entries attributed to "main" -- the last
+    scannable span reached before "sub" -- rather than being silently
+    dropped as they were before that fix.
     """
     events = list(agentic_events())
 
@@ -840,6 +1044,15 @@ async def test_stream_timeline_messages_events_parity(
     combined = "\n".join(text for _, text in streamed)
     assert "MODEL (BRANCH)" in combined
     assert "fork-output-1" in combined
+    # The "sub" utility span's two ModelEvents are non-scannable,
+    # off-thread-by-location events with no thread of their own -- they
+    # must render as branch entries attached to "main" (the fix under
+    # test), not be silently dropped.
+    assert combined.count("sub-output-1") == 1
+    assert combined.count("sub-output-2") == 1
+    main_text = next(text for span_id, text in streamed if span_id == "main")
+    assert "sub-output-1" in main_text
+    assert "sub-output-2" in main_text
     # The scorers span's grader ModelEvent is pruned from the walk (default
     # include_scorers=False); its own ScoreEvent still surfaces exactly
     # once via external collection.

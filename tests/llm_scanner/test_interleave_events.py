@@ -41,6 +41,8 @@ from inspect_scout._transcript.types import (
     TranscriptInfo,
 )
 
+from tests.transcript.fixtures_agentic import agentic_transcript
+
 
 def _handle_for(transcript: Transcript) -> MaterializedTranscriptHandle:
     async def load_fn() -> Transcript:
@@ -1143,8 +1145,12 @@ async def test_llm_scanner_handle_events_content_interleaves_without_load() -> N
 @pytest.mark.anyio
 async def test_interleave_with_timeline_depth_limit_attaches_to_parent() -> None:
     # A nested scannable child span beyond `depth` is not walked as its own
-    # segment; its score is span-external, attached to the last span that IS
-    # within the depth limit (its parent), and renders exactly once.
+    # segment; its events are span-external, attached to the last span that
+    # IS within the depth limit (its parent), and render exactly once each.
+    # The child's ModelEvent has no thread of its own to be "on" (the span
+    # is never walked, so `span_interleaved_messages` never splices it) --
+    # it renders as a `MODEL (BRANCH)` entry, ahead of the child's
+    # ScoreEvent, matching document order.
     out_parent = ModelOutput.from_content(model="mockllm", content="parent-ans")
     out_child = ModelOutput.from_content(model="mockllm", content="child-ans")
     child = _span(
@@ -1179,7 +1185,40 @@ async def test_interleave_with_timeline_depth_limit_attaches_to_parent() -> None
     assert len(captured) == 1
     assert "parent-q" in captured[0]
     assert "child-q" not in captured[0]
-    assert captured[0].count("[E1] SCORE (childscore)") == 1
+    assert captured[0].count("[E1] MODEL (BRANCH):\nchild-ans") == 1
+    assert captured[0].count("[E2] SCORE (childscore)") == 1
+
+
+@pytest.mark.anyio
+async def test_agentic_transcript_utility_span_fork_model_events_visible() -> None:
+    """End-to-end regression: a utility span's off-thread ModelEvent outputs are no longer silently dropped.
+
+    Before this fix, `_collect_span_external` routed every event --
+    including `ModelEvent`s -- through `_interleavable_text`, which hard-
+    excludes "model"; a utility span's `ModelEvent`s (no thread of their
+    own, since the span is never scanned) vanished entirely, never
+    appearing in any prompt.
+
+    Uses the shared `agentic_transcript()` fixture's "sub" utility span
+    (two `ModelEvent`s, outputs "sub-output-1"/"sub-output-2"): a
+    single-turn, foreign-prompt span classified utility by
+    `timeline_build`, nested under "main". With `events="all"`, both
+    outputs must now render as `MODEL (BRANCH)` entries attached to
+    "main" -- the last scannable span reached before "sub".
+    """
+    transcript = agentic_transcript()
+    captured: list[str] = []
+    scan = llm_scanner(
+        question="q", answer="boolean", model=_mock_model(captured), events="all"
+    )
+    await scan(transcript)
+
+    combined = "\n".join(captured)
+    assert combined.count("sub-output-1") == 1
+    assert combined.count("sub-output-2") == 1
+    main_prompt = next(c for c in captured if "main-output-1" in c)
+    assert "sub-output-1" in main_prompt
+    assert "sub-output-2" in main_prompt
 
 
 @pytest.mark.anyio

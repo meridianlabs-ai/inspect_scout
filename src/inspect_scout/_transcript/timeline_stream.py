@@ -71,7 +71,7 @@ from inspect_scout._transcript.timeline import (
 if TYPE_CHECKING:
     from inspect_scout._scanner.extract import MessagesAsStr
     from inspect_scout._transcript.handle import TranscriptHandle
-    from inspect_scout._transcript.interleave import EventsSpec
+    from inspect_scout._transcript.interleave import EventsSpec, SpanExternalEvents
 
 
 class _StubSkeletonUnsupported(Exception):
@@ -720,35 +720,23 @@ async def stream_timeline_messages(
     if offthread_by_uuid:
         _substitute_full_events(walk_tree.root, offthread_by_uuid)
 
-    span_external: dict[str, list[tuple[str, str]]] | None = None
+    span_external: SpanExternalEvents | None = None
     if events is not None:
         from inspect_scout._transcript.interleave import (
-            _span_has_direct_model_event,
             collect_span_external,
+            scorers_collection_source,
         )
 
-        # Matches `transcript_messages`' collection-source choice: when
-        # `scorers` spans are about to be pruned from the walk (the
-        # default), the unpruned `tree` is the collection source, so a
-        # pruned span's non-`ModelEvent` events (e.g. its final
-        # `ScoreEvent`) still surface as span-external entries instead of
-        # being silently dropped. When `include_scorers=True`, filter out
-        # only `scorers` spans that have a direct `ModelEvent` -- those are
-        # walked normally by `timeline_messages` and splice their own
-        # events via `span_interleaved_messages`, so collecting them again
-        # here would double-render their score. A `scorers` span without a
-        # direct `ModelEvent` is never walked by `_walk_spans` regardless,
-        # so it must stay in the collection source either way.
-        collection_source = (
-            timeline_filter(
-                tree,
-                lambda s: (
-                    not (s.span_type == "scorers" and _span_has_direct_model_event(s))
-                ),
-            )
-            if include_scorers
-            else tree
-        )
+        # Matches `transcript_messages`' collection-source choice -- see
+        # `scorers_collection_source()`'s docstring: the unpruned `tree` is
+        # the collection source by default so a pruned `scorers` span's
+        # non-`ModelEvent` events (e.g. its final `ScoreEvent`) still
+        # surface as span-external entries instead of being silently
+        # dropped; when `include_scorers=True`, `scorers` spans with a
+        # direct `ModelEvent` are filtered out since they are walked
+        # normally and splice their own events via
+        # `span_interleaved_messages`.
+        collection_source = scorers_collection_source(tree, include_scorers)
         span_external = collect_span_external(collection_source, events, depth=depth)
 
     async for seg in timeline_messages(

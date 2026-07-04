@@ -1,7 +1,7 @@
 """Primitives for chronological interleaving of non-message events into the message list."""
 
 from collections import defaultdict
-from typing import Literal
+from typing import Iterable, Literal, NamedTuple
 
 from inspect_ai.event import (
     Event,
@@ -14,6 +14,7 @@ from inspect_ai.event import (
     TimelineSpan,
     event_sequence,
     event_tree,
+    timeline_filter,
 )
 from inspect_ai.model import ChatMessage, ChatMessageUser
 
@@ -22,6 +23,20 @@ from .._scanner.util import _event_id, _message_id
 from .event_text import event_as_str
 from .messages import span_messages
 from .types import EventType
+
+
+class InterleavedEvent(NamedTuple):
+    """An interleavable event's id paired with its rendered ``[E#]`` text."""
+
+    event_id: str
+    text: str
+
+
+SpanExternalEvents = dict[str, list[InterleavedEvent]]
+"""Mapping of scannable span id (or ``""``) to its span-external entries.
+
+See ``collect_span_external()``'s docstring for the key/ordering contract.
+"""
 
 # Events that already appear in the message thread (model, tool) or are pure
 # structure are never rendered as [E#] entries.
@@ -98,6 +113,82 @@ def _off_thread_model_text(event: ModelEvent) -> str | None:
     )
     text = message_as_str(branch_message)
     return text if text else None
+
+
+def _compaction_excluded_ids(
+    source: Timeline | TimelineSpan | list[Event],
+    current_message_ids: Iterable[str],
+    compaction: Compaction,
+) -> frozenset[str]:
+    """Ids in the untruncated ``compaction="all"`` thread absent from the current thread.
+
+    Shared discriminator input for ``_AnchorWalk``'s ``excluded_ids``: an id
+    in this set belongs to a turn that ``compaction`` deliberately pruned
+    from the caller's actual (possibly truncated) thread, and must stay
+    hidden rather than resurfacing as a ``MODEL (BRANCH)`` entry (see
+    ``_AnchorWalk``'s class docstring for the fork/compaction-pruned split
+    this feeds).
+
+    When ``compaction == "all"`` there is nothing to exclude by
+    construction -- for callers whose ``current_message_ids`` come from
+    reconstructing ``source`` with this same ``compaction`` value via
+    ``span_messages``, that reconstruction already IS the untruncated one --
+    so the untruncated reconstruction is skipped entirely. Callers whose
+    current thread comes from elsewhere (e.g. a transcript's own top-level
+    ``messages``, already shaped by whatever compaction the original run
+    applied, independent of this ``compaction`` argument) must pass a
+    non-``"all"`` value whenever ``source`` contains a ``CompactionEvent``
+    at all, to force the computation.
+
+    Args:
+        source: The events (or span/timeline) to reconstruct the
+            untruncated thread from.
+        current_message_ids: Ids of the caller's current (possibly
+            truncated) thread.
+        compaction: ``"all"`` to skip (nothing can be excluded); any other
+            value forces the untruncated reconstruction and diff.
+
+    Returns:
+        Ids present in the untruncated thread but not in
+        ``current_message_ids``.
+    """
+    if compaction == "all":
+        return frozenset()
+    all_messages = span_messages(source, compaction="all")
+    return frozenset(_message_id(m) for m in all_messages) - frozenset(
+        current_message_ids
+    )
+
+
+def scorers_collection_source(source: Timeline, include_scorers: bool) -> Timeline:
+    """Compute the timeline ``collect_span_external()`` should walk to gather span-external events.
+
+    Shared by ``transcript_messages`` (``messages.py``) and
+    ``stream_timeline_messages`` (``timeline_stream.py``): when
+    ``include_scorers`` is ``False`` (the default), a ``scorers`` span is
+    about to be pruned from the *walked* tree, so its own events (e.g. a
+    grader's final ``ScoreEvent``) would be silently lost unless collected
+    from the still-unpruned ``source`` -- returned unchanged. When
+    ``include_scorers`` is ``True``, a ``scorers`` span WITH a direct
+    ``ModelEvent`` is instead walked normally and splices its own events via
+    ``span_interleaved_messages``, so it must be filtered out here or its
+    events would be double-rendered; a ``scorers`` span with no direct
+    ``ModelEvent`` is never walked by ``_walk_spans`` regardless of
+    ``include_scorers``, so it must remain in the returned source.
+
+    Args:
+        source: The (unpruned) timeline to derive the collection source from.
+        include_scorers: Mirrors the caller's ``include_scorers`` setting.
+
+    Returns:
+        The timeline ``collect_span_external()`` should walk.
+    """
+    if not include_scorers:
+        return source
+    return timeline_filter(
+        source,
+        lambda s: not (s.span_type == "scorers" and _span_has_direct_model_event(s)),
+    )
 
 
 def _scorers_model_event_ids(events: list[Event]) -> frozenset[str]:
@@ -192,8 +283,8 @@ class _AnchorWalk:
         self._next_occurrence: dict[str, int] = defaultdict(int)
         self._last_anchor: int | None = None
         self._excluded_ids = excluded_ids
-        self.leading: list[tuple[str, str]] = []
-        self.anchored: dict[int, list[tuple[str, str]]] = defaultdict(list)
+        self.leading: list[InterleavedEvent] = []
+        self.anchored: dict[int, list[InterleavedEvent]] = defaultdict(list)
 
     def add_model_output(self, message_id: str) -> bool:
         """Consume the next occurrence of `message_id` as the current anchor.
@@ -211,7 +302,7 @@ class _AnchorWalk:
         return False
 
     def add_rendered(self, event_id: str, text: str) -> None:
-        entry = (event_id, text)
+        entry = InterleavedEvent(event_id, text)
         if self._last_anchor is None:
             self.leading.append(entry)
         else:
@@ -267,13 +358,9 @@ def span_interleaved_messages(
         The span's messages with marked event entries spliced in.
     """
     messages = span_messages(span, compaction=compaction)
-
-    excluded_ids: frozenset[str] = frozenset()
-    if compaction != "all":
-        all_messages = span_messages(span, compaction="all")
-        excluded_ids = frozenset(_message_id(m) for m in all_messages) - frozenset(
-            _message_id(m) for m in messages
-        )
+    excluded_ids = _compaction_excluded_ids(
+        span, (_message_id(m) for m in messages), compaction
+    )
 
     walk = _AnchorWalk(
         [_message_id(m) for m in messages], events, excluded_ids=excluded_ids
@@ -316,7 +403,7 @@ def _collect_span_external(
     *,
     last_scannable: str | None,
     in_scorers: bool,
-    external: dict[str, list[tuple[str, str]]],
+    external: defaultdict[str, list[InterleavedEvent]],
     depth: int | None = None,
     _scannable_depth: int = 0,
 ) -> str | None:
@@ -375,7 +462,7 @@ def _collect_span_external(
                 text = _interleavable_text(event, events)
             if text is not None:
                 key = last_scannable if last_scannable is not None else ""
-                external[key].append((_event_id(event), text))
+                external[key].append(InterleavedEvent(_event_id(event), text))
         else:
             last_scannable = _collect_span_external(
                 item,
@@ -391,7 +478,7 @@ def _collect_span_external(
 
 def collect_span_external(
     timeline: Timeline | TimelineSpan, events: EventsSpec, *, depth: int | None = None
-) -> dict[str, list[tuple[str, str]]]:
+) -> SpanExternalEvents:
     """Collect span-external interleavable events from the unpruned timeline.
 
     Companion to ``span_interleaved_messages()``: that function splices
@@ -480,7 +567,7 @@ def collect_span_external(
         rendered_text)`` entries, in document order.
     """
     root = timeline.root if isinstance(timeline, Timeline) else timeline
-    external: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    external: defaultdict[str, list[InterleavedEvent]] = defaultdict(list)
     _collect_span_external(
         root,
         events,

@@ -27,7 +27,7 @@ from inspect_ai.tool import ToolInfo
 from inspect_scout._scanner.extract import MessagesAsStr
 
 if TYPE_CHECKING:
-    from inspect_scout._transcript.interleave import EventsSpec
+    from inspect_scout._transcript.interleave import EventsSpec, SpanExternalEvents
     from inspect_scout._transcript.types import Transcript
 
 DEFAULT_CONTEXT_WINDOW = 128_000
@@ -465,37 +465,22 @@ async def transcript_messages(
         else:
             selected = timelines[0]
 
-        span_external: dict[str, list[tuple[str, str]]] | None = None
+        span_external: SpanExternalEvents | None = None
         if events is not None:
             from inspect_scout._transcript.interleave import (
-                _span_has_direct_model_event,
                 collect_span_external,
+                scorers_collection_source,
             )
 
-            # See collect_span_external()'s docstring for why the
-            # scorers span is included here when it will be pruned
-            # below (its events must be collected before they're lost)
-            # but filtered out here when it will survive pruning AND
-            # be walked as an ordinary scannable span by
-            # timeline_messages (its events are instead spliced in
-            # directly by span_interleaved_messages, and collecting
-            # them here too would double-render them). A scorers span
-            # without a direct ModelEvent is never walked by
-            # _walk_spans even when include_scorers=True, so it must
-            # stay in the collection source or its events would be
-            # silently dropped.
-            collection_source = (
-                timeline_filter(
-                    selected,
-                    lambda s: (
-                        not (
-                            s.span_type == "scorers" and _span_has_direct_model_event(s)
-                        )
-                    ),
-                )
-                if include_scorers
-                else selected
-            )
+            # See collect_span_external()'s and scorers_collection_source()'s
+            # docstrings for why the scorers span is included here when it
+            # will be pruned below (its events must be collected before
+            # they're lost) but filtered out here when it will survive
+            # pruning AND be walked as an ordinary scannable span by
+            # timeline_messages (its events are instead spliced in directly
+            # by span_interleaved_messages, and collecting them here too
+            # would double-render them).
+            collection_source = scorers_collection_source(selected, include_scorers)
             span_external = collect_span_external(
                 collection_source, events, depth=depth
             )

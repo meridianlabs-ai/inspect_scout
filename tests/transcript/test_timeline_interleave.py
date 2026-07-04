@@ -32,7 +32,12 @@ from inspect_ai.model import (
 from inspect_ai.scorer import Score
 from inspect_scout._scanner.extract import message_numbering
 from inspect_scout._transcript.handle import MaterializedTranscriptHandle
-from inspect_scout._transcript.interleave import collect_span_external
+from inspect_scout._transcript.interleave import (
+    InterleavedEvent,
+    SpanExternalEvents,
+    collect_span_external,
+    scorers_collection_source,
+)
 from inspect_scout._transcript.messages import segment_messages, transcript_messages
 from inspect_scout._transcript.timeline import TimelineMessages, timeline_messages
 from inspect_scout._transcript.timeline_stream import stream_timeline_messages
@@ -127,7 +132,7 @@ async def _collect(
     *,
     events: list[str] | str | None,
     compaction: str = "all",
-    span_external: dict[str, list[tuple[str, str]]] | None = None,
+    span_external: SpanExternalEvents | None = None,
     context_window: int = 10_000,
 ) -> tuple[list[TimelineMessages], str]:
     """Collect segments plus a combined messages_str for convenience assertions."""
@@ -476,8 +481,8 @@ async def test_span_external_prepend_and_append() -> None:
         root,
         events=[],
         span_external={
-            "": [("lead-1", "LEADING TEXT")],
-            "span-b": [("trail-1", "TRAILING TEXT")],
+            "": [InterleavedEvent("lead-1", "LEADING TEXT")],
+            "span-b": [InterleavedEvent("trail-1", "TRAILING TEXT")],
         },
     )
 
@@ -965,6 +970,19 @@ def _agentic_events_with_scores() -> list[Event]:
     return events
 
 
+def _materialized_collection_source(
+    tree: Timeline, *, include_scorers: bool = False
+) -> Timeline:
+    """Test-local alias for ``scorers_collection_source`` (see its docstring).
+
+    A thin wrapper so the cross-reference in ``_agentic_events_with_scores``'s
+    docstring above tracks the production collection-source predicate
+    directly, instead of the test file re-deriving (and risking drifting
+    from) its own copy of the same ``scorers``-span logic.
+    """
+    return scorers_collection_source(tree, include_scorers)
+
+
 def _materialized_walk_tree(tree: Timeline) -> Timeline:
     """Mirror ``stream_timeline_messages``' default (``include_scorers=False``) walk tree.
 
@@ -1021,7 +1039,9 @@ async def test_stream_timeline_messages_events_parity(
     # `scorers` spans from the walked tree but collects events from the
     # UNPRUNED tree; mirror both sides here.
     materialized_tree = timeline_build(events)
-    span_external = collect_span_external(materialized_tree, ["score"], depth=depth)
+    span_external = collect_span_external(
+        _materialized_collection_source(materialized_tree), ["score"], depth=depth
+    )
 
     materialized_numbering, _ = message_numbering()
     materialized = [

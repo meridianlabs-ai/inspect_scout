@@ -47,6 +47,7 @@ from ._reducer import aggregate_results
 from .answer import Answer, answer_from_argument
 from .generate import generate_answer
 from .interleave import (
+    EventsSpec,
     has_interleavable_events,
     interleave_events,
     stream_interleave_events,
@@ -445,7 +446,7 @@ def llm_scanner(
         async def scan_materialized(
             source_transcript: Transcript,
             *,
-            events: Literal["all"] | list[EventType | str] | None = None,
+            events: EventsSpec | None = None,
         ) -> Result:
             async def materialized_source() -> AsyncIterator[tuple[str | None, str]]:
                 async for seg in transcript_messages(

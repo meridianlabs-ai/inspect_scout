@@ -1,5 +1,19 @@
 # changelog – Inspect Scout
 
+## 0.4.43 (05 July 2026)
+
+- Store transcript and scan-result event/input columns as compact JSON (`indent=None`), substantially reducing on-disk Parquet size and the bytes streamed to Scout View (e.g. ~700 MiB → ~200 MiB for a large events column).
+- Security: Remove terminal control sequences from scanner names, scan metadata, errors, progress text, and filenames before rendering console output.
+- Security: Build DuckDB queries from bound Parquet sources and quoted, schema-validated identifiers so malicious transcript/scan filenames and sort or distinct columns cannot inject SQL.
+- Add `timeline` option to [transcript_messages()](./reference/transcript.html.md#transcript_messages) and [llm_scanner()](./reference/scanner.html.md#llm_scanner) for selecting a named timeline.
+- Scout View: Back the scans list with a persistent, per-location SQLite index in the local Scout cache. The index is lazily refreshed from scan metadata, so filtering, sorting, pagination, and distinct-value queries no longer rebuild the full scans table on every request.
+- Scout View: Fix event panel nav pills never expanding back from picker mode
+- Scout View: Cap oversized tool/text output to prevent resize layerization stalls
+- Scout View: Fix broken commit links for ssh-style GitHub origins
+- Scout View: Improve MathJax Sanitization
+- Bugfix: Per-key validation metrics for dict/multi-label targets now bucket each key against its own target value. Previously the whole-dict positivity (always positive for a non-empty dict) was applied to every key, so a key whose target was `False`/negative was scored TP/FN instead of TN/FP, inflating per-key precision and specificity.
+- Bugfix: Respect `--log-level` CLI arg and `SCOUT_LOG_LEVEL` env var across all `scout` commands.
+
 ## 0.4.41 (12 June 2026)
 
 - Chunk token counting in segment_messages so large transcripts don’t flood the connection pool.

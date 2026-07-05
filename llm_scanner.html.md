@@ -486,3 +486,7 @@ Use the `depth` parameter to limit how deep into the span tree to scan:
 - `depth=None` (default) — scan all levels
 
 Container and utility spans (such as the synthetic top-level wrapper inserted around an entire conversation, or internal helper spans) are transparent for the purposes of this count — they are traversed so their children are reached, but they do not consume a level of `depth`.
+
+### Timeline Selection
+
+Transcripts can carry multiple named timelines (e.g. a default agent-centric view alongside alternative groupings). Use the `timeline` parameter to scan a specific one by name — by default the transcript’s first timeline is used. Naming a timeline that doesn’t exist on the transcript raises an error.

@@ -321,6 +321,7 @@ async for segment in transcript_messages(
 | `messages_as_str` | Rendering function from [message_numbering()](./reference/scanner.html.md#message_numbering). |
 | `model` | Model used for token counting and context window lookup. |
 | `context_window` | Override the model’s detected context window size (in tokens). |
+| `timeline` | Name of the timeline to extract from. `None` (default) uses the transcript’s first timeline. |
 | `compaction` | How to handle compaction boundaries: `"all"` (default) merges across boundaries; `"last"` uses only the final segment. |
 | `depth` | Maximum depth of the span tree to process (timelines only). `None` recurses without limit. |
 | `include_scorers` | Whether to include scorer events in extraction (default `False`). |

@@ -877,14 +877,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Override the model’s detected context window size (in tokens).</td>
 </tr>
 <tr class="odd">
+<td><code>timeline</code></td>
+<td>Name of the timeline to extract from. <code>None</code> (default) uses the transcript’s first timeline.</td>
+</tr>
+<tr class="even">
 <td><code>compaction</code></td>
 <td>How to handle compaction boundaries: <code>"all"</code> (default) merges across boundaries; <code>"last"</code> uses only the final segment.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>depth</code></td>
 <td>Maximum depth of the span tree to process (timelines only). <code>None</code> recurses without limit.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>include_scorers</code></td>
 <td>Whether to include scorer events in extraction (default <code>False</code>).</td>
 </tr>

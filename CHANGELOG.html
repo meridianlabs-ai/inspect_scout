@@ -222,7 +222,8 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#june-2026" id="toc-june-2026" class="nav-link active" data-scroll-target="#june-2026">0.4.41 (12 June 2026)</a></li>
+  <li><a href="#july-2026" id="toc-july-2026" class="nav-link active" data-scroll-target="#july-2026">0.4.43 (05 July 2026)</a></li>
+  <li><a href="#june-2026" id="toc-june-2026" class="nav-link" data-scroll-target="#june-2026">0.4.41 (12 June 2026)</a></li>
   <li><a href="#june-2026-1" id="toc-june-2026-1" class="nav-link" data-scroll-target="#june-2026-1">0.4.39 (02 June 2026)</a></li>
   <li><a href="#may-2026" id="toc-may-2026" class="nav-link" data-scroll-target="#may-2026">0.4.38 (25 May 2026)</a></li>
   <li><a href="#may-2026-1" id="toc-may-2026-1" class="nav-link" data-scroll-target="#may-2026-1">0.4.37 (22 May 2026)</a></li>
@@ -268,6 +269,22 @@ ul.task-list li input[type="checkbox"] {
 
 
 
+<section id="july-2026" class="level2">
+<h2 class="anchored" data-anchor-id="july-2026">0.4.43 (05 July 2026)</h2>
+<ul>
+<li>Store transcript and scan-result event/input columns as compact JSON (<code>indent=None</code>), substantially reducing on-disk Parquet size and the bytes streamed to Scout View (e.g.&nbsp;~700 MiB → ~200 MiB for a large events column).</li>
+<li>Security: Remove terminal control sequences from scanner names, scan metadata, errors, progress text, and filenames before rendering console output.</li>
+<li>Security: Build DuckDB queries from bound Parquet sources and quoted, schema-validated identifiers so malicious transcript/scan filenames and sort or distinct columns cannot inject SQL.</li>
+<li>Add <code>timeline</code> option to <span class="element-type-name ref-interlink"><a href="./reference/transcript.html#transcript_messages">transcript_messages()</a></span> and <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#llm_scanner">llm_scanner()</a></span> for selecting a named timeline.</li>
+<li>Scout View: Back the scans list with a persistent, per-location SQLite index in the local Scout cache. The index is lazily refreshed from scan metadata, so filtering, sorting, pagination, and distinct-value queries no longer rebuild the full scans table on every request.</li>
+<li>Scout View: Fix event panel nav pills never expanding back from picker mode</li>
+<li>Scout View: Cap oversized tool/text output to prevent resize layerization stalls</li>
+<li>Scout View: Fix broken commit links for ssh-style GitHub origins</li>
+<li>Scout View: Improve MathJax Sanitization</li>
+<li>Bugfix: Per-key validation metrics for dict/multi-label targets now bucket each key against its own target value. Previously the whole-dict positivity (always positive for a non-empty dict) was applied to every key, so a key whose target was <code>False</code>/negative was scored TP/FN instead of TN/FP, inflating per-key precision and specificity.</li>
+<li>Bugfix: Respect <code>--log-level</code> CLI arg and <code>SCOUT_LOG_LEVEL</code> env var across all <code>scout</code> commands.</li>
+</ul>
+</section>
 <section id="june-2026" class="level2">
 <h2 class="anchored" data-anchor-id="june-2026">0.4.41 (12 June 2026)</h2>
 <ul>

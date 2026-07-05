@@ -435,6 +435,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#opting-in" id="toc-opting-in" class="nav-link" data-scroll-target="#opting-in">Opting In</a></li>
   <li><a href="#structured-lists" id="toc-structured-lists" class="nav-link" data-scroll-target="#structured-lists">Structured Lists</a></li>
   <li><a href="#depth-control" id="toc-depth-control" class="nav-link" data-scroll-target="#depth-control">Depth Control</a></li>
+  <li><a href="#timeline-selection" id="toc-timeline-selection" class="nav-link" data-scroll-target="#timeline-selection">Timeline Selection</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -1114,6 +1115,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><code>depth=None</code> (default) — scan all levels</li>
 </ul>
 <p>Container and utility spans (such as the synthetic top-level wrapper inserted around an entire conversation, or internal helper spans) are transparent for the purposes of this count — they are traversed so their children are reached, but they do not consume a level of <code>depth</code>.</p>
+</section>
+<section id="timeline-selection" class="level3">
+<h3 class="anchored" data-anchor-id="timeline-selection">Timeline Selection</h3>
+<p>Transcripts can carry multiple named timelines (e.g.&nbsp;a default agent-centric view alongside alternative groupings). Use the <code>timeline</code> parameter to scan a specific one by name — by default the transcript’s first timeline is used. Naming a timeline that doesn’t exist on the transcript raises an error.</p>
 
 
 </section>

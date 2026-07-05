@@ -2506,6 +2506,10 @@ Use the `depth` parameter to limit how deep into the span tree to scan:
 
 Container and utility spans (such as the synthetic top-level wrapper inserted around an entire conversation, or internal helper spans) are transparent for the purposes of this count — they are traversed so their children are reached, but they do not consume a level of `depth`.
 
+### Timeline Selection
+
+Transcripts can carry multiple named timelines (e.g. a default agent-centric view alongside alternative groupings). Use the `timeline` parameter to scan a specific one by name — by default the transcript’s first timeline is used. Naming a timeline that doesn’t exist on the transcript raises an error.
+
 
 # Grep Scanner – Inspect Scout
 
@@ -3535,6 +3539,7 @@ async for segment in transcript_messages(
 | `messages_as_str` | Rendering function from [message_numbering()](./reference/scanner.html.md#message_numbering). |
 | `model` | Model used for token counting and context window lookup. |
 | `context_window` | Override the model’s detected context window size (in tokens). |
+| `timeline` | Name of the timeline to extract from. `None` (default) uses the transcript’s first timeline. |
 | `compaction` | How to handle compaction boundaries: `"all"` (default) merges across boundaries; `"last"` uses only the final segment. |
 | `depth` | Maximum depth of the span tree to process (timelines only). `None` recurses without limit. |
 | `include_scorers` | Whether to include scorer events in extraction (default `False`). |

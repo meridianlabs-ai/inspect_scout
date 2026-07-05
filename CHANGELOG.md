@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.42 (05 July 2026)
 
 - Store transcript and scan-result event/input columns as compact JSON (`indent=None`), substantially reducing on-disk Parquet size and the bytes streamed to Scout View (e.g. ~700 MiB → ~200 MiB for a large events column).
 - Security: Remove terminal control sequences from scanner names, scan metadata, errors, progress text, and filenames before rendering console output.

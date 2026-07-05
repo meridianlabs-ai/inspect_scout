@@ -257,16 +257,16 @@ wheels = [
 
 [[package]]
 name = "anyio"
-version = "4.13.0"
+version = "4.14.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
     { name = "idna" },
     { name = "typing-extensions", marker = "python_full_version < '3.13'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/19/14/2c5dd9f512b66549ae92767a9c7b330ae88e1932ca57876909410251fe13/anyio-4.13.0.tar.gz", hash = "sha256:334b70e641fd2221c1505b3890c69882fe4a2df910cba14d97019b90b24439dc", size = 231622, upload-time = "2026-03-24T12:59:09.671Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3b/72/5562aabb8dd7181e8e860622a38bea08d17842b99ecd4c91f84ac95251b0/anyio-4.14.1.tar.gz", hash = "sha256:8d648a3544c1a700e3ff78615cd679e4c5c3f149904287e73687b2596963629e", size = 254831, upload-time = "2026-06-24T20:56:06.017Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/da/42/e921fccf5015463e32a3cf6ee7f980a6ed0f395ceeaa45060b61d86486c2/anyio-4.13.0-py3-none-any.whl", hash = "sha256:08b310f9e24a9594186fd75b4f73f4a4152069e3853f1ed8bfbf58369f4ad708", size = 114353, upload-time = "2026-03-24T12:59:08.246Z" },
+    { url = "https://files.pythonhosted.org/packages/b0/7b/90df4a0a816d98d6ea26f559d87836d494a2cf1fcf063be67df50a7bcc30/anyio-4.14.1-py3-none-any.whl", hash = "sha256:4e5533c5b8ff0a24f5d7a176cbe6877129cd183893f66b537f8f227d10527d72", size = 124875, upload-time = "2026-06-24T20:56:04.413Z" },
 ]
 
 [[package]]
@@ -1491,8 +1491,8 @@ wheels = [
 
 [[package]]
 name = "inspect-ai"
-version = "0.3.239.dev212+ge8c49ef2e"
-source = { git = "https://github.com/UKGovernmentBEIS/inspect_ai?rev=main#e8c49ef2e22edb0c30355f495f62950b606b56a4" }
+version = "0.3.244"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "agent-client-protocol" },
     { name = "aioboto3" },
@@ -1535,6 +1535,10 @@ dependencies = [
     { name = "zipfile-zstd", marker = "python_full_version < '3.14'" },
     { name = "zipp" },
     { name = "zstandard" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d0/db/cd7412959a21dcf3fc7aa526d337d6adba7f18d40365b7b0883267971115/inspect_ai-0.3.244.tar.gz", hash = "sha256:465232afbd71e76c0fb762e13f99e7a5e3364cbc0841a0ae86bc4e7ddf7a72a1", size = 49132561, upload-time = "2026-07-01T17:38:40.949Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b1/ac/01f72c049fdeffbaee42b25467fbcd1fa19bd022c2d269952f55bb0105a1/inspect_ai-0.3.244-py3-none-any.whl", hash = "sha256:e55eb674b7fa0117e30f32368016b4e77acdf1e73cc50ca0990eda7e1e6488bb", size = 36780843, upload-time = "2026-07-01T17:38:21.67Z" },
 ]
 
 [[package]]
@@ -1665,7 +1669,7 @@ requires-dist = [
     { name = "huggingface-hub", marker = "extra == 'dev'" },
     { name = "ijson", specifier = ">=3.2.0" },
     { name = "importlib-metadata" },
-    { name = "inspect-ai", git = "https://github.com/UKGovernmentBEIS/inspect_ai?rev=main" },
+    { name = "inspect-ai", specifier = ">=0.3.244" },
     { name = "inspect-swe", specifier = ">=0.2.56" },
     { name = "jinja2", specifier = ">=3.0.0" },
     { name = "jsonlines", specifier = ">=3.0.0" },

@@ -144,8 +144,13 @@ def _process_session_file(
     date = parsed.records[0].timestamp.isoformat() if parsed.records else None
     total_time = _total_time(events, parsed)
 
+    # Direct children only: root-thread events carry span_id=None, while a
+    # nested sub-agent's SpanBeginEvent carries its parent span's id (nested
+    # sub-agents appear inside their parent's span, not in this count).
     agent_spans = [
-        e for e in events if isinstance(e, SpanBeginEvent) and e.type == "agent"
+        e
+        for e in events
+        if isinstance(e, SpanBeginEvent) and e.type == "agent" and e.span_id is None
     ]
     entry = entry_for_session_id(registry, session_id) if registry else None
 

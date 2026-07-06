@@ -29,6 +29,10 @@ async def test_get_or_create_warns_on_unsupported_resizable(
         sem = await parent_registry.get_or_create(
             "resizable-sem", 2, None, True, resizable=True
         )
+        # cached retrieval must not warn again
+        await parent_registry.get_or_create(
+            "resizable-sem", 2, None, True, resizable=True
+        )
 
     warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
     assert len(warnings) == 1
@@ -57,8 +61,6 @@ async def test_get_or_create_no_warning_for_fixed_semaphore(
     parent_registry: ParentSemaphoreRegistry, caplog: pytest.LogCaptureFixture
 ) -> None:
     with caplog.at_level(logging.WARNING, logger=REGISTRY_LOGGER):
-        # created, then returned from cache: neither call should warn
-        await parent_registry.get_or_create("fixed-sem", 2, None, True)
         await parent_registry.get_or_create("fixed-sem", 2, None, True)
 
     assert not [r for r in caplog.records if r.levelno == logging.WARNING]

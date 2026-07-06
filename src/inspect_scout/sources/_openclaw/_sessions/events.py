@@ -16,6 +16,7 @@ Mapping (mirrors the Claude Code and telemetry-hal importers):
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from itertools import count
@@ -28,6 +29,8 @@ from inspect_ai.event import (
     Event,
     InfoEvent,
     ModelEvent,
+    SpanBeginEvent,
+    SpanEndEvent,
     ToolEvent,
 )
 from inspect_ai.model import (
@@ -47,11 +50,13 @@ from ..extraction import (
     content_blocks,
     content_to_text,
     rich_or_text,
+    short_description,
     to_tool_call,
+    tool_call_view,
     toolcalls_of,
     usage_to_inspect,
 )
-from .client import RegistryEntry
+from .client import RegistryEntry, read_session_records
 from .parse import (
     AssistantTurn,
     CompactionRecord,
@@ -59,6 +64,7 @@ from .parse import (
     ParsedSession,
     ToolResultMsg,
     UserTurn,
+    parse_session,
 )
 
 logger = getLogger(__name__)
@@ -257,11 +263,53 @@ def _emit_assistant_turn(
 def _resolve_spawned_child(
     result: ToolResultMsg | None, ctx: BuildContext, depth: int
 ) -> tuple[ParsedSession, RegistryEntry] | None:
-    """Resolve a spawn tool result to its child session, if any.
+    """Resolve a spawn tool result to its parsed child session, if any.
 
-    Implemented in the sub-agent span task; the thread-only build always
-    returns ``None``.
+    A tool call spawned a sub-agent iff its result is an ``accepted`` JSON
+    naming a ``childSessionKey``. Resolution is two id-keyed lookups (result →
+    registry → sibling file); a child that cannot be resolved degrades to a
+    plain tool event with a warning — never a content heuristic.
     """
+    if result is None or ctx.registry is None or ctx.sessions_dir is None:
+        return None
+    child_key = _spawned_child_key(result)
+    if child_key is None:
+        return None
+    entry = ctx.registry.get(child_key)
+    if entry is None:
+        logger.warning(
+            "OpenClaw spawn '%s' not in sessions.json; skipping agent span",
+            child_key,
+        )
+        return None
+    child_file = ctx.sessions_dir / f"{entry.session_id}.jsonl"
+    if not child_file.is_file():
+        logger.warning(
+            "OpenClaw sub-agent session file missing: %s; skipping agent span",
+            child_file,
+        )
+        return None
+    if depth <= 0:
+        logger.warning(
+            "OpenClaw sub-agent recursion limit reached at '%s'; skipping agent span",
+            child_key,
+        )
+        return None
+    raw = read_session_records(child_file)
+    if not raw:
+        return None
+    return parse_session(raw, str(child_file)), entry
+
+
+def _spawned_child_key(result: ToolResultMsg) -> str | None:
+    """``childSessionKey`` from an accepted spawn result, else ``None``."""
+    try:
+        parsed = json.loads(content_to_text(result.content))
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if isinstance(parsed, dict) and parsed.get("status") == "accepted":
+        child_key = parsed.get("childSessionKey")
+        return str(child_key) if child_key else None
     return None
 
 
@@ -277,8 +325,71 @@ def _emit_subagent_span(
     order: Iterator[int],
     spawn_ts: datetime,
 ) -> datetime:
-    """Implemented in the sub-agent span task."""
-    raise NotImplementedError
+    """Emit a spawned sub-agent as a nested agent span; returns its end time.
+
+    Mirrors the Claude Code and telemetry-hal importers: the span
+    (``type="agent"``) wraps the sub-agent's own thread, and the spawning tool
+    call is emitted as the span's FIRST child, tagged ``agent_span_id`` so the
+    view folds it into the agent header rather than drawing a standalone tool
+    row. The child's messages go to a scratch list — never the main thread.
+    """
+    span_id = entry.session_key
+    arguments = spawn_tool.get("arguments") or {}
+    arguments = arguments if isinstance(arguments, dict) else {}
+    task = str(arguments.get("task") or "") or None
+    label = str(arguments.get("label") or "") or entry.label
+    events.append(
+        SpanBeginEvent(
+            id=span_id,
+            name=label or "subagent",
+            type="agent",
+            timestamp=spawn_ts,
+            working_start=float(next(order)),
+            span_id=parent_span_id,
+            metadata={
+                "session_key": entry.session_key,
+                "session_id": entry.session_id,
+                "description": short_description(task),
+                "task": task,
+                "status": entry.status,
+            },
+        )
+    )
+
+    spawn_id = str(spawn_tool.get("id") or "")
+    spawn_function = str(spawn_tool.get("name") or "sessions_spawn")
+    result_content, completed, error, failed = _tool_result_fields(
+        spawn_result, spawn_ts
+    )
+    events.append(
+        ToolEvent(
+            id=spawn_id,
+            function=spawn_function,
+            arguments=arguments,
+            result=cast(ToolResultContent, result_content),
+            error=error,
+            failed=failed,
+            timestamp=spawn_ts,
+            completed=completed,
+            working_start=float(next(order)),
+            span_id=span_id,
+            agent_span_id=span_id,
+            view=tool_call_view(spawn_function, arguments),
+        )
+    )
+
+    sub_messages: list[ChatMessage] = []
+    end_ts = _build_thread(child, ctx, depth - 1, events, sub_messages, span_id, order)
+    end_ts = max(end_ts, completed)
+    events.append(
+        SpanEndEvent(
+            id=span_id,
+            timestamp=end_ts,
+            working_start=float(next(order)),
+            span_id=parent_span_id,
+        )
+    )
+    return end_ts
 
 
 def _tool_result_fields(

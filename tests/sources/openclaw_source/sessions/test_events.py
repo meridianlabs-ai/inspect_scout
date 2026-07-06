@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -12,10 +13,14 @@ from inspect_ai.event import (
     InfoEvent,
     ModelEvent,
     SpanBeginEvent,
+    SpanEndEvent,
     ToolEvent,
 )
 from inspect_ai.model import ChatMessage
-from inspect_scout.sources._openclaw._sessions.client import read_session_records
+from inspect_scout.sources._openclaw._sessions.client import (
+    load_registry,
+    read_session_records,
+)
 from inspect_scout.sources._openclaw._sessions.events import (
     BuildContext,
     build_content,
@@ -151,3 +156,80 @@ class TestCompaction:
         assert c.metadata["from_hook"] is False
         # thread unaffected: 2 user + 2 assistant
         assert len(messages) == 4
+
+
+class TestSubagentSpans:
+    def build_orchestrator(self) -> tuple[list[Event], list[ChatMessage]]:
+        path = FX_DEMO / "cfabe24d-8b34-4031-a393-689524b2028f.jsonl"
+        parsed = parse_session(read_session_records(path), str(path))
+        ctx = BuildContext(sessions_dir=FX_DEMO, registry=load_registry(FX_DEMO))
+        return build_content(parsed, ctx)
+
+    def test_three_agent_spans(self) -> None:
+        events, _ = self.build_orchestrator()
+        begins = [e for e in events if isinstance(e, SpanBeginEvent)]
+        ends = [e for e in events if isinstance(e, SpanEndEvent)]
+        assert len(begins) == len(ends) == 3
+        assert all(b.type == "agent" for b in begins)
+        assert sorted(str(b.name) for b in begins) == ["usd-eur", "usd-gbp", "usd-jpy"]
+        for b in begins:
+            assert b.metadata is not None
+            assert b.metadata["session_id"] in {
+                "8c6aeab3-993e-43d5-934a-04aa4a5f3804",
+                "a35ff69f-56ae-453f-b290-d369e251e64d",
+                "63f16c5a-1a2e-4284-90fc-96a3d22843f7",
+            }
+            assert b.metadata["status"] == "done"
+
+    def test_spawn_tool_folded_into_span(self) -> None:
+        events, _ = self.build_orchestrator()
+        spawn_events = [
+            e
+            for e in events
+            if isinstance(e, ToolEvent) and e.function == "sessions_spawn"
+        ]
+        assert len(spawn_events) == 3
+        for te in spawn_events:
+            assert te.agent_span_id is not None
+            assert te.span_id == te.agent_span_id
+            assert te.view is not None
+
+    def test_child_events_carry_span_id(self) -> None:
+        events, _ = self.build_orchestrator()
+        span_ids = {e.id for e in events if isinstance(e, SpanBeginEvent)}
+        child_model_events = [
+            e for e in events if isinstance(e, ModelEvent) and e.span_id in span_ids
+        ]
+        # 3 sub-agents x 3 assistant turns each
+        assert len(child_model_events) == 9
+        # root thread model events carry no span id
+        root_model_events = [
+            e for e in events if isinstance(e, ModelEvent) and e.span_id is None
+        ]
+        assert len(root_model_events) == 11
+
+    def test_child_messages_not_in_main_thread(self) -> None:
+        _, messages = self.build_orchestrator()
+        roles = Counter(type(m).__name__ for m in messages)
+        # same thread as the registry-less build: sub-agents excluded
+        assert roles == Counter(
+            ChatMessageUser=7, ChatMessageAssistant=11, ChatMessageTool=11
+        )
+
+    def test_missing_child_file_skips_span(self, tmp_path: Path) -> None:
+        for name in (
+            "cfabe24d-8b34-4031-a393-689524b2028f.jsonl",
+            "8c6aeab3-993e-43d5-934a-04aa4a5f3804.jsonl",
+            "a35ff69f-56ae-453f-b290-d369e251e64d.jsonl",
+            "sessions.json",
+        ):  # 63f16c5a (usd-jpy) intentionally omitted
+            shutil.copy(FX_DEMO / name, tmp_path / name)
+        path = tmp_path / "cfabe24d-8b34-4031-a393-689524b2028f.jsonl"
+        parsed = parse_session(read_session_records(path), str(path))
+        ctx = BuildContext(sessions_dir=tmp_path, registry=load_registry(tmp_path))
+        events, messages = build_content(parsed, ctx)
+        begins = [e for e in events if isinstance(e, SpanBeginEvent)]
+        assert sorted(str(b.name) for b in begins) == ["usd-eur", "usd-gbp"]
+        # the skipped spawn is still a plain tool event + thread message
+        roles = Counter(type(m).__name__ for m in messages)
+        assert roles["ChatMessageTool"] == 11

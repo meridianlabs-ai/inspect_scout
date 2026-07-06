@@ -43,55 +43,23 @@ def interleave_events(
 ) -> list[ChatMessage]:
     """Splice loaded non-message events into ``transcript.messages``.
 
-    Each event is anchored after the most recent preceding assistant message
-    (the output of the most recent ``ModelEvent`` whose message is present in
-    ``transcript.messages``). Events with no preceding turn are prepended.
-    A ``ModelEvent`` whose output never joined the thread splits into two
-    cases (see ``_AnchorWalk``'s ``excluded_ids`` discriminator,
-    ``_transcript/interleave.py``): a genuine fork/branch experiment (or a
-    retry whose output never joined any thread) renders as an always-on
-    ``[E#] MODEL (BRANCH):`` entry, anchored at the current position; a
-    turn that ``compaction`` deliberately pruned (present in the
-    untruncated ``compaction="all"`` thread but not the current one) stays
-    hidden instead, honoring the caller's compaction request rather than
-    resurrecting it as a fork.
+    Each event is anchored after the most recent preceding assistant turn;
+    events with no preceding turn are prepended. A ``ModelEvent`` whose
+    output never joined the thread renders as a ``[E#] MODEL (BRANCH):``
+    entry unless the turn was compaction-pruned, in which case it stays
+    hidden (see ``_AnchorWalk``). Grader model calls under a ``scorers``
+    span are excluded from the walk entirely.
 
-    When the transcript carries top-level messages, those messages ARE the
-    current thread; the untruncated ``compaction="all"`` reconstruction
-    (from ``transcript.events``) needed to derive the excluded-ids set above
-    is only computed when ``transcript.events`` actually contains a
-    ``CompactionEvent`` (a cheap check) -- transcripts with no compaction
-    history pay no extra cost and get an empty excluded-ids set, exactly as
-    before this discriminator existed.
-
-    When the transcript carries no top-level messages (events-only loads),
-    the message thread is reconstructed from model events via
-    ``span_messages`` (honoring ``compaction``); when ``compaction`` is not
-    ``"all"``, the untruncated ``compaction="all"`` reconstruction is also
-    computed to derive the excluded-ids set above. Events are then spliced
-    into the (possibly truncated) reconstructed thread.
-
-    Grader model calls (``ModelEvent``s nested under a top-level ``scorers``
-    span, if the event list carries span structure) are excluded from the
-    walk entirely -- they neither render as branch entries nor advance the
-    anchor -- preserving the invariant that scorer/grader activity never
-    surfaces in scanned content (see ``_scorers_model_event_ids``).
+    When the transcript has no top-level messages (events-only loads), the
+    thread is reconstructed from model events via ``span_messages``
+    (honoring ``compaction``).
 
     Warning:
-        The events-only reconstruction (``span_messages``) assumes a single
-        linear conversation: it keeps only the region-last ``ModelEvent``
-        per compaction region, and nested ``ToolEvent.events`` subagents are
-        not walked. With multiple parallel agents (or tool-spawned
-        subagents), this silently drops every agent but the last from the
-        reconstructed thread -- though each off-thread agent's model
-        outputs still surface individually as ``[E#] MODEL (BRANCH):``
-        entries rather than vanishing, their original conversational
-        context is not recovered. Such transcripts must go through the
-        timeline machinery instead (see ``inspect_scout._transcript.timeline``
-        / ``timeline_stream``), which reconstructs per-span segments so
-        every agent is visible with its own context. ``llm_scanner`` routes
-        events-only transcripts there automatically and never reaches this
-        fallback for multi-agent input.
+        The events-only reconstruction assumes a single linear
+        conversation; with multiple parallel agents it drops every agent
+        but the last from the thread (their outputs surface only as branch
+        entries). Multi-agent transcripts must use the timeline machinery
+        instead; ``llm_scanner`` routes them there automatically.
 
     Args:
         transcript: Transcript providing messages and events.
@@ -103,16 +71,10 @@ def interleave_events(
         return messages
     excluded_ids: frozenset[str] = frozenset()
     if messages:
-        # `compaction` doesn't apply here -- `messages` is the transcript's
-        # own live thread, already shaped by whatever compaction the
-        # original run applied, independent of this function's `compaction`
-        # argument (which only governs events-only reconstruction below).
-        # Compute the exclusion set unconditionally whenever the events
-        # actually contain a CompactionEvent (cheap presence check); a
-        # `compaction="last"` sentinel (rather than the real, irrelevant
-        # `compaction` argument) forces `_compaction_excluded_ids` past its
-        # own `compaction == "all"` fast path so the computation actually
-        # runs -- see that function's docstring.
+        # `messages` is the transcript's own live thread, already shaped by
+        # the original run's compaction (the `compaction` argument only
+        # governs events-only reconstruction below). The "last" sentinel
+        # forces `_compaction_excluded_ids` past its `"all"` fast path.
         if any(isinstance(e, CompactionEvent) for e in transcript.events):
             excluded_ids = _compaction_excluded_ids(
                 transcript.events,
@@ -151,68 +113,34 @@ async def stream_interleave_events(
 ) -> AsyncIterator[ChatMessage]:
     """Streaming counterpart to ``interleave_events`` over a handle.
 
-    Yields the same message sequence ``interleave_events`` would produce for
-    the materialized transcript, without holding messages and event payloads
-    in memory at once.
+    Yields the same message sequence ``interleave_events`` would produce,
+    without holding messages and event payloads in memory at once.
 
-    Messages-present transcripts take four passes over the handle
-    (multi-shot contract): collect message ids; a dedicated pass filtered to
-    ``model``/``compaction`` events that builds a region-last-``ModelEvent``
-    skeleton (mirroring the events-only branch below) to derive the
-    compaction-pruned ``excluded_ids`` set (see ``_compaction_excluded_ids``)
-    -- skipped past the cheap type-filtered scan itself whenever no
-    ``CompactionEvent`` is present; the anchor walk (retaining just id +
-    rendered text per selected event); then re-stream messages splicing
-    anchored entries. Retained memory is one id per message, the rendered
-    text of selected events, plus (only while a ``CompactionEvent`` is
-    present) one full ``ModelEvent`` per compaction region for the extra
-    pass, discarded once ``excluded_ids`` is computed.
+    Messages-present transcripts take four passes over the handle: collect
+    message ids; derive compaction-pruned ``excluded_ids`` from a
+    region-last-``ModelEvent`` skeleton (cheap no-op when there is no
+    ``CompactionEvent``); the anchor walk (retaining just id + rendered
+    text per selected event); then re-stream messages splicing anchored
+    entries.
 
-    Events-only transcripts (empty ``messages()``) reconstruct the thread
-    from model events in a single events pass: only the most recent
-    ``ModelEvent`` per compaction region is retained (that event's input
-    already carries the region's conversation — the thread itself), plus a
-    small op log of output-message ids, each paired with that same
-    ``ModelEvent``'s rendered off-thread text (or ``""`` if it has none), so
-    anchors resolve against the reconstructed thread in event order and any
-    op whose model output does not anchor can still render as a branch
-    entry without re-visiting the (already discarded) original event.
-    Because ``skeleton`` always retains every compaction region's *last*
-    ``ModelEvent`` in full (never stubbed), it carries enough content to
-    also reconstruct the untruncated ``compaction="all"`` thread -- used to
-    compute the excluded-ids set that keeps compaction-pruned turns hidden
-    (see ``_AnchorWalk``). Memory: one rendered output string per
-    ``ModelEvent``, which is bounded and is exactly the content that would
-    be rendered anyway for genuine forks.
+    Events-only transcripts reconstruct the thread in a single events pass,
+    retaining only the region-last ``ModelEvent`` (whose input carries the
+    region's conversation) plus an op log of output-message ids and
+    pre-rendered branch text, replayed against the reconstructed thread.
 
     Warning:
-        The events-only reconstruction above assumes a single linear
-        conversation: keeping only the region-last ``ModelEvent`` per
-        compaction region silently drops every agent but the last when
-        multiple parallel agents are present, and nested
-        ``ToolEvent.events`` subagents are never walked. Such transcripts
-        must go through the timeline machinery instead (see
-        ``inspect_scout._transcript.timeline_stream.stream_timeline_messages``),
-        which reconstructs per-span segments so every agent is visible.
-        ``llm_scanner`` routes events-only transcripts there automatically
-        and never reaches this fallback for multi-agent input.
+        The events-only reconstruction assumes a single linear
+        conversation; multi-agent transcripts must use
+        ``stream_timeline_messages`` instead (``llm_scanner`` routes them
+        there automatically).
     """
     message_ids = [_message_id(m) async for m in handle.messages()]
     types = None if events == "all" else ["model", "compaction", *events]
 
     if message_ids:
-        # A dedicated fourth pass, filtered to just "model"/"compaction",
-        # builds the same region-last-ModelEvent `skeleton` as the
-        # events-only branch below -- solely to reconstruct the untruncated
-        # `compaction="all"` thread and derive `excluded_ids` (see
-        # `_compaction_excluded_ids`), so a compaction-pruned turn stays
-        # hidden here exactly as it does on the materialized path
-        # (`interleave_events`). `message_ids` (not full `ChatMessage`s) is
-        # already all that's retained of the current thread, so the diff is
-        # taken directly against it. Skipped whenever the transcript has no
-        # `CompactionEvent` at all: `excluded_ids` stays empty and this
-        # pass's only cost is the (typically small) scan for compaction
-        # events itself.
+        # Build a region-last-ModelEvent skeleton (as in the events-only
+        # branch below) solely to derive compaction-pruned `excluded_ids`.
+        # Without a CompactionEvent this pass costs only the filtered scan.
         excluded_ids: frozenset[str] = frozenset()
         compaction_skeleton: list[Event] = []
         saw_compaction = False
@@ -245,14 +173,10 @@ async def stream_interleave_events(
             index += 1
         return
 
-    # Events-only: reconstruct the thread from model events. `skeleton`
-    # keeps compaction events plus the most recent ModelEvent per region
-    # (span_messages only reads the region-last event); `ops` records the
-    # anchor walk's inputs in event order for replay once the thread exists.
-    # Each op is (kind, a, b): ("m", output_message_id, rendered_text_or_"")
-    # for a model event -- the rendered text is precomputed since the full
-    # event itself is not retained past this loop -- or ("e", event_id,
-    # rendered_text) for an interleavable event.
+    # Events-only: `skeleton` keeps compaction events plus the region-last
+    # ModelEvent (all span_messages reads); `ops` records the anchor walk's
+    # inputs for replay once the thread exists: ("m", output_message_id,
+    # rendered_branch_text_or_"") or ("e", event_id, rendered_text).
     skeleton: list[Event] = []
     ops: list[tuple[str, str, str]] = []
     async for event in handle.events(types=types):

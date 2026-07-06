@@ -437,25 +437,10 @@ def needed_model_event_uuids(
 def _output_only_model_event(event: ModelEvent) -> ModelEvent:
     """Return a copy of `event` retaining only its first-choice output message.
 
-    Used for `ModelEvent`s pass 1 determined are NOT needed to build the
-    scanned thread (i.e. not in `needed_model_event_uuids`'s result) when
-    `events` interleaving is enabled. `_AnchorWalk.add`
-    (`_transcript/interleave.py`) still needs every off-thread
-    `ModelEvent`'s `output.choices[0].message` to render it as a
-    `[E#] MODEL (BRANCH):` entry, or to recognize its id as a member of the
-    untruncated `compaction="all"` thread when deciding it is actually a
-    compaction-pruned turn that should stay hidden instead (see
-    `_AnchorWalk`'s `excluded_ids`). Nothing else is retained: `input`,
-    `tools`, and any output choice beyond the first are dropped, so pass 2
-    never holds more than one rendered output message per off-thread
-    `ModelEvent` -- never its (potentially huge) input.
-
-    Args:
-        event: A full (non-stubbed) `ModelEvent` from pass 2's stream.
-
-    Returns:
-        A `model_copy` of `event` with only the first output choice kept
-        and input/tools removed.
+    Used for off-thread `ModelEvent`s when `events` interleaving is
+    enabled: `_AnchorWalk` needs the output message to render (or exclude)
+    the event, but never its (potentially huge) `input`, `tools`, or
+    further output choices, so those are dropped.
     """
     output = event.output
     kept_choices = output.choices[:1] if output.choices else []
@@ -479,30 +464,12 @@ def _collect_pass2_model_events(
     """Recursively collect full and off-thread-output `ModelEvent`s from `event`.
 
     Recurses into `ToolEvent.events` so nested tool-spawned-agent
-    ModelEvents (e.g. inside a handoff tool's `.events`) are found too --
-    they never appear at the top level of a handle's flat event stream.
-
-    Populates two accumulators from a single pass-2 walk:
-
-    - `full_by_uuid`: every `ModelEvent` whose uuid is in `needed`, kept in
-      full -- the content the scanned thread's message reconstruction
-      reads. The (possibly large) `ToolEvent` payload a nested match was
-      found inside is not kept beyond this call.
-    - `offthread_by_uuid` (only populated when not `None`, i.e. when
-      `events` interleaving is enabled): every OTHER `ModelEvent`, reduced
-      via `_output_only_model_event` to just its rendered output message
-      -- bounded, since only the output (never the input) is retained.
-      `None` skips this collection entirely, matching `events=None`'s
-      byte-identical-to-before behavior.
-
-    Args:
-        event: A full (non-stubbed) event from pass 2's stream.
-        needed: uuids selected by ``needed_model_event_uuids`` in pass 1.
-        full_by_uuid: Accumulator mapping uuid -> full `ModelEvent`,
-            updated in place.
-        offthread_by_uuid: Accumulator mapping uuid -> output-only
-            `ModelEvent` for off-thread events, updated in place, or
-            `None` to skip this collection.
+    ModelEvents are found too (they never appear at the top level of a
+    handle's flat event stream); the enclosing `ToolEvent` payload is not
+    retained. A `ModelEvent` in `needed` goes to `full_by_uuid` in full;
+    any other goes to `offthread_by_uuid` reduced to its output message via
+    `_output_only_model_event`. `offthread_by_uuid=None` (when `events`
+    interleaving is disabled) skips that collection.
     """
     if isinstance(event, ModelEvent):
         if event.uuid is not None:
@@ -585,61 +552,23 @@ async def stream_timeline_messages(
         prompt_reserve: Context-window allowance for prompt scaffolding.
         events: Which non-message event types to interleave into each
             span's message thread, forwarded to `timeline_messages()`
-            (`"all"`, a list of event types, or `None` to disable
-            interleaving). When set, span-external events (events outside
-            any scannable span's direct content, e.g. root-level events or
-            a pruned `scorers` span's events) are collected from the
-            unpruned skeleton via `collect_span_external()` before the
-            `scorers` prune (see `include_scorers`), then forwarded
-            alongside `events` so they are spliced into the appropriate
-            span. `events=None` (default) is byte-identical to behavior
-            before this parameter existed. When `events` is not `None` and
-            `compaction != "all"`, pass 1's `needed` set is widened to
-            `needed | needed_model_event_uuids(..., compaction="all")`
-            before pass 2 substitutes full events back in: `_AnchorWalk`'s
-            `excluded_ids` discriminator (`span_interleaved_messages`,
-            `interleave.py`) tells a compaction-pruned turn apart from a
-            genuine fork by reconstructing the untruncated
-            `compaction="all"` thread, which reads every region's *last*
-            `ModelEvent`'s `input` (`span_messages`' merge). A region-last
-            event not needed by the actual `compaction` would otherwise be
-            substituted output-only (`input=[]`); with a cumulative input
-            (later turns' `input` embedding earlier turns' output messages,
-            as real transcripts do), that strips the only surviving record
-            of an earlier turn's output from the "all" reconstruction, so it
-            misses `excluded_ids` and misrenders as a spurious
-            `[E#] MODEL (BRANCH):` entry. Every OTHER `ModelEvent` not
-            selected by the widened `needed` set still retains only its
-            rendered output message (`_output_only_model_event`), never its
-            input. Memory: the extra retentions are bounded to one full
-            `ModelEvent` per pruned region (its region-last event, already a
-            small multiple of region count) in addition to the (already
-            bounded) `needed` and off-thread-output sets.
+            (`"all"`, a list of event types, or `None` (default) to
+            disable interleaving). Span-external events (e.g. root-level
+            events or a pruned `scorers` span's events) are collected via
+            `collect_span_external()` and spliced into the appropriate
+            span. When set with `compaction != "all"`, pass 1's `needed`
+            set is widened with the `compaction="all"` selection so the
+            compaction-pruned/fork discriminator (see `_AnchorWalk`) can
+            reconstruct the untruncated thread from full inputs -- an
+            extra retention of one full `ModelEvent` per pruned region.
         include_scorers: Whether to include scorer spans in message
-            extraction, mirroring `transcript_messages`' parameter of the
-            same name. Defaults to `False`: after pass 2 substitutes full
-            events back into the stub skeleton, `scorers` spans are pruned
-            (`timeline_filter(tree, lambda s: s.span_type != "scorers")`)
-            from the tree pass 1's selection and the final walk both use,
-            so a `scorers` span's `ModelEvent`s (e.g. a grader's call) are
-            never selected for full substitution and never appear in any
-            span's message thread; the *un*pruned skeleton is still used as
-            the `events`-interleaving collection source, so a pruned
-            `scorers` span's non-`ModelEvent` events (e.g. its final
-            `ScoreEvent`) still surface as span-external entries instead of
-            being silently dropped. Pass 1 seeing the same pruned tree as
-            the final walk (rather than the unpruned tree) is intentional:
-            it is what is actually walked, so it avoids needlessly
-            retaining a `scorers` span's `ModelEvent`s in pass 2 only to
-            never use them (a memory optimization, not a correctness
-            requirement -- retaining them would be harmless since they
-            would just never be read). When `True`: no pruning; the
-            collection source instead filters out only `scorers` spans that
-            have a direct `ModelEvent` (those are walked normally and
-            splice their own events via `span_interleaved_messages`, so
-            collecting them again here would double-render their score) --
-            matching `transcript_messages(..., include_scorers=True)`'s
-            semantics exactly.
+            extraction, mirroring `transcript_messages`' parameter.
+            Defaults to `False`: `scorers` spans are pruned from the tree
+            used for pass 1 selection and the final walk, so grader
+            `ModelEvent`s never appear in any thread; the unpruned
+            skeleton remains the `events`-collection source, so a pruned
+            span's other events (e.g. its final `ScoreEvent`) still
+            surface as span-external entries.
 
     Yields:
         `TimelineMessages` segments, identical to calling `timeline_messages`
@@ -657,15 +586,9 @@ async def stream_timeline_messages(
     stubs: list[Event] = [stub_event(ev, interner) async for ev in handle.events()]
     tree = timeline_build(stubs)
 
-    # Mirrors `transcript_messages`' default `include_scorers=False`: prune
-    # `scorers` spans from the tree that gets walked, so a grader's
-    # `ModelEvent`s never enter any span's message thread. Pass 1's
-    # selection (`needed_model_event_uuids`, below) intentionally sees this
-    # same pruned tree rather than the unpruned one -- it mirrors exactly
-    # what the final walk sees, so a `scorers` span's `ModelEvent`s are
-    # never selected for full substitution in the first place (see the
-    # `include_scorers` parameter's docstring above for why this is a
-    # memory optimization, not a correctness requirement).
+    # Prune `scorers` spans from the walked tree (grader ModelEvents never
+    # enter a thread). Pass 1 sees the same pruned tree, so a scorers
+    # span's ModelEvents are never retained in full only to go unread.
     walk_tree = (
         tree
         if include_scorers
@@ -676,24 +599,19 @@ async def stream_timeline_messages(
         walk_tree.root, compaction=compaction, depth=depth
     )
     if events is not None and compaction != "all":
-        # `span_interleaved_messages`' `excluded_ids` discriminator
-        # reconstructs the untruncated `compaction="all"` thread, which
-        # reads every region's last ModelEvent's `input`. Retain those in
-        # full too (not just the actual `compaction`'s `needed` set), or a
-        # pruned region's last event -- substituted output-only otherwise --
-        # can silently drop an earlier turn's output from the "all"
-        # reconstruction when inputs are cumulative, misclassifying it as a
-        # genuine fork instead of compaction-pruned (see the `events`
-        # parameter's docstring above).
+        # The compaction-pruned/fork discriminator reconstructs the
+        # untruncated `compaction="all"` thread from region-last
+        # ModelEvents' inputs, so retain those in full too -- otherwise
+        # they'd be substituted output-only and pruned turns would
+        # misrender as forks.
         needed |= needed_model_event_uuids(
             walk_tree.root, compaction="all", depth=depth
         )
 
     full_by_uuid: dict[str, ModelEvent] = {}
-    # Populated only when `events` interleaving is enabled: off-thread
-    # ModelEvents' output messages, so part-A's branch-entry rendering (and
-    # Job 1's compaction-pruned/fork discriminator) sees real content
-    # instead of empty stubs, without retaining off-thread inputs.
+    # Only when `events` interleaving is enabled: off-thread ModelEvents'
+    # output messages, so branch-entry rendering sees real content instead
+    # of empty stubs, without retaining off-thread inputs.
     offthread_by_uuid: dict[str, ModelEvent] | None = {} if events is not None else None
     async for ev in handle.events():
         _collect_pass2_model_events(ev, needed, full_by_uuid, offthread_by_uuid)
@@ -707,15 +625,11 @@ async def stream_timeline_messages(
             "calls, violating the TranscriptHandle multi-shot contract"
         )
 
-    # `timeline_filter` copies `TimelineSpan` nodes but keeps the same
-    # `TimelineEvent` leaf object references, so substituting into
-    # `walk_tree.root` also mutates every kept event still reachable from
-    # the unpruned `tree` (used below as the `events`-collection source
-    # when `not include_scorers`). Events inside a pruned-away `scorers`
-    # span are unreachable from `walk_tree` and so are never substituted --
-    # they stay stubbed in `tree` too, which is fine: they are never walked
-    # into a message thread, and if `events` interleaving ever surfaced one
-    # externally it would render only stub content, never the real one.
+    # `timeline_filter` copies span nodes but shares `TimelineEvent` leaf
+    # references, so substituting into `walk_tree` also updates the events
+    # reachable from the unpruned `tree` (the collection source below).
+    # Events inside a pruned scorers span stay stubbed -- fine, since they
+    # are never walked into a thread.
     _substitute_full_events(walk_tree.root, full_by_uuid)
     if offthread_by_uuid:
         _substitute_full_events(walk_tree.root, offthread_by_uuid)
@@ -727,15 +641,8 @@ async def stream_timeline_messages(
             scorers_collection_source,
         )
 
-        # Matches `transcript_messages`' collection-source choice -- see
-        # `scorers_collection_source()`'s docstring: the unpruned `tree` is
-        # the collection source by default so a pruned `scorers` span's
-        # non-`ModelEvent` events (e.g. its final `ScoreEvent`) still
-        # surface as span-external entries instead of being silently
-        # dropped; when `include_scorers=True`, `scorers` spans with a
-        # direct `ModelEvent` are filtered out since they are walked
-        # normally and splice their own events via
-        # `span_interleaved_messages`.
+        # Collect from the unpruned tree so a pruned scorers span's events
+        # still surface; see scorers_collection_source().
         collection_source = scorers_collection_source(tree, include_scorers)
         span_external = collect_span_external(collection_source, events, depth=depth)
 

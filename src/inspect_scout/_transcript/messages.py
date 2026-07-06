@@ -427,13 +427,10 @@ async def transcript_messages(
         events: Which non-message event types to interleave into each
             span's message thread as marked entries (``"all"``, a
             list of event types, or ``None`` to disable interleaving).
-            Only affects the timeline path. When set, span-external
-            events (events outside any scannable span's direct
-            content, e.g. root-level events or a pruned ``scorers``
-            span's events) are collected from the unpruned timeline
-            via ``collect_span_external()`` before the ``scorers``
-            prune, then forwarded to ``timeline_messages()`` alongside
-            ``events`` so they are spliced into the appropriate span.
+            Only affects the timeline path. Span-external events (e.g.
+            root-level events or a pruned ``scorers`` span's events)
+            are collected via ``collect_span_external()`` and spliced
+            into the appropriate span.
 
     Yields:
         ``MessagesSegment`` (or ``TimelineMessages``) for each segment.
@@ -472,14 +469,8 @@ async def transcript_messages(
                 scorers_collection_source,
             )
 
-            # See collect_span_external()'s and scorers_collection_source()'s
-            # docstrings for why the scorers span is included here when it
-            # will be pruned below (its events must be collected before
-            # they're lost) but filtered out here when it will survive
-            # pruning AND be walked as an ordinary scannable span by
-            # timeline_messages (its events are instead spliced in directly
-            # by span_interleaved_messages, and collecting them here too
-            # would double-render them).
+            # Collect before the scorers prune below; see
+            # scorers_collection_source() for the include_scorers handling.
             collection_source = scorers_collection_source(selected, include_scorers)
             span_external = collect_span_external(
                 collection_source, events, depth=depth

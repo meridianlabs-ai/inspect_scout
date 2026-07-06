@@ -204,20 +204,17 @@ def _emit_assistant_turn(
     messages.append(assistant_msg)
     last_ts = turn.timestamp
 
-    for tc in toolcalls:
-        tc_id = str(tc.get("id") or "")
-        function = str(tc.get("name") or "unknown")
-        arguments = tc.get("arguments") or {}
-        arguments = arguments if isinstance(arguments, dict) else {}
-        result = parsed.result_by_callid.get(tc_id)
+    for tc, tool_call in zip(toolcalls, tool_calls, strict=True):
+        result = parsed.result_by_callid.get(tool_call.id)
         result_content, completed, error, failed = _tool_result_fields(
             result, turn.timestamp
         )
         child = _resolve_spawned_child(result, ctx, depth)
         if child is not None:
+            child_session, child_entry = child
             span_end = _emit_subagent_span(
-                child[0],
-                child[1],
+                child_session,
+                child_entry,
                 tc,
                 result,
                 ctx,
@@ -231,9 +228,9 @@ def _emit_assistant_turn(
         else:
             events.append(
                 ToolEvent(
-                    id=tc_id,
-                    function=function,
-                    arguments=arguments,
+                    id=tool_call.id,
+                    function=tool_call.function,
+                    arguments=tool_call.arguments,
                     result=cast(ToolResultContent, result_content),
                     error=error,
                     failed=failed,
@@ -248,8 +245,8 @@ def _emit_assistant_turn(
         messages.append(
             ChatMessageTool(
                 content=result_content,
-                tool_call_id=tc_id,
-                function=function,
+                tool_call_id=tool_call.id,
+                function=tool_call.function,
                 error=error,
             )
         )

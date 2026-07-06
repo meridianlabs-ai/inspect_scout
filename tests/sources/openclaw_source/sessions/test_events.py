@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 from pathlib import Path
+from typing import Any
 
 from inspect_ai.event import (
     CompactionEvent,
@@ -80,6 +81,49 @@ class TestThreadContent:
         events, _ = build_fixture(SUBAGENT)
         starts = [e.working_start for e in events]
         assert starts == sorted(starts)
+
+    def test_tool_call_without_result(self, tmp_path: Path) -> None:
+        records: list[dict[str, Any]] = [
+            {
+                "type": "session",
+                "version": 3,
+                "id": "s1",
+                "timestamp": "2026-07-06T10:00:00.000Z",
+                "cwd": "/w",
+            },
+            {
+                "type": "message",
+                "id": "m1",
+                "parentId": None,
+                "timestamp": "2026-07-06T10:00:01.000Z",
+                "message": {
+                    "role": "assistant",
+                    "model": "claude-opus-4-8",
+                    "content": [
+                        {
+                            "type": "toolCall",
+                            "id": "tc-orphan",
+                            "name": "exec",
+                            "arguments": {},
+                        }
+                    ],
+                },
+            },
+        ]
+        parsed = parse_session(records, "in-memory")
+        events, messages = build_content(
+            parsed, BuildContext(sessions_dir=tmp_path, registry=None)
+        )
+        tool_events = [e for e in events if isinstance(e, ToolEvent)]
+        assert len(tool_events) == 1
+        te = tool_events[0]
+        assert te.result == ""
+        assert te.failed is None
+        assert te.error is None
+        assert te.completed == te.timestamp
+        # the orphan call still gets a ChatMessageTool in the thread
+        roles = Counter(type(m).__name__ for m in messages)
+        assert roles == Counter(ChatMessageAssistant=1, ChatMessageTool=1)
 
     def test_no_spans_without_registry(self) -> None:
         orchestrator = FX_DEMO / "cfabe24d-8b34-4031-a393-689524b2028f.jsonl"

@@ -27,8 +27,8 @@ from .types import ScannerInput
 def _is_transcript_handle_annotation(arg: Any) -> bool:
     """Whether an annotation is the TranscriptHandle protocol or a concrete impl.
 
-    Avoids ``issubclass(arg, TranscriptHandle)`` — the protocol has a
-    non-method member (``info``) so it does not support ``issubclass``.
+    Identity comparison, since the protocol's non-method ``info`` member breaks
+    ``issubclass``.
     """
     return arg is TranscriptHandle or arg in (
         MaterializedTranscriptHandle,
@@ -37,11 +37,9 @@ def _is_transcript_handle_annotation(arg: Any) -> bool:
 
 
 def _matches_transcript_or_handle(type_annotation: Any) -> bool:
-    """Whether an annotation is a ``Transcript | TranscriptHandle`` union.
+    """Whether an annotation is a union of ``Transcript`` and TranscriptHandle types.
 
-    Recognizes a union that contains ``Transcript`` and whose remaining
-    members are all TranscriptHandle types. Such a scanner (e.g.
-    ``llm_scanner``) uses the identity loader.
+    Such a scanner uses the identity loader.
     """
     if not is_union_type(type_annotation):
         return False
@@ -152,10 +150,9 @@ def create_implicit_loader(
     input_annotation = next(
         iter(inspect.signature(scanner_fn).parameters.values())
     ).annotation
-    # A bare Transcript, or a `Transcript | TranscriptHandle` union (llm_scanner
-    # opts into streaming reads), both use the identity loader: the legacy path
-    # hands the loader a materialized Transcript, and the handle path bypasses
-    # the loader entirely (the pipeline passes the handle directly).
+    # A bare Transcript, or a `Transcript | TranscriptHandle` union, both use
+    # the identity loader: a materialized Transcript flows through it, while a
+    # handle bypasses the loader (the pipeline passes it directly).
     if (
         input_annotation is inspect.Parameter.empty
         or input_annotation == Transcript

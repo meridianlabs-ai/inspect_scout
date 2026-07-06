@@ -495,8 +495,8 @@ def _union_covers_union(scanner_type: Any, target_type: Any) -> bool:
 def _is_transcript_handle_type(type_hint: Any) -> bool:
     """Whether a type hint is the TranscriptHandle protocol or a concrete impl.
 
-    Avoids ``issubclass(type_hint, TranscriptHandle)`` — the protocol has a
-    non-method member (``info``) so it does not support ``issubclass``.
+    Identity comparison, since the protocol's non-method ``info`` member breaks
+    ``issubclass``.
     """
     return type_hint is TranscriptHandle or type_hint in (
         MaterializedTranscriptHandle,

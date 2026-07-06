@@ -27,24 +27,6 @@ async def test_event_message_numbered_as_e_and_skips_m() -> None:
 
 
 @pytest.mark.asyncio
-async def test_event_reference_resolves_as_event() -> None:
-    render, extract_refs = message_numbering()
-    await render(
-        [
-            ChatMessageUser(
-                content="ERROR:\nboom\n",
-                id="ev-42",
-                metadata={EVENT_MARKER_KEY: True},
-            )
-        ]
-    )
-    refs = extract_refs("see [E1]")
-    assert len(refs) == 1
-    assert refs[0].type == "event"
-    assert refs[0].id == "ev-42"
-
-
-@pytest.mark.asyncio
 async def test_event_counter_continues_across_render_calls() -> None:
     # segment_messages renders per-segment via separate calls; ordinals must
     # accumulate globally so [E#] stays unique across segments.

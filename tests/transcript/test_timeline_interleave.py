@@ -831,65 +831,28 @@ async def test_stream_tool_event_nested_subagent_depth_excluded_parity() -> None
 
 
 def _agentic_events_with_scores() -> list[Event]:
-    """``agentic_events()`` augmented with in-span/external/scorers/nested scores.
+    """``agentic_events()`` augmented to exercise every attachment path.
 
-    Exercises all four attachment paths ``collect_span_external``
-    distinguishes:
-
-    - An in-span ``ScoreEvent(span_id="main")`` lands directly in "main"'s
-      own content, owned by "main"'s own ``span_interleaved_messages``
-      splice (never externally collected).
-    - A ``ScoreEvent(span_id="sub")`` lands inside the "sub" utility span
-      (not scannable), so it is collected externally and attributed to the
-      last scannable span reached before "sub" ("main").
-    - A ``ScoreEvent(span_id="sub2")`` lands inside "sub2", a nested
-      *scannable* span (its own direct ``ModelEvent``s, not utility) two
-      scannable levels deep under the synthetic root (root == "main" here,
-      since ``timeline_build`` collapses the trivial "solvers" wrapper --
-      see ``_materialized_collection_source``'s tree). This is the case
-      where the ``depth`` axis genuinely matters for collection: at
-      ``depth=None`` "sub2" is walked directly and the score is owned by
-      its own splice; at ``depth=1`` "sub2" exceeds the depth limit and is
-      never walked, so the score must instead surface via external
-      collection, attributed to the last span actually walked ("main").
-    - A "scorers" span with a direct grader ``ModelEvent`` plus its own
-      ``ScoreEvent``, appended at the end of "main"'s content (per
-      ``timeline_build``'s phase-span handling, a "scorers" span with no
-      other siblings ends up nested as the last child of "main", not a
-      top-level sibling of "solvers"): under the default
-      ``include_scorers=False``, this span is pruned from the walked tree
-      entirely, so the grader ``ModelEvent`` never renders and the
-      ``ScoreEvent`` instead surfaces via external collection from the
-      unpruned tree, attributed to the last span actually walked ("main").
-
-    Also inserts a genuine off-thread fork ``ModelEvent`` ("fork-1") into
-    "main", immediately before its closing turn, so streaming/materialized
-    parity coverage genuinely exercises a ``[E#] MODEL (BRANCH):`` entry
-    rather than relying on incidental non-cumulative fixture inputs.
-
-    Also exercises (unmodified, via plain ``agentic_events()``) the "sub"
-    utility span's two ``ModelEvent``s ("sub-1"/"sub-2", outputs
-    "sub-output-1"/"sub-output-2"): a utility span is never scannable, so
-    these are span-external ModelEvents with no thread of their own,
-    landing squarely in ``_collect_span_external``'s ModelEvent branch (the
-    bug this fixture-level parity test was extended to cover). They render
-    as ``MODEL (BRANCH)`` entries attributed to "main" -- the last
-    scannable span reached before "sub" -- rather than being silently
-    dropped as they were before that fix.
+    - ``ScoreEvent(span_id="main")``: in-span, owned by "main"'s splice.
+    - ``ScoreEvent(span_id="sub")``: inside a utility span, collected
+      externally and attributed to "main".
+    - ``ScoreEvent(span_id="sub2")``: inside a nested scannable span --
+      owned by its own splice at ``depth=None``, external (attributed to
+      "main") at ``depth=1``.
+    - A "scorers" span with grader ``ModelEvent`` + ``ScoreEvent``: pruned
+      by default, grader never renders, score surfaces externally.
+    - A genuine off-thread fork ``ModelEvent`` ("fork-1") in "main",
+      rendering as a ``[E#] MODEL (BRANCH):`` entry.
+    - (From plain ``agentic_events()``) the "sub" utility span's
+      ``ModelEvent``s: span-external model calls with no thread, rendered
+      as ``MODEL (BRANCH)`` entries attributed to "main".
     """
     events = list(agentic_events())
 
-    # Genuine off-thread fork: a "main"-prompt ModelEvent inserted right
-    # before the closing "main-3" turn, with the default fresh (non-
-    # cumulative) input `_model_event()` builds absent an explicit
-    # `input_messages=` override. Its output id therefore never joins ANY
-    # reconstructed thread, at any `compaction` value -- unlike a
-    # compaction-pruned turn (which IS a member of the untruncated
-    # `compaction="all"` thread). Exercises the fork/compaction-pruned
-    # discriminator (`_AnchorWalk`'s `excluded_ids`,
-    # `_transcript/interleave.py`) end-to-end on both the streaming and
-    # materialized paths: it must render as `[E#] MODEL (BRANCH):` with its
-    # real output text on both, never as an empty stub.
+    # Genuine off-thread fork inserted before the closing "main-3" turn:
+    # its output id never joins any reconstructed thread at any compaction
+    # value, so it must render as `[E#] MODEL (BRANCH):` with real output
+    # text on both the streaming and materialized paths.
     main3_index = next(
         i
         for i, e in enumerate(events)
@@ -1083,27 +1046,14 @@ async def test_stream_timeline_messages_events_parity(
 def _cumulative_compaction_events() -> list[Event]:
     """A single "main" span with genuinely CUMULATIVE, multi-region compaction.
 
-    - Region 1: turn "t1" (fresh input), then turn "t2" whose input is
-      cumulative -- it literally embeds "t1"'s own output message object
-      (``[System, user1, assistant1, user2]``), mirroring how a real
-      transcript's ``ModelEvent.input`` grows turn over turn. "t2" is
-      region 1's last event.
-    - A ``CompactionEvent(type="summary")`` boundary.
-    - Region 2: turn "t3" alone (fresh input).
-    - A second ``CompactionEvent(type="summary")`` boundary.
-    - Region 3: a genuine off-thread fork ("fork", fresh, unrelated input)
-      whose output never joins ANY reconstructed thread (it is not any
-      region's last event), then turn "t4" (fresh input) -- region 3's
-      (and the whole span's) last event.
-    - A trailing in-span ``ScoreEvent``.
+    Three compaction regions: "t1" then "t2" (whose input embeds "t1"'s
+    output, as real transcripts do); "t3"; a genuine off-thread fork then
+    "t4"; plus a trailing in-span ``ScoreEvent``.
 
-    Reproduces the streaming compaction-discriminator bug: under
-    ``compaction in ("last", 2)``, region 1 is pruned from the actual kept
-    thread, but ``span_interleaved_messages``' ``excluded_ids`` can only
-    recover "t1"'s output through "t2"'s cumulative input -- so "t2" must
-    be retained in full (not output-only) by the streaming path for the
-    discriminator to classify "t1" as compaction-pruned rather than a
-    genuine fork.
+    Under ``compaction in ("last", 2)`` region 1 is pruned, and "t1"'s
+    output is only recoverable through "t2"'s cumulative input -- so the
+    streaming path must retain "t2" in full (not output-only) for the
+    discriminator to classify "t1" as compaction-pruned rather than a fork.
     """
     ev_t1 = _agentic_model_event(
         label="cc-t1", system_prompt="MAIN", output_text="turn1-output", span_id="main"
@@ -1275,21 +1225,10 @@ async def test_stream_timeline_messages_events_uuidless_raises() -> None:
 
     Companion to ``test_selection_uuidless_raises``
     (``test_timeline_stream.py``): a needed ``ModelEvent`` lacking a uuid
-    makes pass 1 fail regardless of ``events``, since events never add
-    needed uuids (they don't contribute thread messages) and the raise
-    happens in pass 1, before ``events``/``span_external`` are ever
-    consulted.
-
-    This stands in for extending the llm_scanner-level
-    ``test_stub_unsupported_falls_back`` fallback test
-    (``tests/llm_scanner/test_streaming.py``) with ``events=["score"]``:
-    that test drives ``llm_scanner()``, whose routing does not yet thread
-    an ``events`` argument into its ``stream_timeline_messages`` call (that
-    wiring is Task 5), so passing ``events`` there today would not
-    exercise this parameter at all. Testing directly against
-    ``stream_timeline_messages`` instead proves the property Task 5's test
-    will rely on: passing ``events`` cannot mask or change a
-    ``_StubSkeletonUnsupported`` raise.
+    makes pass 1 fail regardless of ``events`` -- the raise happens before
+    ``events``/``span_external`` are ever consulted, so passing ``events``
+    cannot mask or change it (the property llm_scanner's fallback relies
+    on).
     """
     from inspect_scout._transcript.timeline_stream import _StubSkeletonUnsupported
 

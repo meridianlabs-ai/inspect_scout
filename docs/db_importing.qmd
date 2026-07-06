@@ -13,11 +13,13 @@ You can populate a transcript database in a variety of ways depending on where y
 
 3. [Claude Code](#claude-code): Read transcript data from local Claude Code sessions.
 
-4. [Transcript API](#transcript-api): Python API for creating and inserting transcripts.
+4. [OpenClaw](#openclaw): Read transcript data from native OpenClaw session files (`~/.openclaw/agents/*/sessions/`).
 
-5. [Arrow Import](#arrow-import): Efficient direct insertion using `RecordBatchReader`.
+5. [Transcript API](#transcript-api): Python API for creating and inserting transcripts.
 
-6. [Parquet Data Lake](#parquet-data-lake): Use an existing data lake not created using Inspect Scout.
+6. [Arrow Import](#arrow-import): Efficient direct insertion using `RecordBatchReader`.
+
+7. [Parquet Data Lake](#parquet-data-lake): Use an existing data lake not created using Inspect Scout.
 
 
 We'll cover each of these in turn below. Before proceeding though you should be sure to familiarize yourself with the [Database Schema](db_schema.qmd) and make a plan for how you want to map your data into it.
@@ -276,6 +278,51 @@ Claude Code transcripts are mapped to the database schema as follows:
 | `agent` | `"claude-code"` |
 
 
+## OpenClaw {#openclaw}
+
+[OpenClaw](https://openclaw.ai) is an open-source AI assistant. Scout can import the native session files OpenClaw writes under `~/.openclaw/agents/<agent>/sessions/` — one `.jsonl` per session plus a `sessions.json` registry describing how sessions relate.
+
+Use the `openclaw()` transcript source to import sessions:
+
+```python
+from inspect_scout import transcripts_db
+from inspect_scout.sources import openclaw
+
+async with transcripts_db("s3://my-transcript-db/") as db:
+    await db.insert(openclaw())
+```
+
+By default, all sessions across all agents are imported (scanning `~/.openclaw/agents/*/sessions/`). You can narrow the import by specifying a path, session ID, or time range:
+
+```python
+# Import sessions from a specific sessions directory
+await db.insert(openclaw(
+    path="~/.openclaw/agents/my-agent/sessions",
+))
+
+# Import a specific session by ID
+await db.insert(openclaw(
+    session_id="abc123-def456",
+))
+
+# Import sessions from a time range
+from datetime import datetime
+await db.insert(openclaw(
+    from_time=datetime(2025, 1, 1),
+    to_time=datetime(2025, 6, 30),
+))
+```
+
+Each session that is not a spawned sub-agent becomes one transcript; sub-agent sessions are nested inside their parent transcript as agent spans (located via `sessions.json` — without it, every file imports standalone).
+
+OpenClaw transcripts are mapped to the database schema as follows:
+
+| Field | Value |
+|-------|-------|
+| `transcript_id` | The OpenClaw session id |
+| `source_type` | `"openclaw"` |
+| `agent` | `"openclaw"` |
+
 ## Transcript API
 
 You can import transcripts from any source so long as you can create `Transcript` objects to be imported. In this example imagine we have a `read_weave_transcripts()` function which can read transcripts from an external JSON transcript format:
@@ -460,6 +507,7 @@ The `scout import` command provides a CLI alternative to the Python API for impo
 
 ```bash
 scout import claude_code
+scout import openclaw
 scout import phoenix -P project=my-project
 scout import langsmith -P project=my-project --limit 100
 scout import weave -P project=my-team/my-project

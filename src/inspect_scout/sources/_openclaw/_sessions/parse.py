@@ -12,7 +12,10 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from logging import getLogger
 from typing import Any, Literal
+
+logger = getLogger(__name__)
 
 _EPOCH = datetime.fromtimestamp(0, tz=timezone.utc)
 
@@ -120,6 +123,8 @@ def parse_session(raw_records: list[dict[str, Any]], source: str) -> ParsedSessi
         )
     version = header_rec.get("version")
     header = SessionHeader(
+        # An empty id is accepted here; identity fallback/cross-check (e.g. to
+        # the session file's stem) is deferred to the transcripts layer.
         session_id=str(header_rec.get("id") or ""),
         version=int(version) if version is not None else None,
         timestamp=_parse_iso(header_rec.get("timestamp")),
@@ -179,7 +184,22 @@ def parse_session(raw_records: list[dict[str, Any]], source: str) -> ParsedSessi
                     timestamp=ts,
                 )
                 if result.tool_call_id:
+                    if result.tool_call_id in result_by_callid:
+                        # Native records are append-only, so a re-emission is
+                        # the authoritative final result — keep the last one.
+                        logger.warning(
+                            "Duplicate toolCallId '%s' in %s; keeping the last result",
+                            result.tool_call_id,
+                            source,
+                        )
                     result_by_callid[result.tool_call_id] = result
+                else:
+                    # Without a toolCallId the result cannot be joined to any
+                    # call — drop it, but observably.
+                    logger.warning(
+                        "toolResult without a toolCallId in %s; dropping it",
+                        source,
+                    )
             else:
                 raise ValueError(f"Unknown OpenClaw message role '{role}' in {source}")
         elif rtype == "custom_message":

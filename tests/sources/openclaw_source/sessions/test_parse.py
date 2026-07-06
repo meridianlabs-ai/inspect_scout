@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -128,3 +129,60 @@ class TestParseSession:
     def test_empty_raises(self) -> None:
         with pytest.raises(ValueError, match="[Ee]mpty"):
             parse_session([], "test")
+
+    def test_duplicate_tool_call_id_warns_and_keeps_last(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        records: list[dict[str, Any]] = [
+            dict(HEADER),
+            {
+                "type": "message",
+                "id": "t1",
+                "parentId": "s1",
+                "timestamp": "2026-07-06T10:00:01.000Z",
+                "message": {
+                    "role": "toolResult",
+                    "toolCallId": "tc1",
+                    "toolName": "exec",
+                    "content": "first",
+                },
+            },
+            {
+                "type": "message",
+                "id": "t2",
+                "parentId": "t1",
+                "timestamp": "2026-07-06T10:00:02.000Z",
+                "message": {
+                    "role": "toolResult",
+                    "toolCallId": "tc1",
+                    "toolName": "exec",
+                    "content": "second",
+                },
+            },
+        ]
+        with caplog.at_level(logging.WARNING):
+            parsed = parse_session(records, "test")
+        assert any("tc1" in rec.message for rec in caplog.records)
+        assert parsed.result_by_callid["tc1"].content == "second"
+
+    def test_tool_result_without_call_id_warns(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        records: list[dict[str, Any]] = [
+            dict(HEADER),
+            {
+                "type": "message",
+                "id": "t1",
+                "parentId": "s1",
+                "timestamp": "2026-07-06T10:00:01.000Z",
+                "message": {
+                    "role": "toolResult",
+                    "toolName": "exec",
+                    "content": "orphan",
+                },
+            },
+        ]
+        with caplog.at_level(logging.WARNING):
+            parsed = parse_session(records, "test")
+        assert any("test" in rec.message for rec in caplog.records)
+        assert parsed.result_by_callid == {}

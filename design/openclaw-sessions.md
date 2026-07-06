@@ -13,10 +13,13 @@ canonical, strictly richer format — hence it gets the plain `openclaw` name.
 Both importers set `agent="openclaw"` (the agent that produced the run) and can
 coexist in one transcript database, distinguished by `source_type`.
 
-Sample data: `.dev/data/fx-demo/sessions/` — one orchestrator (dashboard
-surface) that spawns three FX-rate sub-agents, plus `sessions.json` and
-trajectory files. All schema observations below come from that capture
-(session schema `version: 3`).
+Schema observations below come from two captures (session schema
+`version: 3`): a small FX-rate demo (one dashboard orchestrator spawning three
+sub-agents) and a larger multi-session capture that includes a real
+`compaction` record. During development these live in `.dev/data/` (`fx-demo/`
+and `openclaw-sessions/`), which is **intentionally untracked** — the durable,
+committed copies are the fixtures under `tests/sources/openclaw_source/`
+that automated tests actually consume (see "Testing").
 
 ## The native bundle
 
@@ -112,6 +115,7 @@ to learn what branching looks like in real data than to guess a linearization.
 | `message` role `assistant` | `ModelEvent` (input = running thread so far; per-turn `usage`, `model`, `stopReason`, `responseId`) + `ChatMessageAssistant`; then one `ToolEvent` per `toolCall` block |
 | `message` role `toolResult` | Completes the matching `ToolEvent` by `toolCallId`: result content, real completion timestamp (true call→result spans), `isError` → `ToolEvent.failed`/`ToolCallError` (as in telemetry-hal), and `details` (e.g. `exec` `durationMs`, `exitCode`) into `ToolEvent.metadata` + `ChatMessageTool` |
 | `custom_message` (e.g. `openclaw.sessions_yield`) | `ChatMessageUser` — injected into the next run's context, so the model saw it |
+| `compaction` | `CompactionEvent` with `tokens_before`; the record's `summary` text, `firstKeptEntryId`, `details` (read/modified file lists), and `fromHook` go in the event's `metadata` (`tokens_after` is not recorded by OpenClaw — left `None`) |
 | `model_change` / `thinking_level_change` | Not events in v1; `model_change` seeds the initial model name |
 | `custom` (`model-snapshot`, `openclaw:bootstrap-context:*`) | Ignored for content (run-boundary bookkeeping) |
 | `leaf` | Ignored (branch bookkeeping) |
@@ -249,19 +253,23 @@ natural. Coverage:
 - integration: import the fixture bundle end-to-end → exactly one transcript
   with three nested agent spans
 
-The fx-demo capture lacks compaction records, true branches, telegram-surface
-sessions, and multi-level spawn trees. Richer captures exist (more complex
-OpenClaw sessions are available on request) and should be used to (a) manually
-sanity-check the importer during development and (b) mint additional fixtures —
-especially for whatever the compaction record looks like, since unknown record
-types fail the import by design.
+Fixtures are the only sample data committed to the repo: the dev-time captures
+under `.dev/data/` are intentionally untracked, so anything a test needs must
+be copied (trimmed if large) into the fixtures directory. The
+`.dev/data/openclaw-sessions/` capture (15 sessions, including a real
+`compaction` record) is the source for compaction fixtures and for one-off
+manual sanity checks during development. Still unobserved in any capture:
+true divergent branches, telegram-surface sessions, and multi-level spawn
+trees — worth minting fixtures for if richer captures become available.
 
 ## Known limitations
 
-- **Compaction records unsupported (by design, temporarily).** No compaction
-  record appears in the sample, so there is nothing to design against. The
-  first compacted session will fail the import with the record type named;
-  support gets added when we can see the real shape.
+- **Post-compaction `ModelEvent.input`s are not rewritten.** A `compaction`
+  record becomes a `CompactionEvent` (summary and details in metadata), but
+  subsequent model events keep threading the full running conversation as
+  `input` rather than reconstructing the compacted view (summary +
+  `firstKeptEntryId` onwards) the model actually saw — the same convention as
+  the telemetry-hal importer.
 - **System prompt text unavailable** — see "System prompts".
 - **`parentSessionKey` chains are not merged** — one transcript per session
   file; lineage in metadata only.

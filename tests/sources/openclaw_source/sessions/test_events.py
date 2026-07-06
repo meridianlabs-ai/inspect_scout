@@ -87,6 +87,47 @@ class TestThreadContent:
         starts = [e.working_start for e in events]
         assert starts == sorted(starts)
 
+    def test_stop_reason_and_response_id_mapped(self) -> None:
+        events, _ = build_fixture(SUBAGENT)
+        model_events = [e for e in events if isinstance(e, ModelEvent)]
+        assert [e.output.stop_reason for e in model_events] == [
+            "tool_calls",
+            "tool_calls",
+            "stop",
+        ]
+        assert model_events[0].metadata == {
+            "response_id": "msg_01D96KRhC582hGM2Wb94vwND"
+        }
+
+    def test_unrecognized_stop_reason_maps_to_unknown(self, tmp_path: Path) -> None:
+        records: list[dict[str, Any]] = [
+            {
+                "type": "session",
+                "version": 3,
+                "id": "s1",
+                "timestamp": "2026-07-06T10:00:00.000Z",
+                "cwd": "/w",
+            },
+            {
+                "type": "message",
+                "id": "m1",
+                "parentId": None,
+                "timestamp": "2026-07-06T10:00:01.000Z",
+                "message": {
+                    "role": "assistant",
+                    "model": "claude-opus-4-8",
+                    "content": "hi",
+                    "stopReason": "somethingNew",
+                },
+            },
+        ]
+        parsed = parse_session(records, "in-memory")
+        events, _ = build_content(
+            parsed, BuildContext(sessions_dir=tmp_path, registry=None)
+        )
+        model_events = [e for e in events if isinstance(e, ModelEvent)]
+        assert model_events[0].output.stop_reason == "unknown"
+
     def test_tool_call_without_result(self, tmp_path: Path) -> None:
         records: list[dict[str, Any]] = [
             {

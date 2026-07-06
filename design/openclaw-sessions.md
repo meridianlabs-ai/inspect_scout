@@ -158,8 +158,8 @@ anchored at the spawn call, the spawn `ToolEvent` folded in as the span's first
 child (tagged `agent_span_id`), the child's own `ModelEvent`s/`ToolEvent`s with
 `span_id` set, and a `SpanEndEvent` at the child's last timestamp. The span
 name is the spawn `label` argument; span metadata carries the child's
-`session_key`, `session_id`, `task`, and registry enrichment (`status`, token
-rollups). Nested spawns recurse, depth-bounded (`max_depth=5`, as in the
+`session_key`, `session_id`, `task`, and registry enrichment (`status`).
+Nested spawns recurse, depth-bounded (`max_depth=5`, as in the
 Claude Code importer). Sub-agent messages never enter the main thread.
 
 **Announce results.** A sub-agent's final report arrives in the orchestrator's

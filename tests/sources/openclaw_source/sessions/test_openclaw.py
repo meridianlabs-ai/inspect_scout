@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from inspect_ai.event import ModelEvent, SpanBeginEvent
+from inspect_ai.event import ModelEvent, SpanBeginEvent, ToolEvent
 from inspect_scout import Transcript
 from inspect_scout.sources._openclaw import OPENCLAW_SOURCE_TYPE, openclaw
 
@@ -122,6 +122,44 @@ def _spawning_session(
     ]
 
 
+def _spawning_session_with_result(
+    session_id: str, call_id: str, result_json: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Like ``_spawning_session`` but with an arbitrary spawn result payload."""
+    return [
+        _header(session_id, "2026-07-06T10:00:00.000Z"),
+        _user("u1", None, "2026-07-06T10:00:01.000Z"),
+        _assistant(
+            "a1",
+            "u1",
+            "2026-07-06T10:00:02.000Z",
+            [
+                {"type": "text", "text": "spawning"},
+                {
+                    "type": "toolCall",
+                    "id": call_id,
+                    "name": "sessions_spawn",
+                    "arguments": {"task": "do work", "label": "child", "mode": "run"},
+                },
+            ],
+        ),
+        {
+            "type": "message",
+            "id": "r1",
+            "parentId": "a1",
+            "timestamp": "2026-07-06T10:00:03.000Z",
+            "message": {
+                "role": "toolResult",
+                "toolCallId": call_id,
+                "toolName": "sessions_spawn",
+                "content": [{"type": "text", "text": json.dumps(result_json)}],
+                "isError": False,
+                "timestamp": 0,
+            },
+        },
+    ]
+
+
 class TestOpenclawSource:
     @pytest.mark.asyncio
     async def test_bundle_yields_one_orchestrator_transcript(self) -> None:
@@ -153,6 +191,7 @@ class TestOpenclawSource:
         assert t.metadata["cwd"] == "/home/ubuntu/.openclaw/workspace"
         assert t.metadata["session_version"] == 3
         assert t.metadata["status"] == "done"
+        assert t.metadata["channel"] == "webchat"
         assert "systemPrompt" in t.metadata["system_prompt_report"]
 
     @pytest.mark.asyncio
@@ -254,6 +293,35 @@ class TestOpenclawSource:
         assert t.metadata["subagent_session_ids"] == [child_id]
 
     @pytest.mark.asyncio
+    async def test_date_is_first_message_timestamp_not_leading_config_change(
+        self, tmp_path: Path
+    ) -> None:
+        session_id = "00000000-0000-0000-0000-0000000000d1"
+        _write_jsonl(
+            tmp_path / f"{session_id}.jsonl",
+            [
+                _header(session_id, "2026-07-01T00:00:00.000Z"),
+                {
+                    "type": "model_change",
+                    "id": "mc1",
+                    "parentId": None,
+                    "timestamp": "2026-07-02T00:00:00.000Z",
+                    "provider": "anthropic",
+                    "modelId": "claude-opus-4-8",
+                },
+                _user("u1", "mc1", "2026-07-03T00:00:00.000Z"),
+                _assistant(
+                    "a1",
+                    "u1",
+                    "2026-07-04T00:00:00.000Z",
+                    [{"type": "text", "text": "hi"}],
+                ),
+            ],
+        )
+        (t,) = await collect(tmp_path)
+        assert t.date is not None and t.date.startswith("2026-07-03")
+
+    @pytest.mark.asyncio
     async def test_total_time_fallback_without_events(self, tmp_path: Path) -> None:
         session_id = "00000000-0000-0000-0000-0000000000f0"
         _write_jsonl(
@@ -291,6 +359,121 @@ class TestOpenclawSource:
             "e0000000-0000-0000-0000-000000000001" in rec.message
             for rec in caplog.records
         )
+
+    @pytest.mark.asyncio
+    async def test_recursion_bound_degrades_to_plain_tool_event(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        # orchestrator + 6 descendants, each spawning the next: chain length
+        # exceeds max_depth=5, so the 6th spawn degrades to a plain tool event.
+        n = 7
+        ids = [f"00000000-0000-0000-0000-0000000000{i:02d}" for i in range(n)]
+        keys = [f"agent:main:subagent:s{i}" for i in range(n)]
+        registry: dict[str, Any] = {"agent:main:main": {"sessionId": ids[0]}}
+        for i in range(1, n):
+            registry[keys[i]] = {
+                "sessionId": ids[i],
+                "spawnedBy": "agent:main:main" if i == 1 else keys[i - 1],
+                "label": f"child{i}",
+                "status": "done",
+            }
+        (tmp_path / "sessions.json").write_text(json.dumps(registry), encoding="utf-8")
+        for i in range(n - 1):
+            _write_jsonl(
+                tmp_path / f"{ids[i]}.jsonl",
+                _spawning_session(ids[i], f"tc-{i}", keys[i + 1], f"child{i + 1}"),
+            )
+        _write_jsonl(
+            tmp_path / f"{ids[n - 1]}.jsonl",
+            [
+                _header(ids[n - 1], "2026-07-06T10:00:00.000Z"),
+                _user("u1", None, "2026-07-06T10:00:01.000Z"),
+                _assistant(
+                    "a1",
+                    "u1",
+                    "2026-07-06T10:00:02.000Z",
+                    [{"type": "text", "text": "done"}],
+                ),
+            ],
+        )
+
+        with caplog.at_level(logging.WARNING):
+            transcripts = await collect(tmp_path)
+        assert len(transcripts) == 1
+        t = transcripts[0]
+        agent_begins = [
+            e for e in t.events if isinstance(e, SpanBeginEvent) and e.type == "agent"
+        ]
+        assert len(agent_begins) == 5
+        spawn_tool_events = [
+            e
+            for e in t.events
+            if isinstance(e, ToolEvent) and e.function == "sessions_spawn"
+        ]
+        # 6 spawns total: 5 folded into spans, 1 degraded to a plain tool event
+        assert len(spawn_tool_events) == 6
+        degraded = [e for e in spawn_tool_events if e.agent_span_id is None]
+        assert len(degraded) == 1
+        assert any("recursion" in rec.message.lower() for rec in caplog.records)
+
+    @pytest.mark.asyncio
+    async def test_failed_spawn_yields_plain_tool_event_no_span(
+        self, tmp_path: Path
+    ) -> None:
+        orch_id = "00000000-0000-0000-0000-0000000000f1"
+        _write_jsonl(
+            tmp_path / f"{orch_id}.jsonl",
+            _spawning_session_with_result(
+                orch_id, "tc-fail", {"status": "error", "error": "spawn failed"}
+            ),
+        )
+
+        transcripts = await collect(tmp_path)
+        assert len(transcripts) == 1
+        t = transcripts[0]
+        assert not any(
+            isinstance(e, SpanBeginEvent) and e.type == "agent" for e in t.events
+        )
+        spawn_tool_events = [
+            e
+            for e in t.events
+            if isinstance(e, ToolEvent) and e.function == "sessions_spawn"
+        ]
+        assert len(spawn_tool_events) == 1
+        assert spawn_tool_events[0].agent_span_id is None
+
+    @pytest.mark.asyncio
+    async def test_child_key_not_in_registry_warns_no_span(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        orch_id = "00000000-0000-0000-0000-0000000000f2"
+        ghost_key = "agent:main:subagent:ghost"
+        registry = {"agent:main:main": {"sessionId": orch_id}}
+        (tmp_path / "sessions.json").write_text(json.dumps(registry), encoding="utf-8")
+        _write_jsonl(
+            tmp_path / f"{orch_id}.jsonl",
+            _spawning_session_with_result(
+                orch_id,
+                "tc-ghost",
+                {"status": "accepted", "childSessionKey": ghost_key},
+            ),
+        )
+
+        with caplog.at_level(logging.WARNING):
+            transcripts = await collect(tmp_path)
+        assert len(transcripts) == 1
+        t = transcripts[0]
+        assert not any(
+            isinstance(e, SpanBeginEvent) and e.type == "agent" for e in t.events
+        )
+        spawn_tool_events = [
+            e
+            for e in t.events
+            if isinstance(e, ToolEvent) and e.function == "sessions_spawn"
+        ]
+        assert len(spawn_tool_events) == 1
+        assert spawn_tool_events[0].agent_span_id is None
+        assert any(ghost_key in rec.message for rec in caplog.records)
 
 
 class TestRegistration:

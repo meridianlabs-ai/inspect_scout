@@ -47,6 +47,8 @@ class AssistantTurn:
     model: str
     usage: dict[str, Any]
     timestamp: datetime
+    stop_reason: str | None = None
+    response_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -163,12 +165,19 @@ def parse_session(raw_records: list[dict[str, Any]], source: str) -> ParsedSessi
                 if not turn_model:
                     raise ValueError(f"Assistant message without a model in {source}")
                 model = str(turn_model)
+                _validate_assistant_content(msg.get("content"), source)
                 records.append(
                     AssistantTurn(
                         content=msg.get("content"),
                         model=model,
                         usage=msg.get("usage") or {},
                         timestamp=ts,
+                        stop_reason=str(msg["stopReason"])
+                        if msg.get("stopReason")
+                        else None,
+                        response_id=str(msg["responseId"])
+                        if msg.get("responseId")
+                        else None,
                     )
                 )
             elif role == "toolResult":
@@ -268,6 +277,31 @@ def parse_session(raw_records: list[dict[str, Any]], source: str) -> ParsedSessi
         result_by_callid=result_by_callid,
         model=model,
     )
+
+
+_KNOWN_ASSISTANT_BLOCK_TYPES = {"text", "thinking", "image", "toolCall"}
+
+
+def _validate_assistant_content(content: Any, source: str) -> None:
+    """Fail loudly on an assistant content block type this importer can't map.
+
+    The shared ``extraction.content_blocks`` helper silently skips unknown
+    block types (fine for telemetry-hal), but the sessions design promises
+    unknown assistant block types fail the import — see
+    ``design/openclaw-sessions.md``.
+    """
+    if not isinstance(content, list):
+        return
+    for block in content:
+        if isinstance(block, str):
+            continue
+        if not isinstance(block, dict):
+            continue
+        btype = block.get("type")
+        if btype not in _KNOWN_ASSISTANT_BLOCK_TYPES:
+            raise ValueError(
+                f"Unknown OpenClaw assistant content block type '{btype}' in {source}"
+            )
 
 
 def _count_parent(rec: dict[str, Any], counter: Counter[str]) -> None:

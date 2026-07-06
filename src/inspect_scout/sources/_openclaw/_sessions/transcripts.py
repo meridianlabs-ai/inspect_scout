@@ -25,7 +25,7 @@ from .client import (
     read_session_records,
 )
 from .events import BuildContext, build_content
-from .parse import ParsedSession, parse_session
+from .parse import AssistantTurn, ParsedSession, UserTurn, parse_session
 
 if TYPE_CHECKING:
     from inspect_scout import Transcript
@@ -142,7 +142,7 @@ def _process_session_file(
         if isinstance(event, ModelEvent) and event.output.usage is not None
     )
 
-    date = parsed.records[0].timestamp.isoformat() if parsed.records else None
+    date = _first_message_date(parsed)
     total_time = _total_time(events, parsed)
 
     # Direct children only: root-thread events carry span_id=None, while a
@@ -170,6 +170,7 @@ def _process_session_file(
                 "parent_session_key": entry.parent_session_key,
                 "label": entry.label,
                 "status": entry.status,
+                "channel": entry.raw.get("lastChannel"),
                 "origin": entry.raw.get("origin"),
                 "system_prompt_report": entry.raw.get("systemPromptReport"),
             }
@@ -204,6 +205,22 @@ def _process_session_file(
     )
 
 
+def _first_message_date(parsed: ParsedSession) -> str | None:
+    """The transcript's ``date``: the first actual message's timestamp.
+
+    A leading ``model_change``/``thinking_level_change`` record (config
+    bookkeeping, not a message) should not win over the first real
+    ``UserTurn``/``AssistantTurn`` — falls back to the first record, then
+    ``None``, when the session has no message records at all.
+    """
+    for record in parsed.records:
+        if isinstance(record, (UserTurn, AssistantTurn)):
+            return record.timestamp.isoformat()
+    if parsed.records:
+        return parsed.records[0].timestamp.isoformat()
+    return None
+
+
 def _total_time(events: list[Event], parsed: ParsedSession) -> float | None:
     """Wall clock minus idle time from the built timeline.
 
@@ -221,7 +238,3 @@ def _total_time(events: list[Event], parsed: ParsedSession) -> float | None:
     if len(timestamps) >= 2:
         return (max(timestamps) - min(timestamps)).total_seconds()
     return None
-
-
-# Re-exports
-__all__ = ["openclaw", "OPENCLAW_SOURCE_TYPE"]

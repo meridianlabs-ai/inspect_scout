@@ -72,6 +72,35 @@ class TestParseSession:
         assert first.model == "claude-opus-4-8"
         assert first.usage["totalTokens"] == 28509
 
+    def test_assistant_turn_stop_reason_and_response_id(self) -> None:
+        parsed = parse_fixture(
+            FIXTURES / "fx_demo" / "8c6aeab3-993e-43d5-934a-04aa4a5f3804.jsonl"
+        )
+        turns = [r for r in parsed.records if isinstance(r, AssistantTurn)]
+        assert [t.stop_reason for t in turns] == ["toolUse", "toolUse", "stop"]
+        assert turns[0].response_id == "msg_01D96KRhC582hGM2Wb94vwND"
+        assert turns[2].response_id == "msg_01Xd4bRtS2CukorUJbmMVodD"
+
+    def test_assistant_turn_stop_reason_and_response_id_absent(self) -> None:
+        records: list[dict[str, Any]] = [
+            dict(HEADER),
+            {
+                "type": "message",
+                "id": "a1",
+                "parentId": "s1",
+                "timestamp": "2026-07-06T10:00:01.000Z",
+                "message": {
+                    "role": "assistant",
+                    "model": "claude-opus-4-8",
+                    "content": "hi",
+                },
+            },
+        ]
+        parsed = parse_session(records, "test")
+        turn = next(r for r in parsed.records if isinstance(r, AssistantTurn))
+        assert turn.stop_reason is None
+        assert turn.response_id is None
+
     def test_tool_result_fields(self) -> None:
         parsed = parse_fixture(ORCHESTRATOR)
         result = parsed.result_by_callid["toolu_01152PyLsTCKsfJT8Q5YNCMn"]
@@ -103,6 +132,24 @@ class TestParseSession:
     def test_unknown_role_raises(self) -> None:
         records = [dict(HEADER), make_message("m1", "s1", "narrator", "hi")]
         with pytest.raises(ValueError, match="narrator"):
+            parse_session(records, "test")
+
+    def test_unknown_assistant_content_block_type_raises(self) -> None:
+        records: list[dict[str, Any]] = [
+            dict(HEADER),
+            {
+                "type": "message",
+                "id": "a1",
+                "parentId": "s1",
+                "timestamp": "2026-07-06T10:00:01.000Z",
+                "message": {
+                    "role": "assistant",
+                    "model": "claude-opus-4-8",
+                    "content": [{"type": "video", "data": "abc"}],
+                },
+            },
+        ]
+        with pytest.raises(ValueError, match="video"):
             parse_session(records, "test")
 
     def test_divergent_branch_raises(self) -> None:

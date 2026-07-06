@@ -147,7 +147,7 @@ def discover_session_files(
                 "OpenClaw agents directory not found: %s", DEFAULT_OPENCLAW_AGENTS_DIR
             )
             return []
-        files = _scan_agent_dirs(DEFAULT_OPENCLAW_AGENTS_DIR, session_id)
+        files = _scan_agent_dirs(DEFAULT_OPENCLAW_AGENTS_DIR)
     else:
         p = Path(path).expanduser()
         if not p.exists():
@@ -156,10 +156,10 @@ def discover_session_files(
         if p.is_file():
             files = [p] if is_session_file(p) else []
         else:
-            files = _find_sessions_in_directory(p, session_id)
+            files = _find_sessions_in_directory(p)
             if not files:
                 agents = p / "agents"
-                files = _scan_agent_dirs(agents if agents.is_dir() else p, session_id)
+                files = _scan_agent_dirs(agents if agents.is_dir() else p)
 
     if session_id:
         files = [f for f in files if f.stem == session_id]
@@ -179,22 +179,16 @@ def discover_session_files(
     return files
 
 
-def _find_sessions_in_directory(
-    directory: Path, session_id: str | None = None
-) -> list[Path]:
-    """Session files directly in a directory, optionally filtered by id."""
-    return [
-        f
-        for f in directory.glob("*.jsonl")
-        if is_session_file(f) and (session_id is None or f.stem == session_id)
-    ]
+def _find_sessions_in_directory(directory: Path) -> list[Path]:
+    """Session files directly in a directory."""
+    return [f for f in directory.glob("*.jsonl") if is_session_file(f)]
 
 
-def _scan_agent_dirs(base: Path, session_id: str | None = None) -> list[Path]:
+def _scan_agent_dirs(base: Path) -> list[Path]:
     """Session files under ``<base>/*/sessions/`` (the per-agent layout)."""
     found: list[Path] = []
     for agent_dir in sorted(base.iterdir()):
         sessions_dir = agent_dir / "sessions"
         if sessions_dir.is_dir():
-            found.extend(_find_sessions_in_directory(sessions_dir, session_id))
+            found.extend(_find_sessions_in_directory(sessions_dir))
     return found

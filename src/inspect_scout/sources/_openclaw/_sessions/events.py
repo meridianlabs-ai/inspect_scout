@@ -41,6 +41,7 @@ from inspect_ai.model import (
     ChatMessageUser,
     ModelOutput,
     ModelUsage,
+    StopReason,
 )
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.tool import ToolCallError
@@ -75,6 +76,28 @@ _EPOCH = datetime.fromtimestamp(0, tz=timezone.utc)
 # scalars only: the full details can duplicate the entire result body (e.g.
 # ``exec``'s ``aggregated`` output).
 _DETAIL_METADATA_KEYS = ("status", "exitCode", "durationMs", "tookMs")
+
+# OpenClaw's native assistant ``stopReason`` values -> Inspect ``StopReason``.
+_STOP_REASONS: dict[str, StopReason] = {
+    "toolUse": "tool_calls",
+    "stop": "stop",
+    "endTurn": "stop",
+    "maxTokens": "max_tokens",
+    "contentFilter": "content_filter",
+}
+
+
+def _resolve_stop_reason(stop_reason: str | None, tool_calls: list[Any]) -> StopReason:
+    """Map a native ``stopReason`` to Inspect's ``StopReason``.
+
+    A recognized value is mapped directly; ``None`` (not carried by the
+    record) falls back to the tool-calls-implies-stop heuristic; any other
+    unrecognized non-``None`` value maps to ``"unknown"`` rather than
+    guessing.
+    """
+    if stop_reason is None:
+        return "tool_calls" if tool_calls else "stop"
+    return _STOP_REASONS.get(stop_reason, "unknown")
 
 
 @dataclass
@@ -188,7 +211,7 @@ def _emit_assistant_turn(
         choices=[
             ChatCompletionChoice(
                 message=assistant_msg,
-                stop_reason="tool_calls" if tool_calls else "stop",
+                stop_reason=_resolve_stop_reason(turn.stop_reason, tool_calls),
             )
         ],
         usage=ModelUsage(**usage_to_inspect(turn.usage)),
@@ -205,6 +228,7 @@ def _emit_assistant_turn(
             completed=turn.timestamp,
             working_start=float(next(order)),
             span_id=span_id,
+            metadata={"response_id": turn.response_id} if turn.response_id else None,
         )
     )
     messages.append(assistant_msg)

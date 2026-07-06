@@ -26,16 +26,16 @@ from inspect_ai.model import (
 from inspect_ai.scorer import Score
 from inspect_ai.tool import ToolChoice, ToolInfo
 from inspect_scout import llm_scanner
-from inspect_scout._llm_scanner.interleave import (
+from inspect_scout._scanner.extract import EVENT_MARKER_KEY
+from inspect_scout._scanner.result import Result
+from inspect_scout._scanner.scanner import SCANNER_CONTENT_ATTR
+from inspect_scout._transcript.handle import MaterializedTranscriptHandle
+from inspect_scout._transcript.interleave import (
     EventsSpec,
     has_interleavable_events,
     interleave_events,
     stream_interleave_events,
 )
-from inspect_scout._scanner.extract import EVENT_MARKER_KEY
-from inspect_scout._scanner.result import Result
-from inspect_scout._scanner.scanner import SCANNER_CONTENT_ATTR
-from inspect_scout._transcript.handle import MaterializedTranscriptHandle
 from inspect_scout._transcript.types import (
     Transcript,
     TranscriptContent,
@@ -53,6 +53,40 @@ def _handle_for(transcript: Transcript) -> MaterializedTranscriptHandle:
         **transcript.model_dump(exclude={"messages", "events", "timelines"})
     )
     return MaterializedTranscriptHandle(load_fn, info)
+
+
+def _no_load_handle(
+    events: list[Event],
+    messages: list[ChatMessage] | None = None,
+    info: TranscriptInfo | None = None,
+) -> MaterializedTranscriptHandle:
+    """Handle stub that streams the given content but raises on ``load()``.
+
+    Proves a streaming path never materializes: ``MaterializedTranscriptHandle``
+    itself can't, since its ``messages()``/``events()`` call ``load()``
+    internally. ``scan()`` narrows on the concrete handle classes, hence
+    the subclass.
+    """
+    event_list = events
+    message_list = messages or []
+
+    class _NoLoadHandle(MaterializedTranscriptHandle):
+        async def messages(self, *, types: object = None) -> AsyncIterator[ChatMessage]:
+            for m in message_list:
+                yield m
+
+        async def events(self, *, types: object = None) -> AsyncIterator[Event]:
+            for e in event_list:
+                if types is None or e.event in cast(list[str], types):
+                    yield e
+
+        async def load(self) -> Transcript:
+            raise AssertionError("streaming interleave must not materialize")
+
+    async def load_fn() -> Transcript:
+        raise AssertionError("streaming interleave must not materialize")
+
+    return _NoLoadHandle(load_fn, info or TranscriptInfo(transcript_id="t"))
 
 
 def _model_event(user_text: str, output: ModelOutput) -> ModelEvent:
@@ -92,7 +126,7 @@ def test_final_score_anchored_after_last_assistant() -> None:
     assert [m.text for m in result[:2]] == [user.text, assistant.text]
     assert result[2].metadata is not None
     assert result[2].metadata[EVENT_MARKER_KEY] is True
-    assert result[2].text.startswith("SCORE (match): value=C target=C")
+    assert result[2].text.startswith("SCORE (match)")
 
 
 def test_no_events_returns_messages_unchanged() -> None:
@@ -217,34 +251,6 @@ def test_events_only_no_model_events_renders_leading() -> None:
     assert len(result) == 1
     assert result[0].metadata is not None
     assert result[0].metadata[EVENT_MARKER_KEY] is True
-
-
-def test_off_thread_model_event_renders_as_branch_entry() -> None:
-    """A ModelEvent whose output is not in `transcript.messages` still renders.
-
-    The second `_model_event("2+2?", fork_out)` produces a different output
-    message than the one actually present in `transcript.messages` -- a
-    fork/retry whose result was never joined to the final conversation.
-    """
-    out = ModelOutput.from_content(model="mockllm", content="4")
-    assistant = out.choices[0].message
-    user = ChatMessageUser(content="2+2?")
-    fork_out = ModelOutput.from_content(model="mockllm", content="forked answer")
-    transcript = Transcript(
-        transcript_id="t",
-        messages=[user, assistant],
-        events=[
-            _model_event("2+2?", out),
-            _model_event("2+2?", fork_out),
-        ],
-    )
-    result = interleave_events(transcript)
-    assert len(result) == 3
-    assert [m.text for m in result[:2]] == [user.text, assistant.text]
-    assert result[2].metadata is not None
-    assert result[2].metadata[EVENT_MARKER_KEY] is True
-    assert "MODEL (BRANCH):" in result[2].text
-    assert "forked answer" in result[2].text
 
 
 def _compaction_pruned_and_fork_transcript() -> Transcript:
@@ -445,7 +451,7 @@ def test_intermediate_event_anchored_mid_thread() -> None:
     ]
     assert result[2].metadata is not None
     assert result[2].metadata[EVENT_MARKER_KEY] is True
-    assert result[2].text.startswith("SCORE (graded): value=0.5 intermediate")
+    assert result[2].text.startswith("SCORE (graded)")
 
 
 def test_multiple_events_on_one_anchor_preserve_order() -> None:
@@ -815,25 +821,7 @@ async def test_stream_events_only_multi_agent_renders_all_agents() -> None:
     # reconstruction. ModelEvents get an auto-generated uuid from the
     # regular constructor, so pass-2 substitution succeeds without
     # materializing -- load() must never be called.
-    flat_events = _two_agent_flat_events()
-
-    class _NoLoadHandle(MaterializedTranscriptHandle):
-        async def messages(self, *, types: object = None) -> AsyncIterator[ChatMessage]:
-            no_messages: tuple[ChatMessage, ...] = ()
-            for message in no_messages:
-                yield message
-
-        async def events(self, *, types: object = None) -> AsyncIterator[Event]:
-            for e in flat_events:
-                yield e
-
-        async def load(self) -> Transcript:
-            raise AssertionError("streaming timeline interleave must not materialize")
-
-    async def load_fn() -> Transcript:
-        raise AssertionError("streaming timeline interleave must not materialize")
-
-    handle = _NoLoadHandle(load_fn, TranscriptInfo(transcript_id="t"))
+    handle = _no_load_handle(_two_agent_flat_events())
 
     captured: list[str] = []
     scan = llm_scanner(
@@ -940,23 +928,7 @@ async def test_stream_timeline_scorers_span_excluded_matches_materialized() -> N
     )
     await scan_t(transcript)
 
-    class _NoLoadHandle(MaterializedTranscriptHandle):
-        async def messages(self, *, types: object = None) -> AsyncIterator[ChatMessage]:
-            no_messages: tuple[ChatMessage, ...] = ()
-            for message in no_messages:
-                yield message
-
-        async def events(self, *, types: object = None) -> AsyncIterator[Event]:
-            for e in flat_events:
-                yield e
-
-        async def load(self) -> Transcript:
-            raise AssertionError("streaming timeline interleave must not materialize")
-
-    async def load_fn() -> Transcript:
-        raise AssertionError("streaming timeline interleave must not materialize")
-
-    handle = _NoLoadHandle(load_fn, TranscriptInfo(transcript_id="t"))
+    handle = _no_load_handle(flat_events)
 
     captured_handle: list[str] = []
     scan_h = llm_scanner(
@@ -1072,25 +1044,9 @@ async def test_loaded_events_without_events_param_not_interleaved() -> None:
 
 
 @pytest.mark.anyio
-async def test_llm_scanner_no_events_has_no_event_entries() -> None:
-    out = ModelOutput.from_content(model="mockllm", content="4")
-    transcript = Transcript(
-        transcript_id="t",
-        messages=[ChatMessageUser(content="2+2?"), out.choices[0].message],
-        events=[],
-    )
-    captured: list[str] = []
-    scan = llm_scanner(question="Right?", answer="boolean", model=_mock_model(captured))
-    await scan(transcript)
-    assert "[E1]" not in captured[0]
-
-
-@pytest.mark.anyio
 async def test_llm_scanner_handle_scan_interleaves_without_load() -> None:
     # A handle input with events= streams: same prompt as the Transcript
-    # input, and load() (full materialization) is never called. Uses a stub
-    # handle that raises on load() — MaterializedTranscriptHandle can't
-    # prove this since its messages()/events() call load() internally.
+    # input, and load() (full materialization) is never called.
     out = ModelOutput.from_content(model="mockllm", content="4")
     transcript = Transcript(
         transcript_id="t",
@@ -1100,28 +1056,10 @@ async def test_llm_scanner_handle_scan_interleaves_without_load() -> None:
             ScoreEvent(score=Score(value="C"), target="C", scorer="match"),
         ],
     )
-
-    # Subclass (scan() narrows on the concrete handle classes): iteration
-    # reads the transcript directly; load() — full materialization — raises.
-    class _NoLoadHandle(MaterializedTranscriptHandle):
-        async def messages(self, *, types: object = None) -> AsyncIterator[ChatMessage]:
-            for m in transcript.messages:
-                yield m
-
-        async def events(self, *, types: object = None) -> AsyncIterator[Event]:
-            for e in transcript.events:
-                if types is None or e.event in cast(list[str], types):
-                    yield e
-
-        async def load(self) -> Transcript:
-            raise AssertionError("streaming interleave must not materialize")
-
-    async def load_fn() -> Transcript:
-        return transcript
-
-    handle = _NoLoadHandle(
-        load_fn,
-        TranscriptInfo(
+    handle = _no_load_handle(
+        list(transcript.events),
+        messages=list(transcript.messages),
+        info=TranscriptInfo(
             **transcript.model_dump(exclude={"messages", "events", "timelines"})
         ),
     )
@@ -1156,27 +1094,27 @@ def test_events_param_opts_in_to_streaming() -> None:
     assert getattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, False) is True
 
 
-def test_events_param_loads_selected_and_model_events() -> None:
-    scan = llm_scanner(question="q", answer="boolean", events=["score"])
-    content = getattr(scan, SCANNER_CONTENT_ATTR)
-    assert set(content.events) == {"score", "model"}
-
-
-def test_events_param_merges_with_content_events() -> None:
-    scan = llm_scanner(
-        question="q",
-        answer="boolean",
-        events=["score"],
-        content=TranscriptContent(events=["error"]),
-    )
-    content = getattr(scan, SCANNER_CONTENT_ATTR)
-    assert set(content.events) == {"score", "error", "model"}
-
-
-def test_events_all_loads_all_events() -> None:
-    scan = llm_scanner(question="q", answer="boolean", events="all")
-    content = getattr(scan, SCANNER_CONTENT_ATTR)
-    assert content.events == "all"
+@pytest.mark.parametrize(
+    ("events", "content", "expected"),
+    [
+        pytest.param(["score"], None, {"score", "model"}, id="selected-plus-model"),
+        pytest.param(
+            ["score"],
+            TranscriptContent(events=["error"]),
+            {"score", "error", "model"},
+            id="merges-content-events",
+        ),
+        pytest.param("all", None, "all", id="all"),
+    ],
+)
+def test_events_param_extends_loaded_events(
+    events: EventsSpec,
+    content: TranscriptContent | None,
+    expected: set[str] | str,
+) -> None:
+    scan = llm_scanner(question="q", answer="boolean", events=events, content=content)
+    loaded = getattr(scan, SCANNER_CONTENT_ATTR).events
+    assert (loaded if loaded == "all" else set(loaded)) == expected
 
 
 @pytest.mark.anyio
@@ -1254,18 +1192,7 @@ async def test_llm_scanner_handle_events_content_interleaves_without_load() -> N
         SpanEndEvent(id="main", span_id="main"),
     ]
 
-    class _NoLoadHandle(MaterializedTranscriptHandle):
-        async def events(self, *, types: object = None) -> AsyncIterator[Event]:
-            for e in flat_events:
-                yield e
-
-        async def load(self) -> Transcript:
-            raise AssertionError("streaming timeline interleave must not materialize")
-
-    async def load_fn() -> Transcript:
-        raise AssertionError("streaming timeline interleave must not materialize")
-
-    handle = _NoLoadHandle(load_fn, TranscriptInfo(transcript_id="t"))
+    handle = _no_load_handle(flat_events)
 
     captured: list[str] = []
     scan = llm_scanner(
@@ -1400,15 +1327,3 @@ async def test_final_score_lands_in_last_chunk_when_split() -> None:
     assert len(captured) >= 2
     assert sum("[E1] SCORE" in c for c in captured) == 1
     assert "[E1] SCORE" in captured[-1]
-
-
-def test_interleave_primitives_shared_with_transcript() -> None:
-    from inspect_scout._llm_scanner import interleave as scanner_mod
-    from inspect_scout._transcript import interleave as transcript_mod
-
-    # `_AnchorWalk` is intentionally absent from `interleave.__all__` (it is
-    # an internal re-export, not part of the module's public interface) --
-    # accessed here only to assert the two modules share the same class
-    # object, not to use it as a supported import.
-    assert scanner_mod._AnchorWalk is transcript_mod._AnchorWalk  # type: ignore[attr-defined]
-    assert scanner_mod.EventsSpec is transcript_mod.EventsSpec

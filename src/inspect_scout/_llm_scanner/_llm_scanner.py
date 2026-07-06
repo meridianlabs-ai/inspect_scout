@@ -31,9 +31,9 @@ from .._transcript.handle import (
     SpooledTranscriptHandle,
     TranscriptHandle,
 )
+from .._transcript.interleave import EventsSpec, stream_interleave_events
 from .._transcript.messages import (
     _effective_segment_budget,
-    segment_messages,
     stream_segment_messages,
     transcript_messages,
 )
@@ -46,12 +46,6 @@ from .._transcript.types import EventType, Transcript, TranscriptContent
 from ._reducer import aggregate_results
 from .answer import Answer, answer_from_argument
 from .generate import generate_answer
-from .interleave import (
-    EventsSpec,
-    has_interleavable_events,
-    interleave_events,
-    stream_interleave_events,
-)
 from .prompt import (
     DEFAULT_SCANNER_TEMPLATE_PREFIX,
     DEFAULT_SCANNER_TEMPLATE_SUFFIX,
@@ -595,47 +589,10 @@ def llm_scanner(
                 reducer=reducer,
             )
 
-        if (
-            events is not None
-            and has_interleavable_events(info_transcript, events)
-            and info_transcript.messages
-            and not info_transcript.timelines
-            and timeline is None
-        ):
-            spliced = interleave_events(info_transcript, events, compaction=compaction)
-
-            # Flat interleaved-events path: events spliced into the message
-            # list, segmented like a plain thread (span id always None).
-            # Only reached with top-level messages present -- events-only
-            # transcripts fall through to the timeline-capable branch below.
-            async def interleaved_source() -> AsyncIterator[tuple[str | None, str]]:
-                async for seg in segment_messages(
-                    spliced,
-                    messages_as_str=messages_as_str_fn,
-                    model=resolved_model,
-                    context_window=context_window,
-                    prompt_reserve=template_tokens,
-                ):
-                    yield None, seg.messages_str
-
-            results = await _scan_segments_bounded(interleaved_source(), scan_segment)
-            return await aggregate_results(
-                results=results,
-                timeline=False,
-                answer=answer,
-                reducer=reducer,
-            )
-
-        if events is not None:
-            # Timeline-shaped or events-only materialized scan: thread
-            # events through transcript_messages(), which picks the
-            # timeline/events/messages strategy itself. Events splice
-            # per-span; events-only transcripts get a synthetic timeline so
-            # parallel agents each get their own segment. events= is inert
-            # on the plain messages-only path.
-            return await scan_materialized(info_transcript, events=events)
-
-        return await scan_materialized(info_transcript)
+        # Materialized scan: transcript_messages() picks the strategy itself
+        # (flat interleave, timeline with per-span splicing, or plain
+        # messages; events= is inert on the messages-only path).
+        return await scan_materialized(info_transcript, events=events)
 
     # set name for collection by @scanner if specified
     if name is not None:

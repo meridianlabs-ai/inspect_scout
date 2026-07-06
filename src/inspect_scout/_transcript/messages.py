@@ -424,13 +424,16 @@ async def transcript_messages(
             margin). Default ``0.2`` leaves 80% of the window for
             messages. Forwarded to ``segment_messages()`` /
             ``timeline_messages()``.
-        events: Which non-message event types to interleave into each
-            span's message thread as marked entries (``"all"``, a
-            list of event types, or ``None`` to disable interleaving).
-            Only affects the timeline path. Span-external events (e.g.
-            root-level events or a pruned ``scorers`` span's events)
-            are collected via ``collect_span_external()`` and spliced
-            into the appropriate span.
+        events: Which non-message event types to interleave into the
+            message thread as marked entries (``"all"``, a list of
+            event types, or ``None`` to disable interleaving). On a
+            flat transcript (top-level messages, no timelines) events
+            are spliced directly into the message thread; on the
+            timeline path they are spliced per-span, with span-external
+            events (e.g. root-level events or a pruned ``scorers``
+            span's events) collected via ``collect_span_external()``
+            and attached to the appropriate span. Inert on a
+            messages-only transcript.
 
     Yields:
         ``MessagesSegment`` (or ``TimelineMessages``) for each segment.
@@ -439,6 +442,28 @@ async def transcript_messages(
         ValueError: If ``timeline`` names a timeline that does not
             exist on the transcript.
     """
+    if events is not None and not transcript.timelines and timeline is None:
+        from inspect_scout._transcript.interleave import (
+            has_interleavable_events,
+            interleave_events,
+        )
+
+        # Flat transcript (top-level messages, no timelines): splice events
+        # directly into the message thread and segment it like a plain
+        # message list. Events-only transcripts fall through to the
+        # timeline path below, which reconstructs per-span threads so
+        # parallel agents aren't collapsed into one.
+        if transcript.messages and has_interleavable_events(transcript, events):
+            async for seg in segment_messages(
+                interleave_events(transcript, events, compaction=compaction),
+                messages_as_str=messages_as_str,
+                model=model,
+                context_window=context_window,
+                prompt_reserve=prompt_reserve,
+            ):
+                yield seg
+            return
+
     if transcript.timelines or transcript.events:
         from inspect_ai.event import timeline_build, timeline_filter
 

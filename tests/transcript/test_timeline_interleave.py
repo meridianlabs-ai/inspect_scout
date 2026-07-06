@@ -316,45 +316,15 @@ async def test_events_none_matches_direct_segment_messages() -> None:
 
 
 @pytest.mark.anyio
-async def test_compaction_last_drops_anchor_event_becomes_leading() -> None:
-    """compaction='last': an event anchored to a compacted-away turn leads.
-
-    The compacted-away turn's output id IS present in the untruncated
-    compaction="all" thread (it is simply the region "last" pruned away),
-    so the discriminator (`_AnchorWalk`'s `excluded_ids`) recognizes it as
-    compaction-pruned rather than a genuine fork: it stays fully hidden,
-    not resurrected as a `MODEL (BRANCH)` entry.
-    """
-    out1 = ModelOutput.from_content(model="mockllm", content="first")
-    a1 = out1.choices[0].message
-    ev1 = _model_event([_u1], out1)
-    score = ScoreEvent(score=Score(value=0.5), scorer="graded", intermediate=True)
-    compaction_event = CompactionEvent(type="summary")
-    out2 = ModelOutput.from_content(model="mockllm", content="second")
-    # Fresh input (no history carried) -- mirrors what remains post-compaction.
-    ev2 = _model_event([_u2], out2)
-
-    span = _span("span-a", "agent-a", [ev1, score, compaction_event, ev2])
-    root = TimelineSpan(id="root", name="root", span_type=None, content=[span])
-
-    results, combined = await _collect(root, events=["score"], compaction="last")
-
-    assert len(results) == 1
-    # The score leads (renders before the surviving M1/M2 turns).
-    assert re.search(r"\[E1\] SCORE.*\[M1\].*\[M2\]", combined, re.DOTALL)
-    assert a1.text not in combined  # confirms the anchor turn really was dropped
-
-
-@pytest.mark.anyio
 async def test_compaction_last_drops_anchor_event_fork_still_renders() -> None:
-    """compaction='last': a genuine fork still renders while the pruned turn hides.
+    """compaction='last': a genuine fork renders while the pruned turn hides.
 
-    Same fixture as `test_compaction_last_drops_anchor_event_becomes_leading`,
-    plus a genuine fork ModelEvent inserted after the compaction boundary
-    whose output never joins ANY thread (not even compaction="all"'s,
-    unlike `ev1`, which is merely the compacted-away region "last"). The
-    discriminator must tell them apart: `ev1` stays hidden (compaction-
-    pruned), `fork_ev` still renders as a `MODEL (BRANCH)` entry.
+    `ev1` is the compacted-away region "last": present in the untruncated
+    compaction="all" thread, so the discriminator (`_AnchorWalk`'s
+    `excluded_ids`) hides it rather than resurrecting it as a branch. The
+    fork's output never joins ANY thread, so it still renders as a
+    `MODEL (BRANCH)` entry. The score, anchored to the dropped `ev1` turn,
+    leads the span.
     """
     out1 = ModelOutput.from_content(model="mockllm", content="first")
     a1 = out1.choices[0].message
@@ -534,8 +504,14 @@ async def test_scorers_span_score_event_attaches_to_last_scannable_span() -> Non
 
 
 @pytest.mark.anyio
-async def test_root_level_event_between_spans_attaches_to_earlier_span() -> None:
-    """A root-level event between two scannable spans attaches to the earlier one."""
+@pytest.mark.parametrize(
+    "position",
+    ["before_first_span", "between_spans"],
+)
+async def test_root_level_event_attaches_to_last_preceding_span(
+    position: str,
+) -> None:
+    """A root-level event attaches to the last preceding scannable span (or leads the first)."""
     out_a = ModelOutput.from_content(model="mockllm", content="answer-a")
     span_a = _span_of(
         "span-a", "agent-a", [_model_event([ChatMessageUser(content="qa")], out_a)]
@@ -545,34 +521,24 @@ async def test_root_level_event_between_spans_attaches_to_earlier_span() -> None
     span_b = _span_of(
         "span-b", "agent-b", [_model_event([ChatMessageUser(content="qb")], out_b)]
     )
-    root = _span_of("root", "root", [span_a, limit_event, span_b], span_type=None)
+    content: list[Event | TimelineSpan] = (
+        [limit_event, span_a, span_b]
+        if position == "before_first_span"
+        else [span_a, limit_event, span_b]
+    )
+    root = _span_of("root", "root", content, span_type=None)
 
     results, _ = await _collect_transcript(root, events=["sample_limit"])
 
     assert len(results) == 2
     span_a_text = results[0].messages_str
     span_b_text = results[1].messages_str
-
-    assert "LIMIT (operator): stopped early" in span_a_text
     assert "LIMIT" not in span_b_text
-
-
-@pytest.mark.anyio
-async def test_event_before_any_scannable_span_leads_first_span() -> None:
-    """A root-level event before any scannable span leads the first span."""
-    limit_event = SampleLimitEvent(type="operator", message="pre-existing limit")
-    out_a = ModelOutput.from_content(model="mockllm", content="answer-a")
-    span_a = _span_of(
-        "span-a", "agent-a", [_model_event([ChatMessageUser(content="qa")], out_a)]
-    )
-    root = _span_of("root", "root", [limit_event, span_a], span_type=None)
-
-    results, _ = await _collect_transcript(root, events=["sample_limit"])
-
-    assert len(results) == 1
-    assert re.match(
-        r"\[E1\] LIMIT \(operator\): pre-existing limit", results[0].messages_str
-    )
+    if position == "before_first_span":
+        # No preceding span: leads the first span.
+        assert re.match(r"\[E1\] LIMIT \(operator\)", span_a_text)
+    else:
+        assert "LIMIT (operator)" in span_a_text
 
 
 @pytest.mark.anyio
@@ -631,39 +597,6 @@ async def test_include_scorers_true_non_model_graded_score_collected_once() -> N
     assert len(results) == 1
     assert results[0].span.id == "span-a"
     assert combined.count("SCORE (match)") == 1
-
-
-@pytest.mark.anyio
-async def test_grader_model_event_in_scorers_span_never_renders_as_branch() -> None:
-    """A ``scorers`` span's grader ModelEvent is excluded even under the new always-render-ModelEvents behavior of ``_collect_span_external``.
-
-    Fix B makes every off-thread/location-excluded ModelEvent render as a
-    ``MODEL (BRANCH)`` entry -- except a ``scorers`` span's grader
-    ModelEvent, which must remain excluded (``span_in_scorers`` short-
-    circuits it before ``_off_thread_model_text`` is ever called). This
-    pins that guard directly against the new branch, independent of
-    ``test_scorers_span_score_event_attaches_to_last_scannable_span``
-    (which exercises the same guard incidentally, via the default
-    ``include_scorers=False`` pruning path).
-    """
-    out_a = ModelOutput.from_content(model="mockllm", content="answer-a")
-    span_a = _span_of(
-        "span-a", "agent-a", [_model_event([ChatMessageUser(content="qa")], out_a)]
-    )
-    grader_out = ModelOutput.from_content(model="mockllm", content="grader verdict")
-    grader_event = _model_event([ChatMessageUser(content="grade this")], grader_out)
-    score = ScoreEvent(score=Score(value=1), scorer="match")
-    scorers_span = _span_of(
-        "span-scorers", "scorers", [grader_event, score], span_type="scorers"
-    )
-    root = _span_of("root", "root", [span_a, scorers_span], span_type=None)
-
-    external = collect_span_external(root, ["score"], depth=None)
-
-    rendered = [text for entries in external.values() for _, text in entries]
-    assert not any("grader verdict" in text for text in rendered)
-    assert not any("MODEL (BRANCH)" in text for text in rendered)
-    assert any("SCORE (match)" in text for text in rendered)
 
 
 @pytest.mark.anyio

@@ -235,51 +235,43 @@ async def timeline_messages(
 
     root = timeline.root if isinstance(timeline, Timeline) else timeline
 
-    if events is None:
-        counter = 0
-        for span in _walk_spans(root, depth=depth):
-            async for seg in segment_messages(
-                span,
-                messages_as_str=messages_as_str,
-                model=model,
-                context_window=context_window,
-                compaction=compaction,
-                prompt_reserve=prompt_reserve,
-            ):
-                yield TimelineMessages(
-                    messages=seg.messages,
-                    messages_str=seg.messages_str,
-                    segment=counter,
-                    span=span,
-                )
-                counter += 1
-        return
-
-    from inspect_scout._transcript.interleave import (
-        _event_message,
-        span_interleaved_messages,
-    )
+    if events is not None:
+        from inspect_scout._transcript.interleave import (
+            _event_message,
+            span_interleaved_messages,
+        )
 
     span_external = span_external or {}
     counter = 0
     is_first_span = True
     for span in _walk_spans(root, depth=depth):
-        source = span_interleaved_messages(span, events=events, compaction=compaction)
-        if is_first_span:
-            leading = span_external.get("", [])
-            if leading:
-                source = [_event_message(eid, text) for eid, text in leading] + source
-            is_first_span = False
-        trailing = span_external.get(span.id, [])
-        if trailing:
-            source = source + [_event_message(eid, text) for eid, text in trailing]
+        source: TimelineSpan | list[ChatMessage]
+        if events is None:
+            source = span
+        else:
+            # Splice interleavable events (which resolves compaction) and
+            # attach span-external entries: leading ones to the first
+            # scannable span, trailing ones after their own span.
+            source = span_interleaved_messages(
+                span, events=events, compaction=compaction
+            )
+            if is_first_span:
+                leading = span_external.get("", [])
+                if leading:
+                    source = [
+                        _event_message(eid, text) for eid, text in leading
+                    ] + source
+            trailing = span_external.get(span.id, [])
+            if trailing:
+                source = source + [_event_message(eid, text) for eid, text in trailing]
+        is_first_span = False
 
         async for seg in segment_messages(
             source,
             messages_as_str=messages_as_str,
             model=model,
             context_window=context_window,
-            # splice already resolved compaction; source is a message list
+            compaction=compaction,
             prompt_reserve=prompt_reserve,
         ):
             yield TimelineMessages(

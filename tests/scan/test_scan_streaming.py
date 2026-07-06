@@ -220,14 +220,9 @@ def test_scan_e2e_events_through_streaming_seam(
 ) -> None:
     """An events-content llm_scanner scan streams through a spooled handle.
 
-    Agentic events (no top-level messages -- forces the events-content path)
-    are written to a real `ParquetTranscriptsDB`. Forcing the spool threshold
-    to 0 routes the transcript through `SpooledTranscriptHandle`, which
-    exercises `stream_timeline_messages`'s two-pass stub skeleton rather than
-    the materialized `transcript_messages` path. The streamed result must
-    match a control run over the same database without the threshold
-    override (materialized path), confirming streaming doesn't change the
-    scanner's output.
+    Exercises `stream_timeline_messages`'s two-pass stub skeleton and
+    produces the same result as a materialized control run over the same
+    database with no threshold override.
     """
     db_location = tmp_path / "transcripts_db"
     db_location.mkdir()

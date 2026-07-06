@@ -116,14 +116,14 @@ def _span_model_event_uuids(span: TimelineSpan) -> list[str | None]:
 
 
 def test_stub_tree_matches_full_tree_structure() -> None:
-    """The regression guard for Finding 1: stubbing must not change span shape.
+    """Stubbing must not change span shape.
 
-    Building the timeline from stubbed events must yield the same
-    scannable span names, the same utility classification, and the same
-    per-span direct-ModelEvent uuid sequence as building it from the full
-    events -- in particular for "handoff_agent", the ToolEvent-with-nested-
-    `.events` tool-spawned agent, whose nested ModelEvents would vanish if
-    `_stub_tool_event` emptied `.events` instead of recursively stubbing it.
+    Building the timeline from stubbed events yields the same scannable span
+    names, utility classification, and per-span direct-ModelEvent uuid
+    sequence as building it from the full events -- including
+    "handoff_agent", the ToolEvent-with-nested-`.events` tool-spawned agent,
+    whose nested ModelEvents would vanish if `_stub_tool_event` emptied
+    `.events` instead of recursively stubbing it.
     """
     from inspect_scout._transcript.timeline_stream import _PromptInterner, stub_event
 
@@ -159,37 +159,24 @@ def test_stub_tree_matches_full_tree_structure() -> None:
 
 
 def test_stub_preserves_warmup_signal() -> None:
-    """Finding 1: stubbing must not destroy the warmup/cache-priming signal.
+    """Stubbing a warmup ``ModelEvent`` must preserve its classification signals.
 
-    ``_wrap_utility_events`` wraps warmup calls (detected by
-    ``_is_warmup_call``: ``config.max_tokens <= 1`` plus a single-word
-    trailing ``ChatMessageUser`` content) as utility spans. Reducing a
-    ``ModelEvent`` stub's ``input`` to system messages only would destroy
-    that signal, so a stubbed warmup call would classify differently from
-    the materialized one -- inflating ``_is_single_turn`` counts and
-    potentially shifting region-last selection.
+    ``_is_warmup_call``'s verdict and the other per-event signals
+    ``_wrap_utility_events`` reads must survive stubbing, while its bulk user
+    content is still stripped.
 
-    ``_is_warmup_call`` is the exact classifier ``timeline_build`` reads, so
-    assert directly that the stub preserves its verdict (and the other two
-    per-event signals ``_wrap_utility_events`` reads) for a warmup event
-    carrying bulk user content, while stripping that bulk.
-
-    (A full ``timeline_build`` over a warmup-containing agent span is not
-    exercised here because the upstream ``_wrap_utility_events`` recurses
-    into the utility wrapper it creates and re-detects the same warmup call,
-    recursing without bound -- a pre-existing ``inspect_ai`` bug that
-    crashes the *materialized* build identically to the stub build, so it is
-    orthogonal to stub fidelity. The signal-level assertions below are the
-    property the stubbing contract must uphold.)
+    (A full ``timeline_build`` over a warmup span is not exercised here: it
+    hits an upstream ``inspect_ai`` unbounded-recursion bug identically on
+    both the stub and materialized paths, so this asserts at the classifier
+    boundary instead.)
     """
     from inspect_ai.event._timeline import _is_warmup_call
     from inspect_ai.model import ChatMessageUser, GenerateConfig
     from inspect_scout._transcript.timeline_stream import _PromptInterner, stub_event
 
-    # A warmup event built locally: max_tokens=1, single-word trailing user
-    # content, but with a leading bulk user turn that must not survive
-    # stubbing. `_is_warmup_call` keys on the *last* ChatMessageUser's
-    # single-word content, so the trailing "warmup" turn drives detection.
+    # max_tokens=1 plus a single-word trailing user turn ("warmup") drives
+    # `_is_warmup_call` detection; the leading bulk user turn must not
+    # survive stubbing.
     base = _last_model_event(agentic_events())
     warmup = base.model_copy(
         update={
@@ -215,10 +202,9 @@ def test_stub_preserves_warmup_signal() -> None:
     # Bulk stripped: the leading 100KB user turn must not survive stubbing.
     assert "w" * 1000 not in stub.model_dump_json()
 
-    # False direction: a max_tokens=1 event whose trailing user content is
-    # MULTI-word (the classic single-token judge/classifier call) is NOT a
-    # warmup, and stubbing must not flip it into one (a one-token truncation
-    # would: `_is_warmup_call` tests `len(content.split()) <= 1`).
+    # False direction: a max_tokens=1 event with MULTI-word trailing user
+    # content (a single-token judge/classifier call) is not a warmup, and
+    # stubbing must not flip it into one.
     judge = base.model_copy(
         update={
             "uuid": "evt-judge-local",
@@ -332,33 +318,17 @@ def test_selection_covers_span_messages_reads(
 
 
 def test_trim_at_span_end_does_not_over_select() -> None:
-    """Regression: trailing trim (no post-trim ModelEvent) must not over-select uuid-less pre-trim.
+    """A trailing trim with no post-trim ModelEvent must not select the pre-trim event.
 
-    Builds a minimal span ending with:
-    ``[ModelEvent(uuid), ModelEvent(uuid=None via model_copy), trim]``
-
-    The pre-trim event (the one with uuid=None) should only be selected if a
-    *later* ModelEvent consumes it via _trim_prefix. Since there is no
-    post-trim ModelEvent, the uuid-less pre-trim event should NOT be selected.
-
-    Previously, the code eagerly selected the pre-trim event on encountering
-    the trim, which would raise _StubSkeletonUnsupported when the pre-trim
-    event had no uuid. The fix defers pre-trim selection to the consumption
-    point (when a post-trim ModelEvent is encountered), so a trailing trim
-    with no post-trim ModelEvent does not try to select the pre-trim uuid.
-
-    This test ensures that:
-    1. Selection does not raise _StubSkeletonUnsupported on the uuid-less pre-trim
-    2. The uuid-less pre-trim event is not selected (and nothing else is either,
-       since the span ends after the trim)
-    3. Equivalence still holds for any selected events (vacuously true here)
+    The pre-trim event is uuid-less; selection must not try to add it, and
+    must not raise ``_StubSkeletonUnsupported`` while deciding that.
     """
     from inspect_scout._transcript.timeline_stream import (
         _needed_uuids_for_span,
         _StubSkeletonUnsupported,
     )
 
-    # Build events for a single span: ModelEvent(uuid) -> ModelEvent(no uuid) -> trim
+    # A single span: ModelEvent(uuid) -> ModelEvent(no uuid) -> trim.
     model_1 = _model_event(
         label="trim-pre-1",
         system_prompt="TEST",
@@ -375,8 +345,8 @@ def test_trim_at_span_end_does_not_over_select() -> None:
 
     span_events: list[Event] = [model_1, model_2_no_uuid, trim_event]
 
-    # Selection must not raise _StubSkeletonUnsupported on the uuid-less pre-trim event
-    # (it should not try to add it at all, since no ModelEvent follows to consume it).
+    # No ModelEvent follows to consume the pre-trim event, so selection must
+    # not try to add it (and must not raise doing so).
     try:
         needed = _needed_uuids_for_span(span_events, compaction="all")
     except _StubSkeletonUnsupported:
@@ -385,8 +355,6 @@ def test_trim_at_span_end_does_not_over_select() -> None:
             "should only add pre-trim uuid if later ModelEvent consumes it"
         )
 
-    # After the trim clears current and there's no post-trim ModelEvent,
-    # nothing is added. The set should be empty.
     assert needed == set()
 
 
@@ -426,12 +394,10 @@ def test_selection_is_minimal_all() -> None:
 
 
 def test_selection_includes_first_post_trim_event() -> None:
-    """The first ModelEvent after a kept trim compaction is load-bearing.
+    """Selection retains the first post-trim ModelEvent that anchors the trim prefix.
 
-    Proves both that the fixture's trim compaction now produces a non-empty
-    trimmed prefix (the Task-1 review finding), and that selection retains
-    the first post-trim ModelEvent whose input ``_trim_prefix`` reads to
-    reconstruct that prefix.
+    The fixture's trim compaction produces a non-empty trimmed prefix, and
+    ``_trim_prefix`` reads that event's input to reconstruct it.
     """
     from inspect_scout._transcript.timeline_stream import needed_model_event_uuids
 
@@ -475,7 +441,7 @@ def test_selection_uuidless_raises() -> None:
 
 
 def test_stub_model_event_interns_list_content_system_prompt() -> None:
-    """Finding 2: list-content ChatMessageSystem parts must be interned too."""
+    """List-content ChatMessageSystem parts are interned, not just string ones."""
     from inspect_scout._transcript.timeline_stream import _PromptInterner, stub_event
 
     prompt_text = "list-content-system-prompt " + "q" * 10_000
@@ -659,13 +625,11 @@ class _FlakyHandle:
 
 @pytest.mark.asyncio
 async def test_stream_raises_on_multi_shot_violation() -> None:
-    """Pass 2 must raise `_StubSkeletonUnsupported` if `events()` is flaky.
+    """A handle whose second `events()` call omits a pass-1-selected event must raise.
 
-    Regression guard for the multi-shot contract check in
-    `stream_timeline_messages`: if a handle's second `events()` call omits
-    a `ModelEvent` that pass 1 selected from the first call, pass 2 cannot
-    find a full event for that uuid and must raise rather than silently
-    dropping content.
+    If a handle's second `events()` call omits a `ModelEvent` that pass 1
+    selected from the first call, pass 2 must raise `_StubSkeletonUnsupported`
+    rather than silently dropping content.
     """
     from inspect_scout._scanner.extract import message_numbering
     from inspect_scout._transcript.timeline_stream import (

@@ -34,6 +34,7 @@ from ...._query import Query
 from ...._query.condition import Condition, ScalarValue
 from ...._query.condition_sql import condition_as_sql
 from ...._query.sql import quote_identifier, validate_column
+from ...._util import constants as constants_mod
 from ...._util.duckdb import (
     create_parquet_view,
     drop_view,
@@ -43,7 +44,14 @@ from ...._util.duckdb import (
     relation_columns,
     restrict_external_access,
 )
+from ...handle import (
+    MaterializedTranscriptHandle,
+    SpooledTranscriptHandle,
+    TranscriptHandle,
+)
 from ...json.load_filtered import load_filtered_transcript
+from ...json.stream_parse import StreamParseResult, stream_parse_to_spool
+from ...local_files_cache import init_task_files_cache
 from ...transcripts import (
     Transcripts,
     TranscriptsReader,
@@ -882,6 +890,144 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 )
 
             return transcript
+
+    @override
+    async def open(
+        self,
+        t: TranscriptInfo,
+        content: TranscriptContent,
+    ) -> TranscriptHandle:
+        """Open a streaming handle to transcript content.
+
+        The returned handle's ``parse``/``load`` callables reference
+        ``self`` (e.g. ``self._conn``, ``self.read``) and so must only be
+        invoked while this view is still connected -- callers must use the
+        handle within the view's `connect()`/`disconnect()` lifetime (e.g.
+        inside the same `async with view:` block).
+
+        For messages/events-only content (no timeline requested) whose
+        combined messages+events+events_data column size (via
+        `_get_content_size`) exceeds `constants_mod.SPOOL_THRESHOLD_BYTES`,
+        this returns a `SpooledTranscriptHandle` whose `parse` callable
+        fetches the JSON cells and streams them through
+        `stream_parse_to_spool`. Below threshold, content requesting a
+        timeline, or transcripts not found in the index: falls back to a
+        `MaterializedTranscriptHandle` over `read()`.
+
+        Note: the JSON cells (messages/events/events_data) are fetched from
+        DuckDB as whole Python strings before being fed to the streaming
+        parser -- unlike the eval-log path, there is no true byte-level
+        streaming source here, so peak memory during `parse()` is
+        approximately 1x the transcript's combined column size (plus the
+        disk spool). This is a documented floor, not fixed by this change.
+        """
+        assert self._conn is not None
+
+        if content.timeline is not None:
+            return MaterializedTranscriptHandle(lambda: self.read(t, content), t)
+
+        filename_result = self._conn.execute(
+            "SELECT filename FROM transcript_index WHERE transcript_id = ?",
+            [t.transcript_id],
+        ).fetchone()
+
+        if not filename_result:
+            return MaterializedTranscriptHandle(lambda: self.read(t, content), t)
+
+        relative_filename = filename_result[0]
+        full_path = self._full_parquet_path(relative_filename)
+
+        content_size = self._get_content_size(full_path, t.transcript_id)
+        if content_size <= constants_mod.SPOOL_THRESHOLD_BYTES:
+            return MaterializedTranscriptHandle(lambda: self.read(t, content), t)
+
+        files_cache = init_task_files_cache()
+        spool_dir = (
+            files_cache.cache_dir if files_cache else Path(tempfile.gettempdir())
+        )
+
+        async def parse() -> StreamParseResult:
+            assert self._conn is not None
+            columns = ["messages", "events", "events_data"]
+            try:
+                sql = (
+                    "SELECT "
+                    + ", ".join(quote_identifier(column) for column in columns)
+                    + " FROM read_parquet(?, union_by_name=true) "
+                    "WHERE transcript_id = ?"
+                )
+                result = self._conn.execute(
+                    sql, [escape_duckdb_glob(full_path), t.transcript_id]
+                ).fetchone()
+                columns_read = columns
+            except duckdb.BinderException:
+                available = self._get_available_content_columns(full_path)
+                columns_read = [c for c in columns if c in available]
+                sql = (
+                    "SELECT "
+                    + ", ".join(quote_identifier(column) for column in columns_read)
+                    + " FROM read_parquet(?, union_by_name=true) "
+                    "WHERE transcript_id = ?"
+                )
+                result = (
+                    self._conn.execute(
+                        sql, [escape_duckdb_glob(full_path), t.transcript_id]
+                    ).fetchone()
+                    if columns_read
+                    else None
+                )
+
+            messages_json: str | None = None
+            events_json: str | None = None
+            events_data_json: str | None = None
+            if result:
+                col_idx = 0
+                if "messages" in columns_read:
+                    messages_json = result[col_idx]
+                    col_idx += 1
+                if "events" in columns_read:
+                    events_json = result[col_idx]
+                    col_idx += 1
+                if "events_data" in columns_read:
+                    events_data_json = result[col_idx]
+                    col_idx += 1
+
+            async def stream_content_bytes() -> AsyncIterator[bytes]:
+                """Stream construction of combined JSON object."""
+                chunk_size = 64 * 1024
+
+                yield b'{"messages": '
+                if messages_json:
+                    messages_bytes = messages_json.encode("utf-8")
+                    for i in range(0, len(messages_bytes), chunk_size):
+                        yield messages_bytes[i : i + chunk_size]
+                else:
+                    yield b"[]"
+
+                yield b', "events": '
+                if events_json:
+                    events_bytes = events_json.encode("utf-8")
+                    for i in range(0, len(events_bytes), chunk_size):
+                        yield events_bytes[i : i + chunk_size]
+                else:
+                    yield b"[]"
+
+                if events_data_json:
+                    yield b', "events_data": '
+                    ed_bytes = events_data_json.encode("utf-8")
+                    for i in range(0, len(ed_bytes), chunk_size):
+                        yield ed_bytes[i : i + chunk_size]
+
+                yield b"}"
+
+            return await stream_parse_to_spool(
+                stream_content_bytes(), content.messages, content.events, spool_dir
+            )
+
+        async def load_fallback() -> Transcript:
+            return await self.read(t, content)
+
+        return SpooledTranscriptHandle(t, parse, load_fallback)
 
     @override
     async def read_messages_events(

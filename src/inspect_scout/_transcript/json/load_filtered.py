@@ -21,6 +21,7 @@ from ..util import filter_transcript
 from .pool import resolve_pools
 from .reducer import (
     ATTACHMENT_PREFIX,
+    ATTACHMENT_REF_PATTERN,
     ATTACHMENTS_PREFIX,
     CALL_POOL_ITEM_PREFIX,
     EVENTS_DATA_CALLS_ITEM_PREFIX,
@@ -44,9 +45,6 @@ from .reducer import (
     target_coroutine,
     timeline_item_coroutine,
 )
-
-# Pre-compiled regex patterns for performance
-ATTACHMENT_PATTERN = re.compile(r"attachment://([a-f0-9]{32})")
 
 # Section constants for prefix classification
 _SECTION_OTHER = 0
@@ -276,7 +274,7 @@ async def _parse_and_filter(
         ListProcessingConfig(
             array_item_prefix="messages.item",
             filter_field="role",
-            filter_list=messages_filter,  # type:ignore
+            filter_list=messages_filter,
         )
         if messages_filter is not None
         else None
@@ -286,7 +284,7 @@ async def _parse_and_filter(
         ListProcessingConfig(
             array_item_prefix="events.item",
             filter_field="event",
-            filter_list=events_filter,  # type:ignore
+            filter_list=events_filter,
         )
         if events_filter is not None
         else None
@@ -512,7 +510,7 @@ def _resolve_attachments(
                 attachment_id, match.group(0)
             )  # Return original if not found
 
-        return ATTACHMENT_PATTERN.sub(replace_ref, text)
+        return ATTACHMENT_REF_PATTERN.sub(replace_ref, text)
 
     # Resolve references in messages (already raw dicts, no need to model_dump)
     resolved_messages = []

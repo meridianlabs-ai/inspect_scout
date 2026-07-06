@@ -253,15 +253,10 @@ async def test_resolve_item_dict_removes_call_refs_and_call_key(
 async def test_streamed_and_materialized_resolve_embedded_ref_the_same(
     tmp_path: Path,
 ) -> None:
-    """Regression guard: streamed and materialized paths must resolve an attachment ref embedded inside a larger string identically.
+    """Streamed and materialized paths resolve an embedded attachment ref identically.
 
-    The streaming path (`_resolve_strings`) always resolves refs via
-    substring regex. The materialized path (`load_filtered_transcript`)
-    used to only collect a ref into the keep-set on an exact-match string,
-    so an embedded ref (e.g. "prefix attachment://<id> suffix") would
-    survive unresolved there while the streamed path resolved it --
-    producing different content for the same transcript depending on
-    which path was used.
+    Both must resolve a ref embedded inside a larger string (e.g. "prefix
+    attachment://<id> suffix"), not just on an exact-match string.
     """
     from inspect_scout._transcript.json.load_filtered import load_filtered_transcript
     from inspect_scout._transcript.json.stream_parse import replay_messages
@@ -316,8 +311,7 @@ async def test_resolve_strings_empty_string_attachment_not_treated_as_missing(
 ) -> None:
     """An attachment resolving to "" must substitute "", not leave the ref text.
 
-    Regression test: `blobs.get(...) or m.group(0)` treats an empty-string
-    attachment value as falsy/missing; the fix must use an `is not None` check.
+    An empty-string attachment value is not the same as a missing one.
     """
     from inspect_scout._transcript.json.stream_parse import replay_messages
 

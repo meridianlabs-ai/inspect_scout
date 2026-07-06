@@ -76,9 +76,8 @@ async def test_small_file_uses_materialized_handle() -> None:
 
 
 # None of the fixture logs in tests/recorder/logs/ contain an `events_data`
-# pool (verified: all four only have the legacy top-level `attachments`
-# dict with no `message_pool`/`call_pool`/`events_data` keys). Pool
+# pool (all four only have the legacy top-level `attachments` dict). Pool
 # resolution during streaming replay (attachment refs inside pool items,
-# range-encoded refs, and the consolidated `events_data` schema) is already
-# covered at the `stream_parse_to_spool`/`replay_*` level by Task 3's tests
-# (tests/transcript/test_stream_parse.py). We do not duplicate that here.
+# range-encoded refs, and the consolidated `events_data` schema) is covered
+# at the `stream_parse_to_spool`/`replay_*` level in
+# tests/transcript/test_stream_parse.py instead.

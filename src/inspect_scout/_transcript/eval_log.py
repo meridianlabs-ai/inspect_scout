@@ -552,21 +552,12 @@ class EvalLogTranscriptsView(TranscriptsView):
     ) -> TranscriptHandle:
         """Open a streaming handle to transcript content.
 
-        The returned handle's ``parse``/``load`` callables reference
-        ``self`` (e.g. ``self._fs``, ``self.read``) and so must only be
-        invoked while this view is still connected -- callers must use the
-        handle within the view's `connect()`/`disconnect()` lifetime (e.g.
-        inside the same `async with view:` block).
+        The returned handle references ``self`` (filesystem, ``read``), so use
+        it within the view's `connect()`/`disconnect()` lifetime.
 
-        Note on remote sources: `_get_zip_reader_and_entry` already routes
-        through `LocalFilesCache.resolve_remote_uri_to_local`, which
-        downloads the whole ZIP to the local cache when it fits. If the
-        cache declines (full or unavailable), the spooled parse below
-        streams the member directly from the remote store. The only
-        scenario where this could mean streaming the same remote source
-        twice is if the streamed parse fails with malformed JSON (NaN/Inf)
-        and falls back to `read()` -- rare, and accepted for now rather
-        than building a dedicated member-spooling mechanism.
+        A remote source may be streamed twice only if the spooled parse hits
+        malformed JSON (NaN/Inf) and falls back to `read()`; accepted rather
+        than adding dedicated member spooling.
         """
         if not t.source_uri:
             raise ValueError("source_uri must be set")

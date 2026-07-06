@@ -23,8 +23,7 @@ ScannerInput = Union[
 
 ScannerInputNames = Literal[
     "transcript",
-    # "transcript_info" = info-only input record (used by streaming handle
-    # scans); stable schema value.
+    # info-only input record used by streaming handle scans
     "transcript_info",
     "event",
     "events",

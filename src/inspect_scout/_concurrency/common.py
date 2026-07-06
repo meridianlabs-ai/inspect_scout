@@ -76,9 +76,9 @@ class ScannerJob(NamedTuple):
     union_transcript: Transcript | TranscriptHandle
     """Transcript pre-filtered with the union of ALL scanners' content filters.
 
-    A materialized `Transcript` for legacy (non-handle-capable) scanners, or a
-    shared `TranscriptHandle` when all scanners in the parse job accept handles
-    (the streaming path). The lead and its followers share the same handle.
+    A materialized `Transcript`, or a shared `TranscriptHandle` (streaming path)
+    when all scanners in the parse job accept handles; the lead and followers
+    share the same handle.
 
     This contains a superset of the data needed by all scanners and typically needs
     to be filtered again per-scanner (based on that scanner's specific content filter)
@@ -100,11 +100,10 @@ class ScannerJob(NamedTuple):
     """
 
     on_complete: Callable[[], Awaitable[None]] | None = None
-    """Awaited by `_scan_one` in a finally block after the scan completes.
+    """Awaited once by `_scan_one` in a finally block after the scan completes.
 
-    Used to close the shared `TranscriptHandle` once the last job for the
-    transcript (lead + all followers) has finished. `None` for the legacy
-    materialized-`Transcript` path.
+    Closes the shared `TranscriptHandle` once the last job (lead + all
+    followers) has finished. `None` for the materialized-`Transcript` path.
     """
 
 

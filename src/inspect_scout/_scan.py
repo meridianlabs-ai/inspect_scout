@@ -591,18 +591,11 @@ async def _scan_async_inner(
                     job: ParseJob, reader: TranscriptsReader
                 ) -> ParseFunctionResult:
                     try:
-                        # Streaming is eligible when every scanner in this parse
-                        # job accepts handles (events now stream via the
-                        # stub-skeleton path; only timeline content is excluded),
-                        # and every scanner's own content filter equals the
-                        # union. The last
-                        # condition matters because streaming hands the shared
-                        # union-filtered handle directly to each scanner,
-                        # bypassing the per-scanner loader that would otherwise
-                        # re-narrow content via `filter_transcript` - a scanner
-                        # with a narrower filter than a sibling would otherwise
-                        # see union-broadened content. The backend decides
-                        # spooled-vs-materialized internally in `open()`.
+                        # Eligible only when every scanner accepts handles and
+                        # each scanner's filter equals the union: the shared
+                        # union-filtered handle bypasses the per-scanner loader,
+                        # so a narrower filter would see union-broadened content
+                        # from a sibling. `open()` picks spooled vs materialized.
                         job_scanners = [
                             scanners_list[idx] for idx in job.scanner_indices
                         ]
@@ -614,17 +607,15 @@ async def _scan_async_inner(
                         union_transcript: Transcript | TranscriptHandle
                         on_complete: Callable[[], Awaitable[None]] | None
                         if streaming_eligible:
-                            # Open a lazy handle shared by the lead and all
-                            # followers. Do NOT enter the CM here (the handle
-                            # is lazy); close it once the last job completes.
+                            # Lazy handle shared by the lead and all followers;
+                            # closed once the last job completes.
                             handle = await reader.open(
                                 job.transcript_info, union_content
                             )
                             union_transcript = handle
 
-                            # Completion counter: 1 lead + N followers. Each
-                            # job's `on_complete` decrements; the handle is
-                            # closed when the count reaches zero.
+                            # 1 lead + N followers; each on_complete decrements,
+                            # closing the handle when the count reaches zero.
                             lead_idx, *follower_indices = sorted(job.scanner_indices)
                             remaining = 1 + len(follower_indices)
 
@@ -1007,12 +998,11 @@ async def _scan_one(
     events and model usage per call. Errors are turned into Error records
     on the report unless `fail_on_error=True`.
 
-    When `job.union_transcript` is a `TranscriptHandle` and the scanner
-    accepts handles, the handle is passed straight to the scanner (no
-    materialization). Errors surfaced lazily by the handle/loader iteration
-    are contained per-transcript as an Error report instead of propagating.
-    If `job.on_complete` is set it is awaited in a finally block once the
-    scan finishes (used to close the shared handle after the last job).
+    A `TranscriptHandle` union transcript is passed straight to a
+    handle-capable scanner (no materialization); errors raised lazily during
+    iteration are contained per-transcript as Error reports. `job.on_complete`,
+    if set, is awaited exactly once in a finally block to close the shared
+    handle after the last job.
     """
     from inspect_ai.log._transcript import (
         Transcript as InspectTranscript,
@@ -1042,10 +1032,9 @@ async def _scan_one(
     loader = scanner_config.loader
 
     def _stream_error_report(ex: Exception) -> ResultReport:
-        """Build a parse-style Error report for an iteration-raised exception.
+        """Build an Error report for an exception raised during iteration.
 
-        Used for exceptions raised by the handle/loader iteration itself
-        (e.g. a corrupt sample surfacing lazily).
+        E.g. a corrupt sample surfacing lazily.
         """
         union = job.union_transcript
         report_input: ScannerInput
@@ -1073,20 +1062,17 @@ async def _scan_one(
         )
 
     try:
-        # Input dispatch: choose what the loader/scanner iterates over. The
-        # streaming path yields the handle itself; other paths yield loader
-        # results (`ScannerInput`).
+        # Choose what to iterate: the handle itself (streaming) or loader
+        # results. This happens before any LLM call, so the fallback below is
+        # a pre-LLM materialization.
         loader_iterations: AsyncIterator[ScannerInput | TranscriptHandle]
         if isinstance(job.union_transcript, Transcript):
-            # Legacy path: materialized Transcript through the loader.
             loader_iterations = loader(job.union_transcript)
         elif scanner_supports_streaming(job.scanner):
-            # Streaming path: pass the handle itself straight to the scanner.
             loader_iterations = _single_item_iter(job.union_transcript)
         else:
-            # A materialized-capable handle for a legacy scanner: materialize
-            # first, then run the loader. Reachable only if a job pairs a
-            # handle with a non-handle scanner (kept for safety).
+            # Handle paired with a non-streaming scanner: materialize first,
+            # then run the loader (kept for safety).
             try:
                 transcript = await job.union_transcript.load()
             except PrerequisiteError:
@@ -1098,8 +1084,7 @@ async def _scan_one(
                 return results
             loader_iterations = loader(transcript)
 
-        # Error containment: iterate explicitly so an exception raised BY THE
-        # ITERATION (lazy parse errors from the handle/loader generator) is
+        # Iterate explicitly so a lazy parse error raised by the iteration is
         # contained per-transcript rather than propagating. PrerequisiteError
         # still re-raises.
         it = aiter(loader_iterations)
@@ -1121,9 +1106,8 @@ async def _scan_one(
             error: Error | None = None
             validation_result = None
 
-            # For handle inputs, the result records info only (the handle's
-            # TranscriptInfo). Use isinstance against the concrete handle
-            # classes for robustness (avoid runtime_checkable protocol checks).
+            # Handle inputs record info only; match concrete classes rather
+            # than the runtime_checkable protocol.
             report_input: ScannerInput
             if isinstance(
                 loader_result,
@@ -1131,8 +1115,7 @@ async def _scan_one(
             ):
                 report_input = loader_result.info
             else:
-                # Not a concrete handle; the runtime_checkable protocol cannot
-                # be subtracted by mypy, so cast the narrowed value.
+                # mypy can't subtract the protocol, so cast the narrowed value.
                 report_input = cast(ScannerInput, loader_result)
 
             try:
@@ -1210,16 +1193,11 @@ def _content_for_scanner(scanner: Scanner[Any]) -> TranscriptContent:
 def _filters_equal(
     a: MessageFilter | EventFilter, b: MessageFilter | EventFilter
 ) -> bool:
-    """Compare two content filters, ignoring list order.
+    """Compare two content filters, ignoring order for sequence filters.
 
-    ``TranscriptContent.messages``/``.events`` is either ``None``, the
-    literal ``"all"``, or a sequence of type strings. Sequences may be
-    produced/reduced in different orders (the common case is
-    ``union_transcript_contents`` building up a set-like union), so equality
-    must be order-insensitive for sequences while still being exact for
-    ``None``/``"all"``. ``EventFilter`` sequences may contain arbitrary
-    strings beyond the literal ``EventType`` values; the same set-equality
-    shape covers them.
+    A filter is ``None``, ``"all"``, or a sequence of type strings; the union
+    build produces sequences in arbitrary order, so sequences compare as sets
+    while ``None``/``"all"`` compare exactly.
     """
     if (
         isinstance(a, Sequence)
@@ -1239,30 +1217,15 @@ def _message_filters_equal(a: MessageFilter, b: MessageFilter) -> bool:
 def _streaming_eligible(
     scanners: list[Scanner[Any]], union_content: TranscriptContent
 ) -> bool:
-    """Determine whether a job's scanners can safely share a streamed handle.
+    """Whether a job's scanners can safely share a union-filtered handle.
 
-    Streaming passes a single `TranscriptHandle`, opened with the union of
-    every scanner's content filter, directly to each handle-capable scanner
-    (bypassing the per-scanner loader that would otherwise re-filter content
-    via `filter_transcript`). That is only safe when every scanner's own
-    content requirement is *equal* to the union - otherwise a scanner with a
-    narrower filter (e.g. `messages=["user"]`) would see union-broadened
-    content from a sibling scanner (e.g. `messages=["user", "assistant"]`).
+    The handle is opened with union content and bypasses the per-scanner
+    loader's `filter_transcript`, so this is only safe when every scanner's
+    filter equals the union; a narrower filter would otherwise see a sibling's
+    broadened content. Messages and events both stream; any `timeline` filter
+    forces materialization (timeline selection needs the full transcript).
 
-    Messages-only and events content are both streamable (events flow through
-    ``stream_timeline_messages``' two-pass reader on the handle path). A
-    ``timeline`` filter still forces materialization: named-timeline
-    selection and timeline extraction need the full transcript, so any
-    ``timeline`` content makes the job ineligible.
-
-    Args:
-        scanners: The scanners in the parse job (must all accept handles;
-            callers are expected to have already checked
-            `scanner_supports_streaming`).
-        union_content: The union of all scanners' content filters.
-
-    Returns:
-        True iff streaming is safe for this job.
+    Callers must already have checked `scanner_supports_streaming`.
     """
     if union_content.timeline is not None:
         return False

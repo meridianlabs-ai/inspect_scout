@@ -66,15 +66,11 @@ async def _scan_segments_bounded(
     source: AsyncIterator[tuple[str | None, str]],
     scan_segment: Callable[[str], Awaitable[Result]],
 ) -> list[tuple[str | None, Result]]:
-    """Scan segments from ``source`` with bounded concurrency, preserving order.
+    """Scan lazily-yielded segments with bounded concurrency, in order.
 
-    ``source`` yields ``(span_id, messages_str)`` pairs lazily. At most
-    ``_SEGMENT_CONCURRENCY`` segments are scanned at a time (a semaphore gates
-    task spawning), so a large transcript never spawns one task per segment.
-    Results are returned in segment order — reduction is order-sensitive.
-
-    A single failing segment propagates its original exception (not the
-    task-group ``ExceptionGroup``), matching the prior ``tg_collect`` behavior.
+    Each ``(span_id, messages_str)`` from ``source`` is scanned; results return
+    in segment order (reduction is order-sensitive). A failing segment raises
+    its original exception, unwrapped from the task-group ``ExceptionGroup``.
     """
     window = anyio.Semaphore(_SEGMENT_CONCURRENCY)
     indexed: list[tuple[int, str | None, Result]] = []
@@ -277,12 +273,10 @@ def llm_scanner(
 
     resolved_answer = answer_from_argument(answer)
 
-    # Whether this scanner's effective content includes events. The @scanner
-    # decorator declares only messages="all"; a content override is the only
-    # way events enter the effective filter. On the streaming handle path this
-    # decides whether to route through stream_timeline_messages (events) or
-    # stream_segment_messages (messages-only) — mirroring how the materialized
-    # transcript_messages path routes on events/timeline presence.
+    # Events enter the effective filter only via a content override (the
+    # @scanner decorator declares messages="all"). On the streaming path this
+    # picks stream_timeline_messages (events) vs stream_segment_messages
+    # (messages-only).
     content_has_events = content is not None and content.events is not None
 
     # resolve retry_refusals
@@ -295,11 +289,9 @@ def llm_scanner(
     )
 
     async def scan(transcript: Transcript | TranscriptHandle) -> Result:
-        # A TranscriptHandle streams messages without materializing the full
-        # Transcript. We narrow on the concrete handle classes (rather than the
-        # @runtime_checkable protocol) because a materialized `Transcript` is
-        # NOT a handle, and isinstance against the protocol only checks method
-        # presence — the concrete-class check is unambiguous.
+        # A TranscriptHandle streams messages without materializing. Match the
+        # concrete handle classes, not the @runtime_checkable protocol (which
+        # only checks method presence).
         handle: TranscriptHandle | None = (
             transcript
             if isinstance(
@@ -309,24 +301,21 @@ def llm_scanner(
             else None
         )
 
-        # Streaming can only work without materializing when the full transcript
-        # isn't needed for template resolution or timeline extraction. The
-        # preprocessor receives per-segment message lists (see message_numbering)
-        # so it is streaming-safe and does NOT force materialization.
+        # Streaming needs the full transcript only for callable template inputs
+        # or timeline extraction. (The preprocessor gets per-segment message
+        # lists, so it stays streaming-safe.)
         full_transcript_needed = (
             callable(question) or callable(template_variables) or timeline is not None
         )
         if handle is not None and full_transcript_needed:
-            # Fall back to the materialized Transcript path.
             transcript = await handle.load()
             handle = None
 
         # Resolve the model once — defers role resolution to scan time
         resolved_model = get_model(model, role=model_role)
 
-        # For the streaming handle path, template rendering only needs the
-        # TranscriptInfo fields (+ metadata) — build a content-empty Transcript
-        # to pass wherever a Transcript is structurally required.
+        # On the streaming path, template rendering only needs TranscriptInfo
+        # fields, so pass a content-empty Transcript where one is required.
         info_transcript: Transcript
         if handle is not None:
             info = handle.info
@@ -334,7 +323,6 @@ def llm_scanner(
                 **info.model_dump(), messages=[], events=[], timelines=[]
             )
         else:
-            # transcript is a Transcript here (handle path exhausted above)
             info_transcript = cast(Transcript, transcript)
 
         # Shared numbering scope across all segments
@@ -411,11 +399,9 @@ def llm_scanner(
                 "the scanner template."
             )
 
-        # Materialized Transcript path: segments stream from transcript_messages
-        # (an async generator) so only N are in flight at once. TimelineMessages
-        # segments carry a span id for per-span grouping in aggregate_results.
-        # Factored out so the events-streaming fallback (below) can reuse it
-        # after materializing the handle.
+        # Materialized Transcript path. TimelineMessages segments carry a span
+        # id for per-span grouping. Factored out so the events-streaming
+        # fallback can reuse it after materializing the handle.
         async def scan_materialized(source_transcript: Transcript) -> Result:
             async def materialized_source() -> AsyncIterator[tuple[str | None, str]]:
                 async for seg in transcript_messages(
@@ -441,20 +427,10 @@ def llm_scanner(
                 reducer=reducer,
             )
 
-        # Scan segments through a bounded concurrency window. At most
-        # _SEGMENT_CONCURRENCY segments are scanned (and hence retained) at a
-        # time, so a large transcript can't spawn one task per segment. The
-        # segment source streams lazily on both paths, so unstarted segments
-        # aren't materialized either.
-        #
-        # Order matters for reduction (explanation concatenation, LLM synthesis
-        # prompt assembly, majority tiebreak), so each result carries its
-        # segment index and is sorted back into order before aggregation.
         if handle is not None and content_has_events:
             # Streaming events path: two-pass event streaming over the handle
             # via stream_timeline_messages, yielding TimelineMessages segments
-            # (span ids reused for per-span grouping, exactly like the
-            # materialized timeline path).
+            # (span ids reused for per-span grouping).
             async def stream_timeline_source() -> AsyncIterator[tuple[str | None, str]]:
                 async for seg in stream_timeline_messages(
                     handle,
@@ -467,14 +443,10 @@ def llm_scanner(
                 ):
                     yield seg.span.id, seg.messages_str
 
-            # The stub-skeleton streaming can surface _StubSkeletonUnsupported
-            # lazily during segment iteration (uuid-less needed events, or a
-            # multi-shot contract violation). The raise happens in pass 1 --
-            # while building the stub skeleton and selecting needed uuids,
-            # before any segment is yielded and thus before scan_segment runs --
-            # so no LLM calls have been made when we catch it here. On fallback
-            # we materialize the handle and run the full materialized path from
-            # scratch; no scan work is duplicated.
+            # _StubSkeletonUnsupported is raised in pass 1 (building the stub
+            # skeleton / selecting needed uuids), before any segment is yielded
+            # and thus before any LLM call, so the fallback re-runs from scratch
+            # with no duplicated scan work.
             try:
                 results = await _scan_segments_bounded(
                     stream_timeline_source(), scan_segment
@@ -487,11 +459,8 @@ def llm_scanner(
                     ex,
                 )
                 return await scan_materialized(await handle.load())
-            # Mirror the materialized path's `timeline=bool(...timelines)`
-            # reduction flag: the handle carries events (not named timelines),
-            # so info_transcript.timelines is empty — matching how the
-            # materialized events-only path (transcript with events, no
-            # timelines) aggregates, so both paths produce the same Result.
+            # Handle carries events, not named timelines, so timelines is empty
+            # — matching the materialized events-only path's reduction flag.
             return await aggregate_results(
                 results=results,
                 timeline=bool(info_transcript.timelines),
@@ -500,9 +469,7 @@ def llm_scanner(
             )
 
         if handle is not None:
-            # Streaming handle path: messages-only, no timeline. Span id is
-            # always None. Only messages_str is passed into the closure so the
-            # MessagesSegment isn't retained after start_soon.
+            # Streaming handle path: messages-only, no timeline (span id None).
             async def stream_source() -> AsyncIterator[tuple[str | None, str]]:
                 async for seg in stream_segment_messages(
                     handle.messages(),
@@ -531,12 +498,11 @@ def llm_scanner(
     if content is not None:
         setattr(scan, SCANNER_CONTENT_ATTR, content)
 
-    # Opt in to streaming handle input only when the scan can run without the
-    # full transcript: no callable question/template_variables (they take a
-    # Transcript) and no named-timeline extraction. Events content is now
-    # streamable (the handle path consumes it via stream_timeline_messages),
-    # so only a content-level `timeline` filter still forces materialization
-    # (named-timeline selection needs the full transcript).
+    # Opt in per-instance: streaming works only when the scan needs no full
+    # transcript. Callable question/template_variables take a Transcript, and
+    # named-timeline extraction (from `timeline` or content `timeline`) needs
+    # the full transcript; any of those forces materialization. Events content
+    # streams via stream_timeline_messages.
     content_forces_materialization = (
         content is not None and content.timeline is not None
     )

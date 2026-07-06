@@ -188,8 +188,8 @@ def agentic_events(
 ) -> list[Event]:
     """Build a deterministic flat event list exercising `timeline_build`.
 
-    Structure (see module docstring and task brief for the classification
-    rationale behind each piece):
+    Structure (see module docstring for the classification rationale behind
+    each piece):
 
     - Top-level ``solvers`` span containing:
       - ``type="agent"`` span "main":
@@ -447,20 +447,14 @@ def agentic_events(
     # --- compaction: "trim" with ModelEvents before/after (exercises the
     # trim-first-event rule).
     #
-    # A trim compaction drops a *prefix* of the conversation. For
-    # `span_messages(compaction="all")` to reconstruct that dropped prefix
-    # (`_trim_prefix`, messages.py), the pre-trim event's input must contain
-    # leading messages that are ABSENT from the head of the post-trim event's
-    # input, and the post-trim input must START with a message shared with
-    # (i.e. found later in) the pre-trim input so the two can be aligned.
-    #
-    # Here `trim-shared` is the alignment anchor: it is the FIRST message of
+    # `_trim_prefix` (messages.py) reconstructs a trim's dropped prefix by
+    # aligning the pre-trim and post-trim inputs on a shared message. Here
+    # `trim-shared` is that alignment anchor: it is the FIRST message of
     # post-trim and the THIRD message of pre-trim, so `_trim_prefix` returns
     # pre-trim's first two messages (`System("MAIN")` + `User("trim-dropped")`)
-    # as the trimmed prefix. `trim-dropped` is a distinctive marker that lets
-    # tests assert the prefix was actually reconstructed. Both events still
-    # carry a `System("MAIN")` message so `_get_system_prompt_for_event`
-    # classification is identical to their siblings.
+    # as the trimmed prefix -- `trim-dropped` is a distinctive marker tests can
+    # assert on. Both events still carry `System("MAIN")` so
+    # `_get_system_prompt_for_event` classification matches their siblings.
     trim_shared = ChatMessageUser(content="trim-shared-anchor")
     events.append(
         _model_event(

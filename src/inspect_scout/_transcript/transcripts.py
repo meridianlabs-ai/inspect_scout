@@ -55,17 +55,13 @@ class TranscriptsReader(abc.ABC):
     ) -> TranscriptHandle:
         """Open a streaming handle to transcript content.
 
-        Default implementation materializes the transcript eagerly via
-        `read()` and wraps it in a `MaterializedTranscriptHandle`. Backends
-        that support true streaming reads should override this.
+        The default materializes eagerly via `read()`; backends supporting
+        true streaming reads should override. Use the handle within the view's
+        connected lifetime.
 
         Args:
             transcript: Transcript to open.
-            content: Content to read (e.g. specific message types, etc.)
-
-        Returns:
-            TranscriptHandle: Async context manager providing streaming
-                access to the transcript's messages/events.
+            content: Content to read.
         """
 
         async def load_fn() -> Transcript:

@@ -488,8 +488,8 @@ def _get_union_members(type_hint: Any) -> set[Type[Any]] | None:
 def _is_transcript_handle_type(type_hint: Any) -> bool:
     """Whether a type hint is the TranscriptHandle protocol or a concrete impl.
 
-    Avoids ``issubclass(type_hint, TranscriptHandle)`` — the protocol has a
-    non-method member (``info``) so it does not support ``issubclass``.
+    Identity comparison, since the protocol's non-method ``info`` member breaks
+    ``issubclass``.
     """
     return type_hint is TranscriptHandle or type_hint in (
         MaterializedTranscriptHandle,
@@ -516,10 +516,8 @@ def _is_compatible_with_type(scanner_type: Any, target_type: Any) -> bool:
             return True
 
         # A `Transcript | TranscriptHandle` union is compatible wherever a bare
-        # Transcript is: llm_scanner accepts a handle for streaming reads but
-        # falls back to materializing a Transcript. Accept a union as long as
-        # one member matches the target and every other member is the
-        # TranscriptHandle protocol (or a subclass of it).
+        # Transcript is: accept it when one member matches the target and every
+        # other member is a TranscriptHandle type.
         union_members = _get_union_members(scanner_type)
         if union_members is not None:
             others = {

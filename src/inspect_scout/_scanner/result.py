@@ -218,10 +218,8 @@ def _serialize_input(
 ) -> tuple[str, str | None]:
     """Serialize scanner input, optionally condensing events.
 
-    For "transcript" type (full Transcript object), events may be condensed and
-    pooled separately if pool_dedup is True, returning event data in the second tuple element.
-    For "transcript_info" (TranscriptInfo only) and other input types, returns None as the
-    second element since no special pooling applies.
+    Only "transcript" input pools events separately (second tuple element);
+    all other input types return None there.
 
     Returns:
         (input_json, input_data_json | None)

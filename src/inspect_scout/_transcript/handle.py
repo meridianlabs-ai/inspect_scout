@@ -1,15 +1,10 @@
 """TranscriptHandle protocol and implementations for streaming transcript reads.
 
-A ``TranscriptHandle`` provides streaming, multi-shot access to a transcript's
-messages/events without necessarily materializing the whole ``Transcript`` in
-memory. ``MaterializedTranscriptHandle`` wraps an eagerly-loaded (or lazily
-loaded, but fully in-memory once loaded) ``Transcript`` -- the small-file
-path. ``SpooledTranscriptHandle`` wraps a disk-spool-backed
-``StreamParseResult`` -- the large-file path -- deferring the parse until
-first use so prefetched handles don't pin resources.
-
-Deliberately not exported from ``inspect_scout.__init__`` -- the shape must
-survive phase 2 (``types=`` pushdown, region-level access) before freezing.
+``MaterializedTranscriptHandle`` wraps an in-memory ``Transcript`` (small-file
+path); ``SpooledTranscriptHandle`` wraps a disk-spool-backed
+``StreamParseResult`` (large-file path), deferring the parse until first use.
+Not yet exported from ``inspect_scout.__init__``: the shape must survive
+phase 2 (``types=`` pushdown, region-level access) before freezing.
 """
 
 from __future__ import annotations
@@ -39,10 +34,8 @@ _CHECKPOINT_INTERVAL = 64
 def _passes(item: ChatMessage | Event, types: MessageFilter | EventFilter) -> bool:
     """Whether `item` passes an additional in-Python `types` filter.
 
-    Shared by both handle implementations and both iterator methods. A
-    ``types`` of ``None`` or ``"all"`` passes everything (the "no additional
-    narrowing" case); a sequence narrows on ``msg.role`` / ``event.event``
-    via the shared ``_matches_filter`` semantics.
+    ``None`` or ``"all"`` passes everything; a sequence narrows on
+    ``msg.role`` / ``event.event`` via ``_matches_filter``.
     """
     if types is None or types == "all":
         return True
@@ -53,17 +46,9 @@ def _passes(item: ChatMessage | Event, types: MessageFilter | EventFilter) -> bo
 class TranscriptHandle(Protocol):
     """Streaming access to transcript content. Async context manager.
 
-    Multi-shot contract:
-        Each ``messages()``/``events()`` call opens a fresh iteration;
-        implementations must retain replay capability (e.g. the spool) for
-        the handle's lifetime. Future forward-cursor backends must either
-        spool locally or document single-shot deviation before this protocol
-        is exported.
-
-    Reservation note:
-        Phase 2 will add a region-level accessor (e.g. ``conversations()``)
-        for compaction-aware event streaming; keep this protocol unexported
-        until then.
+    Multi-shot contract: each ``messages()``/``events()`` call opens a fresh
+    iteration, so implementations must retain replay capability (e.g. the
+    spool) for the handle's lifetime.
     """
 
     @property
@@ -77,13 +62,8 @@ class TranscriptHandle(Protocol):
         """Iterate messages. Multi-shot: may be called more than once.
 
         Args:
-            types: Additional message-type narrowing. Default ``None`` means
-                "everything the handle was opened with" (the content the
-                handle already carries, unchanged). Passing a non-None
-                ``types`` narrows further by filtering on ``msg.role``
-                (``"all"`` passes everything, like ``None``). Phase-2
-                columnar backends may push this down to storage; phase-1
-                filters post-hoc in Python.
+            types: Additional narrowing on ``msg.role``. ``None`` (default)
+                or ``"all"`` yields everything the handle was opened with.
         """
         ...
 
@@ -91,21 +71,15 @@ class TranscriptHandle(Protocol):
         """Iterate events. Multi-shot: may be called more than once.
 
         Args:
-            types: Additional event-type narrowing. Default ``None`` means
-                "everything the handle was opened with" (the content the
-                handle already carries, unchanged). Passing a non-None
-                ``types`` narrows further by filtering on ``event.event``
-                (``"all"`` passes everything, like ``None``). Phase-2
-                columnar backends may push this down to storage; phase-1
-                filters post-hoc in Python.
+            types: Additional narrowing on ``event.event``. ``None`` (default)
+                or ``"all"`` yields everything the handle was opened with.
         """
         ...
 
     async def load(self) -> Transcript:
-        """Materialize the full transcript. Memoized.
+        """Materialize the full transcript in memory (memoized).
 
-        Materializes the full requested content in memory (may parse a
-        multi-GB sample); memoized. Prefer ``messages()``/``events()`` for
+        May parse a multi-GB sample; prefer ``messages()``/``events()`` for
         bounded-memory access.
         """
         ...
@@ -169,7 +143,7 @@ class MaterializedTranscriptHandle:
                 yield event
 
     async def aclose(self) -> None:
-        """Marks the handle closed. No underlying resources to release."""
+        """Mark the handle closed. No underlying resources to release."""
         self._closed = True
 
     async def __aenter__(self) -> "MaterializedTranscriptHandle":

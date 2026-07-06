@@ -1,6 +1,6 @@
 """Tests for llm_scanner streaming: handle input, bounded concurrency, ordering.
 
-Covers the streaming-segmentation rewire of ``llm_scanner``:
+Covers ``llm_scanner``'s streaming segmentation:
 
 - A ``TranscriptHandle`` input produces a Result equivalent to a
   ``Transcript`` input over the same content.
@@ -147,7 +147,7 @@ def test_timeline_does_not_set_handle_attr() -> None:
 
 
 def test_content_with_events_sets_handle_attr() -> None:
-    # Events content is now streaming-eligible (consumed via
+    # Events content is streaming-eligible (consumed via
     # stream_timeline_messages on the handle path), so a static config with
     # events content still opts in to streaming.
     scan_fn = llm_scanner(

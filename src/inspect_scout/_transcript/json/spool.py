@@ -1,9 +1,8 @@
 """Disk spools for streaming transcript parses.
 
-Spool files are created inside the task files cache dir and unlinked
-immediately after open (POSIX), so crash leaks are impossible; the data
-lives until the fd is closed. Reads use os.pread so concurrent iterators
-never interfere via shared file position.
+Spool files are unlinked immediately after open (POSIX) so a crash cannot
+leak them; the data lives until the fd is closed. Reads use ``os.pread`` so
+concurrent iterators never interfere via a shared file position.
 """
 
 from __future__ import annotations

@@ -422,9 +422,8 @@ def scanner(
                     scanner_fn, scanner_config.content
                 )
 
-            # Carry the per-instance streaming capability set by the scan fn
-            # (e.g. llm_scanner sets this when the runtime config is
-            # streaming-safe) into the typed config.
+            # Carry the per-instance streaming capability from the scan fn into
+            # the typed config.
             if hasattr(scanner_fn, SCANNER_SUPPORTS_STREAMING_ATTR):
                 scanner_config.supports_streaming = bool(
                     getattr(scanner_fn, SCANNER_SUPPORTS_STREAMING_ATTR)
@@ -485,20 +484,10 @@ def config_for_scanner(scanner: Scanner[Any]) -> ScannerConfig:
 
 
 def scanner_supports_streaming(scanner: Scanner[Any]) -> bool:
-    """Whether a scanner can operate on a streaming `TranscriptHandle` without a materialized `Transcript`.
+    """Whether a scanner can operate on a streaming `TranscriptHandle`.
 
-    A scanner opts in to streaming reads by setting
-    `SCANNER_SUPPORTS_STREAMING_ATTR` (truthy) on its scan function; the
-    `@scanner` decorator carries that into `ScannerConfig.supports_streaming`.
-    When set, the scan pipeline passes the shared `TranscriptHandle` to the
-    scanner rather than materializing a `Transcript`.
-
-    Set per-instance (rather than as a class-level capability) because
-    streaming-safety depends on runtime config - e.g. callable question
-    templates require full transcripts. Prefers the registered
-    `ScannerConfig` (available once the scanner is registered); falls back to
-    reading the attr directly off the scan function for direct-call cases
-    where no config has been registered yet.
+    Prefers the registered `ScannerConfig`, falling back to the attr on the
+    scan function for direct-call cases with no registered config.
     """
     try:
         return config_for_scanner(scanner).supports_streaming

@@ -116,7 +116,7 @@ to learn what branching looks like in real data than to guess a linearization.
 | `message` role `toolResult` | Completes the matching `ToolEvent` by `toolCallId`: result content, real completion timestamp (true call→result spans), `isError` → `ToolEvent.failed`/`ToolCallError` (as in telemetry-hal), and `details` (e.g. `exec` `durationMs`, `exitCode`) into `ToolEvent.metadata` + `ChatMessageTool` |
 | `custom_message` (e.g. `openclaw.sessions_yield`) | `ChatMessageUser` — injected into the next run's context, so the model saw it |
 | `compaction` | `CompactionEvent` with `tokens_before`; the record's `summary` text, `firstKeptEntryId`, `details` (read/modified file lists), and `fromHook` go in the event's `metadata` (`tokens_after` is not recorded by OpenClaw — left `None`) |
-| `model_change` / `thinking_level_change` | Not events in v1; `model_change` seeds the initial model name |
+| `model_change` / `thinking_level_change` | `InfoEvent(source="openclaw")` with a `data` payload naming the change (e.g. `{"type": "model_change", "provider": …, "model": …}` / `{"type": "thinking_level_change", "thinking_level": …}`) so switches are visible in the timeline at the moment they happened (precedent: the Claude Code importer's session-boundary `InfoEvent`s). `model_change` also seeds the initial model name |
 | `custom` (`model-snapshot`, `openclaw:bootstrap-context:*`) | Ignored for content (run-boundary bookkeeping) |
 | `leaf` | Ignored (branch bookkeeping) |
 | anything else | **Fail the import**, naming the record type |

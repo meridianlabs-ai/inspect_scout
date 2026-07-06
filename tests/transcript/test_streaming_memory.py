@@ -46,7 +46,11 @@ def _build_sample() -> bytes:
 @pytest.mark.slow
 @pytest.mark.asyncio
 async def test_streamed_messages_read_bounded(tmp_path: Path) -> None:
-    """Verify streamed message reads stay within 16 MB budget."""
+    """Streamed message reads stay within a 6 MB budget on a large-events sample.
+
+    The sample has ~50 MB of events and ~100 KB of messages; reading messages
+    only must not scale with the discarded events' size.
+    """
     data = _build_sample()
     assert len(data) > 45 * 1024 * 1024
 
@@ -239,13 +243,11 @@ async def test_streamed_events_scan_scales_with_structure_not_payload(
     1.5x budget leaves generous headroom while still catching a regression
     where bulk turns start accumulating per-turn.
 
-    (Doubling `big_payload` itself is deliberately NOT used as the scaling
-    axis here: a single JSON line containing one bulk `ModelEvent` is
-    transiently materialized in full during that line's `json.loads`, so its
-    peak legitimately scales with payload size regardless of stubbing --
-    measured ~1.8x peak for a 2x payload increase. That's an inherent cost
-    of decoding one JSON item, not a stub-retention regression, so scaling
-    the count of non-selected turns is the axis that actually isolates
+    (Doubling `big_payload` itself is not used as the scaling axis: a single
+    JSON line containing one bulk `ModelEvent` is transiently materialized in
+    full during that line's `json.loads`, so its peak legitimately scales
+    with payload size regardless of stubbing -- an inherent decoding cost,
+    not a stub-retention regression. Scaling turn count instead isolates
     "stub retention scales with structure, not payload".)
     """
     big_payload = "word " * 100_000  # fixed; only turn count changes below

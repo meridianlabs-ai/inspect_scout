@@ -899,27 +899,16 @@ class ParquetTranscriptsDB(TranscriptsDB):
     ) -> TranscriptHandle:
         """Open a streaming handle to transcript content.
 
-        The returned handle's ``parse``/``load`` callables reference
-        ``self`` (e.g. ``self._conn``, ``self.read``) and so must only be
-        invoked while this view is still connected -- callers must use the
-        handle within the view's `connect()`/`disconnect()` lifetime (e.g.
-        inside the same `async with view:` block).
+        The returned handle references ``self`` (connection, ``read``), so use
+        it within the view's `connect()`/`disconnect()` lifetime.
 
-        For messages/events-only content (no timeline requested) whose
-        combined messages+events+events_data column size (via
-        `_get_content_size`) exceeds `constants_mod.SPOOL_THRESHOLD_BYTES`,
-        this returns a `SpooledTranscriptHandle` whose `parse` callable
-        fetches the JSON cells and streams them through
-        `stream_parse_to_spool`. Below threshold, content requesting a
-        timeline, or transcripts not found in the index: falls back to a
-        `MaterializedTranscriptHandle` over `read()`.
+        Returns a `SpooledTranscriptHandle` for messages/events-only content
+        above `SPOOL_THRESHOLD_BYTES`; otherwise (below threshold, timeline
+        requested, or transcript not indexed) a `MaterializedTranscriptHandle`.
 
-        Note: the JSON cells (messages/events/events_data) are fetched from
-        DuckDB as whole Python strings before being fed to the streaming
-        parser -- unlike the eval-log path, there is no true byte-level
-        streaming source here, so peak memory during `parse()` is
-        approximately 1x the transcript's combined column size (plus the
-        disk spool). This is a documented floor, not fixed by this change.
+        Peak memory during `parse()` is ~1x the combined column size: the JSON
+        cells are fetched from DuckDB as whole strings before parsing (no true
+        byte-level source here, unlike the eval-log path). This is a floor.
         """
         assert self._conn is not None
 

@@ -236,42 +236,28 @@ async def stream_segment_messages(
     context_window: int | None = None,
     prompt_reserve: int | float = 0.2,
 ) -> AsyncIterator[MessagesSegment]:
-    """Incrementally render and segment messages from an async iterator.
+    """Streaming counterpart to ``segment_messages()``.
 
-    Streaming counterpart to ``segment_messages()``: instead of requiring
-    the full message list up front, consumes ``source`` one message at a
-    time and yields ``MessagesSegment`` instances as soon as enough
-    messages have accumulated to fill a segment. This lets callers (e.g.
-    ``llm_scanner``) start processing the first segment before the rest
-    of the transcript has been read.
+    Consume ``source`` one message at a time and yield ``MessagesSegment``
+    instances as segments fill, so callers can process the first segment before
+    the rest is read.
 
-    Messages are rendered sequentially via ``messages_as_str`` (counter
-    ordering matters) and grouped into chunks up to ``chunk_char_target``
-    (same sizing formula as ``segment_messages()``). Each chunk is
-    counted with a single ``count_tokens`` call as soon as it closes —
-    calls are serialized rather than batched with bounded concurrency,
-    since chunks aren't known ahead of time.
+    Sizing matches ``segment_messages()``; token counts are serialized (one
+    ``count_tokens`` per chunk) since chunks aren't known ahead of time.
 
     Args:
         source: An async iterator of ChatMessage.
-        messages_as_str: Rendering function from ``message_numbering()``.
-            Must be called sequentially to preserve counter ordering.
+        messages_as_str: Rendering function from ``message_numbering()``, called
+            sequentially to preserve counter ordering.
         model: Model used for token counting.
-        context_window: Override for context window size. If None,
-            looked up via ``get_model_info(model)``.
-        prompt_reserve: Context-window allowance for prompt scaffolding
-            wrapped around the rendered messages (e.g. a scanner
-            template). A ``float`` reserves that fraction of the window;
-            an ``int`` reserves that many tokens and additionally
-            subtracts a small safety margin for ``count_tokens``
-            imprecision. Default ``0.2`` leaves 80% of the window for
-            messages.
+        context_window: Context window override; looked up from the model if None.
+        prompt_reserve: Window allowance for prompt scaffolding — a float
+            reserves that fraction, an int that many tokens (plus a safety
+            margin). Default 0.2 leaves 80% for messages.
 
     Yields:
-        MessagesSegment instances, each fitting within the token budget
-        (except a single chunk that alone exceeds the budget, which is
-        still yielded on its own). Segment counter increments across
-        all yields.
+        MessagesSegment instances within the token budget (a single oversized
+        chunk is still yielded alone). Segment counter increments across yields.
     """
     # Resolve model
     model = get_model(model)

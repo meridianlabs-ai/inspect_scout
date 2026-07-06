@@ -79,20 +79,10 @@ class TranscriptsViewReader(TranscriptsReader):
     ) -> TranscriptHandle:
         """Open a streaming handle to transcript content.
 
-        Delegates to the underlying `TranscriptsView`, which decides between
-        a spooled and a materialized handle (e.g. `ParquetTranscriptsDB.open`
-        spools when content size exceeds `SPOOL_THRESHOLD_BYTES`). Without
-        this override, the inherited `TranscriptsReader.open()` default would
-        always materialize, silently preventing database-backed transcripts
-        from ever streaming.
-
-        Args:
-            transcript: TranscriptInfo identifying the transcript.
-            content: Filter for which messages/events to load.
-
-        Returns:
-            TranscriptHandle: Async context manager providing streaming
-                access to the transcript's messages/events.
+        Delegates to the underlying `TranscriptsView` so it can choose a
+        spooled or materialized handle; without this override the inherited
+        default would always materialize, defeating streaming for
+        database-backed transcripts.
         """
         return await self._view.open(transcript, content)
 

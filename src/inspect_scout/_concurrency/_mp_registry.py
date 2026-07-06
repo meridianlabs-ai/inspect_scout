@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Iterable
+from logging import getLogger
 from multiprocessing.managers import DictProxy, SyncManager
 from multiprocessing.queues import Queue
 from threading import Condition
@@ -28,6 +29,29 @@ from ._mp_semaphore import MPConcurrencySemaphore, PicklableMPSemaphore
 # and won't be evaluated at runtime
 if sys.version_info < (3, 13):
     DictProxy = DictProxy
+
+logger = getLogger(__name__)
+
+
+def _warn_unsupported_features(
+    name: str, adaptive: AdaptiveConcurrency | None, resizable: bool
+) -> None:
+    """Warn when a semaphore is requested with features the MP strategy lacks.
+
+    Cross-process semaphores have a fixed limit: neither adaptive scaling nor
+    live resizing is implemented, so such requests degrade to a fixed-limit
+    semaphore.
+    """
+    if adaptive is not None:
+        logger.warning(
+            f"Semaphore '{name}' requested adaptive concurrency, which is not "
+            "supported in multi-process scans; using a fixed limit instead."
+        )
+    if resizable:
+        logger.warning(
+            f"Semaphore '{name}' requested a resizable limit, which is not "
+            "supported in multi-process scans; using a fixed limit instead."
+        )
 
 
 class ParentSemaphoreRegistry(ConcurrencySemaphoreRegistry):
@@ -80,6 +104,7 @@ class ParentSemaphoreRegistry(ConcurrencySemaphoreRegistry):
         key: str | None,
         visible: bool,
         adaptive: AdaptiveConcurrency | None = None,
+        resizable: bool = False,
     ) -> ConcurrencySemaphore:
         """Get or create a cross-process semaphore.
 
@@ -91,7 +116,10 @@ class ParentSemaphoreRegistry(ConcurrencySemaphoreRegistry):
             concurrency: Maximum concurrent holders
             key: Unique storage key (defaults to name if None)
             visible: Whether visible in status display
-            adaptive: Adaptive concurrency (if any)
+            adaptive: Adaptive concurrency (not supported cross-process;
+                warns and uses a fixed limit)
+            resizable: Live-resizable semaphore (not supported cross-process;
+                warns and uses a fixed limit)
 
         Returns:
             Wrapped semaphore instance
@@ -100,6 +128,8 @@ class ParentSemaphoreRegistry(ConcurrencySemaphoreRegistry):
         async with self._lock:
             if k in self._semaphores:
                 return self._semaphores[k]
+
+            _warn_unsupported_features(name, adaptive, resizable)
 
             # Create ManagerSemaphore in shared registry
             await self._create_semaphore(name, concurrency)
@@ -176,6 +206,7 @@ class ChildSemaphoreRegistry(ConcurrencySemaphoreRegistry):
         key: str | None,
         visible: bool,
         adaptive: AdaptiveConcurrency | None = None,
+        resizable: bool = False,
     ) -> ConcurrencySemaphore:
         """Get or create a cross-process semaphore via IPC.
 
@@ -188,7 +219,10 @@ class ChildSemaphoreRegistry(ConcurrencySemaphoreRegistry):
             concurrency: Maximum concurrent holders
             key: Unique storage key (defaults to name if None)
             visible: Whether visible in status display
-            adaptive: Adaptive concurrency (if any)
+            adaptive: Adaptive concurrency (not supported cross-process;
+                warns and uses a fixed limit)
+            resizable: Live-resizable semaphore (not supported cross-process;
+                warns and uses a fixed limit)
 
         Returns:
             Wrapped semaphore instance
@@ -197,6 +231,8 @@ class ChildSemaphoreRegistry(ConcurrencySemaphoreRegistry):
         async with self._lock:
             if k in self._wrappers:
                 return self._wrappers[k]
+
+            _warn_unsupported_features(name, adaptive, resizable)
 
             # Request via IPC
             sem = await self._request_semaphore(name, concurrency, visible)

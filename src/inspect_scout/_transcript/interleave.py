@@ -80,27 +80,12 @@ def _model_output_id(event: ModelEvent) -> str | None:
 
 
 def _off_thread_model_text(event: ModelEvent) -> str | None:
-    """Render a ModelEvent's output as a `[E#] MODEL (BRANCH):` entry.
+    """Render an off-thread ModelEvent's output as a ``MODEL (BRANCH):`` entry.
 
-    Used when the event's output message id is not found in the
-    reconstructed thread -- a fork/branch experiment or a retry whose
-    output never joined the final conversation. Rather than silently
-    dropping the output, it is rendered on a copy of the output message
-    with `metadata["role_label"]` set to `"model (branch)"` (read by
-    `_role_label` in `_scanner/extract.py`, which uppercases it into the
-    `MODEL (BRANCH):` prefix).
-
-    Renders via `message_as_str` on the message itself -- never
-    `event.output.completion` -- because fork outputs often carry an
-    empty `completion` with their real content living in reasoning-summary
-    content parts, which only rendering the message's content surfaces.
-
-    Args:
-        event: The off-thread ModelEvent.
-
-    Returns:
-        The rendered text, or None if there is no output message, or the
-        render is empty (e.g. nothing renderable in the message content).
+    Renders the output message itself (not ``output.completion``) because
+    fork outputs often carry an empty completion with their real content in
+    reasoning content parts. Returns None if there is no output message or
+    the render is empty.
     """
     out = event.output
     if out is None or not out.choices or out.choices[0].message is None:
@@ -122,35 +107,12 @@ def _compaction_excluded_ids(
 ) -> frozenset[str]:
     """Ids in the untruncated ``compaction="all"`` thread absent from the current thread.
 
-    Shared discriminator input for ``_AnchorWalk``'s ``excluded_ids``: an id
-    in this set belongs to a turn that ``compaction`` deliberately pruned
-    from the caller's actual (possibly truncated) thread, and must stay
-    hidden rather than resurfacing as a ``MODEL (BRANCH)`` entry (see
-    ``_AnchorWalk``'s class docstring for the fork/compaction-pruned split
-    this feeds).
-
-    When ``compaction == "all"`` there is nothing to exclude by
-    construction -- for callers whose ``current_message_ids`` come from
-    reconstructing ``source`` with this same ``compaction`` value via
-    ``span_messages``, that reconstruction already IS the untruncated one --
-    so the untruncated reconstruction is skipped entirely. Callers whose
+    Feeds ``_AnchorWalk``'s ``excluded_ids``: these turns were deliberately
+    pruned by compaction and must stay hidden rather than resurfacing as
+    ``MODEL (BRANCH)`` entries. ``compaction="all"`` skips the computation
+    (the current thread already is the untruncated one); callers whose
     current thread comes from elsewhere (e.g. a transcript's own top-level
-    ``messages``, already shaped by whatever compaction the original run
-    applied, independent of this ``compaction`` argument) must pass a
-    non-``"all"`` value whenever ``source`` contains a ``CompactionEvent``
-    at all, to force the computation.
-
-    Args:
-        source: The events (or span/timeline) to reconstruct the
-            untruncated thread from.
-        current_message_ids: Ids of the caller's current (possibly
-            truncated) thread.
-        compaction: ``"all"`` to skip (nothing can be excluded); any other
-            value forces the untruncated reconstruction and diff.
-
-    Returns:
-        Ids present in the untruncated thread but not in
-        ``current_message_ids``.
+    messages) must pass a non-``"all"`` value to force it.
     """
     if compaction == "all":
         return frozenset()
@@ -161,27 +123,15 @@ def _compaction_excluded_ids(
 
 
 def scorers_collection_source(source: Timeline, include_scorers: bool) -> Timeline:
-    """Compute the timeline ``collect_span_external()`` should walk to gather span-external events.
+    """Compute the timeline ``collect_span_external()`` should walk.
 
-    Shared by ``transcript_messages`` (``messages.py``) and
-    ``stream_timeline_messages`` (``timeline_stream.py``): when
-    ``include_scorers`` is ``False`` (the default), a ``scorers`` span is
-    about to be pruned from the *walked* tree, so its own events (e.g. a
-    grader's final ``ScoreEvent``) would be silently lost unless collected
-    from the still-unpruned ``source`` -- returned unchanged. When
-    ``include_scorers`` is ``True``, a ``scorers`` span WITH a direct
-    ``ModelEvent`` is instead walked normally and splices its own events via
-    ``span_interleaved_messages``, so it must be filtered out here or its
-    events would be double-rendered; a ``scorers`` span with no direct
-    ``ModelEvent`` is never walked by ``_walk_spans`` regardless of
-    ``include_scorers``, so it must remain in the returned source.
-
-    Args:
-        source: The (unpruned) timeline to derive the collection source from.
-        include_scorers: Mirrors the caller's ``include_scorers`` setting.
-
-    Returns:
-        The timeline ``collect_span_external()`` should walk.
+    With ``include_scorers=False`` (default) the ``scorers`` span is pruned
+    from the walked tree, so its events must be collected from the unpruned
+    ``source`` -- returned unchanged. With ``include_scorers=True``, a
+    ``scorers`` span with a direct ``ModelEvent`` is walked normally and
+    splices its own events, so it is filtered out here to avoid
+    double-rendering; one without a direct ``ModelEvent`` is never walked
+    and must remain.
     """
     if not include_scorers:
         return source
@@ -194,29 +144,13 @@ def scorers_collection_source(source: Timeline, include_scorers: bool) -> Timeli
 def _scorers_model_event_ids(events: list[Event]) -> frozenset[str]:
     """Ids of ModelEvents nested under a top-level ``scorers`` span, if any.
 
-    On timeline paths, a ``scorers`` span's grader ``ModelEvent``s never
-    join a scanned thread structurally: the span is either pruned entirely
-    (default ``include_scorers=False``) or, when included, walked as its
-    *own* scannable span (see ``collect_span_external``'s docstring) --
-    either way they are never direct content of some other span, so they
-    are never seen by that span's own `_AnchorWalk` at all.
-
-    On the flat/events-only path there is no such structural boundary: a
-    grader ``ModelEvent`` is just another item in the flat event list, so
-    without this check it would be picked up by `_AnchorWalk.add` like any
-    other off-thread model call and rendered as a branch entry -- breaking
-    the original invariant that a scorer's own model calls never surface
-    in scanned content. This mirrors `_exclude_scorers` (`messages.py`) in
-    assuming a single top-level ``scorers`` span.
-
-    Args:
-        events: The flat event list to scan.
-
-    Returns:
-        Ids (`_event_id`) of every ModelEvent nested under the top-level
-        ``scorers`` span. Empty if the event list carries no span
-        structure at all (nothing to detect) or no top-level ``scorers``
-        span is found.
+    On the flat/events-only path a grader ``ModelEvent`` is just another
+    item in the event list; without this exclusion it would render as a
+    branch entry, breaking the invariant that scorer model calls never
+    surface in scanned content. (Timeline paths handle this structurally.)
+    Mirrors ``_exclude_scorers`` (``messages.py``) in assuming a single
+    top-level ``scorers`` span. Empty if the list carries no span structure
+    or no ``scorers`` span is found.
     """
     if not any(isinstance(e, (SpanBeginEvent, SpanEndEvent)) for e in events):
         return frozenset()
@@ -239,50 +173,25 @@ def _scorers_model_event_ids(events: list[Event]) -> frozenset[str]:
 class _AnchorWalk:
     """Incremental anchor walk shared by the materialized and streaming drivers.
 
-    Consumes events one at a time and retains only what splicing needs: the
-    event's id, its rendered text, and the message *position* it anchors to.
-    Event payloads are never held.
+    Consumes events one at a time and retains only the event id, rendered
+    text, and the message *position* it anchors to -- never event payloads.
+    Duplicate message ids are real (id-less messages fall back to a text
+    hash), so each ModelEvent consumes the next occurrence of its output id
+    rather than re-anchoring to the first.
 
-    Anchoring assumes a ModelEvent's output message id matches the same
-    message in the message list (the invariant Inspect logs satisfy).
-    Anchors are message positions: messages without explicit ids fall back
-    to a text hash, so duplicate ids are real (e.g. two identical "yes"
-    turns) and each ModelEvent must consume the next occurrence rather than
-    re-anchoring to the first.
+    A ModelEvent whose output id is not found in the thread splits on
+    ``excluded_ids``: if absent from it, the event is a genuine fork/branch
+    and renders unconditionally (regardless of the ``events`` selection) as
+    a ``MODEL (BRANCH)`` entry at the current anchor; if present, the turn
+    was compaction-pruned and stays hidden.
 
-    A ModelEvent whose output message id is NOT found in the thread splits
-    into two cases, distinguished by `excluded_ids`:
-
-    - Fork: the id is in NEITHER the thread NOR `excluded_ids` -- a
-      fork/branch experiment or a retry whose output never joined the
-      final conversation. Rather than being silently dropped, `add`
-      renders it via `_off_thread_model_text` and anchors it at the
-      current position (`add_rendered`, which does not itself advance the
-      anchor) -- it is always rendered, regardless of the `events`
-      selection, since it is model content that would otherwise be
-      invisible entirely.
-    - Compaction-pruned: the id IS in `excluded_ids` -- the turn belongs to
-      a superseded region that the caller's compaction strategy
-      deliberately dropped (e.g. `compaction="last"` keeping only the
-      final region). `add` does nothing: no branch entry, no anchor
-      advance -- the turn stays hidden, honoring the caller's explicit
-      request to compact it away rather than resurrecting it as a "fork".
-
-    Known limitation (id-less messages only): when messages lack real ids,
-    the text-hash fallback makes occurrence consumption order-based rather
-    than identity-aware. A fork whose output text equals a later on-thread
-    turn's text steals that turn's occurrence: the fork is silently
-    dropped and the real turn misrenders as a branch entry (pinned by
+    Known limitation (id-less messages only, unreachable for Inspect logs
+    since Inspect auto-mints message ids): the text-hash fallback is
+    order-based, so a fork whose output text equals a later on-thread
+    turn's text steals that turn's occurrence (pinned by
     ``test_idless_duplicate_text_fork_steals_anchor_known_limitation``).
-    The fallback also keys on ``message.text``, which is coarser than the
-    rendered output (reasoning content is invisible to it), so visually
-    distinct messages can collide. Inspect auto-mints message ids at
-    construction and on deserialization (a sweep of >2M real messages
-    found none missing), so this is unreachable for Inspect logs; it can
-    only affect synthetic transcripts or non-Inspect importers that
-    construct id-less messages. If such an importer appears, escalate to
-    uuid-keyed anchoring on the reconstruction paths rather than patching
-    the order-based heuristic.
+    If a non-Inspect importer ever produces id-less messages, escalate to
+    uuid-keyed anchoring rather than patching the heuristic.
     """
 
     def __init__(
@@ -345,25 +254,11 @@ def span_interleaved_messages(
 ) -> list[ChatMessage]:
     """Splice a span's interleavable events into its message thread.
 
-    Per-span counterpart to ``interleave_events``: draws ``ModelEvent``s
-    and interleavable events from the span's direct ``TimelineEvent``
-    content (descendant spans are not considered), reconstructs the
-    span's message thread via ``span_messages`` (honoring ``compaction``),
-    then anchors and splices events into that thread with ``_AnchorWalk``.
-
-    Anchoring walks the span's full, unfiltered content in order, so an
-    event whose anchoring ``ModelEvent`` output was dropped by compaction
-    is not found in the (possibly truncated) thread and falls back to
-    being anchored to the previous surviving turn, or leads the span if
-    none survived.
-
-    When ``compaction`` truncates the thread (anything but ``"all"``), a
-    ``ModelEvent`` whose output fell outside the kept region is only ever
-    a genuine off-thread fork if it is ALSO absent from the untruncated
-    ``compaction="all"`` thread -- see ``_AnchorWalk``'s ``excluded_ids``
-    discriminator. Ids present in the ``"all"`` thread but not the current
-    (possibly truncated) one are computed here and passed through so those
-    turns stay hidden rather than resurfacing as ``MODEL (BRANCH)`` entries.
+    Draws events from the span's direct ``TimelineEvent`` content only
+    (descendant spans are not considered), reconstructs the span's thread
+    via ``span_messages`` (honoring ``compaction``), then anchors and
+    splices with ``_AnchorWalk``. An event whose anchoring turn was dropped
+    by compaction anchors to the previous surviving turn, or leads the span.
 
     Args:
         span: The scannable span to process.
@@ -405,10 +300,9 @@ def _span_has_direct_model_event(span: TimelineSpan) -> bool:
 def span_is_scannable(span: TimelineSpan) -> bool:
     """Return True if ``span`` is scannable: not a utility span, with a direct ModelEvent.
 
-    Shared by ``_walk_spans`` (``timeline.py``), which yields exactly the
-    spans this predicate matches, and ``_collect_span_external`` below,
-    which uses it (plus a ``scorers``-span exclusion) to decide when a
-    span's own splice owns its events.
+    Shared by ``_walk_spans`` (``timeline.py``) and
+    ``_collect_span_external`` so both agree on which spans own their
+    events.
     """
     return not span.utility and _span_has_direct_model_event(span)
 
@@ -426,12 +320,10 @@ def _collect_span_external(
     """Depth-first helper for ``collect_span_external``; see its docstring."""
     span_in_scorers = in_scorers or span.span_type == "scorers"
     structurally_scannable = not span_in_scorers and span_is_scannable(span)
-    # Mirrors `_walk_spans`' scannable-depth bookkeeping (`timeline.py`): a
-    # structurally scannable span still consumes a depth level even when it
-    # exceeds `depth` and is therefore never actually walked (and its own
-    # splice never runs). `next_scannable_depth` only grows, so once a span
-    # exceeds `depth` every descendant does too -- their events fall through
-    # to external collection, attributed to the last span that IS walked.
+    # Mirrors `_walk_spans`' depth bookkeeping (`timeline.py`): a scannable
+    # span beyond `depth` still consumes a depth level but is never walked,
+    # so its events (and its descendants') fall through to external
+    # collection, attributed to the last span that IS walked.
     if structurally_scannable:
         next_scannable_depth = _scannable_depth + 1
         is_scannable = depth is None or next_scannable_depth <= depth
@@ -442,29 +334,13 @@ def _collect_span_external(
     if is_scannable:
         last_scannable = span.id
 
-    # A ModelEvent reached here (`is_scannable` False) has no thread of its
-    # own to be "on" or "off" -- unlike `_AnchorWalk.add`, which anchors a
-    # ModelEvent against a reconstructed thread and only renders it when its
-    # output id is NOT found there, this collector always renders it (via
-    # `_off_thread_model_text`, ignoring `events` -- model content is
-    # always-on, matching `_AnchorWalk`'s off-thread case). Two distinct
-    # situations land here, both rendered identically as `MODEL (BRANCH)`
-    # entries attached to `last_scannable`:
-    #   - Utility spans, pure containers, root level, or a `scorers` span:
-    #     genuinely non-scannable locations with no thread at all.
-    #   - A structurally scannable span excluded purely by `depth`: its
-    #     ModelEvents (including ones that WOULD be on-thread if the span
-    #     were walked) are surfaced as branch entries after the last span
-    #     actually walked -- the same "below-depth content surfaces as
-    #     span-external" semantics `_walk_spans` already applies to
-    #     everything else in such a span.
-    # `scorers` spans are the one exception: their grader ModelEvents must
-    # never render, so `span_in_scorers` (computed above, propagated to
-    # descendants regardless of the descendants' own type) short-circuits
-    # them. Scannable spans' own direct ModelEvents are never seen here at
-    # all -- the `is_scannable` branch above `continue`s past them first,
-    # leaving them owned by that span's own `span_interleaved_messages`
-    # splice.
+    # A ModelEvent reached here has no thread to be "on", so it always
+    # renders as a `MODEL (BRANCH)` entry attached to `last_scannable`
+    # (ignoring `events` -- model content is always-on). This covers both
+    # genuinely non-scannable locations (utility spans, containers, root)
+    # and scannable spans excluded purely by `depth`. Grader ModelEvents
+    # (`span_in_scorers`) are the exception and never render. A scannable
+    # span's own events are skipped -- owned by its own splice.
     for item in span.content:
         if isinstance(item, TimelineEvent):
             if is_scannable:
@@ -497,89 +373,36 @@ def collect_span_external(
 ) -> SpanExternalEvents:
     """Collect span-external interleavable events from the unpruned timeline.
 
-    Companion to ``span_interleaved_messages()``: that function splices
-    events that live in a scannable span's own direct content; this
-    function walks the *whole* tree (spans and their ``TimelineEvent``
-    content, depth-first, in document order) to find every
-    interleavable event that is NOT owned by such a splice -- because
-    it sits in a utility span, a pure container span, root level, or a
-    ``scorers`` span -- and attributes each one to the most recently
-    reached scannable span (or the reserved key ``""`` if none has
-    been reached yet). The result is meant to be passed as
+    Companion to ``span_interleaved_messages()``, which splices a scannable
+    span's own direct events: this walks the whole tree depth-first to find
+    every event NOT owned by such a splice (utility spans, pure containers,
+    root level, ``scorers`` spans, spans beyond ``depth``) and attributes
+    each to the most recently reached scannable span (key ``""`` before the
+    first one). The result is passed as
     ``timeline_messages(..., span_external=...)``.
 
-    ``ModelEvent``s reached this way (a fork/branch inside a utility span,
-    root-level model calls, or -- see ``depth`` below -- on-thread turns of
-    a span that is never walked) are never silently dropped: each renders
-    unconditionally as a ``MODEL (BRANCH)`` entry via
-    ``_off_thread_model_text``, exactly like ``_AnchorWalk``'s off-thread
-    case, except there is no thread here to be "off" from -- location alone
-    (not on-thread/off-thread status) is what routes a ModelEvent through
-    this collector instead of a span's own splice. The one exception is a
-    ``scorers`` span's grader ``ModelEvent``s, which are always excluded
-    (see below). A scannable span's own direct ``ModelEvent``s are never
-    visited here at all -- they are skipped in favor of that span's own
-    ``span_interleaved_messages`` splice, whether or not the span is
-    actually within ``depth`` (see ``depth``'s docs for the latter case).
-
-    A span is scannable for this purpose when it is not a utility
-    span, has at least one direct ``ModelEvent``, and is not a
-    ``scorers`` span. ``scorers`` spans (and, recursively, all of
-    their descendants regardless of the descendants' own type) are
-    always treated as non-scannable here, even though a ``scorers``
-    span containing a grader ``ModelEvent`` would otherwise satisfy
-    the plain scannable predicate used by ``_walk_spans``. This is
-    deliberate: ``transcript_messages`` calls this collector on the
-    *unpruned* timeline before pruning the ``scorers`` span away (the
-    default, ``include_scorers=False``), so a ``scorers`` span's
-    events (e.g. the final ``ScoreEvent``) must be collected here or
-    they would be silently lost -- they would otherwise look "owned"
-    by a per-span splice that will never run, because the span is
-    pruned before ``timeline_messages`` ever walks it.
-
-    When ``include_scorers=True`` the ``scorers`` span is *not*
-    pruned, but it is only walked as an ordinary scannable span by
-    ``timeline_messages`` (whose ``_walk_spans`` predicate is not
-    ``scorers``-aware) when it has a direct ``ModelEvent`` -- in that
-    case its events are spliced in directly by
-    ``span_interleaved_messages`` instead, and must not also be
-    collected here or they would be double-rendered. A ``scorers``
-    span with no direct ``ModelEvent`` (e.g. a non-model-graded
-    scorer such as ``match`` or ``includes``) is never walked by
-    ``_walk_spans`` regardless of ``include_scorers``, so it must
-    remain in the tree passed here or its events (e.g. the final
-    ``ScoreEvent``) would be silently lost. Callers therefore must
-    invoke this collector on a copy of the timeline with only those
-    ``scorers`` spans that have a direct ``ModelEvent`` filtered out
-    (e.g. via ``timeline_filter`` combined with
-    ``_span_has_direct_model_event``) rather than filtering out every
-    ``scorers`` span -- keeping this function's behavior a pure,
-    unconditional function of the tree it is given.
+    ``ModelEvent``s collected this way always render as ``MODEL (BRANCH)``
+    entries, except grader model calls under a ``scorers`` span (or its
+    descendants), which never render. ``scorers`` spans are collected here
+    (rather than spliced) because ``transcript_messages`` prunes them from
+    the walked tree by default -- without this, their events (e.g. the
+    final ``ScoreEvent``) would be lost. Callers that walk a ``scorers``
+    span normally (``include_scorers=True`` with a direct ``ModelEvent``)
+    must pre-filter it from the tree passed here to avoid double-rendering
+    -- see ``scorers_collection_source``.
 
     Args:
-        timeline: The (unpruned, or selectively pre-filtered by the
-            caller) timeline or span subtree to walk.
-        events: Which event types to interleave (``"all"`` or a list),
-            passed through to ``_interleavable_text``.
-        depth: Maximum nesting level of scannable spans, matching the
-            ``depth`` passed to ``timeline_messages()`` /
-            ``_walk_spans()``. A structurally scannable span beyond this
-            limit is never actually walked (its own splice never runs),
-            so its events -- and its descendants' events -- are treated
-            as external here too, attributed to the last span that IS
-            within the depth limit. This includes the span's own
-            ``ModelEvent``s, even ones that would have been ordinary
-            on-thread turns had the span been walked: with no splice ever
-            reconstructing that span's thread, there is nothing for them
-            to be "on"; they render as ``MODEL (BRANCH)`` entries after
-            the parent, matching the depth semantics already applied to
-            every other event type in such a span. ``None`` (default)
-            matches ``_walk_spans``' unlimited depth and preserves prior
-            behavior exactly.
+        timeline: The (unpruned, or caller-pre-filtered) timeline or span
+            subtree to walk.
+        events: Which event types to interleave (``"all"`` or a list).
+        depth: Maximum nesting level of scannable spans, matching
+            ``timeline_messages()``. A scannable span beyond this limit is
+            never walked, so its events (including its own on-thread
+            ``ModelEvent``s, which then have no thread to be on) are
+            collected as external, attributed to the last walked span.
 
     Returns:
-        Mapping of scannable span id (or ``""`` for events preceding
-        the first scannable span) to a list of ``(event_id,
+        Mapping of scannable span id (or ``""``) to ``(event_id,
         rendered_text)`` entries, in document order.
     """
     root = timeline.root if isinstance(timeline, Timeline) else timeline

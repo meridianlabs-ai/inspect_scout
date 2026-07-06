@@ -218,21 +218,15 @@ async def timeline_messages(
             messages. Forwarded to ``segment_messages()``.
         events: Which non-message event types to interleave into each
             span's message thread as marked entries (``"all"``, a list
-            of event types, or ``None`` to disable interleaving). When
-            ``None`` (default), behavior is unchanged from before this
-            parameter existed: each span is passed to
-            ``segment_messages()`` as a ``TimelineSpan``. When set,
-            each span's thread is built via
-            ``span_interleaved_messages()`` (events spliced in) and the
-            resulting message list is passed to ``segment_messages()``
-            instead.
-        span_external: Optional mapping of span id to a list of
-            ``(event_id, rendered_text)`` entries to append, as marked
-            event messages, after that span's own messages (before
-            segmentation), so they count toward the token budget and
-            land in the span's final segment. The reserved key ``""``
-            instead prepends its entries as leading entries on the
-            first scannable span. Ignored when ``events`` is ``None``.
+            of event types, or ``None`` (default) to disable
+            interleaving). When set, each span's thread is built via
+            ``span_interleaved_messages()`` before segmentation.
+        span_external: Optional mapping of span id to ``(event_id,
+            rendered_text)`` entries to append after that span's own
+            messages, before segmentation (so they count toward the
+            token budget). The reserved key ``""`` prepends its entries
+            to the first scannable span. Ignored when ``events`` is
+            ``None``.
 
     Yields:
         TimelineMessages for each segment. Empty spans are skipped.

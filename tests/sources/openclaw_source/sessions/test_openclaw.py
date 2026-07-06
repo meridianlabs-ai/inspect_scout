@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import shutil
 from pathlib import Path
 from typing import Any
@@ -266,6 +267,30 @@ class TestOpenclawSource:
         transcripts = await collect(tmp_path)
         assert len(transcripts) == 1
         assert transcripts[0].total_time == pytest.approx(60.0)
+
+    @pytest.mark.asyncio
+    async def test_header_only_session_skipped_with_log(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        (tmp_path / "e0000000-0000-0000-0000-000000000001.jsonl").write_text(
+            json.dumps(
+                {
+                    "type": "session",
+                    "version": 3,
+                    "id": "e0000000-0000-0000-0000-000000000001",
+                    "timestamp": "2026-07-06T10:00:00.000Z",
+                    "cwd": "/w",
+                }
+            )
+            + "\n"
+        )
+        with caplog.at_level(logging.INFO):
+            transcripts = [t async for t in openclaw(tmp_path)]
+        assert transcripts == []
+        assert any(
+            "e0000000-0000-0000-0000-000000000001" in rec.message
+            for rec in caplog.records
+        )
 
 
 class TestRegistration:

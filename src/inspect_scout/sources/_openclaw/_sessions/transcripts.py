@@ -122,6 +122,7 @@ def _process_session_file(
     ctx = BuildContext(sessions_dir=session_file.parent, registry=registry)
     events, messages = build_content(parsed, ctx)
     if not messages:
+        logger.info("OpenClaw session %s has no messages; skipping", session_file)
         return None
 
     # Stable ids across model events and the message thread (as in the

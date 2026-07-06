@@ -302,7 +302,11 @@ def _resolve_spawned_child(
 
 
 def _spawned_child_key(result: ToolResultMsg) -> str | None:
-    """``childSessionKey`` from an accepted spawn result, else ``None``."""
+    """``childSessionKey`` from an accepted spawn result, else ``None``.
+
+    Assumes a 1:1 spawn-to-child mapping (each spawn result names exactly one
+    child, each child is spawned once); not deduplicated against repeats.
+    """
     try:
         parsed = json.loads(content_to_text(result.content))
     except (json.JSONDecodeError, TypeError):

@@ -108,6 +108,13 @@ side-children. If a true divergent branch is encountered (two `message` records
 sharing a parent), the import fails with an error naming the session — better
 to learn what branching looks like in real data than to guess a linearization.
 
+Record timestamps: all mapped records carry the **record-level ISO timestamp**
+(append time). The message-level epoch-ms `message.timestamp` turned out to be
+non-monotonic in real captures (user messages carry their queued time, which
+can precede the preceding turn's completion), so it is not used — append order
+is the timeline. Tool results therefore complete at the time their result
+record was appended, which remains a real, id-keyed call→result span.
+
 | Record | Handling |
 |---|---|
 | `session` | Header: identity, `cwd`, schema `version` → metadata |
@@ -168,6 +175,11 @@ Degraded cases:
 - Child in registry but file missing on disk → warn, skip the span, keep the
   spawn tool event.
 - Child not in registry → warn, skip the span, keep the spawn tool event.
+
+Each spawn result names exactly one `childSessionKey` and each child is
+spawned once, so the span mapping is 1:1; a duplicate spawn result naming an
+already-seen child would emit a second span with the same id (not observed in
+practice, not deduplicated).
 
 ## System prompts
 

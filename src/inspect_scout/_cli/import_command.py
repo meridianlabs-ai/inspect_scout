@@ -8,7 +8,7 @@ import importlib
 import inspect
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, AsyncIterator, Callable
 
 import click
 import yaml
@@ -238,12 +238,29 @@ async def _run_import(
 ) -> None:
     """Execute the import: call source function and write to database."""
     from inspect_scout._transcript.database.factory import transcripts_db
+    from inspect_scout._transcript.types import Transcript
 
     d = display()
     d.print(f"\nImporting from [bold]{source_name}[/bold]...\n", markup=True)
 
+    # Count transcripts as they stream through to the database.
+    # Note that the DB does not overwrite existing items, so this count
+    # represents the number of items we processed, not necessarily the number
+    # actually written.
+    count = 0
+
+    async def counted() -> AsyncIterator[Transcript]:
+        nonlocal count
+        async for transcript in source_fn(**kwargs):
+            count += 1
+            yield transcript
+
     async with transcripts_db(transcripts_dir) as db:
-        await db.insert(source_fn(**kwargs))
+        await db.insert(counted())
+
+    if count == 0:
+        d.print("\nNo transcripts were imported (the source produced none).\n")
+        return
 
     d.print("\nImport complete. To view transcripts:\n")
     d.print(f"  scout view -T {transcripts_dir}\n")

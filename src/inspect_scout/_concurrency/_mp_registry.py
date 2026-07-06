@@ -80,6 +80,7 @@ class ParentSemaphoreRegistry(ConcurrencySemaphoreRegistry):
         key: str | None,
         visible: bool,
         adaptive: AdaptiveConcurrency | None = None,
+        resizable: bool = False,
     ) -> ConcurrencySemaphore:
         """Get or create a cross-process semaphore.
 
@@ -92,6 +93,7 @@ class ParentSemaphoreRegistry(ConcurrencySemaphoreRegistry):
             key: Unique storage key (defaults to name if None)
             visible: Whether visible in status display
             adaptive: Adaptive concurrency (if any)
+            resizable: Live-resizable semaphore (not supported cross-process; ignored)
 
         Returns:
             Wrapped semaphore instance
@@ -176,6 +178,7 @@ class ChildSemaphoreRegistry(ConcurrencySemaphoreRegistry):
         key: str | None,
         visible: bool,
         adaptive: AdaptiveConcurrency | None = None,
+        resizable: bool = False,
     ) -> ConcurrencySemaphore:
         """Get or create a cross-process semaphore via IPC.
 
@@ -189,6 +192,7 @@ class ChildSemaphoreRegistry(ConcurrencySemaphoreRegistry):
             key: Unique storage key (defaults to name if None)
             visible: Whether visible in status display
             adaptive: Adaptive concurrency (if any)
+            resizable: Live-resizable semaphore (not supported cross-process; ignored)
 
         Returns:
             Wrapped semaphore instance

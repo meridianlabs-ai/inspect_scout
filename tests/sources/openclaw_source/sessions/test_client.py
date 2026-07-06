@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
+from datetime import datetime
 from pathlib import Path
 
 from inspect_scout.sources._openclaw._sessions.client import (
+    discover_session_files,
     load_registry,
     read_session_records,
 )
@@ -55,3 +59,52 @@ class TestLoadRegistry:
     def test_invalid_json_returns_none(self, tmp_path: Path) -> None:
         (tmp_path / "sessions.json").write_text("not json")
         assert load_registry(tmp_path) is None
+
+
+class TestDiscoverSessionFiles:
+    def test_sessions_dir_excludes_trajectories(self) -> None:
+        files = discover_session_files(FX_DEMO)
+        names = {f.name for f in files}
+        assert len(files) == 4
+        assert all(not n.endswith(".trajectory.jsonl") for n in names)
+        assert "cfabe24d-8b34-4031-a393-689524b2028f.jsonl" in names
+
+    def test_single_file(self) -> None:
+        files = discover_session_files(ORCHESTRATOR)
+        assert files == [ORCHESTRATOR]
+
+    def test_parent_dir_scans_agent_sessions(self, tmp_path: Path) -> None:
+        # ~/.openclaw layout: <root>/agents/<agent>/sessions/*.jsonl
+        sessions = tmp_path / "agents" / "main" / "sessions"
+        sessions.mkdir(parents=True)
+        shutil.copy(ORCHESTRATOR, sessions / ORCHESTRATOR.name)
+        for root in (tmp_path, tmp_path / "agents"):
+            files = discover_session_files(root)
+            assert [f.name for f in files] == [ORCHESTRATOR.name]
+
+    def test_session_id_filter(self) -> None:
+        files = discover_session_files(
+            FX_DEMO, session_id="8c6aeab3-993e-43d5-934a-04aa4a5f3804"
+        )
+        assert [f.stem for f in files] == ["8c6aeab3-993e-43d5-934a-04aa4a5f3804"]
+
+    def test_newest_first_and_time_filters(self, tmp_path: Path) -> None:
+        old = tmp_path / "old.jsonl"
+        new = tmp_path / "new.jsonl"
+        old.write_text('{"type":"session","id":"old","version":3}\n')
+        new.write_text('{"type":"session","id":"new","version":3}\n')
+        os.utime(old, (1_600_000_000, 1_600_000_000))
+        os.utime(new, (1_700_000_000, 1_700_000_000))
+        files = discover_session_files(tmp_path)
+        assert [f.name for f in files] == ["new.jsonl", "old.jsonl"]
+
+        cutoff = datetime.fromtimestamp(1_650_000_000)
+        assert [f.name for f in discover_session_files(tmp_path, from_time=cutoff)] == [
+            "new.jsonl"
+        ]
+        assert [f.name for f in discover_session_files(tmp_path, to_time=cutoff)] == [
+            "old.jsonl"
+        ]
+
+    def test_nonexistent_path_returns_empty(self, tmp_path: Path) -> None:
+        assert discover_session_files(tmp_path / "nope") == []

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from logging import getLogger
 from os import PathLike
 from pathlib import Path
@@ -119,6 +119,30 @@ def is_session_file(path: Path) -> bool:
     return path.suffix == ".jsonl" and not path.name.endswith(_TRAJECTORY_SUFFIX)
 
 
+def has_session_header(path: Path) -> bool:
+    """Whether the file's first record is an OpenClaw ``session`` header.
+
+    Cheap sniff (first non-empty line only) used by discovery to exclude
+    foreign ``.jsonl`` files — e.g. a telemetry log sharing the directory — so
+    one stray file cannot abort a directory import. Genuine session files that
+    the importer cannot map still fail loudly at the parse layer.
+    """
+    try:
+        with open(path, encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    return False
+                return isinstance(record, dict) and record.get("type") == "session"
+    except OSError as ex:
+        logger.warning("Could not read %s: %s", path, ex)
+    return False
+
+
 def discover_session_files(
     path: str | PathLike[str] | None = None,
     session_id: str | None = None,
@@ -154,7 +178,7 @@ def discover_session_files(
             logger.warning("Path does not exist: %s", p)
             return []
         if p.is_file():
-            files = [p] if is_session_file(p) else []
+            files = [p] if is_session_file(p) and _sniff_or_warn(p) else []
         else:
             files = _find_sessions_in_directory(p)
             if not files:
@@ -165,12 +189,14 @@ def discover_session_files(
         files = [f for f in files if f.stem == session_id]
 
     if from_time or to_time:
+        from_bound = _as_aware(from_time)
+        to_bound = _as_aware(to_time)
         filtered: list[Path] = []
         for f in files:
-            mtime = datetime.fromtimestamp(f.stat().st_mtime)
-            if from_time and mtime < from_time:
+            mtime = datetime.fromtimestamp(f.stat().st_mtime, tz=timezone.utc)
+            if from_bound and mtime < from_bound:
                 continue
-            if to_time and mtime >= to_time:
+            if to_bound and mtime >= to_bound:
                 continue
             filtered.append(f)
         files = filtered
@@ -180,8 +206,29 @@ def discover_session_files(
 
 
 def _find_sessions_in_directory(directory: Path) -> list[Path]:
-    """Session files directly in a directory."""
-    return [f for f in directory.glob("*.jsonl") if is_session_file(f)]
+    """Session files directly in a directory (sniffed for a session header)."""
+    return [
+        f for f in directory.glob("*.jsonl") if is_session_file(f) and _sniff_or_warn(f)
+    ]
+
+
+def _sniff_or_warn(path: Path) -> bool:
+    """Apply the session-header sniff, warning when a file is excluded."""
+    if has_session_header(path):
+        return True
+    logger.warning(
+        "Skipping %s: not an OpenClaw session file (first record is not a "
+        "'session' header)",
+        path,
+    )
+    return False
+
+
+def _as_aware(dt: datetime | None) -> datetime | None:
+    """Make a time bound timezone-aware, interpreting a naive one as local."""
+    if dt is None:
+        return None
+    return dt if dt.tzinfo else dt.astimezone()
 
 
 def _scan_agent_dirs(base: Path) -> list[Path]:

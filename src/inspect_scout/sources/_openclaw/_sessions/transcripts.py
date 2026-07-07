@@ -136,8 +136,9 @@ def _process_session_file(
     apply_ids(messages)
 
     # Billable per-call spend summed over every model call (orchestrator and
-    # sub-agents): OpenClaw's totalTokens == input + output + cacheRead +
-    # cacheWrite per turn, the convention shared by the other importers.
+    # sub-agents). Each ModelUsage.total_tokens is the component sum
+    # (input + output + cacheRead + cacheWrite — see usage_to_inspect), not
+    # the raw totalTokens, which can exclude cache tokens on some turns.
     total_tokens = sum(
         event.output.usage.total_tokens
         for event in events

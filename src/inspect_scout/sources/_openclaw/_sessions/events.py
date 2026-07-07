@@ -369,6 +369,9 @@ def _emit_subagent_span(
     events.append(
         SpanBeginEvent(
             id=span_id,
+            # event_tree/timeline nest spans by parent_id; span_id alone
+            # does not nest (a nested span would flatten to root without it).
+            parent_id=parent_span_id,
             name=label or "subagent",
             type="agent",
             timestamp=spawn_ts,

@@ -123,12 +123,11 @@ def parse_session(raw_records: list[dict[str, Any]], source: str) -> ParsedSessi
             f"Expected a 'session' header as the first record of {source}, "
             f"got '{header_rec.get('type')}'"
         )
-    version = header_rec.get("version")
     header = SessionHeader(
         # An empty id is accepted here; identity fallback/cross-check (e.g. to
         # the session file's stem) is deferred to the transcripts layer.
         session_id=str(header_rec.get("id") or ""),
-        version=int(version) if version is not None else None,
+        version=_opt_int(header_rec.get("version")),
         timestamp=_parse_iso(header_rec.get("timestamp")),
         cwd=str(header_rec["cwd"]) if header_rec.get("cwd") else None,
     )
@@ -217,7 +216,6 @@ def parse_session(raw_records: list[dict[str, Any]], source: str) -> ParsedSessi
             )
         elif rtype == "compaction":
             _count_parent(rec, thread_children)
-            tokens_before = rec.get("tokensBefore")
             details = rec.get("details")
             records.append(
                 CompactionRecord(
@@ -225,9 +223,7 @@ def parse_session(raw_records: list[dict[str, Any]], source: str) -> ParsedSessi
                     first_kept_entry_id=str(rec["firstKeptEntryId"])
                     if rec.get("firstKeptEntryId")
                     else None,
-                    tokens_before=int(tokens_before)
-                    if tokens_before is not None
-                    else None,
+                    tokens_before=_opt_int(rec.get("tokensBefore")),
                     details=details if isinstance(details, dict) else None,
                     from_hook=rec.get("fromHook")
                     if isinstance(rec.get("fromHook"), bool)
@@ -283,20 +279,30 @@ _KNOWN_ASSISTANT_BLOCK_TYPES = {"text", "thinking", "image", "toolCall"}
 
 
 def _validate_assistant_content(content: Any, source: str) -> None:
-    """Fail loudly on an assistant content block type this importer can't map.
+    """Fail loudly on assistant content this importer can't map.
 
-    The shared ``extraction.content_blocks`` helper silently skips unknown
-    block types (fine for telemetry-hal), but the sessions design promises
-    unknown assistant block types fail the import — see
-    ``design/openclaw-sessions.md``.
+    The shared ``extraction.content_blocks`` helper silently drops shapes it
+    does not recognize (fine for telemetry-hal), but the sessions design
+    promises unmappable assistant content fails the import — see
+    ``design/openclaw-sessions.md``. ``None`` and ``str`` content are mappable;
+    any other non-list shape, any non-``str``/``dict`` block, and any unknown
+    block type are not.
     """
-    if not isinstance(content, list):
+    if content is None or isinstance(content, str):
         return
+    if not isinstance(content, list):
+        raise ValueError(
+            f"Unsupported OpenClaw assistant content shape "
+            f"'{type(content).__name__}' in {source}"
+        )
     for block in content:
         if isinstance(block, str):
             continue
         if not isinstance(block, dict):
-            continue
+            raise ValueError(
+                f"Unsupported OpenClaw assistant content block "
+                f"'{type(block).__name__}' in {source}"
+            )
         btype = block.get("type")
         if btype not in _KNOWN_ASSISTANT_BLOCK_TYPES:
             raise ValueError(
@@ -308,6 +314,16 @@ def _count_parent(rec: dict[str, Any], counter: Counter[str]) -> None:
     parent_id = rec.get("parentId")
     if isinstance(parent_id, str) and parent_id:
         counter[parent_id] += 1
+
+
+def _opt_int(value: Any) -> int | None:
+    """Coerce a bookkeeping number to ``int`` (``None`` on bad input)."""
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _parse_iso(value: Any) -> datetime | None:

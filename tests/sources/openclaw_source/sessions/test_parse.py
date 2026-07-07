@@ -152,6 +152,71 @@ class TestParseSession:
         with pytest.raises(ValueError, match="video"):
             parse_session(records, "test")
 
+    @pytest.mark.parametrize(
+        "content,match",
+        [
+            ({"weird": "dict"}, "content shape 'dict'"),
+            (42, "content shape 'int'"),
+            ([42], "content block 'int'"),
+            ([["nested"]], "content block 'list'"),
+        ],
+    )
+    def test_unmappable_assistant_content_raises(
+        self, content: Any, match: str
+    ) -> None:
+        records: list[dict[str, Any]] = [
+            dict(HEADER),
+            {
+                "type": "message",
+                "id": "a1",
+                "parentId": "s1",
+                "timestamp": "2026-07-06T10:00:01.000Z",
+                "message": {
+                    "role": "assistant",
+                    "model": "claude-opus-4-8",
+                    "content": content,
+                },
+            },
+        ]
+        with pytest.raises(ValueError, match=match):
+            parse_session(records, "test")
+
+    @pytest.mark.parametrize("content", [None, "plain text", ["bare string block"]])
+    def test_mappable_assistant_content_accepted(self, content: Any) -> None:
+        records: list[dict[str, Any]] = [
+            dict(HEADER),
+            {
+                "type": "message",
+                "id": "a1",
+                "parentId": "s1",
+                "timestamp": "2026-07-06T10:00:01.000Z",
+                "message": {
+                    "role": "assistant",
+                    "model": "claude-opus-4-8",
+                    "content": content,
+                },
+            },
+        ]
+        parsed = parse_session(records, "test")
+        assert sum(1 for r in parsed.records if isinstance(r, AssistantTurn)) == 1
+
+    def test_non_integer_bookkeeping_fields_coerce_to_none(self) -> None:
+        records: list[dict[str, Any]] = [
+            {**HEADER, "version": "2.0"},
+            {
+                "type": "compaction",
+                "id": "c1",
+                "parentId": "s1",
+                "timestamp": "2026-07-06T10:00:01.000Z",
+                "summary": "s",
+                "tokensBefore": "lots",
+            },
+        ]
+        parsed = parse_session(records, "test")
+        assert parsed.header.version is None
+        compaction = next(r for r in parsed.records if isinstance(r, CompactionRecord))
+        assert compaction.tokens_before is None
+
     def test_divergent_branch_raises(self) -> None:
         records = [
             dict(HEADER),

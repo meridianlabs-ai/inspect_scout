@@ -160,6 +160,56 @@ def _spawning_session_with_result(
     ]
 
 
+def _write_nested_bundle(tmp_path: Path) -> tuple[str, str]:
+    """Write an orchestrator → child → grandchild spawn chain with registry.
+
+    Returns ``(orch_id, child_id)``.
+    """
+    orch_id = "00000000-0000-0000-0000-00000000000a"
+    child_id = "00000000-0000-0000-0000-00000000000b"
+    grandchild_id = "00000000-0000-0000-0000-00000000000c"
+    child_key = "agent:main:subagent:child1"
+    grandchild_key = "agent:main:subagent:child2"
+    registry = {
+        "agent:main:main": {"sessionId": orch_id},
+        child_key: {
+            "sessionId": child_id,
+            "spawnedBy": "agent:main:main",
+            "label": "child",
+            "status": "done",
+        },
+        grandchild_key: {
+            "sessionId": grandchild_id,
+            "spawnedBy": child_key,
+            "label": "grandchild",
+            "status": "done",
+        },
+    }
+    (tmp_path / "sessions.json").write_text(json.dumps(registry), encoding="utf-8")
+    _write_jsonl(
+        tmp_path / f"{orch_id}.jsonl",
+        _spawning_session(orch_id, "tc-orch", child_key, "child"),
+    )
+    _write_jsonl(
+        tmp_path / f"{child_id}.jsonl",
+        _spawning_session(child_id, "tc-child", grandchild_key, "grandchild"),
+    )
+    _write_jsonl(
+        tmp_path / f"{grandchild_id}.jsonl",
+        [
+            _header(grandchild_id, "2026-07-06T10:00:00.000Z"),
+            _user("u1", None, "2026-07-06T10:00:01.000Z"),
+            _assistant(
+                "a1",
+                "u1",
+                "2026-07-06T10:00:02.000Z",
+                [{"type": "text", "text": "done"}],
+            ),
+        ],
+    )
+    return orch_id, child_id
+
+
 class TestOpenclawSource:
     @pytest.mark.asyncio
     async def test_bundle_yields_one_orchestrator_transcript(self) -> None:
@@ -239,51 +289,26 @@ class TestOpenclawSource:
         assert await collect(tmp_path) == []
 
     @pytest.mark.asyncio
+    async def test_stray_non_session_file_skipped_with_warning(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        # a foreign .jsonl (e.g. a telemetry log) sharing the directory must
+        # not abort the import of the valid session bundle beside it
+        for name in ("sessions.json", *(f.name for f in FX_DEMO.glob("*.jsonl"))):
+            if not name.endswith(".trajectory.jsonl"):
+                shutil.copy(FX_DEMO / name, tmp_path / name)
+        stray = tmp_path / "telemetry.jsonl"
+        stray.write_text('{"type":"message.in","payload":{}}\n', encoding="utf-8")
+        with caplog.at_level(logging.WARNING):
+            transcripts = await collect(tmp_path)
+        assert [t.transcript_id for t in transcripts] == [ORCHESTRATOR_ID]
+        assert any("telemetry.jsonl" in rec.message for rec in caplog.records)
+
+    @pytest.mark.asyncio
     async def test_nested_spawn_counts_direct_children_only(
         self, tmp_path: Path
     ) -> None:
-        orch_id = "00000000-0000-0000-0000-00000000000a"
-        child_id = "00000000-0000-0000-0000-00000000000b"
-        grandchild_id = "00000000-0000-0000-0000-00000000000c"
-        child_key = "agent:main:subagent:child1"
-        grandchild_key = "agent:main:subagent:child2"
-        registry = {
-            "agent:main:main": {"sessionId": orch_id},
-            child_key: {
-                "sessionId": child_id,
-                "spawnedBy": "agent:main:main",
-                "label": "child",
-                "status": "done",
-            },
-            grandchild_key: {
-                "sessionId": grandchild_id,
-                "spawnedBy": child_key,
-                "label": "grandchild",
-                "status": "done",
-            },
-        }
-        (tmp_path / "sessions.json").write_text(json.dumps(registry), encoding="utf-8")
-        _write_jsonl(
-            tmp_path / f"{orch_id}.jsonl",
-            _spawning_session(orch_id, "tc-orch", child_key, "child"),
-        )
-        _write_jsonl(
-            tmp_path / f"{child_id}.jsonl",
-            _spawning_session(child_id, "tc-child", grandchild_key, "grandchild"),
-        )
-        _write_jsonl(
-            tmp_path / f"{grandchild_id}.jsonl",
-            [
-                _header(grandchild_id, "2026-07-06T10:00:00.000Z"),
-                _user("u1", None, "2026-07-06T10:00:01.000Z"),
-                _assistant(
-                    "a1",
-                    "u1",
-                    "2026-07-06T10:00:02.000Z",
-                    [{"type": "text", "text": "done"}],
-                ),
-            ],
-        )
+        orch_id, child_id = _write_nested_bundle(tmp_path)
 
         transcripts = await collect(tmp_path)
         # child + grandchild are spawnedBy others — only the orchestrator yields
@@ -298,6 +323,28 @@ class TestOpenclawSource:
         # ...but the metadata counts only the orchestrator's DIRECT children
         assert t.metadata["n_subagents"] == 1
         assert t.metadata["subagent_session_ids"] == [child_id]
+
+    @pytest.mark.asyncio
+    async def test_nested_spawn_spans_nest_by_parent_id(self, tmp_path: Path) -> None:
+        from inspect_ai.event import EventTreeSpan, event_tree
+
+        _write_nested_bundle(tmp_path)
+        (t,) = await collect(tmp_path)
+        begins = {
+            str(e.name): e
+            for e in t.events
+            if isinstance(e, SpanBeginEvent) and e.type == "agent"
+        }
+        # the tree nests spans by parent_id: the child span is a root span,
+        # the grandchild's parent_id points at the child span
+        assert begins["child"].parent_id is None
+        assert begins["grandchild"].parent_id == begins["child"].id
+        root_spans = [n for n in event_tree(t.events) if isinstance(n, EventTreeSpan)]
+        assert [n.name for n in root_spans] == ["child"]
+        nested_spans = [
+            n for n in root_spans[0].children if isinstance(n, EventTreeSpan)
+        ]
+        assert [n.name for n in nested_spans] == ["grandchild"]
 
     @pytest.mark.asyncio
     async def test_date_is_first_message_timestamp_not_leading_config_change(

@@ -71,7 +71,14 @@ async def openclaw(
 
 `*.trajectory.jsonl` and `*.trajectory-path.json` are excluded from discovery,
 and trajectories are not consumed at all in v1 (see "Known limitations").
-`from_time`/`to_time` filter on file mtime; files are processed newest-first so
+Discovery also sniffs each candidate's first record and skips (with a warning)
+any `.jsonl` whose first record is not a `session` header — a foreign file
+sharing the directory (e.g. a telemetry log) must not abort the import, and a
+directory holding only foreign `.jsonl` files still falls through to the
+`agents/*/sessions/` scan. Genuine session files the importer cannot map still
+fail loudly at the parse layer.
+`from_time`/`to_time` filter on file mtime (compared timezone-aware; a naive
+bound is interpreted as local time); files are processed newest-first so
 `limit` avoids touching old files.
 
 ## Transcript boundaries and classification
@@ -160,7 +167,10 @@ child (tagged `agent_span_id`), the child's own `ModelEvent`s/`ToolEvent`s with
 name is the spawn `label` argument; span metadata carries the child's
 `session_key`, `session_id`, `task`, and registry enrichment (`status`).
 Nested spawns recurse, depth-bounded (`max_depth=5`, as in the
-Claude Code importer). Sub-agent messages never enter the main thread.
+Claude Code importer); a nested span's `SpanBeginEvent` carries
+`parent_id` = the enclosing span's id — `parent_id`, not `span_id`, is what
+`event_tree`/timeline nest spans by. Sub-agent messages never enter the main
+thread.
 
 **Announce results.** A sub-agent's final report arrives in the orchestrator's
 own file as a runtime-injected *user* message (an internal-context block naming
@@ -213,7 +223,9 @@ metadata and documents the text itself as unavailable. Future work: read
 - `agent` — `"openclaw"`
 - `total_tokens` — billable per-call spend (input + output + cacheRead +
   cacheWrite) summed over orchestrator and sub-agent assistant turns — the
-  convention shared by the other importers. `ModelUsage` mapping mirrors
+  convention shared by the other importers. The raw `totalTokens` is not
+  trusted: it usually equals the component sum but has been observed to
+  exclude cache tokens on some turns. `ModelUsage` mapping mirrors
   telemetry-hal's (`reasoning_tokens` stays 0: OpenClaw bills reasoning inside
   `output`)
 - `total_time` — wall clock minus idle time from the built timeline (as in the

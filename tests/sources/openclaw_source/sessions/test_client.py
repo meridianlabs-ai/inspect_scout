@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
 from inspect_scout.sources._openclaw._sessions.client import (
     discover_session_files,
     load_registry,
@@ -98,13 +100,38 @@ class TestDiscoverSessionFiles:
         files = discover_session_files(tmp_path)
         assert [f.name for f in files] == ["new.jsonl", "old.jsonl"]
 
-        cutoff = datetime.fromtimestamp(1_650_000_000)
-        assert [f.name for f in discover_session_files(tmp_path, from_time=cutoff)] == [
-            "new.jsonl"
-        ]
-        assert [f.name for f in discover_session_files(tmp_path, to_time=cutoff)] == [
-            "old.jsonl"
-        ]
+        # naive and aware bounds both work (a naive bound reads as local time)
+        for cutoff in (
+            datetime.fromtimestamp(1_650_000_000),
+            datetime.fromtimestamp(1_650_000_000, tz=timezone.utc),
+        ):
+            assert [
+                f.name for f in discover_session_files(tmp_path, from_time=cutoff)
+            ] == ["new.jsonl"]
+            assert [
+                f.name for f in discover_session_files(tmp_path, to_time=cutoff)
+            ] == ["old.jsonl"]
+
+    def test_non_session_jsonl_skipped_with_warning(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        session = tmp_path / "real.jsonl"
+        session.write_text('{"type":"session","id":"real","version":3}\n')
+        stray = tmp_path / "telemetry.jsonl"
+        stray.write_text('{"type":"message.in","payload":{}}\n')
+        with caplog.at_level(logging.WARNING):
+            files = discover_session_files(tmp_path)
+        assert [f.name for f in files] == ["real.jsonl"]
+        assert any("telemetry.jsonl" in rec.message for rec in caplog.records)
+
+    def test_explicit_non_session_file_skipped_with_warning(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        stray = tmp_path / "telemetry.jsonl"
+        stray.write_text('{"type":"message.in","payload":{}}\n')
+        with caplog.at_level(logging.WARNING):
+            assert discover_session_files(stray) == []
+        assert any("telemetry.jsonl" in rec.message for rec in caplog.records)
 
     def test_nonexistent_path_returns_empty(self, tmp_path: Path) -> None:
         assert discover_session_files(tmp_path / "nope") == []

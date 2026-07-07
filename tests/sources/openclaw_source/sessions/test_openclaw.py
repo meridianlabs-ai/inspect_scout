@@ -17,6 +17,14 @@ FIXTURES = Path(__file__).parent / "fixtures"
 FX_DEMO = FIXTURES / "fx_demo"
 ORCHESTRATOR_ID = "cfabe24d-8b34-4031-a393-689524b2028f"
 
+# A real captured OpenClaw bundle (an "LRU cache" coding session that fans out
+# to per-language specialists and L1 dispatchers, some of which spawn their own
+# grandchildren). Kept as a regression corpus for debugging future changes
+# against genuine session data. The orchestrator and its complete descendant
+# tree (9 direct children + 10 deeper grandchildren) are copied.
+FX_LRU = FIXTURES / "lru_demo"
+LRU_ORCHESTRATOR_ID = "b2e732c1-5f16-4ebe-ba84-0a11adc45c66"
+
 
 async def collect(path: Path) -> list[Transcript]:
     return [t async for t in openclaw(path)]
@@ -528,6 +536,30 @@ class TestOpenclawSource:
         assert len(spawn_tool_events) == 1
         assert spawn_tool_events[0].agent_span_id is None
         assert any(ghost_key in rec.message for rec in caplog.records)
+
+
+class TestLruDemoFixture:
+    """Smoke test that the captured real-world LRU bundle imports."""
+
+    @pytest.mark.asyncio
+    async def test_real_bundle_imports_with_full_descendant_tree(self) -> None:
+        transcripts = await collect(FX_LRU)
+        # Only the orchestrator yields; its spawned children fold in as spans.
+        assert len(transcripts) == 1
+        t = transcripts[0]
+        assert t.transcript_id == LRU_ORCHESTRATOR_ID
+        assert t.source_type == OPENCLAW_SOURCE_TYPE
+        assert t.message_count == len(t.messages) > 0
+        assert t.total_tokens is not None and t.total_tokens > 0
+        # n_subagents counts the orchestrator's DIRECT children only...
+        assert t.metadata["n_subagents"] == 9
+        assert len(t.metadata["subagent_session_ids"]) == 9
+        # ...but the whole tree folds in: 9 direct + 10 nested grandchildren,
+        # all resolved from files on disk (no degraded/missing spawns).
+        agent_spans = [
+            e for e in t.events if isinstance(e, SpanBeginEvent) and e.type == "agent"
+        ]
+        assert len(agent_spans) == 19
 
 
 class TestRegistration:

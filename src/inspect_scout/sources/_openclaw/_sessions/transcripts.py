@@ -57,7 +57,8 @@ async def openclaw(
         path: Path to an OpenClaw root (``~/.openclaw``), an agent sessions
             directory, or a specific session ``.jsonl`` file. If None, scans
             all agents under ``~/.openclaw/agents/``.
-        session_id: Specific session id to import.
+        session_id: Specific session id to import. If this is a spawned
+            sub-agent session, import it standalone.
         from_time: Only import sessions modified on or after this time.
         to_time: Only import sessions modified before this time.
         limit: Maximum number of transcripts to yield.
@@ -85,9 +86,10 @@ async def openclaw(
                 )
         registry = registries[directory]
 
-        # Sub-agent sessions are nested in their parent's transcript — skip
-        # them here (unless the user pointed at the file explicitly).
-        if not explicit_file and registry is not None:
+        # Sub-agent sessions are nested in their parent's transcript during
+        # bulk import, but an explicit file or session_id request imports that
+        # session standalone.
+        if not explicit_file and session_id is None and registry is not None:
             entry = entry_for_session_id(registry, session_file.stem)
             if entry is not None and entry.spawned_by:
                 continue

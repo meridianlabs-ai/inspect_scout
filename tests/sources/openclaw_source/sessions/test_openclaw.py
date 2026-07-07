@@ -211,6 +211,13 @@ class TestOpenclawSource:
         assert transcripts[0].transcript_id == "8c6aeab3-993e-43d5-934a-04aa4a5f3804"
 
     @pytest.mark.asyncio
+    async def test_session_id_subagent_imports_standalone(self) -> None:
+        session_id = "8c6aeab3-993e-43d5-934a-04aa4a5f3804"
+        transcripts = [t async for t in openclaw(FX_DEMO, session_id=session_id)]
+        assert len(transcripts) == 1
+        assert transcripts[0].transcript_id == session_id
+
+    @pytest.mark.asyncio
     async def test_no_registry_imports_all_standalone(self, tmp_path: Path) -> None:
         for f in FX_DEMO.glob("*.jsonl"):
             if not f.name.endswith(".trajectory.jsonl"):

@@ -407,6 +407,40 @@ class TestOpenclawSource:
         assert transcripts[0].total_time == pytest.approx(60.0)
 
     @pytest.mark.asyncio
+    async def test_all_zero_usage_yields_no_total_tokens(self, tmp_path: Path) -> None:
+        # Several providers (e.g. kimi, gateway-injected) report all-zero usage
+        # on every turn; total_tokens should then be None rather than 0.
+        session_id = "00000000-0000-0000-0000-0000000000f5"
+        _write_jsonl(
+            tmp_path / f"{session_id}.jsonl",
+            [
+                _header(session_id, "2026-07-06T10:00:00.000Z"),
+                _user("u1", None, "2026-07-06T10:00:01.000Z"),
+                {
+                    "type": "message",
+                    "id": "a1",
+                    "parentId": "u1",
+                    "timestamp": "2026-07-06T10:00:02.000Z",
+                    "message": {
+                        "role": "assistant",
+                        "content": [{"type": "text", "text": "hi"}],
+                        "model": "kimi-k2.5",
+                        "usage": {
+                            "input": 0,
+                            "output": 0,
+                            "cacheRead": 0,
+                            "cacheWrite": 0,
+                            "totalTokens": 0,
+                        },
+                        "stopReason": "stop",
+                    },
+                },
+            ],
+        )
+        (t,) = await collect(tmp_path)
+        assert t.total_tokens is None
+
+    @pytest.mark.asyncio
     async def test_header_only_session_skipped_with_log(
         self, tmp_path: Path, caplog: pytest.LogCaptureFixture
     ) -> None:

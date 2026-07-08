@@ -25,7 +25,13 @@ from .client import (
     read_session_records,
 )
 from .events import BuildContext, build_content
-from .parse import AssistantTurn, ParsedSession, UserTurn, parse_session
+from .parse import (
+    AssistantTurn,
+    ParsedSession,
+    UnsupportedSessionError,
+    UserTurn,
+    parse_session,
+)
 
 if TYPE_CHECKING:
     from inspect_scout import Transcript
@@ -96,18 +102,14 @@ async def openclaw(
 
         try:
             transcript = _process_session_file(session_file, registry)
-        except ValueError as ex:
-            # ValueError is the parser's "this file is unsupported" signal
-            # (divergent branches, unknown record/role types, a second session
-            # header, assistant-without-model, unmappable content). An explicit
-            # single-file or session_id request should still fail loudly — the
-            # caller asked for exactly this file. A bulk scan, by contrast, must
-            # not let one bad file abort the whole directory: skip it loudly and
-            # carry on with the rest of the bundle.
+        except UnsupportedSessionError as ex:
+            # An explicit single-file or session_id request fails loudly (the
+            # caller asked for exactly this file); a bulk scan skips one bad
+            # file and carries on with the rest of the bundle.
             if explicit_file or session_id is not None:
                 raise
             logger.warning(
-                "Skipping unparseable OpenClaw session %s: %s", session_file, ex
+                "Skipping unsupported OpenClaw session %s: %s", session_file, ex
             )
             continue
         if transcript is not None:

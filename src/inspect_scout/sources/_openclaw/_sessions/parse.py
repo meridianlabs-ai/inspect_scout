@@ -20,6 +20,19 @@ logger = getLogger(__name__)
 _EPOCH = datetime.fromtimestamp(0, tz=timezone.utc)
 
 
+class UnsupportedSessionError(ValueError):
+    """A session file this importer cannot turn into a transcript.
+
+    Raised for the parser's deliberate rejections — a missing/duplicate
+    ``session`` header, an unknown record type or message role, a divergent
+    (branched) thread tree, an assistant turn without a model, or unmappable
+    content. Subclasses ``ValueError`` so existing ``except ValueError`` callers
+    keep working, while a bulk directory scan can catch this narrow type to skip
+    one bad file without swallowing an unrelated ``ValueError`` as if it meant
+    the file was unsupported.
+    """
+
+
 @dataclass(frozen=True)
 class SessionHeader:
     """The ``session`` record that opens every session file."""
@@ -111,15 +124,15 @@ def parse_session(raw_records: list[dict[str, Any]], source: str) -> ParsedSessi
         source: Where the records came from, for error messages.
 
     Raises:
-        ValueError: On an empty record list, a missing/duplicate ``session``
-            header, an unknown record type, an unknown message role, or a
-            divergent branch (two thread records sharing a parent).
+        UnsupportedSessionError: On an empty record list, a missing/duplicate
+            ``session`` header, an unknown record type, an unknown message role,
+            or a divergent branch (two thread records sharing a parent).
     """
     if not raw_records:
-        raise ValueError(f"Empty OpenClaw session: {source}")
+        raise UnsupportedSessionError(f"Empty OpenClaw session: {source}")
     header_rec = raw_records[0]
     if header_rec.get("type") != "session":
-        raise ValueError(
+        raise UnsupportedSessionError(
             f"Expected a 'session' header as the first record of {source}, "
             f"got '{header_rec.get('type')}'"
         )
@@ -162,7 +175,9 @@ def parse_session(raw_records: list[dict[str, Any]], source: str) -> ParsedSessi
             elif role == "assistant":
                 turn_model = msg.get("model")
                 if not turn_model:
-                    raise ValueError(f"Assistant message without a model in {source}")
+                    raise UnsupportedSessionError(
+                        f"Assistant message without a model in {source}"
+                    )
                 model = str(turn_model)
                 _validate_assistant_content(msg.get("content"), source)
                 records.append(
@@ -209,7 +224,9 @@ def parse_session(raw_records: list[dict[str, Any]], source: str) -> ParsedSessi
                         source,
                     )
             else:
-                raise ValueError(f"Unknown OpenClaw message role '{role}' in {source}")
+                raise UnsupportedSessionError(
+                    f"Unknown OpenClaw message role '{role}' in {source}"
+                )
         elif rtype == "custom_message":
             records.append(
                 UserTurn(content=rec.get("content"), timestamp=ts, injected=True)
@@ -252,9 +269,11 @@ def parse_session(raw_records: list[dict[str, Any]], source: str) -> ParsedSessi
         elif rtype in ("custom", "leaf"):
             continue  # run-boundary / branch bookkeeping — no content
         elif rtype == "session":
-            raise ValueError(f"Unexpected second 'session' header in {source}")
+            raise UnsupportedSessionError(
+                f"Unexpected second 'session' header in {source}"
+            )
         else:
-            raise ValueError(
+            raise UnsupportedSessionError(
                 f"Unknown OpenClaw session record type '{rtype}' in {source}. "
                 "This importer fails on unrecognized records rather than "
                 "dropping them; please report the record type."
@@ -262,7 +281,7 @@ def parse_session(raw_records: list[dict[str, Any]], source: str) -> ParsedSessi
 
     divergent = sorted(p for p, n in thread_children.items() if n > 1)
     if divergent:
-        raise ValueError(
+        raise UnsupportedSessionError(
             f"OpenClaw session {source} has divergent branches at parent "
             f"id(s) {divergent}; branch linearization is not supported"
         )
@@ -291,7 +310,7 @@ def _validate_assistant_content(content: Any, source: str) -> None:
     if content is None or isinstance(content, str):
         return
     if not isinstance(content, list):
-        raise ValueError(
+        raise UnsupportedSessionError(
             f"Unsupported OpenClaw assistant content shape "
             f"'{type(content).__name__}' in {source}"
         )
@@ -299,13 +318,13 @@ def _validate_assistant_content(content: Any, source: str) -> None:
         if isinstance(block, str):
             continue
         if not isinstance(block, dict):
-            raise ValueError(
+            raise UnsupportedSessionError(
                 f"Unsupported OpenClaw assistant content block "
                 f"'{type(block).__name__}' in {source}"
             )
         btype = block.get("type")
         if btype not in _KNOWN_ASSISTANT_BLOCK_TYPES:
-            raise ValueError(
+            raise UnsupportedSessionError(
                 f"Unknown OpenClaw assistant content block type '{btype}' in {source}"
             )
 

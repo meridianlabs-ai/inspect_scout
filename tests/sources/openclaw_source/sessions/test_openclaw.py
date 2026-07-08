@@ -272,14 +272,18 @@ class TestOpenclawSource:
     @pytest.mark.asyncio
     async def test_explicit_subagent_file_imports_standalone(self) -> None:
         path = FX_DEMO / "8c6aeab3-993e-43d5-934a-04aa4a5f3804.jsonl"
+
         transcripts = [t async for t in openclaw(path)]
+
         assert len(transcripts) == 1
         assert transcripts[0].transcript_id == "8c6aeab3-993e-43d5-934a-04aa4a5f3804"
 
     @pytest.mark.asyncio
     async def test_session_id_subagent_imports_standalone(self) -> None:
         session_id = "8c6aeab3-993e-43d5-934a-04aa4a5f3804"
+
         transcripts = [t async for t in openclaw(FX_DEMO, session_id=session_id)]
+
         assert len(transcripts) == 1
         assert transcripts[0].transcript_id == session_id
 
@@ -288,7 +292,9 @@ class TestOpenclawSource:
         for f in FX_DEMO.glob("*.jsonl"):
             if not f.name.endswith(".trajectory.jsonl"):
                 shutil.copy(f, tmp_path / f.name)
+
         transcripts = [t async for t in openclaw(tmp_path)]
+
         assert len(transcripts) == 4
         assert all(t.metadata.get("n_subagents") == 0 for t in transcripts)
 
@@ -297,7 +303,9 @@ class TestOpenclawSource:
         for f in FX_DEMO.glob("*.jsonl"):
             if not f.name.endswith(".trajectory.jsonl"):
                 shutil.copy(f, tmp_path / f.name)
+
         transcripts = [t async for t in openclaw(tmp_path, limit=2)]
+
         assert len(transcripts) == 2
 
     @pytest.mark.asyncio
@@ -315,8 +323,10 @@ class TestOpenclawSource:
                 shutil.copy(FX_DEMO / name, tmp_path / name)
         stray = tmp_path / "telemetry.jsonl"
         stray.write_text('{"type":"message.in","payload":{}}\n', encoding="utf-8")
+
         with caplog.at_level(logging.WARNING):
             transcripts = await collect(tmp_path)
+
         assert [t.transcript_id for t in transcripts] == [ORCHESTRATOR_ID]
         assert any("telemetry.jsonl" in rec.message for rec in caplog.records)
 
@@ -327,6 +337,7 @@ class TestOpenclawSource:
         orch_id, child_id = _write_nested_bundle(tmp_path)
 
         transcripts = await collect(tmp_path)
+
         # child + grandchild are spawnedBy others — only the orchestrator yields
         assert len(transcripts) == 1
         t = transcripts[0]
@@ -345,7 +356,9 @@ class TestOpenclawSource:
         from inspect_ai.event import EventTreeSpan, event_tree
 
         _write_nested_bundle(tmp_path)
+
         (t,) = await collect(tmp_path)
+
         begins = {
             str(e.name): e
             for e in t.events
@@ -388,7 +401,9 @@ class TestOpenclawSource:
                 ),
             ],
         )
+
         (t,) = await collect(tmp_path)
+
         assert t.date is not None and t.date.startswith("2026-07-03")
 
     @pytest.mark.asyncio
@@ -402,7 +417,9 @@ class TestOpenclawSource:
                 _user("u2", "u1", "2026-07-06T10:01:00.000Z"),
             ],
         )
+
         transcripts = await collect(tmp_path)
+
         assert len(transcripts) == 1
         assert transcripts[0].total_time == pytest.approx(60.0)
 
@@ -437,7 +454,9 @@ class TestOpenclawSource:
                 },
             ],
         )
+
         (t,) = await collect(tmp_path)
+
         assert t.total_tokens is None
 
     @pytest.mark.asyncio
@@ -456,8 +475,10 @@ class TestOpenclawSource:
             )
             + "\n"
         )
+
         with caplog.at_level(logging.INFO):
             transcripts = [t async for t in openclaw(tmp_path)]
+
         assert transcripts == []
         assert any(
             "e0000000-0000-0000-0000-000000000001" in rec.message
@@ -503,6 +524,7 @@ class TestOpenclawSource:
 
         with caplog.at_level(logging.WARNING):
             transcripts = await collect(tmp_path)
+
         assert len(transcripts) == 1
         t = transcripts[0]
         agent_begins = [
@@ -533,6 +555,7 @@ class TestOpenclawSource:
         )
 
         transcripts = await collect(tmp_path)
+
         assert len(transcripts) == 1
         t = transcripts[0]
         assert not any(
@@ -565,6 +588,7 @@ class TestOpenclawSource:
 
         with caplog.at_level(logging.WARNING):
             transcripts = await collect(tmp_path)
+
         assert len(transcripts) == 1
         t = transcripts[0]
         assert not any(
@@ -619,6 +643,7 @@ class TestDivergentBranches:
         # An explicit single-file request fails loudly — the caller asked for
         # exactly this file, so silently yielding nothing would be misleading.
         path = FX_BRANCHED / f"{BRANCHED_SESSION_ID}.jsonl"
+
         with pytest.raises(ValueError, match="divergent branches at parent id"):
             [t async for t in openclaw(path)]
 
@@ -668,8 +693,10 @@ class TestDivergentBranches:
                 ),
             ],
         )
+
         with caplog.at_level(logging.WARNING):
             transcripts = await collect(tmp_path)
+
         assert [t.transcript_id for t in transcripts] == [good_id]
         assert any(
             BRANCHED_SESSION_ID in rec.message and "divergent branches" in rec.message

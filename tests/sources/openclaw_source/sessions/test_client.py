@@ -34,7 +34,9 @@ class TestReadSessionRecords:
             + "\n"
             + '{"type":"message","message":{"role":"us'  # torn mid-write
         )
+
         records = read_session_records(f)
+
         assert len(records) == 1
 
 
@@ -97,7 +99,9 @@ class TestDiscoverSessionFiles:
         new.write_text('{"type":"session","id":"new","version":3}\n')
         os.utime(old, (1_600_000_000, 1_600_000_000))
         os.utime(new, (1_700_000_000, 1_700_000_000))
+
         files = discover_session_files(tmp_path)
+
         assert [f.name for f in files] == ["new.jsonl", "old.jsonl"]
 
         # naive and aware bounds both work (a naive bound reads as local time)
@@ -119,8 +123,10 @@ class TestDiscoverSessionFiles:
         session.write_text('{"type":"session","id":"real","version":3}\n')
         stray = tmp_path / "telemetry.jsonl"
         stray.write_text('{"type":"message.in","payload":{}}\n')
+
         with caplog.at_level(logging.WARNING):
             files = discover_session_files(tmp_path)
+
         assert [f.name for f in files] == ["real.jsonl"]
         assert any("telemetry.jsonl" in rec.message for rec in caplog.records)
 

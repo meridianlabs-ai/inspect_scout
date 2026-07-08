@@ -48,6 +48,7 @@ def make_message(id_: str, parent: str, role: str, content: Any) -> dict[str, An
 class TestParseSession:
     def test_orchestrator_happy_path(self) -> None:
         parsed = parse_fixture(ORCHESTRATOR)
+
         assert parsed.header.session_id == "cfabe24d-8b34-4031-a393-689524b2028f"
         assert parsed.header.version == 3
         assert parsed.header.cwd == "/home/ubuntu/.openclaw/workspace"
@@ -76,6 +77,7 @@ class TestParseSession:
         parsed = parse_fixture(
             FIXTURES / "fx_demo" / "8c6aeab3-993e-43d5-934a-04aa4a5f3804.jsonl"
         )
+
         turns = [r for r in parsed.records if isinstance(r, AssistantTurn)]
         assert [t.stop_reason for t in turns] == ["toolUse", "toolUse", "stop"]
         assert turns[0].response_id == "msg_01D96KRhC582hGM2Wb94vwND"
@@ -96,7 +98,9 @@ class TestParseSession:
                 },
             },
         ]
+
         parsed = parse_session(records, "test")
+
         turn = next(r for r in parsed.records if isinstance(r, AssistantTurn))
         assert turn.stop_reason is None
         assert turn.response_id is None
@@ -149,6 +153,7 @@ class TestParseSession:
                 },
             },
         ]
+
         with pytest.raises(ValueError, match="video"):
             parse_session(records, "test")
 
@@ -178,6 +183,7 @@ class TestParseSession:
                 },
             },
         ]
+
         with pytest.raises(ValueError, match=match):
             parse_session(records, "test")
 
@@ -197,7 +203,9 @@ class TestParseSession:
                 },
             },
         ]
+
         parsed = parse_session(records, "test")
+
         assert sum(1 for r in parsed.records if isinstance(r, AssistantTurn)) == 1
 
     def test_non_integer_bookkeeping_fields_coerce_to_none(self) -> None:
@@ -212,7 +220,9 @@ class TestParseSession:
                 "tokensBefore": "lots",
             },
         ]
+
         parsed = parse_session(records, "test")
+
         assert parsed.header.version is None
         compaction = next(r for r in parsed.records if isinstance(r, CompactionRecord))
         assert compaction.tokens_before is None
@@ -224,6 +234,7 @@ class TestParseSession:
             make_message("u2", "u1", "user", "branch one"),
             make_message("u3", "u1", "user", "branch two"),
         ]
+
         with pytest.raises(ValueError, match="divergent"):
             parse_session(records, "test")
 
@@ -235,7 +246,9 @@ class TestParseSession:
             {"type": "leaf", "id": "l1", "parentId": "u1", "targetId": "s1"},
             make_message("u2", "u1", "user", "continue"),
         ]
+
         parsed = parse_session(records, "test")
+
         assert len(parsed.records) == 2
 
     def test_empty_raises(self) -> None:
@@ -272,8 +285,10 @@ class TestParseSession:
                 },
             },
         ]
+
         with caplog.at_level(logging.WARNING):
             parsed = parse_session(records, "test")
+
         assert any("tc1" in rec.message for rec in caplog.records)
         assert parsed.result_by_callid["tc1"].content == "second"
 
@@ -294,7 +309,9 @@ class TestParseSession:
                 },
             },
         ]
+
         with caplog.at_level(logging.WARNING):
             parsed = parse_session(records, "test")
+
         assert any("test" in rec.message for rec in caplog.records)
         assert parsed.result_by_callid == {}

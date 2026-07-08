@@ -68,6 +68,7 @@ def build_records(
 class TestThreadContent:
     def test_model_events_thread_input(self) -> None:
         events, messages = build_fixture(SUBAGENT)
+
         model_events = [e for e in events if isinstance(e, ModelEvent)]
         assert len(model_events) == 3
         # each input is the running conversation up to (excluding) that turn
@@ -79,6 +80,7 @@ class TestThreadContent:
 
     def test_tool_events_join_results(self) -> None:
         events, _ = build_fixture(SUBAGENT)
+
         tool_events = [e for e in events if isinstance(e, ToolEvent)]
         assert len(tool_events) == 2
         for te in tool_events:
@@ -91,6 +93,7 @@ class TestThreadContent:
 
     def test_message_thread_roles(self) -> None:
         _, messages = build_fixture(SUBAGENT)
+
         roles = Counter(type(m).__name__ for m in messages)
         assert roles == Counter(
             ChatMessageUser=1, ChatMessageAssistant=3, ChatMessageTool=2
@@ -98,6 +101,7 @@ class TestThreadContent:
 
     def test_config_changes_become_info_events(self) -> None:
         events, _ = build_fixture(SUBAGENT)
+
         infos = [e for e in events if isinstance(e, InfoEvent)]
         assert len(infos) == 2
         assert infos[0].source == "openclaw"
@@ -111,11 +115,13 @@ class TestThreadContent:
 
     def test_working_start_is_monotonic(self) -> None:
         events, _ = build_fixture(SUBAGENT)
+
         starts = [e.working_start for e in events]
         assert starts == sorted(starts)
 
     def test_stop_reason_and_response_id_mapped(self) -> None:
         events, _ = build_fixture(SUBAGENT)
+
         model_events = [e for e in events if isinstance(e, ModelEvent)]
         assert [e.output.stop_reason for e in model_events] == [
             "tool_calls",
@@ -148,10 +154,12 @@ class TestThreadContent:
                 },
             },
         ]
+
         parsed = parse_session(records, "in-memory")
         events, _ = build_content(
             parsed, BuildContext(sessions_dir=tmp_path, registry=None)
         )
+
         model_events = [e for e in events if isinstance(e, ModelEvent)]
         assert model_events[0].output.stop_reason == "unknown"
 
@@ -183,10 +191,12 @@ class TestThreadContent:
                 },
             },
         ]
+
         parsed = parse_session(records, "in-memory")
         events, messages = build_content(
             parsed, BuildContext(sessions_dir=tmp_path, registry=None)
         )
+
         tool_events = [e for e in events if isinstance(e, ToolEvent)]
         assert len(tool_events) == 1
         te = tool_events[0]
@@ -200,7 +210,9 @@ class TestThreadContent:
 
     def test_no_spans_without_registry(self) -> None:
         orchestrator = FX_DEMO / "cfabe24d-8b34-4031-a393-689524b2028f.jsonl"
+
         events, messages = build_fixture(orchestrator)
+
         assert not any(isinstance(e, SpanBeginEvent) for e in events)
         # spawn calls degrade to plain tool events; thread intact
         roles = Counter(type(m).__name__ for m in messages)
@@ -212,6 +224,7 @@ class TestThreadContent:
 class TestCompaction:
     def test_compaction_event(self) -> None:
         events, messages = build_fixture(FIXTURES / "compaction_session.jsonl")
+
         compactions = [e for e in events if isinstance(e, CompactionEvent)]
         assert len(compactions) == 1
         c = compactions[0]
@@ -235,6 +248,7 @@ class TestSubagentSpans:
 
     def test_three_agent_spans(self) -> None:
         events, _ = self.build_orchestrator()
+
         begins = [e for e in events if isinstance(e, SpanBeginEvent)]
         ends = [e for e in events if isinstance(e, SpanEndEvent)]
         assert len(begins) == len(ends) == 3
@@ -251,6 +265,7 @@ class TestSubagentSpans:
 
     def test_spawn_tool_folded_into_span(self) -> None:
         events, _ = self.build_orchestrator()
+
         spawn_events = [
             e
             for e in events
@@ -264,6 +279,7 @@ class TestSubagentSpans:
 
     def test_child_events_carry_span_id(self) -> None:
         events, _ = self.build_orchestrator()
+
         span_ids = {e.id for e in events if isinstance(e, SpanBeginEvent)}
         child_model_events = [
             e for e in events if isinstance(e, ModelEvent) and e.span_id in span_ids
@@ -278,6 +294,7 @@ class TestSubagentSpans:
 
     def test_child_messages_not_in_main_thread(self) -> None:
         _, messages = self.build_orchestrator()
+
         roles = Counter(type(m).__name__ for m in messages)
         # same thread as the registry-less build: sub-agents excluded
         assert roles == Counter(
@@ -292,10 +309,12 @@ class TestSubagentSpans:
             "sessions.json",
         ):  # 63f16c5a (usd-jpy) intentionally omitted
             shutil.copy(FX_DEMO / name, tmp_path / name)
+
         path = tmp_path / "cfabe24d-8b34-4031-a393-689524b2028f.jsonl"
         parsed = parse_session(read_session_records(path), str(path))
         ctx = BuildContext(sessions_dir=tmp_path, registry=load_registry(tmp_path))
         events, messages = build_content(parsed, ctx)
+
         begins = [e for e in events if isinstance(e, SpanBeginEvent)]
         assert sorted(str(b.name) for b in begins) == ["usd-eur", "usd-gbp"]
         # the skipped spawn is still a plain tool event + thread message
@@ -323,7 +342,9 @@ class TestContentMapping:
                 },
             },
         ]
+
         _, messages = build_records(records, tmp_path)
+
         (user,) = [m for m in messages if isinstance(m, ChatMessageUser)]
         assert isinstance(user.content, list)
         text, image = user.content
@@ -371,7 +392,9 @@ class TestContentMapping:
                 },
             },
         ]
+
         _, messages = build_records(records, tmp_path)
+
         (tool,) = [m for m in messages if isinstance(m, ChatMessageTool)]
         assert isinstance(tool.content, list)
         assert any(
@@ -399,7 +422,9 @@ class TestContentMapping:
                 },
             },
         ]
+
         _, messages = build_records(records, tmp_path)
+
         (asst,) = [m for m in messages if isinstance(m, ChatMessageAssistant)]
         assert isinstance(asst.content, list)
         reasoning, text = asst.content
@@ -439,7 +464,9 @@ class TestContentMapping:
                 },
             },
         ]
+
         events, messages = build_records(records, tmp_path)
+
         (asst,) = [m for m in messages if isinstance(m, ChatMessageAssistant)]
         assert asst.content == []
         (model_event,) = [e for e in events if isinstance(e, ModelEvent)]

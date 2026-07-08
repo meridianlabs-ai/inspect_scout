@@ -21,6 +21,7 @@ class TestUsageToInspect:
         # raw totalTokens can exclude cache tokens on some turns, so the
         # mapping recomputes it from the components
         mapped = usage_to_inspect(USAGE)
+
         assert mapped["total_tokens"] == tokens_from_usage(USAGE) == 40
         assert mapped["input_tokens"] == 10
         assert mapped["output_tokens"] == 20

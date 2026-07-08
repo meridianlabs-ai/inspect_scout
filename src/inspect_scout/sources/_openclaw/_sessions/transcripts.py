@@ -94,7 +94,22 @@ async def openclaw(
             if entry is not None and entry.spawned_by:
                 continue
 
-        transcript = _process_session_file(session_file, registry)
+        try:
+            transcript = _process_session_file(session_file, registry)
+        except ValueError as ex:
+            # ValueError is the parser's "this file is unsupported" signal
+            # (divergent branches, unknown record/role types, a second session
+            # header, assistant-without-model, unmappable content). An explicit
+            # single-file or session_id request should still fail loudly — the
+            # caller asked for exactly this file. A bulk scan, by contrast, must
+            # not let one bad file abort the whole directory: skip it loudly and
+            # carry on with the rest of the bundle.
+            if explicit_file or session_id is not None:
+                raise
+            logger.warning(
+                "Skipping unparseable OpenClaw session %s: %s", session_file, ex
+            )
+            continue
         if transcript is not None:
             yield transcript
             n += 1

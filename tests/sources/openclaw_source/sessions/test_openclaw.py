@@ -25,6 +25,14 @@ ORCHESTRATOR_ID = "cfabe24d-8b34-4031-a393-689524b2028f"
 FX_LRU = FIXTURES / "lru_demo"
 LRU_ORCHESTRATOR_ID = "b2e732c1-5f16-4ebe-ba84-0a11adc45c66"
 
+# A synthetic session whose thread tree BRANCHES: a run-boundary record is
+# re-anchored by two separate runs, so two user messages share one parentId.
+# Modeled on a real dump (xionghouyuan/openclaw-workspace). The parser refuses
+# to linearize a branched tree; these tests pin that behavior. See the fixture
+# generator note in branched_demo/*.jsonl.
+FX_BRANCHED = FIXTURES / "branched_demo"
+BRANCHED_SESSION_ID = "b4a9c1de-0000-4000-8000-000000000001"
+
 
 async def collect(path: Path) -> list[Transcript]:
     return [t async for t in openclaw(path)]
@@ -560,6 +568,79 @@ class TestLruDemoFixture:
             e for e in t.events if isinstance(e, SpanBeginEvent) and e.type == "agent"
         ]
         assert len(agent_spans) == 19
+
+
+class TestDivergentBranches:
+    """A branched (edited/regenerated) session tree currently fails to import.
+
+    OpenClaw sessions branch when a run is re-anchored: multiple thread records
+    claim the same parentId. The parser does not know how to linearize such a
+    tree, so it rejects the whole session rather than silently picking one
+    branch. An explicit single-file/session_id request surfaces that as a raised
+    error; a bulk directory scan skips the file loudly and keeps going.
+    """
+
+    @pytest.mark.asyncio
+    async def test_branched_file_raises_with_divergent_parent(self) -> None:
+        # An explicit single-file request fails loudly — the caller asked for
+        # exactly this file, so silently yielding nothing would be misleading.
+        path = FX_BRANCHED / f"{BRANCHED_SESSION_ID}.jsonl"
+        with pytest.raises(ValueError, match="divergent branches at parent id"):
+            [t async for t in openclaw(path)]
+
+    @pytest.mark.asyncio
+    async def test_branched_session_id_request_raises(self) -> None:
+        # Requesting the branched session by id (even from a directory) is also
+        # explicit intent, so it raises rather than skipping.
+        with pytest.raises(ValueError, match="divergent branches"):
+            [t async for t in openclaw(FX_BRANCHED, session_id=BRANCHED_SESSION_ID)]
+
+    @pytest.mark.asyncio
+    async def test_branched_session_skipped_in_bulk_scan_with_warning(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        # A bulk directory scan must not let one unparseable file abort the
+        # whole import: skip it, log a warning, and yield nothing else here
+        # (this fixture holds only the branched file).
+        with caplog.at_level(logging.WARNING):
+            transcripts = await collect(FX_BRANCHED)
+        assert transcripts == []
+        assert any(
+            BRANCHED_SESSION_ID in rec.message and "divergent branches" in rec.message
+            for rec in caplog.records
+        )
+
+    @pytest.mark.asyncio
+    async def test_branched_file_does_not_poison_the_rest_of_the_bundle(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        # A valid session sitting next to the branched one still imports; only
+        # the branched file is skipped (with a warning).
+        shutil.copy(
+            FX_BRANCHED / f"{BRANCHED_SESSION_ID}.jsonl",
+            tmp_path / f"{BRANCHED_SESSION_ID}.jsonl",
+        )
+        good_id = "00000000-0000-0000-0000-0000000000aa"
+        _write_jsonl(
+            tmp_path / f"{good_id}.jsonl",
+            [
+                _header(good_id, "2026-07-07T10:00:00.000Z"),
+                _user("u1", None, "2026-07-07T10:00:01.000Z"),
+                _assistant(
+                    "a1",
+                    "u1",
+                    "2026-07-07T10:00:02.000Z",
+                    [{"type": "text", "text": "hi"}],
+                ),
+            ],
+        )
+        with caplog.at_level(logging.WARNING):
+            transcripts = await collect(tmp_path)
+        assert [t.transcript_id for t in transcripts] == [good_id]
+        assert any(
+            BRANCHED_SESSION_ID in rec.message and "divergent branches" in rec.message
+            for rec in caplog.records
+        )
 
 
 class TestRegistration:

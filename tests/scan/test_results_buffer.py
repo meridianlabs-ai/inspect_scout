@@ -11,10 +11,11 @@ the scan is still running. These tests verify:
    completion.
 """
 
+import asyncio
+import json
 from pathlib import Path
 
 import pandas as pd
-import pytest
 from inspect_scout import Result, Scanner, scan, scanner, transcripts_db
 from inspect_scout._scanresults import scan_results_df
 from inspect_scout._transcript.factory import transcripts_from
@@ -39,6 +40,17 @@ async def _insert_transcripts(db_path: Path, count: int) -> None:
         await db.insert([_make_transcript(i) for i in range(count)])
 
 
+def _load_metadata(value: object) -> dict[str, object]:
+    """Normalize a metadata cell (JSON string or dict) to a dict."""
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str) and value:
+        loaded = json.loads(value)
+        assert isinstance(loaded, dict)
+        return loaded
+    return {}
+
+
 @scanner(name="rb_probe_scanner", messages="all")
 def _probe_scanner_factory(scan_location: str) -> Scanner[Transcript]:
     """Scanner that records how many rows are visible at the scan location.
@@ -60,6 +72,15 @@ def _probe_scanner_factory(scan_location: str) -> Scanner[Transcript]:
     return scan_transcript
 
 
+def _visible_counts(location: str) -> list[int]:
+    df = scan_results_df(location, scanner="rb_probe_scanner").scanners[
+        "rb_probe_scanner"
+    ]
+    return [
+        int(_load_metadata(m)["visible_at_scan_location"]) for m in df["metadata"]
+    ]
+
+
 def test_results_buffer_syncs_partial_results(tmp_path: Path) -> None:
     """With results_buffer set, partial results appear at the scan location
     while the scan is still running."""
@@ -69,14 +90,8 @@ def test_results_buffer_syncs_partial_results(tmp_path: Path) -> None:
     scans_path.mkdir()
 
     transcript_count = 20
-
-    import asyncio
-
     asyncio.run(_insert_transcripts(db_path, transcript_count))
 
-    # scan_id is derived when the scan is created, so the concrete scan
-    # directory isn't known up-front. Run the scan and then inspect the
-    # metadata the probe recorded during execution.
     status = scan(
         scanners=[_probe_scanner_factory(str(scans_path))],
         transcripts=transcripts_from(str(db_path)),
@@ -90,18 +105,11 @@ def test_results_buffer_syncs_partial_results(tmp_path: Path) -> None:
     assert status.complete
     assert status.location is not None
 
-    df = scan_results_df(status.location, scanner="rb_probe_scanner").scanners[
-        "rb_probe_scanner"
-    ]
-    assert len(df) == transcript_count
-
     # The probe reads the scan-location parquet, which is only written by a
     # periodic sync. If periodic syncing works, at least one later invocation
     # must have observed partial results (> 0 rows) before the scan finished.
-    visible_counts = [
-        int(m["visible_at_scan_location"])
-        for m in df["metadata"].apply(_load_metadata)
-    ]
+    visible_counts = _visible_counts(status.location)
+    assert len(visible_counts) == transcript_count
     assert max(visible_counts) > 0, (
         "expected partial results to be visible at the scan location mid-scan, "
         f"but saw counts {visible_counts}"
@@ -121,11 +129,10 @@ def test_results_buffer_does_not_change_final_results(tmp_path: Path) -> None:
 
     transcript_count = 12
 
-    import asyncio
-
     def run(results_buffer: int | None) -> pd.DataFrame:
-        db_path = tmp_path / f"db_{results_buffer}"
-        scans_path = tmp_path / f"scans_{results_buffer}"
+        label = "buf" if results_buffer is not None else "nobuf"
+        db_path = tmp_path / f"db_{label}"
+        scans_path = tmp_path / f"scans_{label}"
         db_path.mkdir()
         scans_path.mkdir()
         asyncio.run(_insert_transcripts(db_path, transcript_count))
@@ -159,9 +166,6 @@ def test_no_results_buffer_writes_nothing_until_complete(tmp_path: Path) -> None
     scans_path.mkdir()
 
     transcript_count = 10
-
-    import asyncio
-
     asyncio.run(_insert_transcripts(db_path, transcript_count))
 
     status = scan(
@@ -176,50 +180,31 @@ def test_no_results_buffer_writes_nothing_until_complete(tmp_path: Path) -> None
     assert status.complete
     assert status.location is not None
 
-    df = scan_results_df(status.location, scanner="rb_probe_scanner").scanners[
-        "rb_probe_scanner"
-    ]
-    visible_counts = [
-        int(m["visible_at_scan_location"])
-        for m in df["metadata"].apply(_load_metadata)
-    ]
     # No periodic sync => nothing visible at the scan location during the scan.
-    assert visible_counts == [0] * transcript_count
+    assert _visible_counts(status.location) == [0] * transcript_count
 
 
-@pytest.mark.anyio
-async def test_results_buffer_async(tmp_path: Path) -> None:
-    """The option is also honored via scan_async."""
+def test_results_buffer_async(tmp_path: Path) -> None:
+    """The option is also honored via scan_async and recorded on the spec."""
     db_path = tmp_path / "db"
     scans_path = tmp_path / "scans"
     db_path.mkdir()
     scans_path.mkdir()
 
     transcript_count = 8
-    await _insert_transcripts(db_path, transcript_count)
 
-    status = await scan_async(
-        scanners=[_probe_scanner_factory(str(scans_path))],
-        transcripts=transcripts_from(str(db_path)),
-        scans=str(scans_path),
-        max_processes=1,
-        max_transcripts=1,
-        results_buffer=2,
-        display="none",
-    )
+    async def run() -> None:
+        await _insert_transcripts(db_path, transcript_count)
+        status = await scan_async(
+            scanners=[_probe_scanner_factory(str(scans_path))],
+            transcripts=transcripts_from(str(db_path)),
+            scans=str(scans_path),
+            max_processes=1,
+            max_transcripts=1,
+            results_buffer=2,
+            display="none",
+        )
+        assert status.complete
+        assert status.spec.options.results_buffer == 2
 
-    assert status.complete
-    assert status.spec.options.results_buffer == 2
-
-
-def _load_metadata(value: object) -> dict[str, object]:
-    """Normalize a metadata cell (JSON string or dict) to a dict."""
-    import json
-
-    if isinstance(value, dict):
-        return value
-    if isinstance(value, str) and value:
-        loaded = json.loads(value)
-        assert isinstance(loaded, dict)
-        return loaded
-    return {}
+    asyncio.run(run())

@@ -254,6 +254,13 @@ shuffle_option = click.option(
     envvar=["SCOUT_SCAN_SHUFFLE"],
 )
 
+results_buffer_option = click.option(
+    "--results-buffer",
+    type=int,
+    help="Sync in-progress results to the scan location every N recorded results, so partial results can be inspected while the scan runs (defaults to no periodic sync).",
+    envvar="SCOUT_SCAN_RESULTS_BUFFER",
+)
+
 tags_option = click.option(
     "--tags",
     type=str,
@@ -399,6 +406,7 @@ SCAN_OPTIONS: list[Callable[..., Any]] = [
     max_processes_option,
     limit_option,
     shuffle_option,
+    results_buffer_option,
     tags_option,
     metadata_option,
     cache_option,
@@ -456,6 +464,7 @@ def scan_command(
     max_processes: int | None,
     limit: int | None,
     shuffle: int | None,
+    results_buffer: int | None,
     tags: str | None,
     metadata: tuple[str, ...] | None,
     cache: int | str | None,
@@ -666,6 +675,9 @@ def scan_command(
         ctx, "max_processes", max_processes, scanjob.max_processes
     )
     scan_limit = resolve_scan_option(ctx, "limit", limit, scanjob.limit)
+    scan_results_buffer = resolve_scan_option(
+        ctx, "results_buffer", results_buffer, scanjob.results_buffer
+    )
 
     # shuffle
     if shuffle == -1:
@@ -705,6 +717,7 @@ def scan_command(
         max_processes=scan_max_processes,
         limit=scan_limit,
         shuffle=scan_shuffle,
+        results_buffer=scan_results_buffer,
         tags=scan_tags,
         metadata=scan_metadata,
         fail_on_error=common["fail_on_error"],

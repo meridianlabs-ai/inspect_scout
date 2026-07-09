@@ -2178,12 +2178,24 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
     def _init_s3_auth(self) -> None:
         assert self._conn is not None
-        self._conn.execute("""
-            CREATE SECRET (
-                TYPE S3,
-                PROVIDER credential_chain
+        # DuckDB's default credential_chain omits the SSO provider, so an SSO-only session (no
+        # static env creds) can't authenticate to S3. When an AWS config file is present, bind its
+        # profile and add `sso` to the chain; env/config/instance/process keep static-cred and
+        # instance-role paths working. Without a config file (bare env-cred containers), fall back
+        # to the default chain so those environments are unaffected. `sts` is omitted -- it errors
+        # without an ASSUME_ROLE_ARN.
+        config_file = os.environ.get("AWS_CONFIG_FILE") or os.path.expanduser(
+            "~/.aws/config"
+        )
+        if os.path.isfile(config_file):
+            profile = os.environ.get("AWS_PROFILE", "default").replace("'", "''")
+            secret = (
+                "TYPE S3, PROVIDER credential_chain, "
+                f"CHAIN 'env;config;sso;instance;process', PROFILE '{profile}'"
             )
-        """)
+        else:
+            secret = "TYPE S3, PROVIDER credential_chain"
+        self._conn.execute(f"CREATE SECRET ({secret})")
 
     def _is_hf(self) -> bool:
         return self._location is not None and self._location.startswith("hf://")

@@ -1,0 +1,18 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release-please:
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: meridianlabs-ai/actions/.github/workflows/release-please-python.yml@v1
+    with:
+      # Both publishes (PyPI + the npm viewer lib) run in separate `on: release`
+      # workflows, each with its own environment gate — so each posts its own
+      # approval ping from there (deep-linking to the paused run), not here.
+      approval-ping: false
+    secrets: inherit

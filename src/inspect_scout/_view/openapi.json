@@ -3001,6 +3001,21 @@
             ],
             "title": "Reasoning History"
           },
+          "reasoning_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "standard",
+                  "pro"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Mode"
+          },
           "reasoning_summary": {
             "anyOf": [
               {
@@ -3489,6 +3504,21 @@
               }
             ],
             "title": "Reasoning History"
+          },
+          "reasoning_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "standard",
+                  "pro"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Mode"
           },
           "reasoning_summary": {
             "anyOf": [

@@ -1,5 +1,5 @@
 import re
-from typing import Callable, Literal, Protocol, Sequence, runtime_checkable
+from typing import Any, Callable, Literal, Protocol, Sequence, runtime_checkable
 
 from inspect_ai._util.pattern import ANSWER_PATTERN_WORD
 from inspect_ai._util.text import (
@@ -30,6 +30,13 @@ from .prompt import (
     STR_ANSWER_FORMAT,
     STR_ANSWER_PROMPT,
 )
+
+
+def _render_template(source: str, **variables: Any) -> str:
+    # Template.__new__ is annotated as returning t.Any (a jinja2 workaround
+    # for its sphinx build), so annotate the instance to keep render() -> str.
+    template: Template = Template(source)
+    return template.render(**variables)
 
 
 def _search_last(pattern: str, string: str, flags: int = 0) -> re.Match[str] | None:
@@ -248,8 +255,8 @@ class _LabelsAnswer(Answer):
             if self.multi_classification
             else LABELS_ANSWER_FORMAT_SINGLE
         )
-        return Template(format_template).render(
-            letters=letters, formatted_choices=formatted_choices
+        return _render_template(
+            format_template, letters=letters, formatted_choices=formatted_choices
         )
 
     def result_for_answer(
@@ -408,14 +415,14 @@ class _StructuredAnswer(Answer):
 
     @property
     def prompt(self) -> str:
-        return Template(self.answer.answer_prompt).render(
-            answer_tool=self.answer.answer_tool
+        return _render_template(
+            self.answer.answer_prompt, answer_tool=self.answer.answer_tool
         )
 
     @property
     def format(self) -> str:
-        return Template(self.answer.answer_format).render(
-            answer_tool=self.answer.answer_tool
+        return _render_template(
+            self.answer.answer_format, answer_tool=self.answer.answer_tool
         )
 
     def result_for_answer(

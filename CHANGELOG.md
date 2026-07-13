@@ -12,6 +12,14 @@
 - Bugfix: Per-key validation metrics for dict/multi-label targets now bucket each key against its own target value. Previously the whole-dict positivity (always positive for a non-empty dict) was applied to every key, so a key whose target was `False`/negative was scored TP/FN instead of TN/FP, inflating per-key precision and specificity.
 - Bugfix: Respect `--log-level` CLI arg and `SCOUT_LOG_LEVEL` env var across all `scout` commands.
 
+## [0.4.44](https://github.com/meridianlabs-ai/inspect_scout/compare/0.4.43...v0.4.44) (2026-07-13)
+
+
+### Bug Fixes
+
+* improve scout import output when no transcripts are imported ([#505](https://github.com/meridianlabs-ai/inspect_scout/issues/505)) ([5d7c144](https://github.com/meridianlabs-ai/inspect_scout/commit/5d7c144b22285a206e5685ea6824c8bd2b174348))
+* sync OpenAPI schema for inspect_ai reasoning_mode ([5d7c144](https://github.com/meridianlabs-ai/inspect_scout/commit/5d7c144b22285a206e5685ea6824c8bd2b174348))
+
 ## 0.4.41 (12 June 2026)
 
 - Chunk token counting in segment_messages so large transcripts don't flood the connection pool.

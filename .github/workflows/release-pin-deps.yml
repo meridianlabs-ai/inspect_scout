@@ -1,0 +1,74 @@
+name: Pin inspect_ai for release
+
+# On the Release Please release PR, rewrite the `inspect_ai` dependency from a
+# moving git ref (`inspect-ai @ git+...@main`) to the currently-shipped PyPI
+# version (`inspect-ai>=<version>`). Dev on `main` tracks inspect_ai's `main`;
+# a *published* scout must depend on a *released* inspect_ai (PyPI rejects
+# direct-reference deps, and a git ref is not reproducible).
+#
+# This is the companion to release-dep-guard.yml: the guard *blocks* a release
+# PR that still carries a git ref; this workflow *fixes* it automatically. If
+# scout genuinely needs an unreleased inspect_ai, pinning to the shipped
+# version makes the release PR's build/tests fail loudly — which is the signal
+# to cut an inspect_ai release first.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  pin:
+    # Only touch the Release Please release PR.
+    if: ${{ github.head_ref == 'release-please--branches--main' }}
+    runs-on: ubuntu-latest
+    steps:
+      # App token so the pin commit re-triggers the PR's checks (guard + build).
+      # A commit pushed with the default GITHUB_TOKEN would not trigger them.
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ secrets.RELEASE_PLEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Rewrite inspect_ai git ref to the shipped PyPI version
+        run: |
+          python3 - <<'PY'
+          import json, re, sys, urllib.request
+
+          with urllib.request.urlopen("https://pypi.org/pypi/inspect-ai/json", timeout=30) as r:
+              version = json.load(r)["info"]["version"]
+          if not version:
+              print("::error::Could not resolve a released inspect-ai version from PyPI")
+              sys.exit(1)
+
+          path = "pyproject.toml"
+          src = open(path).read()
+          # Match `inspect-ai @ git+...` (or inspect_ai) inside a TOML string.
+          pat = re.compile(r'"inspect[-_]ai\s*@\s*git\+[^"]*"')
+          new = pat.sub(f'"inspect-ai>={version}"', src)
+          if new == src:
+              print(f"No inspect_ai git ref to pin (already released-versioned). Latest PyPI: {version}")
+          else:
+              open(path, "w").write(new)
+              print(f"Pinned inspect_ai to >={version}")
+          PY
+
+      - name: Commit the pin if pyproject changed
+        run: |
+          if git diff --quiet -- pyproject.toml; then
+            echo "No change to commit."
+            exit 0
+          fi
+          git config user.name "meridian-release-bot[bot]"
+          git config user.email "meridian-release-bot[bot]@users.noreply.github.com"
+          git add pyproject.toml
+          git commit -m "chore: pin inspect_ai to the shipped release for publishing"
+          git push origin HEAD:${{ github.head_ref }}

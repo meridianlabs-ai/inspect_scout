@@ -97,7 +97,7 @@
             "type": "integer"
           },
           "min": {
-            "default": 10,
+            "default": 4,
             "title": "Min",
             "type": "integer"
           },
@@ -1454,20 +1454,6 @@
             ],
             "title": "Trigger",
             "type": "string"
-          },
-          "trigger_metadata": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "$ref": "#/components/schemas/JsonValue"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Trigger Metadata"
           },
           "turn": {
             "title": "Turn",
@@ -3001,21 +2987,6 @@
             ],
             "title": "Reasoning History"
           },
-          "reasoning_mode": {
-            "anyOf": [
-              {
-                "enum": [
-                  "standard",
-                  "pro"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reasoning Mode"
-          },
           "reasoning_summary": {
             "anyOf": [
               {
@@ -3504,21 +3475,6 @@
               }
             ],
             "title": "Reasoning History"
-          },
-          "reasoning_mode": {
-            "anyOf": [
-              {
-                "enum": [
-                  "standard",
-                  "pro"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reasoning Mode"
           },
           "reasoning_summary": {
             "anyOf": [
@@ -7121,7 +7077,6 @@
               "time",
               "working",
               "token",
-              "turn",
               "cost",
               "operator",
               "custom"

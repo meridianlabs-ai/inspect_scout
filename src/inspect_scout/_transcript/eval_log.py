@@ -217,12 +217,16 @@ def _logs_df_from_snapshot(snapshot: ScanTranscripts) -> "pd.DataFrame":
         # determine unique logs, re-read, then filter on sample_id
         snapshot_logs = snapshot_df["log"].unique().tolist()
         df = _index_logs(snapshot_logs)
+        if df.columns.empty:
+            return df
         return df[df["sample_id"].isin(snapshot_df["sample_id"])]
 
     else:
         # re-read from index (which will be cached) then filter
         logs = {v for v in snapshot.transcript_ids.values() if v is not None}
         df = _index_logs(list(logs))
+        if df.columns.empty:
+            return df
         return df[df["sample_id"].isin(snapshot.transcript_ids.keys())]
 
 
@@ -260,6 +264,10 @@ class EvalLogTranscriptsView(TranscriptsView):
         self._conn: sqlite3.Connection | None = None
         self._columns: set[str] = set()
 
+        # True when the input has no samples (zero-column DataFrame).
+        # Query methods return empty results without touching SQLite.
+        self._is_empty: bool = False
+
         # AsyncFilesystem (starts out none)
         self._fs: AsyncFilesystem | None = None
 
@@ -279,6 +287,14 @@ class EvalLogTranscriptsView(TranscriptsView):
                 df = self._logs_input
             else:
                 df = _index_logs(self._logs_input)
+
+            # Guard: zero-column DataFrames produce invalid SQL
+            # (e.g. eval logs with no samples). Set the empty flag and
+            # open a no-op connection so connect() is idempotent.
+            if df.columns.empty:
+                self._is_empty = True
+                self._conn = sqlite3.connect(":memory:")
+                return
 
             if self._cache_key:
                 self._conn = sqlite3.connect(
@@ -304,6 +320,8 @@ class EvalLogTranscriptsView(TranscriptsView):
     @override
     async def select(self, query: Query | None = None) -> AsyncIterator[TranscriptInfo]:
         assert self._conn is not None
+        if self._is_empty:
+            return
         query = query or Query()
 
         # Build SQL suffix using Query
@@ -405,6 +423,8 @@ class EvalLogTranscriptsView(TranscriptsView):
     @override
     async def count(self, query: Query | None = None) -> int:
         assert self._conn is not None
+        if self._is_empty:
+            return 0
         query = query or Query()
         # For count, only WHERE matters (ignore limit/shuffle/order_by)
         count_query = Query(where=query.where)
@@ -419,6 +439,8 @@ class EvalLogTranscriptsView(TranscriptsView):
         self, column: str, condition: Condition | None
     ) -> list[ScalarValue]:
         assert self._conn is not None
+        if self._is_empty:
+            return []
         col_name = validate_column(column, self._columns)
         quoted_column = quote_identifier(col_name)
         quoted_table = quote_identifier(TRANSCRIPTS)
@@ -440,6 +462,8 @@ class EvalLogTranscriptsView(TranscriptsView):
     @override
     async def transcript_ids(self, query: Query | None = None) -> dict[str, str | None]:
         assert self._conn is not None
+        if self._is_empty:
+            return {}
         query = query or Query()
 
         suffix, params, register_shuffle = query.to_sql_suffix(
@@ -472,6 +496,8 @@ class EvalLogTranscriptsView(TranscriptsView):
     ) -> Transcript:
         if not t.source_uri:
             raise ValueError("source_uri must be set")
+        if self._is_empty:
+            raise ValueError("cannot read from an empty transcript view")
         if recorder_type_for_location(t.source_uri) is not EvalRecorder:
             raise NotImplementedError("JSON format not yet supported")
         zip_reader, entry = await self._get_zip_reader_and_entry(t)
@@ -535,6 +561,8 @@ class EvalLogTranscriptsView(TranscriptsView):
     ) -> TranscriptMessagesAndEvents:
         if not t.source_uri:
             raise ValueError("source_uri must be set")
+        if self._is_empty:
+            raise ValueError("cannot read from an empty transcript view")
 
         id_, epoch = self._get_sample_id_and_epoch(t)
         sample_filename = f"samples/{id_}_epoch_{epoch}.json"

@@ -32,7 +32,7 @@ no ``sessionKey``, ``runId``, or ``agentId`` (and the spawn result is only an
 sub-agent that produced it — file order misleads (reports arrive in completion,
 not spawn, order) and only the report text echoing the spawn ``label`` ties the
 two together. We therefore do not surface sub-agent reports; see the design doc
-``openclaw-telemetry-hal.md`` ("Known limitations").
+``README.md`` ("Known limitations").
 
 The two sub-agent encodings come from OpenClaw, not the telemetry recorder (a
 passive forwarder): schema B (activity in ``tool.*`` events) is near-universal,

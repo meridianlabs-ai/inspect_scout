@@ -244,8 +244,8 @@ def _emit_subagent_span(
     result body or usage is recorded in this schema). A schema-B span therefore
     has no model turns, token totals, or wall-clock duration (it renders ``0 ·
     0s``), and the sub-agent's final response is NOT shown: it is only present
-    as an unattributable ``message.out`` event (see :mod:`.parse` and the design
-    doc ``design/openclaw-telemetry-hal.md``).
+    as an unattributable ``message.out`` event (see :mod:`.parse` and this
+    example's ``README.md``).
 
     Some exports are *hybrid*: the same calls appear both as ``messages[]``
     ``toolCall`` blocks AND as ``tool.*`` events. The schema-A turns are

@@ -13,13 +13,11 @@ You can populate a transcript database in a variety of ways depending on where y
 
 3. [Claude Code](#claude-code): Read transcript data from local Claude Code sessions.
 
-4. [OpenClaw](#openclaw): Read transcript data from OpenClaw telemetry files captured with the `openclaw-telemetry-hal` plugin.
+4. [Transcript API](#transcript-api): Python API for creating and inserting transcripts.
 
-5. [Transcript API](#transcript-api): Python API for creating and inserting transcripts.
+5. [Arrow Import](#arrow-import): Efficient direct insertion using `RecordBatchReader`.
 
-6. [Arrow Import](#arrow-import): Efficient direct insertion using `RecordBatchReader`.
-
-7. [Parquet Data Lake](#parquet-data-lake): Use an existing data lake not created using Inspect Scout.
+6. [Parquet Data Lake](#parquet-data-lake): Use an existing data lake not created using Inspect Scout.
 
 
 We'll cover each of these in turn below. Before proceeding though you should be sure to familiarize yourself with the [Database Schema](db_schema.qmd) and make a plan for how you want to map your data into it.
@@ -278,42 +276,6 @@ Claude Code transcripts are mapped to the database schema as follows:
 | `agent` | `"claude-code"` |
 
 
-## OpenClaw
-
-[OpenClaw](https://openclaw.ai) is an open-source AI assistant. Scout can import transcripts from JSONL telemetry files written by the third party [`openclaw-telemetry-hal`](https://github.com/sage-princeton/openclaw-telemetry-hal) plugin (by default to `~/.openclaw/logs/telemetry.jsonl`).
-
-Use the `openclaw_telemetry_hal()` transcript source to import a telemetry file.
-
-```python
-from inspect_scout import transcripts_db
-from inspect_scout.sources import openclaw_telemetry_hal
-
-async with transcripts_db("s3://my-transcript-db/") as db:
-    await db.insert(openclaw_telemetry_hal(
-        "~/.openclaw/logs/telemetry.jsonl",
-    ))
-```
-
-The orchestrator's conversation becomes the transcript's message thread, and each delegated sub-agent is reconstructed as a nested agent span in `events`.
-
-OpenClaw transcripts are mapped to the database schema as follows:
-
-| Field | Value |
-|-------|-------|
-| `source_type` | `"openclaw_telemetry_hal"` |
-| `source_id` | Session/chat id from the OpenClaw session key |
-| `transcript_id` | Session/chat id combined with the run's earliest timestamp |
-| `agent` | `"openclaw"` |
-
-::: {.callout-note}
-## Supported formats
-
-Native OpenClaw session files (the bundles under `~/.openclaw/`) are not yet supported.
-
-`openclaw-telemetry-hal` is a third party plugin.
-:::
-
-
 ## Transcript API
 
 You can import transcripts from any source so long as you can create `Transcript` objects to be imported. In this example imagine we have a `read_weave_transcripts()` function which can read transcripts from an external JSON transcript format:
@@ -498,7 +460,6 @@ The `scout import` command provides a CLI alternative to the Python API for impo
 
 ```bash
 scout import claude_code
-scout import openclaw_telemetry_hal -P path=~/.openclaw/logs/telemetry.jsonl
 scout import phoenix -P project=my-project
 scout import langsmith -P project=my-project --limit 100
 scout import weave -P project=my-team/my-project

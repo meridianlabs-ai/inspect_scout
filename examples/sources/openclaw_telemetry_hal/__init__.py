@@ -2,9 +2,8 @@
 
 Imports the JSONL telemetry written by the ``openclaw-telemetry-hal`` plugin
 (https://github.com/sage-princeton/openclaw-telemetry-hal). These are **not**
-native OpenClaw session files, which are an entirely different, richer schema
-handled by a separate (future) importer. See the design doc
-``design/openclaw-telemetry-hal.md`` for the schema analysis and known
+native OpenClaw session files, which are an entirely different, richer schema.
+See this example's ``README.md`` for the schema analysis and known
 limitations.
 """
 

@@ -34,20 +34,21 @@ from inspect_ai.model import (
     ContentText,
 )
 from inspect_scout import Transcript
-from inspect_scout.sources._openclaw import (
+
+from .. import (
     OPENCLAW_TELEMETRY_HAL_SOURCE_TYPE,
     openclaw_telemetry_hal,
 )
-from inspect_scout.sources._openclaw._telemetry_hal.client import (
+from ..client import (
     discover_telemetry_files,
     read_telemetry_events,
 )
-from inspect_scout.sources._openclaw._telemetry_hal.events import build_content
-from inspect_scout.sources._openclaw._telemetry_hal.extraction import (
+from ..events import build_content
+from ..extraction import (
     content_to_text,
     tokens_from_usage,
 )
-from inspect_scout.sources._openclaw._telemetry_hal.parse import (
+from ..parse import (
     OpenClawTelemetry,
     parse_telemetry,
 )
@@ -92,7 +93,7 @@ def raw_events() -> list[dict[str, Any]]:
 
 def _single_transcript() -> Transcript:
     parse_events = read_telemetry_events(FIXTURE)
-    from inspect_scout.sources._openclaw._telemetry_hal.transcripts import (
+    from ..transcripts import (
         _create_transcript,
     )
 
@@ -1134,7 +1135,7 @@ class TestTranscript:
         # runs, so it must NOT be the transcript id on its own. source_id carries
         # the bare chat/session id; transcript_id combines it with the run's
         # earliest event timestamp so two runs in the same chat stay distinct.
-        from inspect_scout.sources._openclaw._telemetry_hal.transcripts import (
+        from ..transcripts import (
             _create_transcript,
         )
 
@@ -1417,7 +1418,7 @@ class TestRichContent:
 
     def test_image_survives_transcript_round_trip(self, tmp_path: Path) -> None:
         # The base64 image must survive JSON (de)serialization of the transcript.
-        from inspect_scout.sources._openclaw._telemetry_hal.transcripts import (
+        from ..transcripts import (
             _create_transcript,
         )
 

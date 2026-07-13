@@ -1,10 +1,54 @@
 # OpenClaw telemetry-hal plugin import
 
-Design notes for `src/inspect_scout/sources/_openclaw/` — the source that imports
-JSONL telemetry produced by the
+An **example** transcript source that imports JSONL telemetry produced by the
+third-party
 [`openclaw-telemetry-hal`](https://github.com/sage-princeton/openclaw-telemetry-hal)
-plugin. The importer's public entry point is `openclaw_telemetry_hal()` and its
-persisted `source_type` is `"openclaw_telemetry_hal"`.
+plugin. Its entry point is `openclaw_telemetry_hal()` and it stamps a
+`source_type` of `"openclaw_telemetry_hal"` onto the transcripts it yields.
+
+This is not a built-in Scout source: it is a one-off written to import data from
+evals such as CRUX1 that happened to be captured with this telemetry plugin. It
+lives here as a worked example of writing a custom source you can copy into your
+own project and adapt. The code here depends only on the public `inspect_scout`
+/ `inspect_ai` APIs, so it works unchanged outside the Scout repo.
+
+## Usage
+
+`openclaw_telemetry_hal()` is an async generator of `Transcript` objects, so it
+plugs straight into `transcripts_db().insert()`:
+
+```python
+from inspect_scout import transcripts_db
+
+from openclaw_telemetry_hal import openclaw_telemetry_hal
+
+async with transcripts_db("transcripts") as db:
+    await db.insert(openclaw_telemetry_hal("~/.openclaw/logs/telemetry.jsonl"))
+```
+
+`populate_db.py` in this directory is a runnable version of the snippet above.
+Run it with no argument to read the plugin's default output
+(`~/.openclaw/logs/telemetry.jsonl`), or pass a telemetry directory or a
+specific `.jsonl` file to import instead:
+
+```bash
+cd examples/sources
+
+# default: ~/.openclaw/logs/telemetry.jsonl
+python -m openclaw_telemetry_hal.populate_db
+
+# or point at a specific telemetry file / directory
+python -m openclaw_telemetry_hal.populate_db /path/to/telemetry.jsonl
+```
+
+> [!WARNING]
+> Importing a large capture such as CRUX1 can take around 10 minutes.
+
+The test suite (`tests/`) is not part of Scout's CI test run (it lives outside
+`tests/`); run it directly with `pytest
+examples/sources/openclaw_telemetry_hal/tests` if you adapt the code.
+
+## Design notes
 
 Motivation: data from evals such as CRUX1 were captured using this telemetry plugin.
 
@@ -15,7 +59,7 @@ https://github.com/sage-princeton/openclaw-telemetry-hal. This tool is a fork of
 https://github.com/knostic/openclaw-telemetry.
 
 Native OpenClaw session files (the bundles written under `~/.openclaw/`) are an
-entirely different schema. For v1, we only support the `openclaw-telemetry-hal`
+entirely different schema. This example only handles the `openclaw-telemetry-hal`
 schema.
 
 Within that schema, the importer is strict about session classification: a

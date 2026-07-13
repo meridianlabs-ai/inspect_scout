@@ -97,7 +97,7 @@
             "type": "integer"
           },
           "min": {
-            "default": 4,
+            "default": 10,
             "title": "Min",
             "type": "integer"
           },
@@ -1455,6 +1455,20 @@
             "title": "Trigger",
             "type": "string"
           },
+          "trigger_metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger Metadata"
+          },
           "turn": {
             "title": "Turn",
             "type": "integer"
@@ -1583,6 +1597,17 @@
               }
             ],
             "title": "Pending"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
           },
           "source": {
             "anyOf": [
@@ -2987,6 +3012,21 @@
             ],
             "title": "Reasoning History"
           },
+          "reasoning_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "standard",
+                  "pro"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Mode"
+          },
           "reasoning_summary": {
             "anyOf": [
               {
@@ -3475,6 +3515,21 @@
               }
             ],
             "title": "Reasoning History"
+          },
+          "reasoning_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "standard",
+                  "pro"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Mode"
           },
           "reasoning_summary": {
             "anyOf": [
@@ -7077,6 +7132,7 @@
               "time",
               "working",
               "token",
+              "turn",
               "cost",
               "operator",
               "custom"

@@ -1,0 +1,42 @@
+name: Release dependency guard
+
+# Block *releases* that still point a runtime dependency at a git ref (e.g.
+# `inspect_ai @ git+...@main`). Dev PRs may legitimately use inspect_ai's main
+# branch, so this only gates the Release Please release PR — a package must be
+# pinned to a *released* version before it ships (PyPI rejects direct-reference
+# deps, and a git ref is not reproducible).
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  no-git-deps:
+    # Only gate the Release Please release PR.
+    if: ${{ github.head_ref == 'release-please--branches--main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fail if any dependency points at a git ref
+        run: |
+          python3 - <<'PY'
+          import tomllib, sys
+          proj = tomllib.load(open("pyproject.toml", "rb")).get("project", {})
+          deps = list(proj.get("dependencies", []))
+          for extra in proj.get("optional-dependencies", {}).values():
+              deps += extra
+          bad = [d for d in deps if "git+" in d or "@ git" in d]
+          if bad:
+              print("::error::Release blocked — pin these to a released version before releasing "
+                    "(a published package cannot depend on a moving git ref):")
+              for b in bad:
+                  print(f"  - {b}")
+              sys.exit(1)
+          print("OK — no git-ref dependencies in project metadata")
+          PY

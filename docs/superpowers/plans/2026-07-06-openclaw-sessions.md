@@ -1,5 +1,15 @@
 # OpenClaw Native Session Importer Implementation Plan
 
+> **Superseded — historical record.** This plan was written when the
+> `openclaw-telemetry-hal` importer lived in the package alongside the native
+> importer and the two shared code. Since then, telemetry-hal has been
+> relocated to a self-contained example under `examples/sources/`, and the
+> "promote extraction helpers to a shared module" phase was dropped:
+> `extraction.py` now belongs solely to the native session importer. Steps
+> below that touch `_telemetry_hal/`, register `openclaw_telemetry_hal`, or
+> describe `extraction.py` as *shared* reflect that original approach, not the
+> delivered code. The authoritative behavior spec is `design/openclaw-sessions.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Implement the `openclaw()` transcript source that imports native OpenClaw session bundles (`~/.openclaw/agents/*/sessions/`) into Scout, per the spec in `design/openclaw-sessions.md`.

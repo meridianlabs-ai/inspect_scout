@@ -231,8 +231,8 @@ metadata and documents the text itself as unavailable. Future work: read
 - `total_time` — wall clock minus idle time from the built timeline (as in the
   Claude Code importer; native per-message timestamps make this meaningful)
 - `messages` — the orchestrator thread built during event construction (as in
-  telemetry-hal); stable message ids applied across model events and thread,
-  as in both existing importers
+  the telemetry-hal importer); stable message ids applied across model events
+  and thread, as in the Claude Code importer
 - `metadata` — `session_key`, `parent_session_key`, `cwd`, `session_version`,
   `n_subagents`, `subagent_session_ids`, `system_prompt_report`, and registry
   enrichment when present (`status`, `label`, channel/origin)

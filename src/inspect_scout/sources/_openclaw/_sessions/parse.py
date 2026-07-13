@@ -300,8 +300,8 @@ _KNOWN_ASSISTANT_BLOCK_TYPES = {"text", "thinking", "image", "toolCall"}
 def _validate_assistant_content(content: Any, source: str) -> None:
     """Fail loudly on assistant content this importer can't map.
 
-    The shared ``extraction.content_blocks`` helper silently drops shapes it
-    does not recognize (fine for telemetry-hal), but the sessions design
+    The ``extraction.content_blocks`` helper silently drops shapes it
+    does not recognize, but the sessions design
     promises unmappable assistant content fails the import — see
     ``design/openclaw-sessions.md``. ``None`` and ``str`` content are mappable;
     any other non-list shape, any non-``str``/``dict`` block, and any unknown

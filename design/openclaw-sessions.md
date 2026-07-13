@@ -5,13 +5,13 @@ imports **native OpenClaw session files** (the bundles OpenClaw writes under
 `~/.openclaw/agents/<agent>/sessions/`). The public entry point is `openclaw()`
 and its persisted `source_type` is `"openclaw"`.
 
-This is the second OpenClaw importer. The first, `openclaw_telemetry_hal`
-(see [openclaw-telemetry-hal.md](openclaw-telemetry-hal.md)), consumes JSONL
-telemetry produced by the `openclaw-telemetry-hal` plugin and exists because
-datasets such as CRUX1 were captured that way. The native session bundle is the
-canonical, strictly richer format — hence it gets the plain `openclaw` name.
-Both importers set `agent="openclaw"` (the agent that produced the run) and can
-coexist in one transcript database, distinguished by `source_type`.
+A separate, self-contained example importer (`openclaw_telemetry_hal`, shipped
+under `examples/sources/`) consumes JSONL telemetry produced by the
+`openclaw-telemetry-hal` plugin, and exists because datasets such as CRUX1 were
+captured that way. The native session bundle handled here is the canonical,
+strictly richer format — hence it gets the plain `openclaw` name and lives in
+the package itself. Both set `agent="openclaw"` (the agent that produced the
+run) and can coexist in one transcript database, distinguished by `source_type`.
 
 Schema observations below come from two captures (session schema
 `version: 3`): a small FX-rate demo (one dashboard orchestrator spawning three
@@ -239,12 +239,10 @@ metadata and documents the text itself as unavailable. Future work: read
 
 ## Module layout
 
-Mirrors the telemetry-hal subpackage:
-
 ```
 sources/_openclaw/
-  __init__.py          # exports openclaw_telemetry_hal + openclaw
-  _telemetry_hal/      # existing plugin importer
+  __init__.py          # exports openclaw, OPENCLAW_SOURCE_TYPE
+  extraction.py        # stateless value coercion (content/usage → Inspect shapes)
   _sessions/
     __init__.py        # exports openclaw, OPENCLAW_SOURCE_TYPE
     client.py          # discovery, registry loading, file reading

@@ -1,4 +1,4 @@
-"""Tests for the shared OpenClaw extraction helpers."""
+"""Tests for the OpenClaw extraction helpers."""
 
 from __future__ import annotations
 

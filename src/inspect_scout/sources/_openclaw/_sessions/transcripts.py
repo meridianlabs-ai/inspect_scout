@@ -56,9 +56,6 @@ async def openclaw(
     standalone). Without a ``sessions.json`` alongside the files, topology is
     unknown: every file imports as a standalone transcript.
 
-    This is distinct from ``openclaw_telemetry_hal``, which imports the JSONL
-    telemetry written by the third-party ``openclaw-telemetry-hal`` plugin.
-
     Args:
         path: Path to an OpenClaw root (``~/.openclaw``), an agent sessions
             directory, or a specific session ``.jsonl`` file. If None, scans
@@ -145,7 +142,7 @@ def _process_session_file(
         return None
 
     # Stable ids across model events and the message thread (as in the
-    # Claude Code and telemetry-hal importers).
+    # Claude Code importer).
     apply_ids = stable_message_ids()
     for event in events:
         if isinstance(event, ModelEvent):
@@ -206,8 +203,7 @@ def _process_session_file(
         task_set=None,
         task_id=session_id,
         task_repeat=1,
-        # The agent that produced the run, not the importer/format — the
-        # telemetry-hal importer carries the same value.
+        # The agent that produced the run, not the importer/format.
         agent="openclaw",
         agent_args=None,
         model=parsed.model,

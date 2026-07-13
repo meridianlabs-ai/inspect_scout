@@ -1,11 +1,10 @@
 """Value coercion from OpenClaw content/usage structures into Inspect shapes.
 
-Shared by the OpenClaw importers (``_telemetry_hal`` and ``_sessions``): both
-formats carry the same message ``content`` block shapes (``text`` / ``thinking``
-/ ``image`` / ``toolCall``) and the same ``usage`` keys. Stateless helpers that
-pull a value out of a single raw OpenClaw structure; they hold no importer-wide
-state and do no structural reconstruction — that belongs to each importer's
-``parse`` module.
+Stateless helpers for the native OpenClaw session importer: each pulls a value
+out of a single raw OpenClaw ``content`` block (``text`` / ``thinking`` /
+``image`` / ``toolCall``) or ``usage`` structure. They hold no importer-wide
+state and do no structural reconstruction — that belongs to the ``parse``
+module.
 """
 
 from __future__ import annotations

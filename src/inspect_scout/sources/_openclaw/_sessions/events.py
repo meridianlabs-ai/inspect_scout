@@ -3,7 +3,7 @@
 Builds the Inspect AI event stream and the main-thread ``ChatMessage`` list
 from a :class:`~.parse.ParsedSession`.
 
-Mapping (mirrors the Claude Code and telemetry-hal importers):
+Mapping (mirrors the Claude Code importer):
 
 - The session's own thread is the spine: user/assistant/toolResult records
   become the ``ModelEvent`` / ``ToolEvent`` / ``CompactionEvent`` stream and
@@ -355,7 +355,7 @@ def _emit_subagent_span(
 ) -> datetime:
     """Emit a spawned sub-agent as a nested agent span; returns its end time.
 
-    Mirrors the Claude Code and telemetry-hal importers: the span
+    Mirrors the Claude Code importer: the span
     (``type="agent"``) wraps the sub-agent's own thread, and the spawning tool
     call is emitted as the span's FIRST child, tagged ``agent_span_id`` so the
     view folds it into the agent header rather than drawing a standalone tool

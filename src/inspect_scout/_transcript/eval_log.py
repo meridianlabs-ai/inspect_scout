@@ -498,62 +498,54 @@ class EvalLogTranscriptsView(TranscriptsView):
             raise ValueError("source_uri must be set")
         if self._is_empty:
             raise ValueError("cannot read from an empty transcript view")
-        if recorder_type_for_location(t.source_uri) is not EvalRecorder:
-            raise NotImplementedError("JSON format not yet supported")
-        zip_reader, entry = await self._get_zip_reader_and_entry(t)
-        if max_bytes is not None and entry.uncompressed_size > max_bytes:
-            raise TranscriptTooLargeError(
-                t.transcript_id, entry.uncompressed_size, max_bytes
-            )
-        with trace_action(
-            logger,
-            "Scout Eval Log Read",
-            f"Reading from {t.source_uri} ({entry.filename})",
-        ):
-            # When timelines are requested, load all events so that
-            # stored timeline UUID references can be resolved (stored
-            # timelines may reference any event type, not just the
-            # filtered subset).
-            async with await zip_reader.open_member(entry) as json_iterable:
-                events_filter = (
-                    "all" if content.timeline is not None else content.events
+
+        # When timelines are requested, load all events so that
+        # stored timeline UUID references can be resolved (stored
+        # timelines may reference any event type, not just the
+        # filtered subset).
+        events_filter = "all" if content.timeline is not None else content.events
+
+        recorder_type = recorder_type_for_location(t.source_uri)
+        if recorder_type is EvalRecorder:
+            zip_reader, entry = await self._get_zip_reader_and_entry(t)
+            if max_bytes is not None and entry.uncompressed_size > max_bytes:
+                raise TranscriptTooLargeError(
+                    t.transcript_id, entry.uncompressed_size, max_bytes
                 )
+            with trace_action(
+                logger,
+                "Scout Eval Log Read",
+                f"Reading from {t.source_uri} ({entry.filename})",
+            ):
+                async with await zip_reader.open_member(entry) as json_iterable:
+                    transcript = await load_filtered_transcript(
+                        json_iterable,
+                        t,
+                        content.messages,
+                        events_filter,
+                    )
+        else:
+            # JSON format - read sample via inspect_ai and serialize
+            with trace_action(
+                logger,
+                "Scout Eval Log Read",
+                f"Reading from {t.source_uri}",
+            ):
+                id_, epoch = self._get_sample_id_and_epoch(t)
+                sample = await recorder_type.read_log_sample(t.source_uri, id_, epoch)
+                sample_bytes = sample.model_dump_json().encode("utf-8")
+                if max_bytes is not None and len(sample_bytes) > max_bytes:
+                    raise TranscriptTooLargeError(
+                        t.transcript_id, len(sample_bytes), max_bytes
+                    )
                 transcript = await load_filtered_transcript(
-                    json_iterable,
+                    io.BytesIO(sample_bytes),
                     t,
                     content.messages,
                     events_filter,
                 )
 
-            # Fallback: older eval logs don't store timelines, so build
-            # from events.
-            if (
-                content.timeline is not None
-                and not transcript.timelines
-                and transcript.events
-            ):
-                from inspect_ai.event import timeline_build
-
-                from .util import filter_timelines
-
-                raw_timeline = timeline_build(transcript.events)
-                timelines = filter_timelines([raw_timeline], content.timeline)
-                transcript = transcript.model_copy(update={"timelines": timelines})
-
-            # Filter events back down to what the scanner requested
-            # (we loaded "all" above only for timeline resolution).
-            if (
-                content.timeline is not None
-                and content.events is not None
-                and content.events != "all"
-            ):
-                from .util import filter_list
-
-                transcript = transcript.model_copy(
-                    update={"events": filter_list(transcript.events, content.events)}
-                )
-
-            return transcript
+        return _resolve_timelines_and_filter_events(transcript, content)
 
     @override
     async def read_messages_events(
@@ -646,6 +638,37 @@ class EvalLogTranscriptsView(TranscriptsView):
         zip_reader = CachingAsyncZipReader(self._fs, source_uri)
         entry = await zip_reader.get_member_entry(sample_file_name)
         return zip_reader, entry
+
+
+def _resolve_timelines_and_filter_events(
+    transcript: Transcript, content: TranscriptContent
+) -> Transcript:
+    """Post-process a loaded transcript for timeline requests."""
+    # Fallback: older eval logs don't store timelines, so build
+    # from events.
+    if content.timeline is not None and not transcript.timelines and transcript.events:
+        from inspect_ai.event import timeline_build
+
+        from .util import filter_timelines
+
+        raw_timeline = timeline_build(transcript.events)
+        timelines = filter_timelines([raw_timeline], content.timeline)
+        transcript = transcript.model_copy(update={"timelines": timelines})
+
+    # Filter events back down to what the scanner requested
+    # (we loaded "all" above only for timeline resolution).
+    if (
+        content.timeline is not None
+        and content.events is not None
+        and content.events != "all"
+    ):
+        from .util import filter_list
+
+        transcript = transcript.model_copy(
+            update={"events": filter_list(transcript.events, content.events)}
+        )
+
+    return transcript
 
 
 def transcripts_from_logs(logs: Logs) -> Transcripts:

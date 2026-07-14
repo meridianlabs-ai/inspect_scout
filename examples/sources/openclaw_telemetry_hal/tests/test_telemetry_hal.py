@@ -587,6 +587,45 @@ class TestEvents:
         assert tool.error is not None and tool.error.message == "command not found"
         assert tool.result == "command not found"
 
+    def test_stop_reason_mapped_from_recorded_value(self) -> None:
+        # The recorded ``stopReason`` drives the model event's stop reason -- it
+        # is NOT re-derived from whether tool calls were parsed. An errored turn
+        # maps to ``unknown`` and propagates its ``errorMessage``; a length turn
+        # to ``max_tokens``; a normal turn to ``stop``; a toolUse turn (even one
+        # whose content happens to carry no toolCall block) to ``tool_calls``.
+        def turn(rid: str, ts: int, reason: str, **extra: Any) -> dict[str, Any]:
+            return {
+                "role": "assistant",
+                "responseId": rid,
+                "timestamp": ts,
+                "model": "m",
+                "content": [{"type": "text", "text": rid}],
+                "stopReason": reason,
+                **extra,
+            }
+
+        raw = [
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:run:main:orchestrator",
+                "messages": [
+                    turn("r1", 1000, "stop"),
+                    turn("r2", 1001, "toolUse"),
+                    turn("r3", 1002, "length"),
+                    turn("r4", 1003, "error", errorMessage="overloaded"),
+                ],
+            }
+        ]
+        events = build_events(parse_telemetry(raw))
+        model_events = [e for e in events if isinstance(e, ModelEvent)]
+        reasons = [e.output.stop_reason for e in model_events]
+        assert reasons == ["stop", "tool_calls", "max_tokens", "unknown"]
+        errored = model_events[-1]
+        assert errored.error == "overloaded"
+        assert errored.output.error == "overloaded"
+        # Non-errored turns carry no error.
+        assert all(e.error is None for e in model_events[:-1])
+
     def test_subagent_compaction_dropped_with_warning(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
@@ -1070,6 +1109,118 @@ class TestSchemaASubagents:
             "no linkable spawn call" in r.getMessage() and child in r.getMessage()
             for r in caplog.records
         )
+
+
+class TestSchemaBSubagents:
+    """Schema-B sub-agents record activity only in ``tool.*`` events.
+
+    Synthetic fixture: one orchestrator turn spawns a sub-agent whose work is a
+    single ``tool.start``/``tool.end`` pair (no ``messages[]`` turns), matching
+    the enriched envelope's ``ts``/``error`` fields.
+    """
+
+    def _raw(self, *, success: bool, ts: bool) -> list[dict[str, Any]]:
+        spawn_id = "tc_spawn"
+        child = "agent:run:subagent:child-1"
+        start: dict[str, Any] = {
+            "type": "tool.start",
+            "sessionKey": child,
+            "toolName": "exec",
+            "params": {"command": "wttr.in"},
+        }
+        end: dict[str, Any] = {
+            "type": "tool.end",
+            "sessionKey": child,
+            "toolName": "exec",
+            "durationMs": 250,
+            "success": success,
+        }
+        if ts:
+            start["ts"] = 5000
+            end["ts"] = 5250
+        if not success:
+            end["error"] = "Error: HTTP 404"
+        return [
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:run:main:orchestrator",
+                "messages": [
+                    {
+                        "role": "assistant",
+                        "responseId": "r1",
+                        "timestamp": 1000,
+                        "model": "m",
+                        "stopReason": "toolUse",
+                        "content": [
+                            {
+                                "type": "toolCall",
+                                "id": spawn_id,
+                                "name": "sessions_spawn",
+                                "arguments": {"task": "get weather", "label": "wx"},
+                            }
+                        ],
+                    },
+                    {
+                        "role": "toolResult",
+                        "toolCallId": spawn_id,
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": json.dumps({"childSessionKey": child}),
+                            }
+                        ],
+                    },
+                ],
+            },
+            {"type": "agent.start", "sessionKey": child, "prompt": "get weather"},
+            start,
+            end,
+        ]
+
+    def _tool_event(self, events: list[Event]) -> ToolEvent:
+        span_ids = {e.id for e in events if isinstance(e, SpanBeginEvent)}
+        return next(
+            e
+            for e in events
+            if isinstance(e, ToolEvent)
+            and e.span_id in span_ids
+            and e.function == "exec"
+        )
+
+    def test_schema_b_tool_events_use_recorded_timestamps(self) -> None:
+        # The tool.*'s own ``ts`` gives the call a real start->end span rather
+        # than collapsing it to the spawn time (zero duration).
+        events = build_events(parse_telemetry(self._raw(success=True, ts=True)))
+        tool = self._tool_event(events)
+        assert tool.completed is not None
+        assert tool.completed > tool.timestamp
+        # The agent span ends at the child's real end time, not the spawn ack.
+        span_end = next(e for e in events if isinstance(e, SpanEndEvent))
+        assert span_end.timestamp >= tool.completed
+
+    def test_schema_b_missing_ts_falls_back_to_spawn_time(self) -> None:
+        # Bare captures carry no ``ts``; the call is stamped with the spawn time
+        # (zero duration) rather than failing.
+        events = build_events(parse_telemetry(self._raw(success=True, ts=False)))
+        tool = self._tool_event(events)
+        assert tool.completed == tool.timestamp
+
+    def test_schema_b_tool_failure_surfaced(self) -> None:
+        # A tool.end with success=false is a real failure: the standard
+        # failed/error fields are populated (not left None) and carry the
+        # recorded error message.
+        events = build_events(parse_telemetry(self._raw(success=False, ts=True)))
+        tool = self._tool_event(events)
+        assert tool.failed is True
+        assert tool.error is not None and tool.error.message == "Error: HTTP 404"
+        # ``success`` is still kept in metadata alongside the standard fields.
+        assert (tool.metadata or {}).get("success") is False
+
+    def test_schema_b_tool_success_sets_failed_false(self) -> None:
+        events = build_events(parse_telemetry(self._raw(success=True, ts=True)))
+        tool = self._tool_event(events)
+        assert tool.failed is False
+        assert tool.error is None
 
 
 class TestMessages:

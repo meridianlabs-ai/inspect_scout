@@ -37,6 +37,7 @@ from inspect_ai.model import (
     Content,
     ModelOutput,
     ModelUsage,
+    StopReason,
 )
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.tool import ToolCall, ToolCallContent, ToolCallError
@@ -54,6 +55,35 @@ logger = getLogger(__name__)
 
 
 _EPOCH = datetime.fromtimestamp(0, tz=timezone.utc)
+
+# OpenClaw ``stopReason`` -> Inspect ``StopReason``. ``error`` (and any
+# unrecognized value) maps to ``unknown`` and carries the turn's ``errorMessage``
+# through to the model event (see :func:`_stop_and_error`).
+_STOP_REASON: dict[str, StopReason] = {
+    "stop": "stop",
+    "toolUse": "tool_calls",
+    "length": "max_tokens",
+}
+
+
+def _stop_and_error(turn: dict[str, Any]) -> tuple[StopReason, str | None]:
+    """Map an OpenClaw turn's recorded ``stopReason`` to Inspect's stop reason.
+
+    telemetry-hal records a ``stopReason`` on every assistant turn (``stop``,
+    ``toolUse``, or ``error``) and an ``errorMessage`` on the errored ones.
+    Deriving the stop reason from whether tool calls were parsed would silently
+    turn length/error turns into normal completions and discard the error, so
+    the recorded reason is mapped instead. An unrecognized or errored reason
+    becomes ``unknown`` and propagates ``errorMessage``. A missing reason
+    (non-conformant input) falls back to ``stop``.
+    """
+    raw = turn.get("stopReason")
+    if raw in _STOP_REASON:
+        return _STOP_REASON[raw], None
+    if raw is None:
+        return "stop", None
+    message = turn.get("errorMessage")
+    return "unknown", (str(message) if message else None)
 
 
 def build_content(
@@ -147,15 +177,17 @@ def build_content(
             model=turn_model,
         )
         usage = ModelUsage(**usage_to_inspect(item.get("usage") or {}))
+        stop_reason, turn_error = _stop_and_error(item)
         output = ModelOutput(
             model=turn_model,
             choices=[
                 ChatCompletionChoice(
                     message=assistant_msg,
-                    stop_reason="tool_calls" if tool_calls else "stop",
+                    stop_reason=stop_reason,
                 )
             ],
             usage=usage,
+            error=turn_error,
         )
         events.append(
             ModelEvent(
@@ -165,6 +197,7 @@ def build_content(
                 tool_choice="auto",
                 config=GenerateConfig(),
                 output=output,
+                error=turn_error,
                 timestamp=ts,
                 completed=ts,
                 working_start=float(order),
@@ -316,15 +349,17 @@ def _emit_subagent_span(
             tool_calls=tool_calls or None,
             model=turn_model,
         )
+        stop_reason, turn_error = _stop_and_error(turn)
         output = ModelOutput(
             model=turn_model,
             choices=[
                 ChatCompletionChoice(
                     message=assistant_msg,
-                    stop_reason="tool_calls" if tool_calls else "stop",
+                    stop_reason=stop_reason,
                 )
             ],
             usage=ModelUsage(**usage_to_inspect(turn.get("usage") or {})),
+            error=turn_error,
         )
         turn_ts = _ts_to_datetime(turn.get("timestamp")) or timestamp
         span_end_ts = max(span_end_ts, turn_ts)
@@ -336,6 +371,7 @@ def _emit_subagent_span(
                 tool_choice="auto",
                 config=GenerateConfig(),
                 output=output,
+                error=turn_error,
                 timestamp=turn_ts,
                 completed=turn_ts,
                 working_start=float(order),
@@ -389,20 +425,34 @@ def _emit_subagent_span(
             )
             if value is not None
         }
+        # Prefer the tool.*'s own ``ts`` (enriched envelope) so a call carries a
+        # real start->end span; fall back to the spawn time when absent (bare
+        # captures), which collapses it to zero duration but never mis-orders it.
+        call_start = _ts_to_datetime(call.get("startTs")) or timestamp
+        call_end = _ts_to_datetime(call.get("endTs")) or call_start
+        # A recorded ``success`` of false is a real failure: surface it through
+        # the standard ToolEvent fields (with the tool.end ``error`` as the
+        # message) rather than leaving ``failed``/``error`` unset.
+        success = call.get("success")
+        failed = None if success is None else not success
+        err_text = call.get("error")
+        error = ToolCallError("unknown", str(err_text)) if err_text else None
         events.append(
             ToolEvent(
                 id=f"{span_id}:tool:{idx}",
                 function=str(call.get("toolName") or "unknown"),
                 arguments=params if isinstance(params, dict) else {},
                 result="",
-                timestamp=timestamp,
-                completed=timestamp,
+                error=error,
+                failed=failed,
+                timestamp=call_start,
+                completed=call_end,
                 working_start=float(order),
                 span_id=span_id,
                 metadata=metadata or None,
             )
         )
-        span_end_ts = max(span_end_ts, timestamp)
+        span_end_ts = max(span_end_ts, call_end)
         order += 1
 
     events.append(

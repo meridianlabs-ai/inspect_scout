@@ -466,12 +466,19 @@ def _consolidate(raw_events: Iterable[dict[str, Any]]) -> _Consolidated:
                 s["turns"].append(m)
         elif t == "tool.start":  # schema-B activity
             s["n_tool_calls"] += 1
+            # ``ts`` is the telemetry-hal envelope's epoch-ms append time; it is
+            # present on the enriched (service-sink) captures and absent on the
+            # bare ones, so ``startTs``/``endTs`` may stay None and the mapping
+            # falls back to the spawn time.
             s["tool_calls"].append(
                 {
                     "toolName": ev.get("toolName"),
                     "params": ev.get("params") or {},
                     "durationMs": None,
                     "success": None,
+                    "error": None,
+                    "startTs": ev.get("ts"),
+                    "endTs": None,
                 }
             )
         elif t == "tool.end":  # schema-B activity: fill the matching open call
@@ -486,5 +493,10 @@ def _consolidate(raw_events: Iterable[dict[str, Any]]) -> _Consolidated:
                 ):
                     call["durationMs"] = ev.get("durationMs")
                     call["success"] = ev.get("success")
+                    # A failed tool.end carries an ``error`` (present exactly when
+                    # ``success`` is false); keep it so the ToolEvent can surface
+                    # the failure rather than dropping it.
+                    call["error"] = ev.get("error")
+                    call["endTs"] = ev.get("ts")
                     break
     return out

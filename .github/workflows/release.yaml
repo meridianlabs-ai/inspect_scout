@@ -4,11 +4,6 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      target-branch:
-        description: "Maintenance branch to release from (e.g. hotfix/1.4.x). Leave as main for a normal release."
-        type: string
-        default: main
 
 jobs:
   release-please:
@@ -21,5 +16,4 @@ jobs:
       # workflows, each with its own environment gate — so each posts its own
       # approval ping from there (deep-linking to the paused run), not here.
       approval-ping: false
-      target-branch: ${{ inputs.target-branch }}
     secrets: inherit

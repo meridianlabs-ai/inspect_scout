@@ -4,7 +4,7 @@
 
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -31,25 +31,13 @@ from inspect_ai.model import ChatMessageAssistant, ChatMessageTool
 from inspect_scout.sources import atif
 from inspect_scout.sources._atif.client import ATIF_SOURCE_TYPE
 
+from tests.sources.atif_source.helpers import make_trajectory, write_trajectory
+
 
 @pytest.fixture
 def fixtures_dir() -> Path:
     """Get the fixtures directory."""
     return Path(__file__).parent / "fixtures"
-
-
-def _make_trajectory(steps: list[Step], **kwargs: object) -> Trajectory:
-    return Trajectory(
-        session_id="test-session",
-        agent=Agent(name="test-agent", version="0.1.0"),
-        steps=steps,
-        **kwargs,
-    )
-
-
-def _write_trajectory(path: Path, trajectory: Trajectory) -> None:
-    """Serialize a trajectory to JSON on disk."""
-    path.write_text(trajectory.model_dump_json(exclude_none=True))
 
 
 @pytest.mark.asyncio
@@ -83,7 +71,75 @@ async def test_session_id_filter(fixtures_dir: Path, tmp_path: Path) -> None:
 
     transcripts = [t async for t in atif(path=tmp_path, session_id="session-aaa")]
     assert len(transcripts) == 1
-    assert transcripts[0].transcript_id == "session-aaa"
+    assert transcripts[0].source_id == "session-aaa"
+
+
+@pytest.mark.asyncio
+async def test_session_id_filter_matches_trajectory_id(tmp_path: Path) -> None:
+    """The `session_id` filter also matches a trajectory's `trajectory_id`."""
+    trajectory = make_trajectory(
+        [Step(step_id=1, source="user", message="hi")], trajectory_id="traj-xyz"
+    )
+    write_trajectory(tmp_path / "trajectory.json", trajectory)
+    transcripts = [t async for t in atif(path=tmp_path, session_id="traj-xyz")]
+    assert len(transcripts) == 1
+
+
+@pytest.mark.asyncio
+async def test_session_id_filter_on_subagent_yields_nothing_and_warns(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Filtering by a subagent's session_id yields nothing (it's inlined) and warns."""
+    sub = Trajectory(
+        session_id="sub-0",
+        agent=Agent(name="reviewer", version="0.1.0"),
+        steps=[Step(step_id=1, source="user", message="x")],
+    )
+    write_trajectory(tmp_path / "sub-0.json", sub)
+    parent = make_trajectory(
+        [
+            Step(
+                step_id=1,
+                source="agent",
+                message="delegate",
+                observation=Observation(
+                    results=[
+                        ObservationResult(
+                            subagent_trajectory_ref=[
+                                SubagentTrajectoryRef(trajectory_path="sub-0.json")
+                            ]
+                        )
+                    ]
+                ),
+            )
+        ]
+    )
+    write_trajectory(tmp_path / "parent.json", parent)
+
+    import logging
+
+    with caplog.at_level(logging.WARNING):
+        transcripts = [t async for t in atif(path=tmp_path, session_id="sub-0")]
+    assert transcripts == []
+    assert any("matched no importable transcripts" in r.message for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_non_atif_json_is_skipped_silently(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A JSON file without `schema_version` is skipped without a per-file warning."""
+    (tmp_path / "package-lock.json").write_text('{"name": "x", "lockfileVersion": 3}')
+    write_trajectory(
+        tmp_path / "trajectory.json",
+        make_trajectory([Step(step_id=1, source="user", message="hi")]),
+    )
+    import logging
+
+    with caplog.at_level(logging.WARNING):
+        transcripts = [t async for t in atif(path=tmp_path)]
+    assert len(transcripts) == 1  # only the ATIF file
+    assert not any("package-lock" in r.message for r in caplog.records)
 
 
 @pytest.mark.asyncio
@@ -118,7 +174,7 @@ async def test_from_time_filters_by_mtime(fixtures_dir: Path, tmp_path: Path) ->
     transcripts = [t async for t in atif(path=tmp_path, from_time=from_time)]
 
     assert len(transcripts) == 1
-    assert transcripts[0].transcript_id == "session_2"
+    assert transcripts[0].source_id == "session_2"
 
 
 @pytest.mark.asyncio
@@ -140,7 +196,7 @@ async def test_tool_call_and_observation_correlate_via_source_call_id(
     tmp_path: Path,
 ) -> None:
     """`ChatMessageTool.tool_call_id` matches the ATIF `source_call_id`."""
-    trajectory = _make_trajectory(
+    trajectory = make_trajectory(
         [
             Step(
                 step_id=1,
@@ -160,7 +216,7 @@ async def test_tool_call_and_observation_correlate_via_source_call_id(
         ]
     )
     path = tmp_path / "trajectory.json"
-    _write_trajectory(path, trajectory)
+    write_trajectory(path, trajectory)
     transcripts = [t async for t in atif(path=path)]
     assert len(transcripts) == 1
     transcript = transcripts[0]
@@ -182,7 +238,7 @@ async def test_context_management_step_emits_compaction_event(
     tmp_path: Path,
 ) -> None:
     """A system step with `extra.context_management` becomes `CompactionEvent`."""
-    trajectory = _make_trajectory(
+    trajectory = make_trajectory(
         [
             Step(
                 step_id=1,
@@ -198,7 +254,7 @@ async def test_context_management_step_emits_compaction_event(
         ]
     )
     path = tmp_path / "trajectory.json"
-    _write_trajectory(path, trajectory)
+    write_trajectory(path, trajectory)
     transcripts = [t async for t in atif(path=path)]
     assert len(transcripts) == 1
     transcript = transcripts[0]
@@ -223,9 +279,9 @@ async def test_context_management_step_with_subagent_refs_inlines_spans(
             agent=Agent(name=f"summarizer-{i}", version="0.1.0"),
             steps=[Step(step_id=1, source="user", message="x")],
         )
-        _write_trajectory(tmp_path / f"sub-{i}.json", sub)
+        write_trajectory(tmp_path / f"sub-{i}.json", sub)
 
-    trajectory = _make_trajectory(
+    trajectory = make_trajectory(
         [
             Step(
                 step_id=1,
@@ -254,7 +310,7 @@ async def test_context_management_step_with_subagent_refs_inlines_spans(
         ]
     )
     path = tmp_path / "trajectory.json"
-    _write_trajectory(path, trajectory)
+    write_trajectory(path, trajectory)
     transcripts = [t async for t in atif(path=path)]
     assert len(transcripts) == 1
     transcript = transcripts[0]
@@ -276,9 +332,9 @@ async def test_subagent_files_not_double_indexed(tmp_path: Path) -> None:
         agent=Agent(name="reviewer", version="0.1.0"),
         steps=[Step(step_id=1, source="user", message="x")],
     )
-    _write_trajectory(tmp_path / "sub-0.json", sub)
+    write_trajectory(tmp_path / "sub-0.json", sub)
 
-    parent = _make_trajectory(
+    parent = make_trajectory(
         [
             Step(
                 step_id=1,
@@ -303,12 +359,12 @@ async def test_subagent_files_not_double_indexed(tmp_path: Path) -> None:
             )
         ]
     )
-    _write_trajectory(tmp_path / "parent.json", parent)
+    write_trajectory(tmp_path / "parent.json", parent)
 
     transcripts = [t async for t in atif(path=tmp_path)]
     # Only the parent is yielded; sub-0.json is inlined as a span, not standalone.
     assert len(transcripts) == 1
-    assert transcripts[0].transcript_id == "test-session"
+    assert transcripts[0].source_id == "test-session"
     span_begins = [e for e in transcripts[0].events if isinstance(e, SpanBeginEvent)]
     assert len(span_begins) == 1
 
@@ -318,7 +374,7 @@ async def test_is_copied_context_sets_transcript_metadata_flag(
     tmp_path: Path,
 ) -> None:
     """Any `Step.is_copied_context=True` sets transcript-level `has_copied_context`."""
-    trajectory = _make_trajectory(
+    trajectory = make_trajectory(
         [
             Step(step_id=1, source="user", message="hi"),
             Step(
@@ -330,7 +386,7 @@ async def test_is_copied_context_sets_transcript_metadata_flag(
         ]
     )
     path = tmp_path / "trajectory.json"
-    _write_trajectory(path, trajectory)
+    write_trajectory(path, trajectory)
     transcripts = [t async for t in atif(path=path)]
     assert len(transcripts) == 1
     transcript = transcripts[0]
@@ -342,12 +398,12 @@ async def test_continued_trajectory_ref_preserved_in_metadata(
     tmp_path: Path,
 ) -> None:
     """`Trajectory.continued_trajectory_ref` is preserved in transcript metadata."""
-    trajectory = _make_trajectory(
+    trajectory = make_trajectory(
         [Step(step_id=1, source="user", message="hi")],
         continued_trajectory_ref="next.json",
     )
     path = tmp_path / "trajectory.json"
-    _write_trajectory(path, trajectory)
+    write_trajectory(path, trajectory)
     transcripts = [t async for t in atif(path=path)]
     assert len(transcripts) == 1
     transcript = transcripts[0]
@@ -357,20 +413,80 @@ async def test_continued_trajectory_ref_preserved_in_metadata(
 @pytest.mark.asyncio
 async def test_transcript_top_level_fields(tmp_path: Path) -> None:
     """Identifying fields (id, source_type, agent, source_uri) are populated."""
-    trajectory = _make_trajectory([Step(step_id=1, source="user", message="hi")])
+    trajectory = make_trajectory([Step(step_id=1, source="user", message="hi")])
     path = tmp_path / "trajectory.json"
-    _write_trajectory(path, trajectory)
+    write_trajectory(path, trajectory)
     transcripts = [t async for t in atif(path=path)]
     assert len(transcripts) == 1
     transcript = transcripts[0]
 
-    assert transcript.transcript_id == "test-session"
+    # transcript_id combines run identity + file stem (so continuation segments
+    # of one session don't collide); source_id keeps the shared run identity.
+    assert transcript.transcript_id == "test-session-trajectory"
     assert transcript.source_type == ATIF_SOURCE_TYPE
     assert transcript.source_id == "test-session"
     assert transcript.source_uri == str(tmp_path / "trajectory.json")
     assert transcript.agent == "test-agent"
     assert transcript.message_count == 1
     assert transcript.metadata["schema_version"].startswith("ATIF-")
+
+
+@pytest.mark.asyncio
+async def test_synthesized_event_timestamp_comes_from_step(tmp_path: Path) -> None:
+    """A synthesized ModelEvent's timestamp is the step's, not import time.
+
+    The committed fixtures carry no step timestamps (so events fall back to
+    `utcnow()`); this covers the real-timestamp path.
+    """
+    trajectory = make_trajectory(
+        [
+            Step(step_id=1, source="user", message="hi"),
+            Step(
+                step_id=2,
+                source="agent",
+                message="done",
+                model_name="gpt-4",
+                metrics=Metrics(prompt_tokens=10, completion_tokens=5),
+                timestamp="2026-01-01T00:00:05Z",
+            ),
+        ]
+    )
+    path = tmp_path / "trajectory.json"
+    write_trajectory(path, trajectory)
+    transcripts = [t async for t in atif(path=path)]
+    assert len(transcripts) == 1
+    transcript = transcripts[0]
+
+    model_events = [e for e in transcript.events if isinstance(e, ModelEvent)]
+    assert len(model_events) == 1
+    assert model_events[0].timestamp == datetime(
+        2026, 1, 1, 0, 0, 5, tzinfo=timezone.utc
+    )
+
+
+@pytest.mark.asyncio
+async def test_continuation_segments_get_distinct_transcript_ids(
+    fixtures_dir: Path,
+) -> None:
+    """Base + continuation share `session_id` but must not collide on `transcript_id`.
+
+    The terminus_2 base and its `.cont-1` continuation are one run split across
+    two files; distinct ids keep the parquet insert from dropping a segment.
+    """
+    base_file = fixtures_dir / (
+        "terminus_2_hello-world-context-summarization-linear-history.trajectory.json"
+    )
+    continuation_file = fixtures_dir / (
+        "terminus_2_hello-world-context-summarization-"
+        "linear-history.trajectory.cont-1.json"
+    )
+    transcripts = [
+        t for f in (base_file, continuation_file) async for t in atif(path=f)
+    ]
+
+    assert len(transcripts) == 2
+    assert len({t.transcript_id for t in transcripts}) == 2  # distinct ids
+    assert len({t.source_id for t in transcripts}) == 1  # same run
 
 
 @pytest.mark.asyncio
@@ -382,7 +498,7 @@ async def test_model_extraction(tmp_path: Path) -> None:
         steps=[Step(step_id=1, source="user", message="hi")],
     )
     path = tmp_path / "trajectory.json"
-    _write_trajectory(path, trajectory)
+    write_trajectory(path, trajectory)
     transcripts = [t async for t in atif(path=path)]
     assert len(transcripts) == 1
     transcript = transcripts[0]
@@ -394,7 +510,7 @@ async def test_token_counting(tmp_path: Path) -> None:
     """`Transcript.total_tokens` sums `final_metrics.total_prompt_tokens` + completion."""
     from harbor.models.trajectories.final_metrics import FinalMetrics
 
-    trajectory = _make_trajectory(
+    trajectory = make_trajectory(
         [Step(step_id=1, source="user", message="hi")],
         final_metrics=FinalMetrics(
             total_prompt_tokens=100,
@@ -402,7 +518,7 @@ async def test_token_counting(tmp_path: Path) -> None:
         ),
     )
     path = tmp_path / "trajectory.json"
-    _write_trajectory(path, trajectory)
+    write_trajectory(path, trajectory)
     transcripts = [t async for t in atif(path=path)]
     assert len(transcripts) == 1
     transcript = transcripts[0]
@@ -412,7 +528,7 @@ async def test_token_counting(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_date_extraction(tmp_path: Path) -> None:
     """`Transcript.date` is pulled from the first step's timestamp."""
-    trajectory = _make_trajectory(
+    trajectory = make_trajectory(
         [
             Step(
                 step_id=1, source="user", message="hi", timestamp="2025-11-15T10:23:45Z"
@@ -421,7 +537,7 @@ async def test_date_extraction(tmp_path: Path) -> None:
         ],
     )
     path = tmp_path / "trajectory.json"
-    _write_trajectory(path, trajectory)
+    write_trajectory(path, trajectory)
     transcripts = [t async for t in atif(path=path)]
     assert len(transcripts) == 1
     transcript = transcripts[0]
@@ -431,7 +547,7 @@ async def test_date_extraction(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_stable_message_ids_recur_across_model_events(tmp_path: Path) -> None:
     """Identical messages get the same `id` everywhere they appear."""
-    trajectory = _make_trajectory(
+    trajectory = make_trajectory(
         [
             Step(step_id=1, source="user", message="hi"),
             Step(
@@ -451,7 +567,7 @@ async def test_stable_message_ids_recur_across_model_events(tmp_path: Path) -> N
         ],
     )
     path = tmp_path / "trajectory.json"
-    _write_trajectory(path, trajectory)
+    write_trajectory(path, trajectory)
     transcripts = [t async for t in atif(path=path)]
     assert len(transcripts) == 1
     transcript = transcripts[0]
@@ -476,9 +592,9 @@ async def test_multiple_subagent_refs_each_get_their_own_span(
             agent=Agent(name=f"reviewer-{i}", version="0.1.0"),
             steps=[Step(step_id=1, source="user", message="x")],
         )
-        _write_trajectory(tmp_path / f"sub-{i}.json", sub)
+        write_trajectory(tmp_path / f"sub-{i}.json", sub)
 
-    parent = _make_trajectory(
+    parent = make_trajectory(
         [
             Step(step_id=1, source="user", message="do work"),
             Step(
@@ -507,7 +623,7 @@ async def test_multiple_subagent_refs_each_get_their_own_span(
         ]
     )
     parent_path = tmp_path / "parent.json"
-    _write_trajectory(parent_path, parent)
+    write_trajectory(parent_path, parent)
 
     transcripts = [t async for t in atif(path=parent_path)]
     assert len(transcripts) == 1

@@ -62,8 +62,11 @@ async def atif(
             specific trajectory file. If None, no files are discovered
             (no default location)
         session_id: Specific session ID to import
-        from_time: Only fetch trajectories modified on or after this time
-        to_time: Only fetch trajectories modified before this time
+        from_time: Only fetch trajectories whose file modification time
+            (``st_mtime`` — not the trajectory's run time, and reset by
+            ``cp``/``git checkout``/rsync) is on or after this time
+        to_time: Only fetch trajectories whose file modification time is before
+            this time
         limit: Maximum number of transcripts to yield
 
     Yields:
@@ -78,26 +81,32 @@ async def atif(
         logger.info("No ATIF trajectory files found")
         return
 
-    # Parse every discovered file once, up front. We need all subagent
-    # references before yielding anything: a subagent file may sort ahead of
-    # its parent in mtime order, and subagent trajectories are inlined into
-    # their parent's span (see `_create_subagent_span_events`), so they must
-    # not also be yielded as standalone transcripts (which would double-index
-    # their events). Assumed layout: a parent trajectory and the subagent
-    # files it references live in the same directory tree.
-    parsed: list[tuple[Path, "Trajectory"]] = []
+    # Pre-scan to find files referenced as subagents, so they're not also emitted
+    # standalone (they're inlined into their parent's span). We must see every
+    # reference before yielding (a subagent file may sort ahead of its parent),
+    # but keep only the paths — re-parsing in the yield loop keeps peak memory
+    # O(1) per transcript. The `schema_version` sniff cheaply skips non-ATIF JSON.
+    atif_files: list[Path] = []
     subagent_paths: set[Path] = set()
     for f in trajectory_files:
         try:
-            trajectory = trajectory_model.model_validate_json(f.read_text())
-        except (OSError, ValidationError) as e:
-            logger.warning("Skipping non-ATIF or unreadable file %s: %s", f, e)
+            data = f.read_bytes()
+        except OSError as e:
+            logger.warning("Skipping unreadable file %s: %s", f, e)
             continue
-        parsed.append((f, trajectory))
+        if b'"schema_version"' not in data:
+            continue  # not an ATIF trajectory file
+        try:
+            trajectory = trajectory_model.model_validate_json(data)
+        except ValidationError as e:
+            logger.warning("Skipping malformed ATIF file %s: %s", f, e)
+            continue
+        atif_files.append(f)
         subagent_paths |= _subagent_ref_paths(trajectory, parent_path=f)
 
     count = 0
-    for f, trajectory in parsed:
+    matched = 0  # non-suppressed files passing the session_id filter (diagnostics)
+    for f in atif_files:
         if limit is not None and count >= limit:
             return
 
@@ -105,11 +114,31 @@ async def atif(
             # Inlined as a span inside its parent; don't double-index.
             continue
 
-        if session_id is not None and trajectory.session_id != session_id:
+        try:
+            trajectory = trajectory_model.model_validate_json(f.read_bytes())
+        except (OSError, ValidationError) as e:
+            logger.warning("Skipping unreadable/invalid file %s: %s", f, e)
             continue
 
+        # `transcript_id`/`source_id` derive from `session_id` or `trajectory_id`,
+        # so match the filter against both.
+        if session_id is not None and session_id not in (
+            trajectory.session_id,
+            trajectory.trajectory_id,
+        ):
+            continue
+
+        matched += 1
         yield _create_transcript(trajectory, source_uri=str(f))
         count += 1
+
+    if session_id is not None and matched == 0:
+        logger.warning(
+            "session_id=%r matched no importable transcripts. Subagent "
+            "trajectories are inlined into their parent (not imported standalone) "
+            "and so are excluded from this filter.",
+            session_id,
+        )
 
 
 def _subagent_ref_paths(
@@ -182,15 +211,20 @@ def _create_transcript(
             # summarization-handoff step carries `subagent_trajectory_ref`
             # pointing to the subagents that did the summarization.
             #
-            # KNOWN LIMITATION: ATIF RFC 0001 §VII says that after a
-            # `boundary="replace"` compaction, a subsequent step's effective
-            # input context is the boundary's observation content + later
-            # turns only, not the pre-boundary steps. We currently keep
-            # accumulating `messages` across the boundary, so a synthesized
-            # `ModelEvent.input` for any post-boundary step would include
-            # pre-compaction turns. Harbor's current fixtures place the
-            # compaction step last (no post-boundary step), so this is not yet
-            # observable; faithful reconstruction is left as a follow-up.
+            # KNOWN LIMITATION (ATIF RFC 0001 §VII, boundary="replace"), two halves:
+            #   1. Dropped content — we emit only the CompactionEvent and never
+            #      run `step_to_messages` on this step, so its own content (the
+            #      summary in `step.observation.results[].content`, which per §VII
+            #      *is* the post-compaction context the model saw) is lost from
+            #      `messages`, `message_count`, and DB search.
+            #   2. Unreconstructed input — a subsequent step's effective input is
+            #      that summary + later turns only, not the pre-boundary steps,
+            #      but we keep accumulating all prior `messages`, so a synthesized
+            #      `ModelEvent.input` after the boundary would include pre-
+            #      compaction turns the model didn't see.
+            # Harbor's current fixtures place the compaction step last and put the
+            # summary in the continuation file, so neither is observable yet;
+            # faithful handling is left as a follow-up.
             events.append(to_compaction_event(step))
         else:
             new_msgs = step_to_messages(step, tool_call_funcs, parent_path=parent_path)
@@ -262,16 +296,20 @@ def _create_transcript(
         wall_clock = (root.end_time() - root.start_time()).total_seconds()
         total_time = wall_clock - root.idle_time()
 
-    # Generate transcript ID. `source_uri` (the on-disk path) is always set on
-    # the real import path and is unique per file, so the `"unknown"` fallback
-    # is only reachable for an in-memory trajectory with no ids and no uri.
-    transcript_id = (
-        trajectory.session_id or trajectory.trajectory_id or source_uri or "unknown"
-    )
+    # transcript_id must be unique per file. ATIF continuation segments share one
+    # `session_id` (the same run split across files via `continued_trajectory_ref`),
+    # so keying on session_id alone collapses base + continuation into one id and
+    # the parquet insert then silently drops the later segment. Combine the run
+    # identity with the file identity (stem); `source_id` keeps the shared run id
+    # so the segments stay linkable as one session.
+    run_id = trajectory.session_id or trajectory.trajectory_id
+    stem = Path(source_uri).stem if source_uri else None
+    parts = [p for p in (run_id, stem) if p]
+    transcript_id = "-".join(parts) or "unknown"
     return Transcript(
         transcript_id=transcript_id,
         source_type=ATIF_SOURCE_TYPE,
-        source_id=transcript_id,
+        source_id=run_id or transcript_id,
         source_uri=source_uri,
         date=first_timestamp,
         agent=trajectory.agent.name,
@@ -323,8 +361,17 @@ def _create_subagent_span_events(
         List of events in correct order
     """
     agent_events: list[Event] = []
-    agent_span_id = f"agent-{ref.session_id}"
-    agent_name: str = ref.session_id or "subagent"
+    # The span id must be unique across the (possibly nested) event tree. Per
+    # spec, `ref.session_id` is informational-only and MAY collide across
+    # siblings, so we key on the resolution key instead: the resolved file path
+    # for file-refs (globally unique), otherwise the `trajectory_id`.
+    if ref.trajectory_path is not None:
+        sub_path: Path | None = (parent_path.parent / ref.trajectory_path).resolve()
+        agent_span_id = f"agent-{sub_path}"
+    else:
+        sub_path = None
+        agent_span_id = f"agent-{ref.trajectory_id or 'subagent'}"
+    agent_name: str = "subagent"
     # Span endpoints default to import time only when no real timestamps are
     # available; otherwise we derive them from the subagent's own steps so the
     # span sits in the historical run window (a `utcnow()` end would stretch
@@ -334,17 +381,20 @@ def _create_subagent_span_events(
 
     if max_depth <= 0:
         pass
-    elif ref.trajectory_path is None:
+    elif sub_path is None:
+        # The embedded form (a path-less ref resolved via `trajectory_id` against
+        # the parent's `subagent_trajectories` array) is not yet supported; emit
+        # an empty span and flag it as an unsupported feature, not bad input.
         logger.warning(
-            "ATIF subagent ref has no trajectory_path; emitting empty span: %s",
-            ref.session_id,
+            "ATIF embedded subagent (trajectory_id=%s) not yet supported; "
+            "emitting empty span",
+            ref.trajectory_id,
         )
     else:
-        sub_path = (parent_path.parent / ref.trajectory_path).resolve()
         trajectory_model = import_trajectory_model()
         try:
             subagent_trajectory = trajectory_model.model_validate_json(
-                sub_path.read_text()
+                sub_path.read_bytes()
             )
         except (OSError, ValidationError) as e:
             logger.warning("ATIF subagent file not loadable %s: %s", sub_path, e)

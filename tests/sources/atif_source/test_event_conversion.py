@@ -45,6 +45,8 @@ from inspect_scout.sources._atif.events import (
 )
 from inspect_scout.sources._atif.transcripts import _create_subagent_span_events
 
+from tests.sources.atif_source.helpers import write_trajectory
+
 # Minimal valid 1×1 transparent PNG (used by image tests).
 _PNG_BYTES = (
     b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
@@ -52,11 +54,6 @@ _PNG_BYTES = (
     b"\xc0\xf0\x1f\x00\x05\x00\x01\xff\xa8\xd0\xc3\xb2\x00\x00\x00\x00IEND"
     b"\xaeB`\x82"
 )
-
-
-def _write_trajectory(path: Path, trajectory: Trajectory) -> None:
-    """Serialize a trajectory to JSON on disk."""
-    path.write_text(trajectory.model_dump_json(exclude_none=True))
 
 
 class TestModelEventConversion:
@@ -100,6 +97,29 @@ class TestModelEventConversion:
             metrics=Metrics(prompt_tokens=10, completion_tokens=5),
         )
         assert to_model_event(step, prior_messages=[], new_messages=[]) is None
+
+    def test_cached_tokens_not_double_counted(self) -> None:
+        """Cached tokens are excluded from `input_tokens` (harbor bundles them in)."""
+        step = Step(
+            step_id=1,
+            source="agent",
+            message="ok",
+            model_name="gpt-4",
+            metrics=Metrics(
+                prompt_tokens=1000, completion_tokens=100, cached_tokens=800
+            ),
+        )
+        result = to_model_event(
+            step,
+            prior_messages=[],
+            new_messages=[ChatMessageAssistant(content="ok")],
+        )
+        assert result is not None
+        usage = result.output.usage
+        assert usage is not None
+        assert usage.input_tokens == 200  # 1000 prompt - 800 cached
+        assert usage.input_tokens_cache_read == 800
+        assert usage.total_tokens == 1100  # 1000 + 100
 
 
 class TestCompactionEventConversion:
@@ -279,6 +299,21 @@ class TestImageAsDataUri:
         src = ImageSource(media_type="image/png", path="images/cat.png")
         assert _image_as_data_uri(src, parent_path=None) is None
 
+    def test_path_escaping_trajectory_dir_returns_none(self, tmp_path: Path) -> None:
+        """Both escape vectors — `../` traversal and absolute path — are refused.
+
+        `secret.txt` exists and is readable, so a pass proves the containment check
+        refuses *before* reading, not that the read merely failed.
+        """
+        secret = tmp_path / "secret.txt"
+        secret.write_bytes(b"secret")
+        run_dir = tmp_path / "run"
+        run_dir.mkdir()
+        parent_path = run_dir / "trajectory.json"  # trajectory dir = run_dir/
+        for bad_path in ("../secret.txt", str(secret)):
+            src = ImageSource(media_type="image/png", path=bad_path)
+            assert _image_as_data_uri(src, parent_path) is None
+
 
 class TestCreateSubagentSpanEvents:
     """Tests for _create_subagent_span_events()."""
@@ -299,7 +334,7 @@ class TestCreateSubagentSpanEvents:
             ],
         )
         sub_path = tmp_path / "sub.json"
-        _write_trajectory(sub_path, subagent_trajectory)
+        write_trajectory(sub_path, subagent_trajectory)
         parent_path = tmp_path / "parent.json"
 
         ref = SubagentTrajectoryRef(session_id="sub-1", trajectory_path="sub.json")
@@ -323,7 +358,7 @@ class TestCreateSubagentSpanEvents:
             agent=Agent(name="reviewer", version="0.1.0"),
             steps=[Step(step_id=1, source="user", message="x")],
         )
-        _write_trajectory(tmp_path / "sub.json", subagent_trajectory)
+        write_trajectory(tmp_path / "sub.json", subagent_trajectory)
         parent_path = tmp_path / "parent.json"
 
         ref = SubagentTrajectoryRef(session_id="sub-1", trajectory_path="sub.json")
@@ -360,7 +395,7 @@ class TestCreateSubagentSpanEvents:
                 ),
             ],
         )
-        _write_trajectory(tmp_path / "sub.json", subagent_trajectory)
+        write_trajectory(tmp_path / "sub.json", subagent_trajectory)
         parent_path = tmp_path / "parent.json"
 
         ref = SubagentTrajectoryRef(session_id="sub-1", trajectory_path="sub.json")
@@ -386,7 +421,7 @@ class TestCreateSubagentSpanEvents:
                 ),
             ],
         )
-        _write_trajectory(tmp_path / "sub.json", subagent_trajectory)
+        write_trajectory(tmp_path / "sub.json", subagent_trajectory)
         parent_path = tmp_path / "parent.json"
 
         ref = SubagentTrajectoryRef(session_id="sub-1", trajectory_path="sub.json")
@@ -431,3 +466,27 @@ class TestCreateSubagentSpanEvents:
         assert len(events) == 2  # span_begin + span_end, nothing in between
         assert isinstance(events[0], SpanBeginEvent)
         assert isinstance(events[1], SpanEndEvent)
+
+    def test_span_ids_unique_for_pathonly_refs(self, tmp_path: Path) -> None:
+        """Path-only refs (no session_id) get distinct span ids, not all `agent-None`."""
+        for i in range(2):
+            write_trajectory(
+                tmp_path / f"sub-{i}.json",
+                Trajectory(
+                    session_id=f"sub-{i}",
+                    agent=Agent(name=f"r{i}", version="0.1.0"),
+                    steps=[Step(step_id=1, source="user", message="x")],
+                ),
+            )
+        parent_path = tmp_path / "parent.json"
+        span_ids: list[str] = []
+        for i in range(2):
+            ref = SubagentTrajectoryRef(
+                trajectory_path=f"sub-{i}.json"
+            )  # no session_id
+            events = _create_subagent_span_events(
+                ref, parent_path=parent_path, max_depth=5
+            )
+            span_ids += [e.id for e in events if isinstance(e, SpanBeginEvent)]
+        assert len(span_ids) == 2
+        assert len(set(span_ids)) == 2  # distinct — old `agent-{session_id}` collided

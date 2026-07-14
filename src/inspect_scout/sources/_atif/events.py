@@ -64,8 +64,12 @@ def to_model_event(
 
     prompt_tokens = step.metrics.prompt_tokens or 0
     completion_tokens = step.metrics.completion_tokens or 0
+    # harbor's `prompt_tokens` INCLUDES cached tokens; inspect_ai's `input_tokens`
+    # EXCLUDES them (true total = input + cache_read + cache_write + output), so
+    # subtract cached to avoid double-counting.
+    cached_tokens = step.metrics.cached_tokens or 0
     usage = ModelUsage(
-        input_tokens=prompt_tokens,
+        input_tokens=prompt_tokens - cached_tokens,
         output_tokens=completion_tokens,
         total_tokens=prompt_tokens + completion_tokens,
         input_tokens_cache_read=step.metrics.cached_tokens,
@@ -214,7 +218,17 @@ def _image_as_data_uri(
             "ATIF image cannot be resolved without parent_path: %s", source.path
         )
         return None
-    image_path = (parent_path.parent / source.path).resolve()
+    base = parent_path.parent.resolve()
+    image_path = (base / source.path).resolve()
+    # Contain reads to the trajectory directory: `source.path` comes straight
+    # from the (untrusted) trajectory file, so `../…` or an absolute path could
+    # otherwise read arbitrary local files into the transcript DB.
+    if not image_path.is_relative_to(base):
+        logger.warning(
+            "ATIF image path escapes the trajectory directory, skipping: %s",
+            source.path,
+        )
+        return None
     try:
         data = base64.b64encode(image_path.read_bytes()).decode("ascii")
     except OSError as e:

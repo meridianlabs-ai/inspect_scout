@@ -322,6 +322,8 @@ await db.insert(atif(
 ))
 ```
 
+Note that `from_time`/`to_time` filter on each file's modification time (`st_mtime`), not the trajectory's run time — mtime is reset by `cp`, `git checkout`, rsync, etc., so it can diverge from when the run actually occurred.
+
 The `atif()` source reads trajectories produced by Harbor's own runner (e.g. `harbor run --agent claude_code`). When Harbor tasks are instead run via Inspect AI through `inspect_harbor`, the output is an Inspect eval log — see [Inspect Logs](#inspect-logs).
 
 ATIF trajectories are mapped to the database schema as follows:

@@ -57,8 +57,10 @@ def discover_trajectory_files(
             - None: no files are discovered (no default location)
             - A directory (searched recursively)
             - A specific trajectory.json file
-        from_time: Only yield files modified on or after this time
-        to_time: Only yield files modified before this time
+        from_time: Only yield files whose file modification time (``st_mtime``
+            — not the trajectory's run time, and reset by ``cp``/``git checkout``/
+            rsync) is on or after this time
+        to_time: Only yield files whose file modification time is before this time
 
     Yields:
         Trajectory file paths, sorted by modification time (newest first)

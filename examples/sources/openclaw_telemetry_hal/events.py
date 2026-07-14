@@ -189,6 +189,9 @@ def build_content(
             usage=usage,
             error=turn_error,
         )
+        # PERF (O(n²), ~147s on the 1.14GB CRUX1 file): passing the growing
+        # conversation snapshot to the ModelEvent constructor re-validates every
+        # message each turn.
         events.append(
             ModelEvent(
                 model=turn_model,

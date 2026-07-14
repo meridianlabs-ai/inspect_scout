@@ -117,6 +117,8 @@ def _create_transcript(
     events, messages = build_content(parse)
 
     # Apply stable message IDs across model events and the message thread.
+    # PERF (O(n²), ~434s — the dominant chunk of the ~10min 1.14GB CRUX1 import):
+    # each ModelEvent re-hashes every message in its growing input.
     apply_ids = stable_message_ids()
     for event in events:
         if isinstance(event, ModelEvent):

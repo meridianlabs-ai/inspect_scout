@@ -498,6 +498,21 @@ def _is_compatible_with_type(scanner_type: Any, target_type: Any) -> bool:
         if scanner_type == target_type:
             return True
 
+        # Unions never match on origin alone (every union's origin is Union,
+        # so a partial union would wrongly match a full one). A union is
+        # compatible with a target union only if it covers every member.
+        target_members = _get_union_members(target_type)
+        if target_members is not None:
+            scanner_members = _get_union_members(scanner_type)
+            if scanner_members is None:
+                return False
+            return all(
+                any(_is_compatible_with_type(s, t) for s in scanner_members)
+                for t in target_members
+            )
+        if _get_union_members(scanner_type) is not None:
+            return False
+
         # Try to check subclass relationship
         # This works for normal classes
         if inspect.isclass(scanner_type) and inspect.isclass(target_type):

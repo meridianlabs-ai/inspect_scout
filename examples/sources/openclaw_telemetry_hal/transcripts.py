@@ -13,6 +13,7 @@ from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, AsyncIterator, Iterable
 
+import anyio.to_thread
 from inspect_ai.event import ModelEvent
 from inspect_ai.model import stable_message_ids
 
@@ -61,7 +62,15 @@ async def openclaw_telemetry_hal(
         return
 
     for telemetry_file in telemetry_files:
-        transcript = _process_telemetry_file(telemetry_file)
+        # Reading/parsing a file is synchronous and CPU-bound; run it in a
+        # worker thread so it doesn't pin the event loop for the whole file (the
+        # import progress display keeps refreshing). This does not make the
+        # in-flight file interruptible: the worker is non-daemon and runs to
+        # completion. abandon_on_cancel=True only lets this await raise promptly
+        # on cancellation instead of blocking until that worker finishes.
+        transcript = await anyio.to_thread.run_sync(
+            _process_telemetry_file, telemetry_file, abandon_on_cancel=True
+        )
         if transcript is not None:
             yield transcript
 

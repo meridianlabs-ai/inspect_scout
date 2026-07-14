@@ -64,6 +64,7 @@ from .parse import (
     ConfigChange,
     ParsedSession,
     ToolResultMsg,
+    UnsupportedSessionError,
     UserTurn,
     parse_session,
 )
@@ -322,7 +323,18 @@ def _resolve_spawned_child(
     raw = read_session_records(child_file)
     if not raw:
         return None
-    return parse_session(raw, str(child_file)), entry
+    try:
+        return parse_session(raw, str(child_file)), entry
+    except UnsupportedSessionError as ex:
+        # A child we cannot parse (branched/unknown-record) must not sink the
+        # parent transcript: degrade this spawn to a plain tool event, like
+        # every other unresolvable-child path above.
+        logger.warning(
+            "OpenClaw sub-agent session %s is unsupported (%s); skipping agent span",
+            child_file,
+            ex,
+        )
+        return None
 
 
 def _spawned_child_key(result: ToolResultMsg) -> str | None:

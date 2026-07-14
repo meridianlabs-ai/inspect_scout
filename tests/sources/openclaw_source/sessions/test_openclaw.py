@@ -570,6 +570,54 @@ class TestOpenclawSource:
         assert spawn_tool_events[0].agent_span_id is None
 
     @pytest.mark.asyncio
+    async def test_unsupported_child_degrades_without_dropping_parent(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        # A spawned child that fails to parse (here: a branched thread) must not
+        # sink the parent transcript — the parent still yields with the spawn
+        # degraded to a plain tool event.
+        orch_id = "00000000-0000-0000-0000-0000000000f3"
+        child_id = BRANCHED_SESSION_ID
+        child_key = "agent:main:subagent:branched"
+        registry = {
+            "agent:main:main": {"sessionId": orch_id},
+            child_key: {
+                "sessionId": child_id,
+                "spawnedBy": "agent:main:main",
+                "label": "branched",
+                "status": "done",
+            },
+        }
+        (tmp_path / "sessions.json").write_text(json.dumps(registry), encoding="utf-8")
+        _write_jsonl(
+            tmp_path / f"{orch_id}.jsonl",
+            _spawning_session(orch_id, "tc-branched", child_key, "branched"),
+        )
+        shutil.copy(
+            FX_BRANCHED / f"{BRANCHED_SESSION_ID}.jsonl", tmp_path / f"{child_id}.jsonl"
+        )
+
+        with caplog.at_level(logging.WARNING):
+            transcripts = await collect(tmp_path)
+
+        assert [t.transcript_id for t in transcripts] == [orch_id]
+        t = transcripts[0]
+        assert not any(
+            isinstance(e, SpanBeginEvent) and e.type == "agent" for e in t.events
+        )
+        spawn_tool_events = [
+            e
+            for e in t.events
+            if isinstance(e, ToolEvent) and e.function == "sessions_spawn"
+        ]
+        assert len(spawn_tool_events) == 1
+        assert spawn_tool_events[0].agent_span_id is None
+        assert any(
+            child_id in rec.message and "unsupported" in rec.message.lower()
+            for rec in caplog.records
+        )
+
+    @pytest.mark.asyncio
     async def test_child_key_not_in_registry_warns_no_span(
         self, tmp_path: Path, caplog: pytest.LogCaptureFixture
     ) -> None:

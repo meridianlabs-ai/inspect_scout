@@ -133,6 +133,8 @@ record was appended, which remains a real, id-keyed call→result span.
 | `model_change` / `thinking_level_change` | `InfoEvent(source="openclaw")` with a `data` payload naming the change (e.g. `{"type": "model_change", "provider": …, "model": …}` / `{"type": "thinking_level_change", "thinking_level": …}`) so switches are visible in the timeline at the moment they happened (precedent: the Claude Code importer's session-boundary `InfoEvent`s). `model_change` also seeds the initial model name |
 | `custom` (`model-snapshot`, `openclaw:bootstrap-context:*`) | Ignored for content (run-boundary bookkeeping) |
 | `leaf` | Ignored (branch bookkeeping) |
+| `branch_summary` | `CompactionEvent` carrying the record's `summary` (and `details`/`fromHook`) — a summary persisted when navigating away from a branch, so it is real content. It is a side-append and is deliberately not counted toward the divergence check |
+| `label` / `session_info` | Ignored (session metadata / bookkeeping, no conversation content) |
 | anything else | **Fail the import**, naming the record type |
 
 Unknown `message` roles and unknown assistant content block types also fail

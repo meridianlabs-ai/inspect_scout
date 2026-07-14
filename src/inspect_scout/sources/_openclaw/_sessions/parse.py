@@ -266,8 +266,33 @@ def parse_session(raw_records: list[dict[str, Any]], source: str) -> ParsedSessi
                     timestamp=ts,
                 )
             )
-        elif rtype in ("custom", "leaf"):
-            continue  # run-boundary / branch bookkeeping — no content
+        elif rtype == "branch_summary":
+            # A summary persisted when navigating away from a tree branch. It
+            # is a side-append (it does not advance the main thread), so it is
+            # deliberately not counted toward the divergence check. Its summary
+            # is real content, so preserve it via the compaction primitive —
+            # the transcript's summary-of-pruned-content event — rather than
+            # dropping it as bookkeeping.
+            details = rec.get("details")
+            records.append(
+                CompactionRecord(
+                    summary=str(rec["summary"]) if rec.get("summary") else None,
+                    first_kept_entry_id=None,
+                    tokens_before=None,
+                    details=details if isinstance(details, dict) else None,
+                    from_hook=rec.get("fromHook")
+                    if isinstance(rec.get("fromHook"), bool)
+                    else None,
+                    timestamp=ts,
+                )
+            )
+        elif rtype in ("custom", "leaf", "label", "session_info"):
+            # Bookkeeping / metadata with no conversation content: run-boundary
+            # and branch markers (custom/leaf) and session metadata
+            # (label/session_info). Skip without failing — these are canonical
+            # OpenClaw records, so raising would drop otherwise-valid
+            # transcripts in a bulk scan.
+            continue
         elif rtype == "session":
             raise UnsupportedSessionError(
                 f"Unexpected second 'session' header in {source}"

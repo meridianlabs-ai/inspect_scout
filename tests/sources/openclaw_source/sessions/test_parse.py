@@ -267,6 +267,67 @@ class TestParseSession:
 
         assert len(parsed.records) == 2
 
+    @pytest.mark.parametrize("rtype", ["label", "session_info"])
+    def test_canonical_metadata_records_are_bookkeeping(self, rtype: str) -> None:
+        # label/session_info are canonical OpenClaw records carrying no
+        # conversation content. They must not fail the import — in a bulk scan
+        # an UnsupportedSessionError silently drops the whole transcript.
+        records: list[dict[str, Any]] = [
+            dict(HEADER),
+            {
+                "type": rtype,
+                "id": "m1",
+                "parentId": "s1",
+                "timestamp": "2026-07-06T10:00:01.000Z",
+            },
+            make_message("u1", "s1", "user", "hi"),
+        ]
+
+        parsed = parse_session(records, "test")
+
+        assert [type(r) for r in parsed.records] == [UserTurn]
+
+    def test_branch_summary_preserves_summary(self) -> None:
+        # branch_summary is a canonical record persisting a summary of a
+        # navigated-away branch; its content is preserved, not dropped.
+        records: list[dict[str, Any]] = [
+            dict(HEADER),
+            {
+                "type": "branch_summary",
+                "id": "b1",
+                "parentId": "s1",
+                "timestamp": "2026-07-06T10:00:01.000Z",
+                "summary": "summary of the abandoned branch",
+                "fromHook": False,
+            },
+        ]
+
+        parsed = parse_session(records, "test")
+
+        compactions = [r for r in parsed.records if isinstance(r, CompactionRecord)]
+        assert len(compactions) == 1
+        assert compactions[0].summary == "summary of the abandoned branch"
+
+    def test_branch_summary_does_not_count_as_divergence(self) -> None:
+        # A branch_summary is a side-append sharing a parent with the
+        # continuing thread; it must not trip the divergence guard.
+        records: list[dict[str, Any]] = [
+            dict(HEADER),
+            make_message("u1", "s1", "user", "hi"),
+            {
+                "type": "branch_summary",
+                "id": "b1",
+                "parentId": "u1",
+                "timestamp": "2026-07-06T10:00:02.000Z",
+                "summary": "s",
+            },
+            make_message("u2", "u1", "user", "continue"),
+        ]
+
+        parsed = parse_session(records, "test")
+
+        assert sum(1 for r in parsed.records if isinstance(r, UserTurn)) == 2
+
     def test_empty_raises(self) -> None:
         with pytest.raises(ValueError, match="[Ee]mpty"):
             parse_session([], "test")

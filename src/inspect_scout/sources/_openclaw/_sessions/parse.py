@@ -349,6 +349,12 @@ def _parse_iso(value: Any) -> datetime | None:
     """Parse a record-level ISO-8601 timestamp (returns aware UTC)."""
     if not isinstance(value, str):
         return None
+    # OpenClaw emits UTC timestamps with a trailing "Z" (e.g.
+    # "2026-06-29T08:01:08.440Z"). Python 3.10's datetime.fromisoformat()
+    # rejects the "Z" designator (only 3.11+ accepts it), so normalize it to
+    # an explicit "+00:00" offset before parsing.
+    if value.endswith("Z"):
+        value = value[:-1] + "+00:00"
     try:
         parsed = datetime.fromisoformat(value)
     except ValueError:

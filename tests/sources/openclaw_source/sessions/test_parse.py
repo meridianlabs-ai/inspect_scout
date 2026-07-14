@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -66,6 +67,21 @@ class TestParseSession:
         # records are in chronological (file) order
         timestamps = [r.timestamp for r in parsed.records]
         assert timestamps == sorted(timestamps)
+
+    def test_z_suffixed_timestamps_parse_to_aware_utc(self) -> None:
+        # OpenClaw emits UTC timestamps with a trailing "Z"; these must parse
+        # to aware UTC datetimes on every supported Python (3.10's
+        # fromisoformat() rejects the "Z", which previously fell back to epoch).
+        records = [dict(HEADER), make_message("u1", "s1", "user", "hello")]
+
+        parsed = parse_session(records, "test")
+
+        assert parsed.header.timestamp == datetime(
+            2026, 7, 6, 10, 0, 0, tzinfo=timezone.utc
+        )
+        assert parsed.records[0].timestamp == datetime(
+            2026, 7, 6, 10, 0, 1, tzinfo=timezone.utc
+        )
 
     def test_assistant_turn_fields(self) -> None:
         parsed = parse_fixture(ORCHESTRATOR)

@@ -18,9 +18,8 @@ from inspect_ai.model import stable_message_ids
 
 from .client import (
     OPENCLAW_SOURCE_TYPE,
-    RegistryEntry,
+    Registry,
     discover_session_files,
-    entry_for_session_id,
     load_registry,
     read_session_records,
 )
@@ -75,7 +74,7 @@ async def openclaw(
         return
 
     explicit_file = path is not None and Path(path).expanduser().is_file()
-    registries: dict[Path, dict[str, RegistryEntry] | None] = {}
+    registries: dict[Path, Registry | None] = {}
     n = 0
     for session_file in session_files:
         directory = session_file.parent
@@ -93,7 +92,7 @@ async def openclaw(
         # bulk import, but an explicit file or session_id request imports that
         # session standalone.
         if not explicit_file and session_id is None and registry is not None:
-            entry = entry_for_session_id(registry, session_file.stem)
+            entry = registry.by_session_id.get(session_file.stem)
             if entry is not None and entry.spawned_by:
                 continue
 
@@ -117,7 +116,7 @@ async def openclaw(
 
 
 def _process_session_file(
-    session_file: Path, registry: dict[str, RegistryEntry] | None
+    session_file: Path, registry: Registry | None
 ) -> "Transcript | None":
     """Process a single session file into a transcript (None if empty)."""
     from inspect_scout import Transcript
@@ -170,7 +169,7 @@ def _process_session_file(
         for e in events
         if isinstance(e, SpanBeginEvent) and e.type == "agent" and e.span_id is None
     ]
-    entry = entry_for_session_id(registry, session_id) if registry else None
+    entry = registry.by_session_id.get(session_id) if registry else None
 
     metadata: dict[str, Any] = {
         "cwd": parsed.header.cwd,

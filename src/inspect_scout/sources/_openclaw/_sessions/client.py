@@ -63,7 +63,20 @@ class RegistryEntry:
     raw: dict[str, Any]
 
 
-def load_registry(sessions_dir: Path) -> dict[str, RegistryEntry] | None:
+@dataclass(frozen=True)
+class Registry:
+    """A parsed ``sessions.json``, indexed both ways it gets joined.
+
+    ``by_key`` serves the spawn join (spawn results name a ``childSessionKey``);
+    ``by_session_id`` serves file-oriented lookups (session files are named by
+    ``sessionId``). The same entries, indexed twice at load time.
+    """
+
+    by_key: dict[str, RegistryEntry]
+    by_session_id: dict[str, RegistryEntry]
+
+
+def load_registry(sessions_dir: Path) -> Registry | None:
     """Load ``sessions.json`` from a sessions directory.
 
     Returns ``None`` when the registry is missing or unreadable (the caller
@@ -81,14 +94,15 @@ def load_registry(sessions_dir: Path) -> dict[str, RegistryEntry] | None:
     if not isinstance(data, dict):
         logger.warning("Unexpected sessions.json shape in %s", registry_path)
         return None
-    entries: dict[str, RegistryEntry] = {}
+    by_key: dict[str, RegistryEntry] = {}
+    by_session_id: dict[str, RegistryEntry] = {}
     for key, value in data.items():
         if not isinstance(value, dict):
             continue
         session_id = value.get("sessionId")
         if not session_id:
             continue
-        entries[key] = RegistryEntry(
+        entry = RegistryEntry(
             session_key=key,
             session_id=str(session_id),
             spawned_by=_opt_str(value.get("spawnedBy")),
@@ -97,17 +111,11 @@ def load_registry(sessions_dir: Path) -> dict[str, RegistryEntry] | None:
             status=_opt_str(value.get("status")),
             raw=value,
         )
-    return entries
-
-
-def entry_for_session_id(
-    registry: dict[str, RegistryEntry], session_id: str
-) -> RegistryEntry | None:
-    """The registry entry whose ``sessionId`` matches, or ``None``."""
-    for entry in registry.values():
-        if entry.session_id == session_id:
-            return entry
-    return None
+        by_key[key] = entry
+        # Multiple keys can reference one sessionId (e.g. a session revived
+        # under a new key); keep the first, matching registry file order.
+        by_session_id.setdefault(entry.session_id, entry)
+    return Registry(by_key=by_key, by_session_id=by_session_id)
 
 
 def _opt_str(value: Any) -> str | None:

@@ -47,18 +47,24 @@ class TestLoadRegistry:
     def test_parses_entries(self) -> None:
         registry = load_registry(FX_DEMO)
         assert registry is not None
-        entry = registry["agent:main:subagent:3386c769-c755-44f0-b5f1-caf886ac880a"]
+        entry = registry.by_key[
+            "agent:main:subagent:3386c769-c755-44f0-b5f1-caf886ac880a"
+        ]
         assert entry.session_id == "8c6aeab3-993e-43d5-934a-04aa4a5f3804"
         assert entry.spawned_by == (
             "agent:main:dashboard:e6746281-f3cd-4be5-9d0c-633772cdcace"
         )
         assert entry.label == "usd-gbp"
-        orch = registry["agent:main:dashboard:e6746281-f3cd-4be5-9d0c-633772cdcace"]
+        orch = registry.by_key[
+            "agent:main:dashboard:e6746281-f3cd-4be5-9d0c-633772cdcace"
+        ]
         assert orch.spawned_by is None
         assert orch.parent_session_key == (
             "agent:main:dashboard:9174711d-0a3b-42df-856b-0f07fbb91d63"
         )
         assert orch.raw.get("systemPromptReport") is not None
+        # the session-id index points at the same entries
+        assert registry.by_session_id[entry.session_id] is entry
 
     def test_invalid_json_returns_none(self, tmp_path: Path) -> None:
         (tmp_path / "sessions.json").write_text("not json")

@@ -56,7 +56,7 @@ from ..extraction import (
     toolcalls_of,
     usage_to_inspect,
 )
-from .client import RegistryEntry, read_session_records
+from .client import Registry, RegistryEntry, read_session_records
 from .parse import (
     AssistantTurn,
     CompactionRecord,
@@ -109,7 +109,7 @@ class BuildContext:
     """
 
     sessions_dir: Path | None
-    registry: dict[str, RegistryEntry] | None
+    registry: Registry | None
     max_depth: int = 5
 
 
@@ -302,7 +302,7 @@ def _resolve_spawned_child(
     child_key = _spawned_child_key(result)
     if child_key is None:
         return None
-    entry = ctx.registry.get(child_key)
+    entry = ctx.registry.by_key.get(child_key)
     if entry is None:
         logger.warning(
             "OpenClaw spawn '%s' not in sessions.json; skipping agent span",

@@ -145,5 +145,44 @@ class TestDiscoverSessionFiles:
             assert discover_session_files(stray) == []
         assert any("telemetry.jsonl" in rec.message for rec in caplog.records)
 
+    def test_topic_transcript_skipped_with_warning(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        # <sessionId>-topic-<topicId>.jsonl is a messaging-channel topic
+        # transcript, a shape this importer does not support. A directory scan
+        # skips it (with a clear warning) rather than importing it standalone.
+        base = tmp_path / "abc.jsonl"
+        base.write_text('{"type":"session","id":"abc","version":3}\n')
+        topic = tmp_path / "abc-topic-42.jsonl"
+        topic.write_text('{"type":"session","id":"abc","version":3}\n')
+
+        with caplog.at_level(logging.WARNING):
+            files = discover_session_files(tmp_path)
+
+        assert [f.name for f in files] == ["abc.jsonl"]
+        assert any("abc-topic-42.jsonl" in rec.message for rec in caplog.records)
+        assert any("topic" in rec.message.lower() for rec in caplog.records)
+
+    def test_topic_transcript_not_matched_by_base_session_id(
+        self, tmp_path: Path
+    ) -> None:
+        # Asking for session "abc" must not surface abc's topic transcripts,
+        # even though their filename starts with the session id.
+        topic = tmp_path / "abc-topic-42.jsonl"
+        topic.write_text('{"type":"session","id":"abc","version":3}\n')
+
+        assert discover_session_files(tmp_path, session_id="abc") == []
+
+    def test_explicit_topic_transcript_skipped_with_warning(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        topic = tmp_path / "abc-topic-42.jsonl"
+        topic.write_text('{"type":"session","id":"abc","version":3}\n')
+
+        with caplog.at_level(logging.WARNING):
+            assert discover_session_files(topic) == []
+
+        assert any("topic" in rec.message.lower() for rec in caplog.records)
+
     def test_nonexistent_path_returns_empty(self, tmp_path: Path) -> None:
         assert discover_session_files(tmp_path / "nope") == []

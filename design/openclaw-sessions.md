@@ -77,6 +77,14 @@ sharing the directory (e.g. a telemetry log) must not abort the import, and a
 directory holding only foreign `.jsonl` files still falls through to the
 `agents/*/sessions/` scan. Genuine session files the importer cannot map still
 fail loudly at the parse layer.
+
+Topic transcripts — `<sessionId>-topic-<topicId>.jsonl`, written when OpenClaw
+runs as a messaging-channel bot (Telegram forum topics, Feishu/Discord
+threads), one per channel thread — are **not supported** and are excluded from
+discovery (with a warning), whether encountered in a directory scan or named
+explicitly. They are recognized by filename: their stem is never equal to the
+base `session_id`, so a `session_id` filter could otherwise silently return
+nothing while the file imported standalone.
 `from_time`/`to_time` filter on file mtime (compared timezone-aware; a naive
 bound is interpreted as local time); files are processed newest-first so
 `limit` avoids touching old files.

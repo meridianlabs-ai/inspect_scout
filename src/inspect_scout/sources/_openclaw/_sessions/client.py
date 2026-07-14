@@ -24,6 +24,8 @@ DEFAULT_OPENCLAW_AGENTS_DIR = Path.home() / ".openclaw" / "agents"
 
 _TRAJECTORY_SUFFIX = ".trajectory.jsonl"
 
+_TOPIC_MARKER = "-topic-"
+
 
 def read_session_records(path: Path) -> list[dict[str, Any]]:
     """Read raw records from a session JSONL file.
@@ -127,6 +129,20 @@ def is_session_file(path: Path) -> bool:
     return path.suffix == ".jsonl" and not path.name.endswith(_TRAJECTORY_SUFFIX)
 
 
+def is_topic_transcript(path: Path) -> bool:
+    """Whether a path is an OpenClaw *topic* transcript (not supported).
+
+    Topic transcripts are named ``<sessionId>-topic-<topicId>.jsonl`` and are
+    written when OpenClaw runs as a messaging-channel bot (Telegram forum
+    topics, Feishu/Discord threads), one per channel thread. They are a
+    distinct shape this importer does not support. Recognizing them by name
+    lets discovery skip them with a clear message, rather than importing one
+    standalone or silently returning nothing when it is filtered by a base
+    ``session_id`` that its filename stem can never equal.
+    """
+    return is_session_file(path) and _TOPIC_MARKER in path.stem
+
+
 def has_session_header(path: Path) -> bool:
     """Whether the file's first record is an OpenClaw ``session`` header.
 
@@ -186,7 +202,15 @@ def discover_session_files(
             logger.warning("Path does not exist: %s", p)
             return []
         if p.is_file():
-            files = [p] if is_session_file(p) and _sniff_or_warn(p) else []
+            if is_topic_transcript(p):
+                logger.warning(
+                    "Skipping %s: OpenClaw topic transcripts "
+                    "(<sessionId>-topic-<topicId>.jsonl) are not supported",
+                    p,
+                )
+                files = []
+            else:
+                files = [p] if is_session_file(p) and _sniff_or_warn(p) else []
         else:
             files = _find_sessions_in_directory(p)
             if not files:
@@ -217,10 +241,25 @@ def discover_session_files(
 
 
 def _find_sessions_in_directory(directory: Path) -> list[Path]:
-    """Session files directly in a directory (sniffed for a session header)."""
-    return [
-        f for f in directory.glob("*.jsonl") if is_session_file(f) and _sniff_or_warn(f)
-    ]
+    """Session files directly in a directory (sniffed for a session header).
+
+    Topic transcripts are excluded (with a warning) rather than imported
+    standalone — see :func:`is_topic_transcript`.
+    """
+    files: list[Path] = []
+    for f in directory.glob("*.jsonl"):
+        if not is_session_file(f):
+            continue
+        if is_topic_transcript(f):
+            logger.warning(
+                "Skipping %s: OpenClaw topic transcripts "
+                "(<sessionId>-topic-<topicId>.jsonl) are not supported",
+                f,
+            )
+            continue
+        if _sniff_or_warn(f):
+            files.append(f)
+    return files
 
 
 def _sniff_or_warn(path: Path) -> bool:

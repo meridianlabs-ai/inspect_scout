@@ -618,6 +618,90 @@ class TestOpenclawSource:
         )
 
     @pytest.mark.asyncio
+    async def test_non_spawn_tool_with_spawn_shaped_result_stays_root_tool(
+        self, tmp_path: Path
+    ) -> None:
+        # A non-sessions_spawn tool whose result happens to match the accepted
+        # spawn shape must NOT be folded into an agent span — even when the
+        # childSessionKey would otherwise resolve to a real child on disk.
+        orch_id = "00000000-0000-0000-0000-0000000000f4"
+        child_id = "00000000-0000-0000-0000-0000000000f4c"
+        child_key = "agent:main:subagent:decoy"
+        registry = {
+            "agent:main:main": {"sessionId": orch_id},
+            child_key: {
+                "sessionId": child_id,
+                "spawnedBy": "agent:main:main",
+                "label": "decoy",
+                "status": "done",
+            },
+        }
+        (tmp_path / "sessions.json").write_text(json.dumps(registry), encoding="utf-8")
+        accepted = json.dumps({"status": "accepted", "childSessionKey": child_key})
+        _write_jsonl(
+            tmp_path / f"{orch_id}.jsonl",
+            [
+                _header(orch_id, "2026-07-06T10:00:00.000Z"),
+                _user("u1", None, "2026-07-06T10:00:01.000Z"),
+                _assistant(
+                    "a1",
+                    "u1",
+                    "2026-07-06T10:00:02.000Z",
+                    [
+                        {
+                            "type": "toolCall",
+                            "id": "tc-decoy",
+                            "name": "some_other_tool",
+                            "arguments": {},
+                        }
+                    ],
+                ),
+                {
+                    "type": "message",
+                    "id": "r1",
+                    "parentId": "a1",
+                    "timestamp": "2026-07-06T10:00:03.000Z",
+                    "message": {
+                        "role": "toolResult",
+                        "toolCallId": "tc-decoy",
+                        "toolName": "some_other_tool",
+                        "content": [{"type": "text", "text": accepted}],
+                        "isError": False,
+                        "timestamp": 0,
+                    },
+                },
+            ],
+        )
+        _write_jsonl(
+            tmp_path / f"{child_id}.jsonl",
+            [
+                _header(child_id, "2026-07-06T10:00:00.000Z"),
+                _user("u1", None, "2026-07-06T10:00:01.000Z"),
+                _assistant(
+                    "a1",
+                    "u1",
+                    "2026-07-06T10:00:02.000Z",
+                    [{"type": "text", "text": "x"}],
+                ),
+            ],
+        )
+
+        transcripts = await collect(tmp_path)
+
+        assert [t.transcript_id for t in transcripts] == [orch_id]
+        t = transcripts[0]
+        assert not any(
+            isinstance(e, SpanBeginEvent) and e.type == "agent" for e in t.events
+        )
+        decoy_events = [
+            e
+            for e in t.events
+            if isinstance(e, ToolEvent) and e.function == "some_other_tool"
+        ]
+        assert len(decoy_events) == 1
+        assert decoy_events[0].agent_span_id is None
+
+    @pytest.mark.asyncio
     async def test_child_key_not_in_registry_warns_no_span(
         self, tmp_path: Path, caplog: pytest.LogCaptureFixture
     ) -> None:

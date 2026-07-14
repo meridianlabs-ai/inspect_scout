@@ -240,7 +240,7 @@ def _emit_assistant_turn(
         result_content, completed, error, failed = _tool_result_fields(
             result, turn.timestamp
         )
-        child = _resolve_spawned_child(result, ctx, depth)
+        child = _resolve_spawned_child(tool_call.function, result, ctx, depth)
         if child is not None:
             child_session, child_entry = child
             span_end = _emit_subagent_span(
@@ -286,15 +286,19 @@ def _emit_assistant_turn(
 
 
 def _resolve_spawned_child(
-    result: ToolResultMsg | None, ctx: BuildContext, depth: int
+    function: str, result: ToolResultMsg | None, ctx: BuildContext, depth: int
 ) -> tuple[ParsedSession, RegistryEntry] | None:
     """Resolve a spawn tool result to its parsed child session, if any.
 
-    A tool call spawned a sub-agent iff its result is an ``accepted`` JSON
-    naming a ``childSessionKey``. Resolution is two id-keyed lookups (result →
-    registry → sibling file); a child that cannot be resolved degrades to a
-    plain tool event with a warning — never a content heuristic.
+    A tool call spawned a sub-agent iff it is a ``sessions_spawn`` call whose
+    result is an ``accepted`` JSON naming a ``childSessionKey`` — the function
+    check guards against an unrelated tool that happens to return the same
+    result shape. Resolution is then two id-keyed lookups (result → registry →
+    sibling file); a child that cannot be resolved degrades to a plain tool
+    event with a warning — never a content heuristic.
     """
+    if function != "sessions_spawn":
+        return None
     if result is None or ctx.registry is None or ctx.sessions_dir is None:
         return None
     child_key = _spawned_child_key(result)

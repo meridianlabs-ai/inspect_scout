@@ -35,11 +35,11 @@ from inspect_ai.model import (
     ChatMessageTool,
     ChatMessageUser,
     Content,
+    GenerateConfig,
     ModelOutput,
     ModelUsage,
     StopReason,
 )
-from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.tool import ToolCall, ToolCallContent, ToolCallError
 from inspect_ai.tool import ToolResult as ToolResultContent
 

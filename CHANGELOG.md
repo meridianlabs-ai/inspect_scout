@@ -1,7 +1,3 @@
-## Unreleased
-
-- Bugfix: Guard against empty eval logs producing invalid SQL
-
 ## 0.4.43 (05 July 2026)
 
 - Store transcript and scan-result event/input columns as compact JSON (`indent=None`), substantially reducing on-disk Parquet size and the bytes streamed to Scout View (e.g. ~700 MiB → ~200 MiB for a large events column).

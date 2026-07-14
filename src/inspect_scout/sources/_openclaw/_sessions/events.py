@@ -19,10 +19,9 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from itertools import count
 from logging import getLogger
 from pathlib import Path
-from typing import Any, Iterator, cast
+from typing import Any, cast
 
 from inspect_ai.event import (
     CompactionEvent,
@@ -126,8 +125,7 @@ def build_content(
     """
     events: list[Event] = []
     messages: list[ChatMessage] = []
-    order = count()
-    _build_thread(parsed, ctx, ctx.max_depth, events, messages, None, order)
+    _build_thread(parsed, ctx, ctx.max_depth, events, messages, None)
     return events, messages
 
 
@@ -138,7 +136,6 @@ def _build_thread(
     events: list[Event],
     messages: list[ChatMessage],
     span_id: str | None,
-    order: Iterator[int],
 ) -> datetime:
     """Emit one session's records into ``events``/``messages``.
 
@@ -155,7 +152,10 @@ def _build_thread(
                     source="openclaw",
                     data={"type": record.change, **record.data},
                     timestamp=record.timestamp,
-                    working_start=float(next(order)),
+                    # No live eval clock exists at import time, so 0.0 (as in
+                    # the other importers); falsy values also keep the viewer
+                    # from displaying a fabricated per-event working time.
+                    working_start=0.0,
                     span_id=span_id,
                 )
             )
@@ -176,14 +176,14 @@ def _build_thread(
                     tokens_before=record.tokens_before,
                     tokens_after=None,
                     timestamp=record.timestamp,
-                    working_start=float(next(order)),
+                    working_start=0.0,
                     span_id=span_id,
                     metadata=metadata or None,
                 )
             )
         elif isinstance(record, AssistantTurn):
             turn_end = _emit_assistant_turn(
-                record, parsed, ctx, depth, events, messages, span_id, order
+                record, parsed, ctx, depth, events, messages, span_id
             )
             last_ts = max(last_ts, turn_end)
     return last_ts
@@ -197,7 +197,6 @@ def _emit_assistant_turn(
     events: list[Event],
     messages: list[ChatMessage],
     span_id: str | None,
-    order: Iterator[int],
 ) -> datetime:
     """Emit a model event, then a tool event (or agent span) per tool call."""
     toolcalls = toolcalls_of(turn.content)
@@ -227,7 +226,7 @@ def _emit_assistant_turn(
             output=output,
             timestamp=turn.timestamp,
             completed=turn.timestamp,
-            working_start=float(next(order)),
+            working_start=0.0,
             span_id=span_id,
             metadata={"response_id": turn.response_id} if turn.response_id else None,
         )
@@ -252,7 +251,6 @@ def _emit_assistant_turn(
                 depth,
                 events,
                 span_id,
-                order,
                 turn.timestamp,
             )
             last_ts = max(last_ts, span_end)
@@ -267,7 +265,7 @@ def _emit_assistant_turn(
                     failed=failed,
                     timestamp=turn.timestamp,
                     completed=completed,
-                    working_start=float(next(order)),
+                    working_start=0.0,
                     span_id=span_id,
                     metadata=_result_metadata(result),
                 )
@@ -366,7 +364,6 @@ def _emit_subagent_span(
     depth: int,
     events: list[Event],
     parent_span_id: str | None,
-    order: Iterator[int],
     spawn_ts: datetime,
 ) -> datetime:
     """Emit a spawned sub-agent as a nested agent span; returns its end time.
@@ -391,7 +388,7 @@ def _emit_subagent_span(
             name=label or "subagent",
             type="agent",
             timestamp=spawn_ts,
-            working_start=float(next(order)),
+            working_start=0.0,
             span_id=parent_span_id,
             metadata={
                 "session_key": entry.session_key,
@@ -418,7 +415,7 @@ def _emit_subagent_span(
             failed=failed,
             timestamp=spawn_ts,
             completed=completed,
-            working_start=float(next(order)),
+            working_start=0.0,
             span_id=span_id,
             agent_span_id=span_id,
             view=tool_call_view(spawn_function, arguments),
@@ -426,13 +423,13 @@ def _emit_subagent_span(
     )
 
     sub_messages: list[ChatMessage] = []
-    end_ts = _build_thread(child, ctx, depth - 1, events, sub_messages, span_id, order)
+    end_ts = _build_thread(child, ctx, depth - 1, events, sub_messages, span_id)
     end_ts = max(end_ts, completed)
     events.append(
         SpanEndEvent(
             id=span_id,
             timestamp=end_ts,
-            working_start=float(next(order)),
+            working_start=0.0,
             span_id=parent_span_id,
         )
     )

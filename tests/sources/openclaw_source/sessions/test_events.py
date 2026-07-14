@@ -113,11 +113,13 @@ class TestThreadContent:
         assert isinstance(data1, dict)
         assert data1["type"] == "thinking_level_change"
 
-    def test_working_start_is_monotonic(self) -> None:
+    def test_working_start_not_fabricated(self) -> None:
+        # Imported transcripts have no live eval clock: working_start is 0.0
+        # (as in the other importers), never the sample_working_time default
+        # (which yields time.monotonic() garbage outside an eval).
         events, _ = build_fixture(SUBAGENT)
 
-        starts = [e.working_start for e in events]
-        assert starts == sorted(starts)
+        assert all(e.working_start == 0.0 for e in events)
 
     def test_stop_reason_and_response_id_mapped(self) -> None:
         events, _ = build_fixture(SUBAGENT)

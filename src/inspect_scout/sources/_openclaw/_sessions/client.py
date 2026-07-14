@@ -196,6 +196,9 @@ def discover_session_files(
     if session_id:
         files = [f for f in files if f.stem == session_id]
 
+    # NB the stat calls below (and the later reads) race with a live OpenClaw:
+    # a session file pruned mid-import raises OSError. Deliberately not
+    # tolerated — considered too rare to be worth the handling code.
     if from_time or to_time:
         from_bound = _as_aware(from_time)
         to_bound = _as_aware(to_time)

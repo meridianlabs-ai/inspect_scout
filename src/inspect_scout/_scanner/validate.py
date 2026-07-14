@@ -480,6 +480,22 @@ def _get_union_members(type_hint: Any) -> set[Type[Any]] | None:
     return None
 
 
+def _union_covers_union(scanner_type: Any, target_type: Any) -> bool:
+    """Check if a union scanner type covers every member of a union target.
+
+    A partial union (e.g. two of ChatMessage's four members) does not cover
+    the full union. Returns False if either type is not a union.
+    """
+    scanner_members = _get_union_members(scanner_type)
+    target_members = _get_union_members(target_type)
+    if scanner_members is None or target_members is None:
+        return False
+    return all(
+        any(_is_compatible_with_type(s, t) for s in scanner_members)
+        for t in target_members
+    )
+
+
 def _is_compatible_with_type(scanner_type: Any, target_type: Any) -> bool:
     """
     Check if scanner_type is compatible with target_type.
@@ -499,19 +515,12 @@ def _is_compatible_with_type(scanner_type: Any, target_type: Any) -> bool:
             return True
 
         # Unions never match on origin alone (every union's origin is Union,
-        # so a partial union would wrongly match a full one). A union is
-        # compatible with a target union only if it covers every member.
-        target_members = _get_union_members(target_type)
-        if target_members is not None:
-            scanner_members = _get_union_members(scanner_type)
-            if scanner_members is None:
-                return False
-            return all(
-                any(_is_compatible_with_type(s, t) for s in scanner_members)
-                for t in target_members
-            )
-        if _get_union_members(scanner_type) is not None:
-            return False
+        # so a partial union would wrongly match a full one)
+        if (
+            _get_union_members(target_type) is not None
+            or _get_union_members(scanner_type) is not None
+        ):
+            return _union_covers_union(scanner_type, target_type)
 
         # Try to check subclass relationship
         # This works for normal classes

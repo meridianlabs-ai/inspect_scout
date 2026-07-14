@@ -2,18 +2,21 @@ import io
 import json
 import warnings
 from collections.abc import Callable, Generator
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from os import PathLike
 from pathlib import Path
 
 import pandas as pd
-from inspect_ai._util.file import FileInfo, filesystem
+from inspect_ai._util.file import FileInfo, FileSystem, filesystem
 from inspect_ai._util.kvstore import KVStore, inspect_kvstore
 from inspect_ai.log._file import EvalLogInfo, log_files_from_ls
 
 from .types import LogPaths
 
 DEFAULT_MAX_CACHE_ENTRIES = 5000
+DEFAULT_READER_CHUNK_SIZE = 32
+DEFAULT_RESOLVE_MAX_WORKERS = 8
 _CACHE_VERSION = 10
 _CACHE_VERSION_KEY = "__cache_version__"
 
@@ -75,21 +78,28 @@ def _get_cached_dfs(
 
 
 def samples_df_with_caching(
-    reader: Callable[[str], pd.DataFrame],
+    reader: Callable[[list[str]], list[pd.DataFrame]],
     logs: LogPaths,
     cache_store: str = "scout_transcript_info_cache",
+    chunk_size: int = DEFAULT_READER_CHUNK_SIZE,
 ) -> pd.DataFrame:
     """Read transcript sample info from the logs with caching.
 
     Caching behavior:
-    - Calls reader(path) per file (with caching by etag or mtime:size)
+    - Calls reader with chunks of up to chunk_size cache-miss paths; passing
+      multiple paths per call allows the reader to read them concurrently
+      (per-file results are cached by etag or mtime:size)
+    - Caches each chunk before reading the next, so a failure part way
+      through preserves the chunks already read
     - Concatenates all results into single DataFrame
     - Falls back to direct reader call on any cache errors
 
     Args:
-        reader: Function taking a path, returning DataFrame
+        reader: Function taking a list of paths, returning one DataFrame per
+            path in the same order
         logs: Log paths to read
         cache_store: KVStore name for cache storage
+        chunk_size: Maximum number of cache-miss paths per reader call
 
     Returns:
         DataFrame with transcript data
@@ -103,10 +113,20 @@ def samples_df_with_caching(
     ) as kvstore:
         cache_hits, cache_misses = _get_cached_dfs(kvstore, paths_and_etags)
 
-        # Read and cache the dataframes for all of the cache misses.
-        miss_dfs = [reader(path) for path, _ in cache_misses]
-        for (path, etag), df in zip(cache_misses, miss_dfs, strict=True):
-            _put_cached_df(kvstore, path, etag, df)
+        # Read and cache the dataframes for all of the cache misses, one
+        # chunk at a time (each chunk is cached before the next is read).
+        miss_dfs: list[pd.DataFrame] = []
+        for start in range(0, len(cache_misses), chunk_size):
+            chunk = cache_misses[start : start + chunk_size]
+            chunk_dfs = reader([path for path, _ in chunk])
+            if len(chunk_dfs) != len(chunk):
+                raise ValueError(
+                    f"reader returned {len(chunk_dfs)} DataFrames for "
+                    f"{len(chunk)} log paths"
+                )
+            for (path, etag), df in zip(chunk, chunk_dfs, strict=True):
+                _put_cached_df(kvstore, path, etag, df)
+            miss_dfs.extend(chunk_dfs)
 
     all_dfs = [df for df in cache_hits + miss_dfs if not df.empty]
     if not all_dfs:
@@ -116,7 +136,9 @@ def samples_df_with_caching(
         return pd.concat(all_dfs, ignore_index=True)
 
 
-def _resolve_logs(logs: LogPaths) -> list[tuple[str, str]]:
+def _resolve_logs(
+    logs: LogPaths, max_workers: int = DEFAULT_RESOLVE_MAX_WORKERS
+) -> list[tuple[str, str]]:
     """Resolve log paths to list of (path, etag) tuples.
 
     Similar to inspect_ai's resolve_logs(), but also returns etag for each log file.
@@ -127,6 +149,7 @@ def _resolve_logs(logs: LogPaths) -> list[tuple[str, str]]:
 
     Args:
         logs: Log paths to resolve (can be files, directories, or EvalLogInfo objects)
+        max_workers: Maximum number of threads used to fetch file info
 
     Returns:
         List of (path, etag) tuples where etag is either from filesystem or mtime:size fallback
@@ -142,11 +165,29 @@ def _resolve_logs(logs: LogPaths) -> list[tuple[str, str]]:
         for log in logs_list
     ]
 
+    # Create filesystems on the calling thread (fsspec filesystem-instance
+    # construction/caching is not thread-safe), then fetch file info
+    # concurrently -- one round trip per path on remote filesystems.
+    filesystems = [filesystem(log_str) for log_str in logs_str]
+
+    def fetch_info(fs: FileSystem, path: str) -> FileInfo:
+        return fs.info(path)
+
+    if len(logs_str) > 1:
+        with ThreadPoolExecutor(
+            max_workers=min(max_workers, len(logs_str))
+        ) as executor:
+            # map preserves input order and raises the earliest-ordered failure
+            infos = list(executor.map(fetch_info, filesystems, logs_str))
+    else:
+        infos = [
+            fetch_info(fs, log_str)
+            for fs, log_str in zip(filesystems, logs_str, strict=True)
+        ]
+
     # Expand directories
     file_infos: list[FileInfo] = []
-    for log_str in logs_str:
-        fs = filesystem(log_str)
-        info = fs.info(log_str)
+    for fs, info in zip(filesystems, infos, strict=True):
         if info.type == "directory":
             file_infos.extend(
                 [fi for fi in fs.ls(info.name, recursive=True) if fi.type == "file"]

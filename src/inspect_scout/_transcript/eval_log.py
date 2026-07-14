@@ -17,6 +17,7 @@ from typing import (
 
 import pandas as pd
 from inspect_ai._util.asyncfiles import AsyncFilesystem
+from inspect_ai._util.path import native_path
 from inspect_ai._util.zip_common import ZipEntry
 from inspect_ai.analysis._dataframe.columns import Column
 from inspect_ai.analysis._dataframe.evals.columns import (
@@ -676,33 +677,111 @@ def _index_logs(logs: Logs) -> pd.DataFrame:
 
     with display().text_progress("Indexing", True) as progress:
 
-        def read_samples(path: str) -> pd.DataFrame:
-            with trace_action(logger, "Scout Eval Log Index", f"Indexing {path}"):
-                # This cast is wonky, but the public function, samples_df, uses overloads
-                # to make the return type be a DataFrame when strict=True. Since we're
-                # calling the helper method, we'll just have to cast it.
-                progress.update(path)
-                df = cast(
-                    pd.DataFrame,
-                    _read_samples_df_serial(
-                        [path],
-                        TranscriptColumns,
-                        full=False,
-                        strict=True,
-                        progress=False,
-                    ),
-                )
-
-                # The transcript_id uses the computed sample_id
-                # value, which will properly handle old eval log
-                # that are missing uuids for samples (so we use the value
-                # from the synthesized sample_id column rather than the `id`
-                # prop from the sample itself.
-                if not df.empty:
-                    df["transcript_id"] = df["sample_id"]
-                return df
+        def read_samples(paths: list[str]) -> list[pd.DataFrame]:
+            with trace_action(
+                logger, "Scout Eval Log Index", f"Indexing {len(paths)} log(s)"
+            ):
+                dfs = _read_samples_per_log(paths)
+                for path in paths:
+                    progress.update(path)
+                return dfs
 
         return samples_df_with_caching(read_samples, logs)
+
+
+def _read_samples_per_log(paths: list[str]) -> list[pd.DataFrame]:
+    """Read per-log sample DataFrames, concurrently across log files.
+
+    All paths are read in a single inspect_ai call (which fetches log headers
+    and sample summaries concurrently) and the combined result is split back
+    into one DataFrame per path.
+
+    Args:
+        paths: Paths to eval log files
+
+    Returns:
+        One DataFrame per path, in input order.
+    """
+    combined = _read_samples(paths)
+    dfs = _split_df_by_log(combined, paths)
+
+    # An empty split can mean the log genuinely has no samples, or that the
+    # batch contained a duplicate of the same eval (inspect_ai de-duplicates
+    # evals within a call, attributing all samples to one file). Re-read
+    # empties individually so per-file results (which get cached) never lose
+    # samples to batch composition.
+    if len(paths) > 1:
+        for i, df in enumerate(dfs):
+            if df.empty:
+                dfs[i] = _read_samples([paths[i]])
+
+    return dfs
+
+
+def _read_samples(paths: list[str]) -> pd.DataFrame:
+    """Read a combined samples DataFrame for the given eval logs.
+
+    Args:
+        paths: Paths to eval log files
+
+    Returns:
+        DataFrame with one row per sample from all logs
+    """
+    # This cast is wonky, but the public function, samples_df, uses overloads
+    # to make the return type be a DataFrame when strict=True. Since we're
+    # calling the helper method, we'll just have to cast it.
+    df = cast(
+        pd.DataFrame,
+        _read_samples_df_serial(
+            paths,
+            TranscriptColumns,
+            full=False,
+            strict=True,
+            progress=False,
+        ),
+    )
+
+    # The transcript_id uses the computed sample_id
+    # value, which will properly handle old eval log
+    # that are missing uuids for samples (so we use the value
+    # from the synthesized sample_id column rather than the `id`
+    # prop from the sample itself.
+    if not df.empty:
+        df["transcript_id"] = df["sample_id"]
+    return df
+
+
+def _split_df_by_log(df: pd.DataFrame, paths: list[str]) -> list[pd.DataFrame]:
+    """Split a combined multi-log samples DataFrame into per-log DataFrames.
+
+    Args:
+        df: Combined DataFrame with a "log" column
+        paths: Log file paths, in the order the per-log frames are returned
+
+    Returns:
+        One DataFrame per path (empty where a path contributed no rows).
+
+    Raises:
+        RuntimeError: If the DataFrame contains rows whose "log" value matches
+            none of the paths (they would otherwise be silently dropped).
+    """
+    if df.empty:
+        return [df.iloc[0:0] for _ in paths]
+
+    groups: dict[str, pd.DataFrame] = {
+        str(log): group.reset_index(drop=True)
+        for log, group in df.groupby("log", sort=False)
+    }
+    # the "log" column holds native paths (e.g. file:// prefix stripped),
+    # so match requested paths by their native form
+    empty = df.iloc[0:0]
+    dfs = [groups.pop(native_path(path), empty) for path in paths]
+    if groups:
+        raise RuntimeError(
+            "Indexing returned samples for unrequested log file(s): "
+            f"{sorted(groups.keys())}"
+        )
+    return dfs
 
 
 def _compute_cache_key_from_logs(logs: Logs) -> str:

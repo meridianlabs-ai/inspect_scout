@@ -157,27 +157,37 @@ def mock_filesystem() -> Iterator[Mock]:
         yield Mock()
 
 
+def _paths_read(mock: Mock) -> list[str]:
+    """All paths passed to a batch reader mock, across calls, in order."""
+    return [path for call in mock.call_args_list for path in call.args[0]]
+
+
 @pytest.fixture
 def mock_reader() -> Mock:
     """Mock reader function that tracks calls and returns DataFrames."""
-    call_counter = {"count": 0}
+    path_counter = {"count": 0}
 
-    def reader_impl(path: str) -> pd.DataFrame:
-        call_num = call_counter["count"]
-        call_counter["count"] += 1
-        return pd.DataFrame(
-            {
-                "eval_id": [f"eval_{call_num}"],
-                "id": [f"sample_{call_num}"],
-                "score": [0.5 + call_num * 0.1],
-            }
-        )
+    def reader_impl(paths: list[str]) -> list[pd.DataFrame]:
+        dfs: list[pd.DataFrame] = []
+        for _ in paths:
+            path_num = path_counter["count"]
+            path_counter["count"] += 1
+            dfs.append(
+                pd.DataFrame(
+                    {
+                        "eval_id": [f"eval_{path_num}"],
+                        "id": [f"sample_{path_num}"],
+                        "score": [0.5 + path_num * 0.1],
+                    }
+                )
+            )
+        return dfs
 
     return Mock(side_effect=reader_impl)
 
 
 @pytest.mark.parametrize(
-    "logs_input,expected_calls,expected_rows",
+    "logs_input,expected_paths,expected_rows",
     [
         ("s3://bucket/log.json", 1, 1),
         (["s3://bucket/log1.json", "s3://bucket/log2.json"], 2, 2),
@@ -189,12 +199,12 @@ def test_samples_df_with_caching_reads_and_concatenates(
     mock_filesystem: Mock,
     mock_reader: Mock,
     logs_input: Any,
-    expected_calls: int,
+    expected_paths: int,
     expected_rows: int,
 ) -> None:
     """Reads logs and concatenates into single DataFrame."""
     result = samples_df_with_caching(mock_reader, logs_input)
-    assert mock_reader.call_count == expected_calls
+    assert len(_paths_read(mock_reader)) == expected_paths
     assert len(result) == expected_rows
 
 
@@ -212,10 +222,10 @@ def test_samples_df_with_caching_uses_cache_on_second_read(
 ) -> None:
     """Second read with same etag uses cache, doesn't call reader."""
     result1 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
-    assert mock_reader.call_count == 1
+    assert len(_paths_read(mock_reader)) == 1
 
     result2 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
-    assert mock_reader.call_count == 1
+    assert len(_paths_read(mock_reader)) == 1
     pd.testing.assert_frame_equal(result1, result2, check_dtype=False)
 
 
@@ -224,7 +234,7 @@ def test_samples_df_with_caching_invalidates_on_etag_change(
 ) -> None:
     """Etag change invalidates cache and triggers re-read."""
     samples_df_with_caching(mock_reader, "s3://bucket/log.json")
-    assert mock_reader.call_count == 1
+    assert len(_paths_read(mock_reader)) == 1
 
     # Simulate etag change
     def new_mock_fs(path: str) -> Any:
@@ -240,14 +250,14 @@ def test_samples_df_with_caching_invalidates_on_etag_change(
 
     with patch("inspect_scout._transcript.caching.filesystem", side_effect=new_mock_fs):
         samples_df_with_caching(mock_reader, "s3://bucket/log.json")
-        assert mock_reader.call_count == 2
+        assert len(_paths_read(mock_reader)) == 2
 
 
 def test_samples_df_with_caching_dataframe_roundtrip(
     mock_kvstore: Mock, mock_filesystem: Mock, sample_df: pd.DataFrame
 ) -> None:
     """Cached DataFrame preserves data through JSON serialization."""
-    reader = Mock(return_value=sample_df)
+    reader = Mock(return_value=[sample_df])
 
     result1 = samples_df_with_caching(reader, "s3://bucket/log.json")
     result2 = samples_df_with_caching(reader, "s3://bucket/log.json")
@@ -262,10 +272,10 @@ def test_samples_df_with_caching_files_without_etag(
 ) -> None:
     """Files without native etag use mtime:size fallback for caching."""
     result1 = samples_df_with_caching(mock_reader, "/local/log.json")
-    assert mock_reader.call_count == 1
+    assert len(_paths_read(mock_reader)) == 1
 
     result2 = samples_df_with_caching(mock_reader, "/local/log.json")
-    assert mock_reader.call_count == 1
+    assert len(_paths_read(mock_reader)) == 1
     pd.testing.assert_frame_equal(result1, result2, check_dtype=False)
 
 
@@ -274,8 +284,132 @@ def test_samples_df_with_caching_directory_input(
 ) -> None:
     """Directory input expands to multiple files."""
     result = samples_df_with_caching(mock_reader, "s3://bucket/dir/")
-    assert mock_reader.call_count == 2
+    assert len(_paths_read(mock_reader)) == 2
     assert len(result) == 2
+
+
+def test_samples_df_with_caching_chunks_misses(
+    mock_kvstore: Mock, mock_filesystem: Mock
+) -> None:
+    """Cache misses are read in chunks of up to chunk_size, in input order."""
+    paths = [f"s3://bucket/log{i}.json" for i in range(5)]
+    chunks: list[list[str]] = []
+
+    def reader(chunk: list[str]) -> list[pd.DataFrame]:
+        chunks.append(list(chunk))
+        return [pd.DataFrame({"id": [path]}) for path in chunk]
+
+    result = samples_df_with_caching(reader, paths, chunk_size=2)
+    assert chunks == [paths[0:2], paths[2:4], paths[4:5]]
+    assert result["id"].tolist() == paths
+
+
+def test_samples_df_with_caching_caches_per_path(
+    mock_kvstore: Mock, mock_filesystem: Mock
+) -> None:
+    """Each path in a chunk gets its own cache entry, aligned with its data."""
+    paths = [f"s3://bucket/log{i}.json" for i in range(4)]
+
+    def reader(chunk: list[str]) -> list[pd.DataFrame]:
+        return [pd.DataFrame({"id": [path]}) for path in chunk]
+
+    samples_df_with_caching(reader, paths, chunk_size=2)
+
+    def fail_reader(chunk: list[str]) -> list[pd.DataFrame]:
+        raise AssertionError("all paths should be cache hits")
+
+    for path in paths:
+        cached = samples_df_with_caching(fail_reader, path)
+        assert cached["id"].tolist() == [path]
+
+
+def test_samples_df_with_caching_reader_count_mismatch(
+    mock_kvstore: Mock, mock_filesystem: Mock
+) -> None:
+    """Reader returning the wrong number of DataFrames raises."""
+
+    def bad_reader(chunk: list[str]) -> list[pd.DataFrame]:
+        return [pd.DataFrame({"id": [chunk[0]]})]
+
+    with pytest.raises(ValueError, match="DataFrames"):
+        samples_df_with_caching(
+            bad_reader, ["s3://bucket/log1.json", "s3://bucket/log2.json"]
+        )
+
+
+def test_samples_df_with_caching_failure_preserves_prior_chunks(
+    mock_kvstore: Mock, mock_filesystem: Mock
+) -> None:
+    """A failure part way through preserves cache entries from earlier chunks."""
+    paths = [f"s3://bucket/log{i}.json" for i in range(4)]
+
+    def failing_reader(chunk: list[str]) -> list[pd.DataFrame]:
+        if paths[2] in chunk:
+            raise ValueError("boom")
+        return [pd.DataFrame({"id": [path]}) for path in chunk]
+
+    with pytest.raises(ValueError, match="boom"):
+        samples_df_with_caching(failing_reader, paths, chunk_size=2)
+
+    read_paths: list[str] = []
+
+    def reader(chunk: list[str]) -> list[pd.DataFrame]:
+        read_paths.extend(chunk)
+        return [pd.DataFrame({"id": [path]}) for path in chunk]
+
+    result = samples_df_with_caching(reader, paths, chunk_size=2)
+    assert read_paths == paths[2:4]  # first chunk came from the cache
+    assert sorted(result["id"].tolist()) == sorted(paths)
+
+
+def test_resolve_logs_concurrent_info_preserves_association(
+    mock_kvstore: Mock,
+) -> None:
+    """Concurrent fs.info fetches keep each etag associated with its path."""
+    import time
+
+    paths = [f"s3://bucket/log{i}.json" for i in range(4)]
+    # earlier paths take longer, so completion order inverts input order
+    delays = {path: 0.02 * (len(paths) - i) for i, path in enumerate(paths)}
+    etags = {path: f"etag-{i}" for i, path in enumerate(paths)}
+
+    def make_fs(path: str) -> Any:
+        fs = Mock()
+
+        def info(p: str) -> FileInfo:
+            time.sleep(delays[p])
+            return FileInfo(
+                name=p, size=1024, type="file", mtime=1234567890.0, etag=etags[p]
+            )
+
+        fs.info = info
+        return fs
+
+    def reader(chunk: list[str]) -> list[pd.DataFrame]:
+        return [pd.DataFrame({"id": [path]}) for path in chunk]
+
+    with (
+        patch("inspect_scout._transcript.caching.filesystem", side_effect=make_fs),
+        patch(
+            "inspect_scout._transcript.caching.log_files_from_ls",
+            side_effect=lambda file_infos, sort: [
+                create_evalloginfo(fi.name) for fi in file_infos
+            ],
+        ),
+    ):
+        result = samples_df_with_caching(reader, paths)
+        assert result["id"].tolist() == paths
+
+        # invalidate a single path's etag: exactly that path is re-read
+        etags[paths[1]] = "etag-changed"
+        read_paths: list[str] = []
+
+        def reader2(chunk: list[str]) -> list[pd.DataFrame]:
+            read_paths.extend(chunk)
+            return [pd.DataFrame({"id": [path]}) for path in chunk]
+
+        samples_df_with_caching(reader2, paths)
+        assert read_paths == [paths[1]]
 
 
 def test_cache_version_invalidation(
@@ -286,11 +420,11 @@ def test_cache_version_invalidation(
 
     # First call populates cache with current version
     result1 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
-    assert mock_reader.call_count == 1
+    assert len(_paths_read(mock_reader)) == 1
 
     # Second call uses cache (same version)
     result2 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
-    assert mock_reader.call_count == 1
+    assert len(_paths_read(mock_reader)) == 1
     pd.testing.assert_frame_equal(result1, result2, check_dtype=False)
 
     # Simulate version change by patching _CACHE_VERSION
@@ -300,18 +434,18 @@ def test_cache_version_invalidation(
     ):
         # Third call triggers cache invalidation and re-read
         result3 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
-        assert mock_reader.call_count == 2
+        assert len(_paths_read(mock_reader)) == 2
 
         # Fourth call uses cache again (with new version)
         result4 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
-        assert mock_reader.call_count == 2
+        assert len(_paths_read(mock_reader)) == 2
         pd.testing.assert_frame_equal(result3, result4, check_dtype=False)
 
 
 def test_dataframe_cache_roundtrip(mock_filesystem: Mock) -> None:
     """Cache roundtrip preserves realistic DataFrame with pyarrow dtypes."""
     fresh = samples_df([LOGS_DIR.as_posix()], TranscriptColumns)
-    reader = Mock(return_value=fresh)
+    reader = Mock(return_value=[fresh])
 
     first = samples_df_with_caching(reader, "s3://bucket/log.json")
     second = samples_df_with_caching(reader, "s3://bucket/log.json")

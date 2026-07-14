@@ -394,6 +394,34 @@ async def test_is_copied_context_sets_transcript_metadata_flag(
 
 
 @pytest.mark.asyncio
+async def test_embedded_subagent_ref_sets_metadata_flag(tmp_path: Path) -> None:
+    """A path-less (embedded) subagent ref sets `embedded_subagent_unsupported`."""
+    trajectory = make_trajectory(
+        [
+            Step(
+                step_id=1,
+                source="agent",
+                message="delegate",
+                observation=Observation(
+                    results=[
+                        ObservationResult(
+                            subagent_trajectory_ref=[
+                                SubagentTrajectoryRef(trajectory_id="embedded-0")
+                            ]
+                        )
+                    ]
+                ),
+            )
+        ]
+    )
+    path = tmp_path / "trajectory.json"
+    write_trajectory(path, trajectory)
+    transcripts = [t async for t in atif(path=path)]
+    assert len(transcripts) == 1
+    assert transcripts[0].metadata["embedded_subagent_unsupported"] is True
+
+
+@pytest.mark.asyncio
 async def test_continued_trajectory_ref_preserved_in_metadata(
     tmp_path: Path,
 ) -> None:

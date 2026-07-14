@@ -196,6 +196,7 @@ def _create_transcript(
     messages: list[ChatMessage] = []
     events: list[Event] = []
     has_copied_context = False
+    has_unsupported_embedded_subagent = False
 
     for step in trajectory.steps:
         if step.is_copied_context:
@@ -251,6 +252,12 @@ def _create_transcript(
                 if not result.subagent_trajectory_ref:
                     continue
                 for ref in result.subagent_trajectory_ref:
+                    # A path-less ref is the embedded form (resolved via
+                    # `trajectory_id` against `subagent_trajectories`), which we
+                    # don't yet support — flag it so a real occurrence is
+                    # diagnosable rather than a silent empty span.
+                    if ref.trajectory_path is None:
+                        has_unsupported_embedded_subagent = True
                     events.extend(
                         _create_subagent_span_events(
                             ref,
@@ -274,6 +281,8 @@ def _create_transcript(
         metadata["continued_trajectory_ref"] = trajectory.continued_trajectory_ref
     if has_copied_context:
         metadata["has_copied_context"] = True
+    if has_unsupported_embedded_subagent:
+        metadata["embedded_subagent_unsupported"] = True
     if trajectory.notes:
         metadata["notes"] = trajectory.notes
 

@@ -14,10 +14,47 @@ from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 from typing_extensions import Literal
 
+from .._transcript.handle import (
+    MaterializedTranscriptHandle,
+    SpooledTranscriptHandle,
+    TranscriptHandle,
+)
 from .._transcript.types import Transcript, TranscriptContent
 from .._transcript.util import filter_list, filter_timelines, filter_transcript
 from .loader import Loader, loader
 from .types import ScannerInput
+
+
+def _is_transcript_handle_annotation(arg: Any) -> bool:
+    """Whether an annotation is the TranscriptHandle protocol or a concrete impl.
+
+    Identity comparison, since the protocol's non-method ``info`` member breaks
+    ``issubclass``.
+    """
+    return arg is TranscriptHandle or arg in (
+        MaterializedTranscriptHandle,
+        SpooledTranscriptHandle,
+    )
+
+
+def _matches_transcript_or_handle(type_annotation: Any) -> bool:
+    """Whether an annotation is a union of ``Transcript`` and TranscriptHandle types.
+
+    Such a scanner uses the identity loader.
+    """
+    origin = get_origin(type_annotation)
+    if origin is not Union and not (
+        isinstance(origin, type) and issubclass(origin, types.UnionType)
+    ):
+        return False
+    args = get_args(type_annotation)
+    if not args:
+        return False
+    has_transcript = any(arg is Transcript for arg in args)
+    others_are_handles = all(
+        arg is Transcript or _is_transcript_handle_annotation(arg) for arg in args
+    )
+    return has_transcript and others_are_handles
 
 
 def _IdentityLoader(
@@ -117,7 +154,14 @@ def create_implicit_loader(
     input_annotation = next(
         iter(inspect.signature(scanner_fn).parameters.values())
     ).annotation
-    if input_annotation is inspect.Parameter.empty or input_annotation == Transcript:
+    # A bare Transcript, or a `Transcript | TranscriptHandle` union, both use
+    # the identity loader: a materialized Transcript flows through it, while a
+    # handle bypasses the loader (the pipeline passes it directly).
+    if (
+        input_annotation is inspect.Parameter.empty
+        or input_annotation == Transcript
+        or _matches_transcript_or_handle(input_annotation)
+    ):
         return _IdentityLoader(content)
 
     # Check if it's a list type

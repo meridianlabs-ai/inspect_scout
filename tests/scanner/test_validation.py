@@ -370,7 +370,7 @@ def test_non_async_scanner() -> None:
 def test_multiple_event_types() -> None:
     """Multiple event types should work correctly."""
 
-    @scanner(events=["model", "tool", "error", "sample_init"])  # type: ignore[list-item]
+    @scanner(events=["model", "tool", "error", "sample_init"])
     def test_scanner() -> Scanner[Event]:
         async def scan(event: Event) -> Result:
             return Result(value={"event": event.event})

@@ -218,6 +218,9 @@ def _serialize_input(
 ) -> tuple[str, str | None]:
     """Serialize scanner input, optionally condensing events.
 
+    Only "transcript" input pools events separately (second tuple element);
+    all other input types return None there.
+
     Returns:
         (input_json, input_data_json | None)
     """

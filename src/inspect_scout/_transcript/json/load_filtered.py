@@ -21,6 +21,7 @@ from ..util import filter_transcript
 from .pool import resolve_pools
 from .reducer import (
     ATTACHMENT_PREFIX,
+    ATTACHMENT_REF_PATTERN,
     ATTACHMENTS_PREFIX,
     CALL_POOL_ITEM_PREFIX,
     EVENTS_DATA_CALLS_ITEM_PREFIX,
@@ -44,9 +45,6 @@ from .reducer import (
     target_coroutine,
     timeline_item_coroutine,
 )
-
-# Pre-compiled regex patterns for performance
-ATTACHMENT_PATTERN = re.compile(r"attachment://([a-f0-9]{32})")
 
 # Section constants for prefix classification
 _SECTION_OTHER = 0
@@ -125,14 +123,11 @@ async def load_filtered_transcript(
     *,
     on_early_exit: Callable[[], None] | None = None,
 ) -> Transcript:
-    """
-    Transform and filter JSON sample data into a Transcript.
+    """Transform and filter JSON sample data into a Transcript.
 
-    Uses a two-phase approach:
-    1. Stream parse and filter messages/events while collecting attachment references
-    2. Resolve attachment references with actual values
-
-    Falls back to non-streaming json5 parser if streaming fails (e.g., NaN/Inf values).
+    Stream-parses and filters messages/events while collecting attachment
+    refs, then resolves those refs. Falls back to a non-streaming json5
+    parser if streaming fails (e.g. NaN/Inf values).
 
     Args:
         sample_bytes: Byte stream of JSON sample data
@@ -145,22 +140,18 @@ async def load_filtered_transcript(
             early-exit break
 
     Returns:
-        Transcript object with filtered messages and events, resolved attachments.
-        Metadata includes sample_metadata, target, and scores from the sample JSON.
-        ``input`` is not unthinned: the sample JSON's input can contain attachment
-        refs whose resolution requires parsing the attachments section — which follows
-        events, defeating the early-exit optimization.
+        Transcript with filtered messages/events and resolved attachments.
+        Metadata includes sample_metadata, target, and scores. ``input`` is
+        not unthinned: resolving its refs requires the attachments section,
+        which follows events and would defeat the early-exit optimization.
     """
     try:
-        # Phase 1: Parse, filter, and collect attachment references
         async with adapt_to_reader(sample_bytes) as reader:
             transcript, attachment_refs = await _parse_and_filter(
                 reader, t, messages, events, on_early_exit=on_early_exit
             )
-        # Phase 2: Resolve attachment references
         return _resolve_attachments(transcript, attachment_refs)
     except ijson.JSONError:
-        # Fallback to json5 for JSON5 features (NaN, Inf, etc.)
         return await _load_with_json5_fallback(sample_bytes, t, messages, events)
 
 
@@ -265,18 +256,16 @@ async def _parse_and_filter(
     *,
     on_early_exit: Callable[[], None] | None = None,
 ) -> tuple[RawTranscript, dict[str, str]]:
-    """
-    Phase 1: Single-pass stream parse, filter, and collect attachment references.
+    """Single-pass stream parse, filter, and collect attachment references.
 
     Returns:
         Tuple of (partial transcript, attachment references dict)
     """
-    # Create processing configurations
     messages_config = (
         ListProcessingConfig(
             array_item_prefix="messages.item",
             filter_field="role",
-            filter_list=messages_filter,  # type:ignore
+            filter_list=messages_filter,
         )
         if messages_filter is not None
         else None
@@ -286,7 +275,7 @@ async def _parse_and_filter(
         ListProcessingConfig(
             array_item_prefix="events.item",
             filter_field="event",
-            filter_list=events_filter,  # type:ignore
+            filter_list=events_filter,
         )
         if events_filter is not None
         else None
@@ -294,7 +283,6 @@ async def _parse_and_filter(
 
     state = ParseState()
 
-    # Initialize coroutine processors
     messages_coro = (
         message_item_coroutine(state, messages_config) if messages_config else None
     )
@@ -327,11 +315,10 @@ async def _parse_and_filter(
     current_section = _SECTION_OTHER
 
     async for prefix, event, value in ijson.parse_async(sample_json, use_float=True):
-        # Early exit: skip events/attachments when they aren't needed.
-        # JSON field order is: ...target, messages, output, scores, metadata,
-        # store, events, attachments, events_data — so by the time we see
-        # "events" start_array, metadata and scores have already been parsed.
-        # Exiting before events_data is safe: it only matters when events do.
+        # Early exit when events/attachments aren't needed. JSON field order is
+        # ...target, messages, output, scores, metadata, store, events,
+        # attachments, events_data — so at "events" start_array metadata and
+        # scores are already parsed, and events_data only matters when events do.
         if (
             events_coro is None
             and prefix == "events"
@@ -342,9 +329,8 @@ async def _parse_and_filter(
                 on_early_exit()
             break
 
-        # Inline prefix classification for performance (56M+ calls in hot path).
-        # WARNING: every operation here can run millions of times per parse.
-        # Avoid string slicing, startswith, or any allocation in common paths.
+        # HOT PATH: this classification runs 56M+ times per large parse. Avoid
+        # string slicing, startswith, or any allocation in common paths.
         # Profile before changing.
         if prefix != last_prefix:
             last_prefix = prefix
@@ -360,8 +346,7 @@ async def _parse_and_filter(
                 else:
                     current_section = _SECTION_OTHER
             elif prefix[0] == "m":
-                # Both "messages" and "metadata" start with "me", check 3rd char
-                # (safe because we already checked p_len >= _MIN_SECTION_PREFIX_LEN)
+                # "messages" vs "metadata": both start "me", discriminate on 3rd char.
                 if (
                     p_len >= _MESSAGES_ITEM_PREFIX_LEN
                     and prefix[2] == "s"
@@ -381,7 +366,7 @@ async def _parse_and_filter(
                 else:
                     current_section = _SECTION_OTHER
             elif prefix[0] == "e":
-                # events array, or one of the events_data.* pool sub-arrays.
+                # events array, or an events_data.* pool sub-array.
                 if (
                     p_len >= _EVENTS_ITEM_PREFIX_LEN
                     and prefix[:_EVENTS_ITEM_PREFIX_LEN] == EVENTS_ITEM_PREFIX
@@ -428,7 +413,6 @@ async def _parse_and_filter(
             else:
                 current_section = _SECTION_OTHER
 
-        # Dispatch to coroutines (optimized to avoid redundant None checks)
         if current_section == _SECTION_MESSAGES and messages_coro:
             messages_coro.send((prefix, event, value))
         elif current_section == _SECTION_EVENTS and events_coro:
@@ -453,7 +437,6 @@ async def _parse_and_filter(
             for coro in call_pool_coros:
                 coro.send((prefix, event, value))
 
-    # Resolve v3 pool references before returning
     resolve_pools(state)
 
     return (
@@ -512,7 +495,7 @@ def _resolve_attachments(
                 attachment_id, match.group(0)
             )  # Return original if not found
 
-        return ATTACHMENT_PATTERN.sub(replace_ref, text)
+        return ATTACHMENT_REF_PATTERN.sub(replace_ref, text)
 
     # Resolve references in messages (already raw dicts, no need to model_dump)
     resolved_messages = []

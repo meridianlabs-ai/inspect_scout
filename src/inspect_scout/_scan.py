@@ -4,7 +4,7 @@ import traceback
 from contextlib import asynccontextmanager
 from logging import getLogger
 from pathlib import Path
-from typing import Any, AsyncIterator, Mapping, Sequence, cast
+from typing import Any, AsyncIterator, Awaitable, Callable, Mapping, Sequence, cast
 
 import anyio
 import yaml
@@ -73,11 +73,19 @@ from ._scanjob import (
 from ._scanjob_config import ScanJobConfig
 from ._scanner.loader import config_for_loader
 from ._scanner.result import Error, Result, ResultReport, ResultValidation, as_resultset
-from ._scanner.scanner import Scanner, config_for_scanner
+from ._scanner.scanner import Scanner, config_for_scanner, scanner_supports_streaming
+from ._scanner.types import ScannerInput, ScannerInputNames
 from ._scanner.util import get_input_type_and_ids
 from ._scanspec import ScanSpec, Worklist
+from ._transcript.handle import (
+    MaterializedTranscriptHandle,
+    SpooledTranscriptHandle,
+    TranscriptHandle,
+)
 from ._transcript.transcripts import ScannerWork, Transcripts, TranscriptsReader
 from ._transcript.types import (
+    EventFilter,
+    MessageFilter,
     Transcript,
     TranscriptContent,
     TranscriptInfo,
@@ -583,9 +591,47 @@ async def _scan_async_inner(
                     job: ParseJob, reader: TranscriptsReader
                 ) -> ParseFunctionResult:
                     try:
-                        union_transcript = await reader.read(
-                            job.transcript_info, union_content
-                        )
+                        # Eligible only when every scanner accepts handles and
+                        # each scanner's filter equals the union: the shared
+                        # union-filtered handle bypasses the per-scanner loader,
+                        # so a narrower filter would see union-broadened content
+                        # from a sibling. `open()` picks spooled vs materialized.
+                        job_scanners = [
+                            scanners_list[idx] for idx in job.scanner_indices
+                        ]
+                        streaming_eligible = all(
+                            scanner_supports_streaming(scanner)
+                            for scanner in job_scanners
+                        ) and _streaming_eligible(job_scanners, union_content)
+
+                        union_transcript: Transcript | TranscriptHandle
+                        on_complete: Callable[[], Awaitable[None]] | None
+                        if streaming_eligible:
+                            # Lazy handle shared by the lead and all followers;
+                            # closed once the last job completes.
+                            handle = await reader.open(
+                                job.transcript_info, union_content
+                            )
+                            union_transcript = handle
+
+                            # 1 lead + N followers; each on_complete decrements,
+                            # closing the handle when the count reaches zero.
+                            lead_idx, *follower_indices = sorted(job.scanner_indices)
+                            remaining = 1 + len(follower_indices)
+
+                            async def on_job_complete() -> None:
+                                nonlocal remaining
+                                remaining -= 1
+                                if remaining == 0:
+                                    await handle.aclose()
+
+                            on_complete = on_job_complete
+                        else:
+                            union_transcript = await reader.read(
+                                job.transcript_info, union_content
+                            )
+                            on_complete = None
+                            lead_idx, *follower_indices = sorted(job.scanner_indices)
 
                         def _make_job(
                             idx: int,
@@ -596,13 +642,13 @@ async def _scan_async_inner(
                                 scanner=scanners_list[idx],
                                 scanner_name=scanner_names_list[idx],
                                 followers=followers,
+                                on_complete=on_complete,
                             )
 
                         # Run the first scanner alone for each transcript;
                         # release the rest only after it completes. This lets
                         # the lead's generate call populate the prompt cache
                         # so followers hit the warm cache.
-                        lead_idx, *follower_indices = sorted(job.scanner_indices)
                         lead = _make_job(
                             lead_idx,
                             followers=tuple(_make_job(idx) for idx in follower_indices),
@@ -923,6 +969,21 @@ async def _scan_dry_run(scan: ScanContext) -> Status:
     )
 
 
+def _job_transcript_id(job: ScannerJob) -> str:
+    """Transcript id for a job's union transcript (Transcript or handle)."""
+    union = job.union_transcript
+    return (
+        union.transcript_id
+        if isinstance(union, Transcript)
+        else union.info.transcript_id
+    )
+
+
+async def _single_item_iter(item: Any) -> AsyncIterator[Any]:
+    """Yield a single item as an async iterator (bypasses the loader)."""
+    yield item
+
+
 async def _scan_one(
     job: ScannerJob,
     *,
@@ -936,6 +997,12 @@ async def _scan_one(
     builds a `ResultReport` for each invocation. Captures inspect-side
     events and model usage per call. Errors are turned into Error records
     on the report unless `fail_on_error=True`.
+
+    A `TranscriptHandle` union transcript is passed straight to a
+    handle-capable scanner (no materialization); errors raised lazily during
+    iteration are contained per-transcript as Error reports. `job.on_complete`,
+    if set, is awaited exactly once in a finally block to close the shared
+    handle after the last job.
     """
     from inspect_ai.log._transcript import (
         Transcript as InspectTranscript,
@@ -964,65 +1031,153 @@ async def _scan_one(
     scanner_config = config_for_scanner(job.scanner)
     loader = scanner_config.loader
 
-    async for loader_result in loader(job.union_transcript):
-        result: Result | list[Result] | None = None
-        final_result: Result | None = None
-        error: Error | None = None
-        try:
-            type_and_ids = get_input_type_and_ids(loader_result)
-            if type_and_ids is None:
-                continue
+    def _stream_error_report(ex: Exception) -> ResultReport:
+        """Build an Error report for an exception raised during iteration.
 
-            # do scan
-            async with span("scan"):
-                result = await job.scanner(loader_result)
-
-            # handle lists
-            final_result = as_resultset(result) if isinstance(result, list) else result
-
-            # do validation if we have one for this scanner/id
-            if validation and job.scanner_name in validation:
-                validation_result = await _validate_scan(
-                    validation[job.scanner_name],
-                    type_and_ids[1],
-                    final_result,
-                )
-
-        # special case for errors that should bring down the scan
-        except PrerequisiteError:
-            raise
-
-        except Exception as ex:  # pylint: disable=W0718
-            if fail_on_error:
-                raise
-            error = Error(
-                transcript_id=job.union_transcript.transcript_id,
+        E.g. a corrupt sample surfacing lazily.
+        """
+        union = job.union_transcript
+        report_input: ScannerInput
+        if isinstance(union, Transcript):
+            report_input = union
+            input_type: ScannerInputNames = "transcript"
+        else:
+            report_input = union.info
+            input_type = "transcript_info"
+        return ResultReport(
+            input_type=input_type,
+            input_ids=[_job_transcript_id(job)],
+            input=report_input,
+            result=None,
+            validation=None,
+            error=Error(
+                transcript_id=_job_transcript_id(job),
                 scanner=job.scanner_name,
                 error=str(ex),
                 traceback=traceback.format_exc(),
-                refusal=isinstance(ex, RefusalError),
-            )
+                refusal=False,
+            ),
+            events=[],
+            model_usage={},
+        )
 
-        # always append a result (success or error) if we have type_and_ids
-        if type_and_ids is not None:
-            results.append(
-                # all of this data needs to be pickleable (i.e. no async
-                # functions that capture the task group)
-                ResultReport(
-                    input_type=type_and_ids[0],
-                    input_ids=type_and_ids[1],
-                    input=loader_result,
-                    result=final_result,
-                    validation=validation_result,
-                    error=error,
-                    events=jsonable_python(
-                        resolve_event_attachments(inspect_transcript)
-                    ),
-                    model_usage=model_usage(),
+    try:
+        # Choose what to iterate: the handle itself (streaming) or loader
+        # results. This happens before any LLM call, so the fallback below is
+        # a pre-LLM materialization.
+        loader_iterations: AsyncIterator[ScannerInput | TranscriptHandle]
+        if isinstance(job.union_transcript, Transcript):
+            loader_iterations = loader(job.union_transcript)
+        elif scanner_supports_streaming(job.scanner):
+            loader_iterations = _single_item_iter(job.union_transcript)
+        else:
+            # Handle paired with a non-streaming scanner: materialize first,
+            # then run the loader (kept for safety).
+            try:
+                transcript = await job.union_transcript.load()
+            except PrerequisiteError:
+                raise
+            except Exception as ex:  # pylint: disable=W0718
+                if fail_on_error:
+                    raise
+                results.append(_stream_error_report(ex))
+                return results
+            loader_iterations = loader(transcript)
+
+        # Iterate explicitly so a lazy parse error raised by the iteration is
+        # contained per-transcript rather than propagating. PrerequisiteError
+        # still re-raises.
+        it = aiter(loader_iterations)
+        while True:
+            try:
+                loader_result = await anext(it)
+            except StopAsyncIteration:
+                break
+            except PrerequisiteError:
+                raise
+            except Exception as ex:  # pylint: disable=W0718
+                if fail_on_error:
+                    raise
+                results.append(_stream_error_report(ex))
+                break
+
+            result: Result | list[Result] | None = None
+            final_result: Result | None = None
+            error: Error | None = None
+            validation_result = None
+
+            # Handle inputs record info only; match concrete classes rather
+            # than the runtime_checkable protocol.
+            report_input: ScannerInput
+            if isinstance(
+                loader_result,
+                (MaterializedTranscriptHandle, SpooledTranscriptHandle),
+            ):
+                report_input = loader_result.info
+            else:
+                # mypy can't subtract the protocol, so cast the narrowed value.
+                report_input = cast(ScannerInput, loader_result)
+
+            try:
+                type_and_ids = get_input_type_and_ids(report_input)
+                if type_and_ids is None:
+                    continue
+
+                # do scan
+                async with span("scan"):
+                    result = await job.scanner(loader_result)
+
+                # handle lists
+                final_result = (
+                    as_resultset(result) if isinstance(result, list) else result
                 )
-            )
 
-    return results
+                # do validation if we have one for this scanner/id
+                if validation and job.scanner_name in validation:
+                    validation_result = await _validate_scan(
+                        validation[job.scanner_name],
+                        type_and_ids[1],
+                        final_result,
+                    )
+
+            # special case for errors that should bring down the scan
+            except PrerequisiteError:
+                raise
+
+            except Exception as ex:  # pylint: disable=W0718
+                if fail_on_error:
+                    raise
+                error = Error(
+                    transcript_id=_job_transcript_id(job),
+                    scanner=job.scanner_name,
+                    error=str(ex),
+                    traceback=traceback.format_exc(),
+                    refusal=isinstance(ex, RefusalError),
+                )
+
+            # always append a result (success or error) if we have type_and_ids
+            if type_and_ids is not None:
+                results.append(
+                    # all of this data needs to be pickleable (i.e. no async
+                    # functions that capture the task group)
+                    ResultReport(
+                        input_type=type_and_ids[0],
+                        input_ids=type_and_ids[1],
+                        input=report_input,
+                        result=final_result,
+                        validation=validation_result,
+                        error=error,
+                        events=jsonable_python(
+                            resolve_event_attachments(inspect_transcript)
+                        ),
+                        model_usage=model_usage(),
+                    )
+                )
+
+        return results
+    finally:
+        if job.on_complete is not None:
+            await job.on_complete()
 
 
 def _content_for_scanner(scanner: Scanner[Any]) -> TranscriptContent:
@@ -1033,6 +1188,56 @@ def _content_for_scanner(scanner: Scanner[Any]) -> TranscriptContent:
     adopted the filter from the scanner as appropriate.
     """
     return config_for_loader(config_for_scanner(scanner).loader).content
+
+
+def _filters_equal(
+    a: MessageFilter | EventFilter, b: MessageFilter | EventFilter
+) -> bool:
+    """Compare two content filters, ignoring order for sequence filters.
+
+    A filter is ``None``, ``"all"``, or a sequence of type strings; the union
+    build produces sequences in arbitrary order, so sequences compare as sets
+    while ``None``/``"all"`` compare exactly.
+    """
+    if (
+        isinstance(a, Sequence)
+        and not isinstance(a, str)
+        and isinstance(b, Sequence)
+        and not isinstance(b, str)
+    ):
+        return set(a) == set(b)
+    return a == b
+
+
+def _message_filters_equal(a: MessageFilter, b: MessageFilter) -> bool:
+    """Compare two message filters, ignoring list order (see ``_filters_equal``)."""
+    return _filters_equal(a, b)
+
+
+def _streaming_eligible(
+    scanners: list[Scanner[Any]], union_content: TranscriptContent
+) -> bool:
+    """Whether a job's scanners can safely share a union-filtered handle.
+
+    The handle is opened with union content and bypasses the per-scanner
+    loader's `filter_transcript`, so this is only safe when every scanner's
+    filter equals the union; a narrower filter would otherwise see a sibling's
+    broadened content. Messages and events both stream; any `timeline` filter
+    forces materialization (timeline selection needs the full transcript).
+
+    Callers must already have checked `scanner_supports_streaming`.
+    """
+    if union_content.timeline is not None:
+        return False
+    for scanner in scanners:
+        content = _content_for_scanner(scanner)
+        if content.timeline is not None:
+            return False
+        if not _message_filters_equal(content.messages, union_content.messages):
+            return False
+        if not _filters_equal(content.events, union_content.events):
+            return False
+    return True
 
 
 def _reports_for_parse_error(

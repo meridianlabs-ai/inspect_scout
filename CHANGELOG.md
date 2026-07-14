@@ -1,3 +1,13 @@
+## [0.4.44](https://github.com/meridianlabs-ai/inspect_scout/compare/0.4.43...v0.4.44) (2026-07-14)
+
+
+### Bug Fixes
+
+* guard against empty eval logs producing invalid SQL ([#319](https://github.com/meridianlabs-ai/inspect_scout/issues/319)) ([cc4354f](https://github.com/meridianlabs-ai/inspect_scout/commit/cc4354fa602e106ed3179242b19523bf6c1c0c21))
+* improve scout import output when no transcripts are imported ([#505](https://github.com/meridianlabs-ai/inspect_scout/issues/505)) ([5d7c144](https://github.com/meridianlabs-ai/inspect_scout/commit/5d7c144b22285a206e5685ea6824c8bd2b174348))
+* restore multiprocess concurrency against inspect_ai's updated ConcurrencySemaphore protocol ([#498](https://github.com/meridianlabs-ai/inspect_scout/issues/498)) ([#516](https://github.com/meridianlabs-ai/inspect_scout/issues/516)) ([cc4354f](https://github.com/meridianlabs-ai/inspect_scout/commit/cc4354fa602e106ed3179242b19523bf6c1c0c21))
+* sync OpenAPI schema for inspect_ai reasoning_mode ([5d7c144](https://github.com/meridianlabs-ai/inspect_scout/commit/5d7c144b22285a206e5685ea6824c8bd2b174348))
+
 ## 0.4.43 (05 July 2026)
 
 - Store transcript and scan-result event/input columns as compact JSON (`indent=None`), substantially reducing on-disk Parquet size and the bytes streamed to Scout View (e.g. ~700 MiB → ~200 MiB for a large events column).

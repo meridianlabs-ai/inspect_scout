@@ -1,3 +1,5 @@
+# Changelog
+
 ## [0.4.44](https://github.com/meridianlabs-ai/inspect_scout/compare/0.4.43...v0.4.44) (2026-07-14)
 
 

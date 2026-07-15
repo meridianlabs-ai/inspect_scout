@@ -678,31 +678,44 @@ def _index_logs(logs: Logs) -> pd.DataFrame:
 
         def read_samples(path: str) -> pd.DataFrame:
             with trace_action(logger, "Scout Eval Log Index", f"Indexing {path}"):
-                # This cast is wonky, but the public function, samples_df, uses overloads
-                # to make the return type be a DataFrame when strict=True. Since we're
-                # calling the helper method, we'll just have to cast it.
-                progress.update(path)
-                df = cast(
-                    pd.DataFrame,
-                    _read_samples_df_serial(
-                        [path],
-                        TranscriptColumns,
-                        full=False,
-                        strict=True,
-                        progress=False,
-                    ),
-                )
-
-                # The transcript_id uses the computed sample_id
-                # value, which will properly handle old eval log
-                # that are missing uuids for samples (so we use the value
-                # from the synthesized sample_id column rather than the `id`
-                # prop from the sample itself.
-                if not df.empty:
-                    df["transcript_id"] = df["sample_id"]
-                return df
+                df = _read_samples([path])
+            progress.update(path)
+            return df
 
         return samples_df_with_caching(read_samples, logs)
+
+
+def _read_samples(paths: list[str]) -> pd.DataFrame:
+    """Read a combined samples DataFrame for the given eval logs.
+
+    Args:
+        paths: Paths to eval log files
+
+    Returns:
+        DataFrame with one row per sample from all logs
+    """
+    # This cast is wonky, but the public function, samples_df, uses overloads
+    # to make the return type be a DataFrame when strict=True. Since we're
+    # calling the helper method, we'll just have to cast it.
+    df = cast(
+        pd.DataFrame,
+        _read_samples_df_serial(
+            paths,
+            TranscriptColumns,
+            full=False,
+            strict=True,
+            progress=False,
+        ),
+    )
+
+    # The transcript_id uses the computed sample_id
+    # value, which will properly handle old eval log
+    # that are missing uuids for samples (so we use the value
+    # from the synthesized sample_id column rather than the `id`
+    # prop from the sample itself.
+    if not df.empty:
+        df["transcript_id"] = df["sample_id"]
+    return df
 
 
 def _compute_cache_key_from_logs(logs: Logs) -> str:

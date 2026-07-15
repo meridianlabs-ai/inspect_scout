@@ -2,7 +2,7 @@ import io
 import json
 import warnings
 from collections.abc import Callable, Generator
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 from functools import partial
 from os import PathLike
@@ -125,6 +125,7 @@ def samples_df_with_caching(
         # reads, cache the reads still in flight, then re-raise.
         miss_df_by_path: dict[str, pd.DataFrame] = {}
         first_error: Exception | None = None
+        futures: dict[Future[pd.DataFrame], tuple[str, str]] = {}
         if cache_misses:
             with ThreadPoolExecutor(
                 max_workers=min(max_workers, len(cache_misses))
@@ -134,19 +135,28 @@ def samples_df_with_caching(
                     for path, etag in cache_misses
                 }
                 for future in as_completed(futures):
-                    if future.cancelled():
-                        continue
                     path, etag = futures[future]
                     try:
                         df = future.result()
                     except Exception as ex:
-                        if first_error is None:
-                            first_error = ex
-                            executor.shutdown(wait=False, cancel_futures=True)
-                        continue
+                        # as_completed never yields futures that
+                        # shutdown(cancel_futures=True) drained from the
+                        # queue, so stop iterating and harvest the reads
+                        # still in flight below.
+                        first_error = ex
+                        executor.shutdown(wait=True, cancel_futures=True)
+                        break
                     _put_cached_df(kvstore, path, etag, df)
                     miss_df_by_path[path] = df
         if first_error is not None:
+            # cache the in-flight reads that completed after the failure
+            for future, (path, etag) in futures.items():
+                if path in miss_df_by_path or future.cancelled():
+                    continue
+                try:
+                    _put_cached_df(kvstore, path, etag, future.result())
+                except Exception:
+                    pass
             raise first_error
         miss_dfs = [miss_df_by_path[path] for path, _ in cache_misses]
 

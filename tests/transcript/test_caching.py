@@ -315,10 +315,12 @@ def test_samples_df_with_caching_failure_preserves_completed_reads(
 ) -> None:
     """A failing read preserves cache entries for reads that succeeded."""
     paths = [f"s3://bucket/log{i}.json" for i in range(4)]
+    succeeded: list[str] = []
 
     def failing_reader(path: str) -> pd.DataFrame:
         if path == paths[2]:
             raise ValueError("boom")
+        succeeded.append(path)
         return pd.DataFrame({"id": [path]})
 
     with pytest.raises(ValueError, match="boom"):
@@ -330,9 +332,32 @@ def test_samples_df_with_caching_failure_preserves_completed_reads(
         read_paths.append(path)
         return pd.DataFrame({"id": [path]})
 
+    # only the failed path and any reads cancelled while still queued are
+    # re-read; every read that succeeded came from the cache
     result = samples_df_with_caching(reader, paths)
-    assert read_paths == [paths[2]]  # the other paths came from the cache
+    assert paths[2] in read_paths
+    assert sorted(read_paths) == sorted(set(paths) - set(succeeded))
     assert sorted(result["id"].tolist()) == sorted(paths)
+
+
+def test_samples_df_with_caching_failure_with_queued_reads_raises(
+    mock_kvstore: Mock, mock_filesystem: Mock
+) -> None:
+    """A failure while reads are still queued raises instead of deadlocking.
+
+    With one worker, the remaining paths are still queued when the first
+    read fails; their futures get cancelled without ever being picked up
+    by a worker, and as_completed never yields such futures.
+    """
+    paths = [f"s3://bucket/log{i}.json" for i in range(4)]
+
+    def failing_reader(path: str) -> pd.DataFrame:
+        if path == paths[0]:
+            raise ValueError("boom")
+        return pd.DataFrame({"id": [path]})
+
+    with pytest.raises(ValueError, match="boom"):
+        samples_df_with_caching(failing_reader, paths, max_workers=1)
 
 
 def test_resolve_logs_concurrent_info_preserves_association(

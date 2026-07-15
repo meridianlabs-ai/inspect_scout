@@ -71,19 +71,21 @@ matters. Format it as `<type>: <description>`.
 Releases are automated with [Release Please](https://github.com/googleapis/release-please):
 **don't edit `CHANGELOG.md` or bump the version by hand.** Release Please reads the
 merged commit types, opens a release PR that updates the changelog and version, and
-merging that PR tags and publishes the release.
+merging that PR tags the release; the publishes (PyPI and the npm viewer lib) then
+run once a maintainer approves each deployment.
 
-Choose the type deliberately — only `feat:` and `fix:` appear in the release notes
-and drive the version bump:
+Choose the type deliberately — `feat:` and `fix:` drive the version bump and
+headline the release notes:
 
-| Type | Use for |
+| Type | Effect |
 | --- | --- |
-| `feat:` | a user-facing feature |
-| `fix:` | a user-facing bug fix |
-| `docs:`, `refactor:`, `perf:`, `test:`, `build:`, `chore:`, `ci:` | everything else — excluded from the release notes |
+| `feat:` | a user-facing feature — bumps the patch version (pre-1.0 policy) |
+| `fix:` | a user-facing bug fix — bumps the patch version |
+| `perf:`, `revert:` | appear in the release notes (no bump on their own) |
+| `docs:`, `refactor:`, `chore:`, `build:`, `ci:`, `test:`, `style:` | hidden from the release notes |
 
 Anything that isn't a user-facing feature or fix should avoid `feat:`/`fix:` so it
-stays out of the release notes.
+stays out of the headline sections.
 
 ## Reporting issues
 

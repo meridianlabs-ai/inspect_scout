@@ -28,11 +28,11 @@ REFERENCE_WORKING_TIME = 1.006
 async def test_integration() -> None:
     """Cache roundtrip preserves realistic DataFrame with pyarrow dtypes."""
 
-    def _sample_reader(paths: list[str]) -> list[pd.DataFrame]:
-        return [samples_df([path], TranscriptColumns) for path in paths]
+    def _sample_reader(path: str) -> pd.DataFrame:
+        return samples_df([path], TranscriptColumns)
 
     with temp_kvstore() as kvstore_name:
-        df_1 = _sample_reader([LOG_1.as_posix()])[0]
+        df_1 = _sample_reader(LOG_1.as_posix())
 
         # Put LOG_1 into the cache
         all_misses = samples_df_with_caching(_sample_reader, LOG_1, kvstore_name)

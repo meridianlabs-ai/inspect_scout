@@ -11,7 +11,7 @@ from pathlib import Path
 import pandas as pd
 from inspect_ai._util._async import run_coroutine, tg_collect
 from inspect_ai._util.asyncfiles import AsyncFilesystem
-from inspect_ai._util.file import FileInfo
+from inspect_ai._util.file import FileInfo, filesystem
 from inspect_ai._util.kvstore import KVStore, inspect_kvstore
 from inspect_ai.log._file import EvalLogInfo, log_files_from_ls
 
@@ -127,6 +127,15 @@ def samples_df_with_caching(
         first_error: Exception | None = None
         futures: dict[Future[pd.DataFrame], tuple[str, str]] = {}
         if cache_misses:
+            # fsspec filesystem-instance construction/caching is not
+            # thread-safe, and readers construct filesystems internally,
+            # so instantiate each protocol's filesystem on this thread
+            # before the reader threads can race to create it
+            for path in {
+                _path_protocol(path): path for path, _ in cache_misses
+            }.values():
+                filesystem(path)
+
             with ThreadPoolExecutor(
                 max_workers=min(max_workers, len(cache_misses))
             ) as executor:
@@ -166,6 +175,10 @@ def samples_df_with_caching(
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=FutureWarning)
         return pd.concat(all_dfs, ignore_index=True)
+
+
+def _path_protocol(path: str) -> str:
+    return path.split("://", 1)[0] if "://" in path else "file"
 
 
 def _resolve_logs(logs: LogPaths) -> list[tuple[str, str]]:

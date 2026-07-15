@@ -165,8 +165,9 @@ def mock_filesystem() -> Iterator[Mock]:
             "inspect_scout._transcript.caching.log_files_from_ls",
             side_effect=mock_log_files_from_ls,
         ),
+        patch("inspect_scout._transcript.caching.filesystem") as filesystem_mock,
     ):
-        yield Mock()
+        yield filesystem_mock
 
 
 def _paths_read(mock: Mock) -> list[str]:
@@ -338,6 +339,27 @@ def test_samples_df_with_caching_failure_preserves_completed_reads(
     assert paths[2] in read_paths
     assert sorted(read_paths) == sorted(set(paths) - set(succeeded))
     assert sorted(result["id"].tolist()) == sorted(paths)
+
+
+def test_samples_df_with_caching_warms_filesystems_before_reads(
+    mock_kvstore: Mock, mock_filesystem: Mock
+) -> None:
+    """Each protocol's fsspec instance is constructed before reader threads run.
+
+    fsspec filesystem-instance construction/caching is not thread-safe,
+    so readers must never race to create one.
+    """
+    paths = ["s3://bucket/log1.json", "s3://bucket/log2.json", "/local/log3.json"]
+
+    def reader(path: str) -> pd.DataFrame:
+        assert mock_filesystem.call_count == 2  # warmed before any read started
+        return pd.DataFrame({"id": [path]})
+
+    samples_df_with_caching(reader, paths)
+    warmed = {call.args[0] for call in mock_filesystem.call_args_list}
+    assert len(warmed) == 2
+    assert any(path.startswith("s3://bucket/") for path in warmed)
+    assert "/local/log3.json" in warmed
 
 
 def test_samples_df_with_caching_failure_with_queued_reads_raises(

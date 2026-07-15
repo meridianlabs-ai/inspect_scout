@@ -9,7 +9,7 @@ import inspect
 from datetime import datetime
 from pathlib import Path
 from types import NoneType
-from typing import Any, AsyncIterator, Callable, get_args, get_origin
+from typing import Annotated, Any, AsyncIterator, Callable, get_args, get_origin
 
 import click
 import yaml
@@ -41,10 +41,23 @@ def _discover_sources() -> dict[str, Callable[..., Any]]:
     return sources
 
 
+def _unwrap_annotated(annotation: Any) -> Any:
+    """Strip Annotated metadata, returning the underlying type.
+
+    Annotated is a metadata wrapper, not a container: Annotated[int, ...]
+    accepts the same values as int. Nested Annotated self-flattens, so a
+    single unwrap suffices.
+    """
+    if get_origin(annotation) is Annotated:
+        return get_args(annotation)[0]
+    return annotation
+
+
 def _get_type_name(annotation: Any) -> str:
     """Extract a readable type name from a type annotation."""
     if annotation is inspect.Parameter.empty:
         return ""
+    annotation = _unwrap_annotated(annotation)
 
     # Handle union types (e.g., str | None, typing.Union[str, None])
     if is_union_type(annotation):
@@ -89,6 +102,7 @@ def _has_datetime_annotation(annotation: Any) -> bool:
     if isinstance(annotation, str):
         parts = [p.strip() for p in annotation.split("|")]
         return "datetime" in parts
+    annotation = _unwrap_annotated(annotation)
     if annotation is datetime:
         return True
     # Union members are alternatives, so datetime among them counts; args of
@@ -105,6 +119,7 @@ def _has_int_annotation(annotation: Any) -> bool:
     if isinstance(annotation, str):
         parts = [p.strip() for p in annotation.split("|")]
         return "int" in parts
+    annotation = _unwrap_annotated(annotation)
     if annotation is int:
         return True
     # Union members are alternatives, so int among them counts; args of any
@@ -120,6 +135,7 @@ def _is_str_only_annotation(annotation: Any) -> bool:
     if isinstance(annotation, str):
         parts = [p.strip() for p in annotation.split("|")]
         return parts == ["str"] or set(parts) == {"str", "None"}
+    annotation = _unwrap_annotated(annotation)
     if annotation is str:
         return True
     # Only union members are alternatives (not e.g. list[str])

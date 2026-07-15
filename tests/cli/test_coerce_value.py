@@ -1,7 +1,7 @@
 """Tests for CLI value coercion helpers in import_command."""
 
 from datetime import datetime
-from typing import Union
+from typing import Annotated, Union
 
 import pytest
 from inspect_scout._cli.import_command import (
@@ -33,6 +33,9 @@ from inspect_scout._cli.import_command import (
         pytest.param("str | list[str]", False, id="string_str_or_list"),
         pytest.param("str | list[str] | None", False, id="string_str_or_list_or_none"),
         pytest.param("int", False, id="string_int"),
+        # Annotated metadata is stripped before classifying
+        pytest.param(Annotated[str, "meta"], True, id="annotated_str"),
+        pytest.param(Annotated[str | None, "meta"], True, id="annotated_str_or_none"),
     ],
 )
 def test_is_str_only_annotation(annotation: object, expected: bool) -> None:
@@ -54,6 +57,10 @@ def test_is_str_only_annotation(annotation: object, expected: bool) -> None:
         # treated as accepting a bare int.
         pytest.param(list[int], False, id="list_int"),
         pytest.param(dict[str, int], False, id="dict_str_int"),
+        # Annotated metadata is stripped before classifying
+        pytest.param(Annotated[int, "meta"], True, id="annotated_int"),
+        pytest.param(Annotated[int | None, "meta"], True, id="annotated_int_or_none"),
+        pytest.param(Annotated[list[int], "meta"], False, id="annotated_list_int"),
     ],
 )
 def test_has_int_annotation(annotation: object, expected: bool) -> None:
@@ -71,6 +78,11 @@ def test_has_int_annotation(annotation: object, expected: bool) -> None:
         # Parameterized generics are not unions: list[datetime] must not be
         # treated as accepting a bare datetime.
         pytest.param(list[datetime], False, id="list_datetime"),
+        # Annotated metadata is stripped before classifying
+        pytest.param(Annotated[datetime, "meta"], True, id="annotated_datetime"),
+        pytest.param(
+            Annotated[datetime | None, "meta"], True, id="annotated_datetime_or_none"
+        ),
     ],
 )
 def test_has_datetime_annotation(annotation: object, expected: bool) -> None:
@@ -89,6 +101,8 @@ def test_has_datetime_annotation(annotation: object, expected: bool) -> None:
         pytest.param(Union[str, int], "str | int", id="typing_union"),
         pytest.param(list[str] | None, "list[str]", id="pipe_optional_generic"),
         pytest.param(list[str], "list[str]", id="plain_generic"),
+        pytest.param(Annotated[int, "meta"], "int", id="annotated_int"),
+        pytest.param(Annotated[int | None, "meta"], "int", id="annotated_optional"),
     ],
 )
 def test_get_type_name_unions(annotation: object, expected: str) -> None:
@@ -148,3 +162,19 @@ def test_coerce_typing_union_datetime() -> None:
 def test_coerce_list_int_uses_yaml_not_int() -> None:
     """list[int] is not a union with int: value parses as YAML, not int()."""
     assert _coerce_value("[1, 2, 3]", list[int]) == [1, 2, 3]
+
+
+def test_coerce_annotated_int_uses_int_not_yaml() -> None:
+    """Annotated[int, ...] scalar-coerces: YAML would read "010" as octal 8."""
+    assert _coerce_value("010", Annotated[int, "meta"]) == 10
+
+
+def test_coerce_annotated_datetime_not_yaml_date() -> None:
+    """Annotated[datetime, ...] gives datetime: YAML would give a date."""
+    result = _coerce_value("2025-01-15", Annotated[datetime, "meta"])
+    assert isinstance(result, datetime)
+
+
+def test_coerce_annotated_str_stays_raw() -> None:
+    """Annotated[str, ...] keeps value as-is (no YAML parsing)."""
+    assert _coerce_value("true", Annotated[str, "meta"]) == "true"

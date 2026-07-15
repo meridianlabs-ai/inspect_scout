@@ -465,19 +465,36 @@ def _can_handle_all_types(
     return _is_compatible_with_type(scanner_type, required_type)
 
 
+def _is_union_type(type_hint: Any) -> bool:
+    """Check if a type hint is a union, in either spelling.
+
+    Covers ``typing.Union[X, Y]`` and the ``X | Y`` syntax (distinct types
+    before Python 3.14, unified from 3.14 on).
+    """
+    return get_origin(type_hint) is Union or isinstance(type_hint, UnionType)
+
+
 def _get_union_members(type_hint: Any) -> set[Type[Any]] | None:
     """Get the member types of a Union, or None if not a Union."""
-    origin = get_origin(type_hint)
-
-    # Handle Union from typing module
-    if origin is Union:
+    if _is_union_type(type_hint):
         return set(get_args(type_hint))
-
-    # Handle Python 3.10+ union syntax (X | Y)
-    if isinstance(type_hint, UnionType):
-        return set(get_args(type_hint))
-
     return None
+
+
+def _union_covers_union(scanner_type: Any, target_type: Any) -> bool:
+    """Check if a union scanner type covers every member of a union target.
+
+    A partial union (e.g. two of ChatMessage's four members) does not cover
+    the full union. Returns False if either type is not a union.
+    """
+    scanner_members = _get_union_members(scanner_type)
+    target_members = _get_union_members(target_type)
+    if scanner_members is None or target_members is None:
+        return False
+    return all(
+        any(_is_compatible_with_type(s, t) for s in scanner_members)
+        for t in target_members
+    )
 
 
 def _is_compatible_with_type(scanner_type: Any, target_type: Any) -> bool:
@@ -497,6 +514,11 @@ def _is_compatible_with_type(scanner_type: Any, target_type: Any) -> bool:
         # Direct equality
         if scanner_type == target_type:
             return True
+
+        # Unions never match on origin alone (every union's origin is Union,
+        # so a partial union would wrongly match a full one)
+        if _is_union_type(scanner_type) or _is_union_type(target_type):
+            return _union_covers_union(scanner_type, target_type)
 
         # Try to check subclass relationship
         # This works for normal classes

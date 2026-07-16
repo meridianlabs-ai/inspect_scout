@@ -22,7 +22,13 @@ EVAL_LOG = (
 def json_log(tmp_path_factory: pytest.TempPathFactory) -> Path:
     """Legacy JSON-format copy of the .eval fixture."""
     json_path = tmp_path_factory.mktemp("logs") / EVAL_LOG.with_suffix(".json").name
-    write_eval_log(read_eval_log(str(EVAL_LOG)), str(json_path))
+    log = read_eval_log(str(EVAL_LOG))
+    # Strip stored timelines so the timeline_build() fallback is always
+    # exercised, even if the fixture is regenerated with a newer
+    # inspect_ai that stores timelines.
+    for sample in log.samples or []:
+        sample.timelines = None
+    write_eval_log(log, str(json_path))
     return json_path
 
 

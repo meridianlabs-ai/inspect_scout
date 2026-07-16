@@ -534,6 +534,8 @@ class EvalLogTranscriptsView(TranscriptsView):
                 id_, epoch = self._get_sample_id_and_epoch(t)
                 sample = await recorder_type.read_log_sample(t.source_uri, id_, epoch)
                 sample_bytes = sample.model_dump_json().encode("utf-8")
+                # max_bytes guards the parse only: the full sample has
+                # already been fetched into memory above.
                 if max_bytes is not None and len(sample_bytes) > max_bytes:
                     raise TranscriptTooLargeError(
                         t.transcript_id, len(sample_bytes), max_bytes

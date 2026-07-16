@@ -324,6 +324,8 @@ await db.insert(atif(
 
 Note that `from_time`/`to_time` filter on each file's modification time (`st_mtime`), not the trajectory's run time — mtime is reset by `cp`, `git checkout`, rsync, etc., so it can diverge from when the run actually occurred.
 
+Note that subagent trajectories are inlined into their parent as spans, so a parent and its referenced subagent files should be imported together in one pass (the default when pointing `path` at a directory). Importing them across separate passes — e.g. incremental time-windowed imports — can store a subagent's events twice, once standalone and once inlined.
+
 The `atif()` source reads trajectories produced by Harbor's own runner (e.g. `harbor run --agent claude_code`). When Harbor tasks are instead run via Inspect AI through `inspect_harbor`, the output is an Inspect eval log — see [Inspect Logs](#inspect-logs).
 
 ATIF trajectories are mapped to the database schema as follows:

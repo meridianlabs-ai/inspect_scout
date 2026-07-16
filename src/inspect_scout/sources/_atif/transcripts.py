@@ -112,6 +112,18 @@ async def atif(
 
         if f.resolve() in subagent_paths:
             # Inlined as a span inside its parent; don't double-index.
+            #
+            # KNOWN LIMITATION: this suppression is scoped to a single import.
+            # It assumes a parent and its subagent files are imported together
+            # from one tree. If they aren't — an incremental/time-windowed import
+            # that discovers a subagent before its parent, or `path=` pointed
+            # directly at a subagent file — the subagent is emitted standalone in
+            # one import and inlined in another, storing its events twice. Unlike
+            # `_claude_code` (which identifies subagents by an intrinsic
+            # `agent-*.jsonl` filename), ATIF has no intrinsic subagent marker
+            # (harbor `Trajectory` carries no parent back-reference and subagent
+            # filenames are arbitrary), so that dedup can't be mirrored; a full
+            # fix needs cross-import dedup with persistent DB state (follow-up).
             continue
 
         try:

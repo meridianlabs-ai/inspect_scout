@@ -305,16 +305,24 @@ def _create_transcript(
         wall_clock = (root.end_time() - root.start_time()).total_seconds()
         total_time = wall_clock - root.idle_time()
 
-    # transcript_id must be unique per file. ATIF continuation segments share one
-    # `session_id` (the same run split across files via `continued_trajectory_ref`),
-    # so keying on session_id alone collapses base + continuation into one id and
-    # the parquet insert then silently drops the later segment. Combine the run
-    # identity with the file identity (stem); `source_id` keeps the shared run id
-    # so the segments stay linkable as one session.
+    # transcript_id must uniquely identify this trajectory DOCUMENT. ATIF's
+    # document-unique id is `trajectory_id`; `session_id` is run-scoped and MAY be
+    # shared across a run's continuation segments / subagents (keying on it alone
+    # collapses base + continuation into one id, and the parquet insert then
+    # silently drops the later segment). So prefer `trajectory_id`. It is optional
+    # on standalone trajectories and absent on all current Harbor output, so fall
+    # back to the run id + file stem; `source_id` keeps the run identity so the
+    # segments stay linkable as one session.
+    # KNOWN LIMITATION: without `trajectory_id`, the stem is unique only within a
+    # directory — files sharing a `session_id` and filename across directories
+    # still collide (the parquet insert silently drops the later one).
     run_id = trajectory.session_id or trajectory.trajectory_id
-    stem = Path(source_uri).stem if source_uri else None
-    parts = [p for p in (run_id, stem) if p]
-    transcript_id = "-".join(parts) or "unknown"
+    if trajectory.trajectory_id:
+        transcript_id = trajectory.trajectory_id
+    else:
+        stem = Path(source_uri).stem if source_uri else None
+        parts = [p for p in (run_id, stem) if p]
+        transcript_id = "-".join(parts) or "unknown"
     return Transcript(
         transcript_id=transcript_id,
         source_type=ATIF_SOURCE_TYPE,

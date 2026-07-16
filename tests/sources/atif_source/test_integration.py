@@ -460,6 +460,25 @@ async def test_transcript_top_level_fields(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_transcript_id_prefers_trajectory_id(tmp_path: Path) -> None:
+    """`trajectory_id` (ATIF's document-unique id) is used for `transcript_id` when set.
+
+    `source_id` still carries the run identity (`session_id`), so a document-unique
+    `transcript_id` and a run-scoped `source_id` coexist.
+    """
+    trajectory = make_trajectory(
+        [Step(step_id=1, source="user", message="hi")],
+        trajectory_id="doc-unique-1",  # make_trajectory sets session_id="test-session"
+    )
+    path = tmp_path / "trajectory.json"
+    write_trajectory(path, trajectory)
+    transcripts = [t async for t in atif(path=path)]
+    assert len(transcripts) == 1
+    assert transcripts[0].transcript_id == "doc-unique-1"
+    assert transcripts[0].source_id == "test-session"
+
+
+@pytest.mark.asyncio
 async def test_synthesized_event_timestamp_comes_from_step(tmp_path: Path) -> None:
     """A synthesized ModelEvent's timestamp is the step's, not import time.
 

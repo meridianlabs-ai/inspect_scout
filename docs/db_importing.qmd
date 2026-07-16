@@ -331,7 +331,7 @@ ATIF trajectories are mapped to the database schema as follows:
 | Field | Value |
 |-------|-------|
 | `source_type` | `"atif"` |
-| `transcript_id` | Trajectory `session_id` (or `trajectory_id`) + file stem |
+| `transcript_id` | Trajectory `trajectory_id`, else `session_id` (or run id) + file stem |
 | `source_id` | Trajectory `session_id` (or `trajectory_id`) |
 | `agent` | Trajectory `agent.name` |
 | `model` | Trajectory `agent.model_name` |

@@ -347,21 +347,27 @@ def _expand_events_in_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     mask = df["input_data"].notna()
 
-    for idx in df.index[mask]:
-        input_json = str(df.at[idx, "input"])
-        input_data_json = str(df.at[idx, "input_data"])
-        input_type = str(df.at[idx, "input_type"])
+    # Build replacement values in a list and assign the column once: per-row
+    # df.at writes into an Arrow-backed string column rebuild the entire column
+    # each time, making this loop O(rows * column_bytes).
+    new_input = df["input"].astype(object).to_list()
+
+    for pos in mask.to_numpy().nonzero()[0]:
+        input_json = str(new_input[pos])
+        input_data_json = str(df["input_data"].iloc[pos])
+        input_type = str(df["input_type"].iloc[pos])
 
         if input_type == "transcript":
             transcript = json.loads(input_json)
             events_json = json.dumps(transcript.get("events", []))
             expanded = expand_events(events_json, input_data_json)
             transcript["events"] = [e.model_dump() for e in expanded]
-            df.at[idx, "input"] = json.dumps(transcript)
+            new_input[pos] = json.dumps(transcript)
         elif input_type == "events":
             expanded = expand_events(input_json, input_data_json)
-            df.at[idx, "input"] = json.dumps([e.model_dump() for e in expanded])
+            new_input[pos] = json.dumps([e.model_dump() for e in expanded])
 
+    df["input"] = pd.Series(new_input, index=df.index, dtype=df["input"].dtype)
     return df.drop(columns=["input_data"])
 
 

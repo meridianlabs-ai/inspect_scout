@@ -347,9 +347,6 @@ def _expand_events_in_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     mask = df["input_data"].notna()
 
-    # Build replacement values in a list and assign the column once: per-row
-    # df.at writes into an Arrow-backed string column rebuild the entire column
-    # each time, making this loop O(rows * column_bytes).
     new_input = df["input"].astype(object).to_list()
 
     for pos in mask.to_numpy().nonzero()[0]:

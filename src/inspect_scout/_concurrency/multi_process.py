@@ -365,6 +365,11 @@ def multi_process_strategy(
 
         finally:
             signal.signal(signal.SIGINT, original_sigint_handler)
+            # Restore the default in-process registry. Leaving the cross-process
+            # ParentSemaphoreRegistry installed would leak into any subsequent
+            # inspect_ai usage in this process — degrading adaptive/resizable
+            # concurrency requests to fixed-limit MP semaphores.
+            init_concurrency()
             _active = False
 
     return the_func

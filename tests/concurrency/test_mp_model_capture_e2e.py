@@ -23,7 +23,9 @@ from pathlib import Path
 from inspect_ai.model import get_model
 from inspect_ai.model._chat_message import ChatMessageUser
 from inspect_ai.model._model import Model
+from inspect_ai.util import concurrency
 from inspect_scout import Result, Scanner, scan, scanner, transcripts_db
+from inspect_scout._concurrency._mp_semaphore import MPConcurrencySemaphore
 from inspect_scout._scanresults import scan_results_df
 from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._transcript.types import Transcript
@@ -90,3 +92,14 @@ def test_model_capturing_closure_survives_multiprocess_scan(tmp_path: Path) -> N
     # The Model was faithfully reconstructed in each worker.
     assert df["value"].tolist() == ["model"] * 6
     assert all(e == "api=MockLLM" for e in df["explanation"].tolist())
+
+    # The scan must also restore inspect_ai's default in-process concurrency
+    # registry on completion. Leaving the cross-process ParentSemaphoreRegistry
+    # installed would degrade later concurrency() requests in this process
+    # (e.g. inspect_ai's adaptive model connections) to fixed-limit MP
+    # semaphores, breaking unrelated code that runs after the scan.
+    async def check_registry_restored() -> None:
+        async with concurrency("post-mp-registry-check", 1) as sem:
+            assert not isinstance(sem, MPConcurrencySemaphore)
+
+    asyncio.run(check_registry_restored())

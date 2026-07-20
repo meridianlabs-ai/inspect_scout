@@ -1,6 +1,6 @@
 import click
 from inspect_ai._cli.trace import (
-    anomolies_command_impl,
+    anomalies_command_impl,
     dump_command_impl,
     http_command_impl,
     list_command_impl,
@@ -57,9 +57,18 @@ def dump_command(trace_file: str | None, filter: str | None) -> None:
     default=False,
     help="Show only failed HTTP requests (non-200 status)",
 )
-def http_command(trace_file: str | None, filter: str | None, failed: bool) -> None:
+@click.option(
+    "--json",
+    type=bool,
+    is_flag=True,
+    default=False,
+    help="Output as JSON (a `{trace_file, as_of, requests}` envelope).",
+)
+def http_command(
+    trace_file: str | None, filter: str | None, failed: bool, json: bool
+) -> None:
     """View all HTTP requests in the trace log."""
-    http_command_impl(trace_file, filter, failed, scout_trace_dir())
+    http_command_impl(trace_file, filter, failed, json, trace_dir=scout_trace_dir())
 
 
 @trace_command.command("anomalies")
@@ -73,8 +82,17 @@ def http_command(trace_file: str | None, filter: str | None, failed: bool) -> No
     "--all",
     is_flag=True,
     default=False,
-    help="Show all anomolies including errors and timeouts (by default only still running and cancelled actions are shown).",
+    help="Show all anomalies including errors and timeouts (by default only still running and cancelled actions are shown; JSON output always includes all buckets).",
 )
-def anomolies_command(trace_file: str | None, filter: str | None, all: bool) -> None:
+@click.option(
+    "--json",
+    type=bool,
+    is_flag=True,
+    default=False,
+    help="Output as JSON (a `{trace_file, as_of, running, cancelled, errors, timeouts}` envelope).",
+)
+def anomalies_command(
+    trace_file: str | None, filter: str | None, all: bool, json: bool
+) -> None:
     """Look for anomalies in a trace file (never completed or cancelled actions)."""
-    anomolies_command_impl(trace_file, filter, all, scout_trace_dir())
+    anomalies_command_impl(trace_file, filter, all, json, trace_dir=scout_trace_dir())

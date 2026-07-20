@@ -13,11 +13,13 @@ You can populate a transcript database in a variety of ways depending on where y
 
 3. [Claude Code](#claude-code): Read transcript data from local Claude Code sessions.
 
-4. [Transcript API](#transcript-api): Python API for creating and inserting transcripts.
+4. [Harbor](#harbor): Read transcript data from Harbor agent trajectory (ATIF) files.
 
-5. [Arrow Import](#arrow-import): Efficient direct insertion using `RecordBatchReader`.
+5. [Transcript API](#transcript-api): Python API for creating and inserting transcripts.
 
-6. [Parquet Data Lake](#parquet-data-lake): Use an existing data lake not created using Inspect Scout.
+6. [Arrow Import](#arrow-import): Efficient direct insertion using `RecordBatchReader`.
+
+7. [Parquet Data Lake](#parquet-data-lake): Use an existing data lake not created using Inspect Scout.
 
 
 We'll cover each of these in turn below. Before proceeding though you should be sure to familiarize yourself with the [Database Schema](db_schema.qmd) and make a plan for how you want to map your data into it.
@@ -274,6 +276,67 @@ Claude Code transcripts are mapped to the database schema as follows:
 | `task_set` | Project directory path |
 | `task_id` | Session slug (conversation summary) |
 | `agent` | `"claude-code"` |
+
+
+## Harbor
+
+[Harbor](https://harborframework.com/) is an agent evaluation framework whose installed agents emit [ATIF (Agent Trajectory Interchange Format)](https://github.com/harbor-framework/harbor/blob/main/rfcs/0001-trajectory-format.md) `trajectory.json` files. Scout can import these trajectories, filtering by session ID and/or time range.
+
+To import ATIF trajectories, first install the `harbor` package (requires Python >= 3.12):
+
+```bash
+pip install "harbor>=0.6.0"
+```
+
+Then, use the `atif()` source to import trajectories. For example:
+
+```python
+from inspect_scout import transcripts_db
+from inspect_scout.sources import atif
+
+async with transcripts_db("s3://my-transcript-db/") as db:
+    await db.insert(atif(path="path/to/harbor-runs"))
+```
+
+You can narrow the import by specifying a session ID, time range, or limit:
+
+```python
+# Import a specific trajectory by session ID
+await db.insert(atif(
+    path="path/to/harbor-runs",
+    session_id="abc123-def456",
+))
+
+# Import trajectories from a time range
+from datetime import datetime
+await db.insert(atif(
+    path="path/to/harbor-runs",
+    from_time=datetime(2026, 1, 1),
+    to_time=datetime(2026, 6, 30),
+))
+
+# Limit the number of transcripts
+await db.insert(atif(
+    path="path/to/harbor-runs",
+    limit=100,
+))
+```
+
+Note that `from_time`/`to_time` filter on each file's modification time (`st_mtime`), not the trajectory's run time — mtime is reset by `cp`, `git checkout`, rsync, etc., so it can diverge from when the run actually occurred.
+
+Note that subagent trajectories are inlined into their parent as spans, so a parent and its referenced subagent files should be imported together in one pass (the default when pointing `path` at a directory). Importing them across separate passes — e.g. incremental time-windowed imports — can store a subagent's events twice, once standalone and once inlined.
+
+The `atif()` source reads trajectories produced by Harbor's own runner (e.g. `harbor run --agent claude_code`). When Harbor tasks are instead run via Inspect AI through `inspect_harbor`, the output is an Inspect eval log — see [Inspect Logs](#inspect-logs).
+
+ATIF trajectories are mapped to the database schema as follows:
+
+| Field | Value |
+|-------|-------|
+| `source_type` | `"atif"` |
+| `transcript_id` | Trajectory `trajectory_id`, else `session_id` (or run id) + file stem |
+| `source_id` | Trajectory `session_id` (or `trajectory_id`) |
+| `agent` | Trajectory `agent.name` |
+| `model` | Trajectory `agent.model_name` |
 
 
 ## Transcript API

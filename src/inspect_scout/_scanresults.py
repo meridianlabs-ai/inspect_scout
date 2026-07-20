@@ -183,15 +183,18 @@ def scan_results_batches(
         DataFrames of (up to expansion) `batch_size` result rows.
     """
     recorder = scan_recorder_type_for_location(scan_location)
-    batches = recorder.results_batches(
+    results = recorder.results_batches(
         scan_location, scanner, batch_size=batch_size, exclude_columns=exclude_columns
     )
 
-    # same transformations (and order) as scan_results_df()
-    for df in batches:
+    # same transformations (and order) as scan_results_df(), with file-scoped
+    # decisions supplied by the recorder's pre-pass
+    for df in results.batches:
         df = _expand_events_in_df(df)
         if rows == "results":
-            df = _expand_resultset_rows(df)
+            df = _expand_resultset_rows(
+                df, value_types_uniform=results.resultset_value_types_uniform
+            )
         yield df
 
 
@@ -457,7 +460,9 @@ def _expand_events_in_df(df: pd.DataFrame) -> pd.DataFrame:
     return df.drop(columns=["input_data"])
 
 
-def _expand_resultset_rows(df: pd.DataFrame) -> pd.DataFrame:
+def _expand_resultset_rows(
+    df: pd.DataFrame, *, value_types_uniform: bool | None = None
+) -> pd.DataFrame:
     """
     Expand rows where value_type == "resultset" into multiple rows.
 
@@ -470,6 +475,11 @@ def _expand_resultset_rows(df: pd.DataFrame) -> pd.DataFrame:
 
     Args:
         df: DataFrame potentially containing resultset rows
+        value_types_uniform: Whether the expanded result value types are
+            uniform. Streaming callers supply this as a file-level decision
+            (a batch is a subset of the file, so deciding per batch could
+            cast where the whole-file path would not). None (the default)
+            decides from this DataFrame.
 
     Returns:
         DataFrame with resultset rows expanded
@@ -624,8 +634,11 @@ def _expand_resultset_rows(df: pd.DataFrame) -> pd.DataFrame:
         expanded["message_references"] = "[]"
         expanded["event_references"] = "[]"
 
-    # Apply type casting to the value column based on value_type
-    expanded = _cast_value_column(expanded)
+    # Apply type casting to the value column based on value_type (skipped
+    # when a file-level decision says types are mixed overall; when uniform,
+    # this frame is a uniform subset so the cast is identical)
+    if value_types_uniform is not False:
+        expanded = _cast_value_column(expanded)
 
     # NULL out scan execution fields to avoid incorrect aggregation
     # (these represent the scan execution, not individual results)

@@ -70,6 +70,42 @@ def mixed_scanner_factory() -> Scanner[Transcript]:
     return scan_transcript
 
 
+@scanner(name="segregated_resultset_scanner", messages="all")
+def segregated_resultset_scanner_factory() -> Scanner[Transcript]:
+    """Resultsets uniform within each transcript but mixed across the file.
+
+    With batch_size=1 each batch's expanded value types are uniform while the
+    file's are mixed, so a per-batch cast decision would diverge from the
+    whole-file path (which leaves values uncast).
+    """
+    calls: list[int] = []
+
+    async def scan_transcript(transcript: Transcript) -> list[Result]:
+        calls.append(1)
+        if len(calls) % 2 == 1:
+            return [
+                Result(label="a", value=True),
+                Result(label="b", value=False),
+            ]
+        else:
+            return [
+                Result(label="a", value="high"),
+                Result(label="b", value="low"),
+            ]
+
+    return scan_transcript
+
+
+@scanner(name="uniform_resultset_scanner", messages="all")
+def uniform_resultset_scanner_factory() -> Scanner[Transcript]:
+    """Resultsets with uniformly numeric values (cast applies across batches)."""
+
+    async def scan_transcript(transcript: Transcript) -> list[Result]:
+        return [Result(label="a", value=1.5), Result(label="b", value=2)]
+
+    return scan_transcript
+
+
 @pytest.fixture(scope="module")
 def scan_location() -> Iterator[str]:
     """Run a single scan with all test scanners over two transcripts."""
@@ -79,6 +115,8 @@ def scan_location() -> Iterator[str]:
                 resultset_scanner_factory(),
                 bool_scanner_factory(),
                 mixed_scanner_factory(),
+                segregated_resultset_scanner_factory(),
+                uniform_resultset_scanner_factory(),
             ],
             transcripts=transcripts_from(LOGS_DIR),
             scans=tmpdir,
@@ -159,6 +197,26 @@ def test_parity_resultset_expansion(scan_location: str) -> None:
     assert all(len(batch) == 3 for batch in batches)
     total = sum(len(batch) for batch in batches)
     assert total == 6
+
+
+def test_parity_resultset_types_mixed_across_batches(scan_location: str) -> None:
+    """Expanded cast must use the file-level uniformity decision.
+
+    The file's expanded value types are mixed (boolean/string) but each batch
+    is uniform; a per-batch decision would cast the boolean batch (destroying
+    the values) where the whole-file path leaves everything uncast.
+    """
+    batches = assert_batches_match_df(scan_location, "segregated_resultset_scanner")
+    values = pd.concat(batches, ignore_index=True)["value"].tolist()
+    assert sorted(values, key=str) == [False, True, "high", "low"]
+
+
+def test_parity_resultset_types_uniform_across_batches(scan_location: str) -> None:
+    """File-level uniform expanded types: cast applied identically per batch."""
+    batches = assert_batches_match_df(scan_location, "uniform_resultset_scanner")
+    actual = pd.concat(batches, ignore_index=True)
+    assert pd.api.types.is_numeric_dtype(actual["value"].dtype)
+    assert sorted(actual["value"].tolist()) == [1.5, 1.5, 2.0, 2.0]
 
 
 def test_parity_rows_transcripts(scan_location: str) -> None:

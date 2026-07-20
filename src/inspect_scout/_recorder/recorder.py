@@ -87,6 +87,24 @@ class ScanResultsArrow(Status):
 
 
 @dataclass
+class ScanResultsBatches:
+    """Streamed scanner result batches plus file-scoped facts about them."""
+
+    batches: Iterator[pd.DataFrame]
+    """Raw result DataFrame batches (top-level value column already cast)."""
+
+    resultset_value_types_uniform: bool
+    """Whether the value types of results inside resultset rows are uniform
+    across the entire file.
+
+    Resultset expansion casts the expanded value column based on whole-frame
+    type uniformity, so batch consumers must apply this file-level decision
+    to match the single-DataFrame path (a batch is a subset of the file, so
+    deciding per batch could cast where the whole-file path would not).
+    """
+
+
+@dataclass
 class ScanResultsDF(Status):
     """Scan results as pandas data frames.
 
@@ -290,12 +308,14 @@ class ScanRecorder(abc.ABC):
         *,
         batch_size: int = 1024,
         exclude_columns: list[str] | None = None,
-    ) -> Iterator[pd.DataFrame]:
+    ) -> ScanResultsBatches:
         """Stream a scanner's results as raw DataFrame batches.
 
-        Yields the same rows as the scanner's `results_df()` DataFrame (value
-        column cast appropriately) but in batches of `batch_size` rows, with
-        memory bounded by `batch_size` rather than the size of the results.
+        The returned `batches` iterator yields the same rows as the scanner's
+        `results_df()` DataFrame (value column cast appropriately) but in
+        batches of `batch_size` rows, with memory bounded by `batch_size`
+        rather than the size of the results. File-scoped facts that per-batch
+        transformations depend on are provided alongside the iterator.
 
         Note that batches are read with synchronous I/O (unlike the other
         recorder methods, which are async).

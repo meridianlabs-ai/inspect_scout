@@ -5,7 +5,7 @@ import os
 import tempfile
 from collections.abc import Iterator, Mapping
 from logging import getLogger
-from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence, cast
+from typing import TYPE_CHECKING, Any, Callable, Literal, NamedTuple, Sequence, cast
 
 import duckdb
 import pandas as pd
@@ -42,6 +42,7 @@ from .._util.duckdb import create_parquet_view, restrict_external_access
 from .recorder import (
     ScanRecorder,
     ScanResultsArrow,
+    ScanResultsBatches,
     ScanResultsDB,
     ScanResultsDF,
     Status,
@@ -554,25 +555,30 @@ class FileRecorder(ScanRecorder):
         *,
         batch_size: int = 1024,
         exclude_columns: list[str] | None = None,
-    ) -> Iterator[pd.DataFrame]:
+    ) -> ScanResultsBatches:
         parquet = _open_scanner_parquet(UPath(scan_location), scanner)
 
         exclude = set(exclude_columns) if exclude_columns else set()
         columns = [c for c in parquet.schema.names if c not in exclude]
 
-        # _cast_value_column() keys its cast decision on whole-frame uniformity
-        # of value_type, so compute uniformity over the whole file up front
-        # (with a memory-bounded pre-pass) to keep per-batch casting identical
-        # to the single-DataFrame path.
-        value_type_is_uniform = "value_type" in parquet.schema.names and (
-            _value_type_is_uniform(parquet, batch_size)
-        )
+        # The single-DataFrame path makes its value-cast decisions over the
+        # whole frame; compute them over the whole file up front (with a
+        # memory-bounded pre-pass) so per-batch transforms are identical.
+        prepass = _results_batches_prepass(parquet, columns)
 
-        for batch in parquet.iter_batches(batch_size=batch_size, columns=columns):
-            df = pa.Table.from_batches([batch]).to_pandas(types_mapper=pd.ArrowDtype)
-            if value_type_is_uniform:
-                df = _cast_value_column(df)
-            yield df
+        def batches() -> Iterator[pd.DataFrame]:
+            for batch in parquet.iter_batches(batch_size=batch_size, columns=columns):
+                df = pa.Table.from_batches([batch]).to_pandas(
+                    types_mapper=pd.ArrowDtype
+                )
+                if prepass.value_type_uniform:
+                    df = _cast_value_column(df)
+                yield df
+
+        return ScanResultsBatches(
+            batches=batches(),
+            resultset_value_types_uniform=prepass.resultset_value_types_uniform,
+        )
 
     @override
     @staticmethod
@@ -1077,20 +1083,116 @@ def _resolve_parquet_source(
     return str(scanner_path), None
 
 
-def _value_type_is_uniform(parquet: pq.ParquetFile, batch_size: int) -> bool:
-    """Whether the value_type column has exactly one distinct non-null value.
+class _ResultsBatchesPrepass(NamedTuple):
+    """File-scoped cast decisions for streamed result batches."""
 
-    Scans only the value_type column in batches (keeping just the distinct
-    values seen so far and short-circuiting once two are found), so this
-    pre-pass stays memory-bounded like the main read.
+    value_type_uniform: bool
+    """Whether the top-level value_type column has one distinct non-null value."""
+
+    resultset_value_types_uniform: bool
+    """Whether the expanded resultset result value types are uniform."""
+
+
+def _results_batches_prepass(
+    parquet: pq.ParquetFile, columns: list[str]
+) -> _ResultsBatchesPrepass:
+    """Compute the file-scoped decisions that per-batch transforms depend on.
+
+    The single-DataFrame path decides value casting over the whole frame:
+    `_cast_value_column()` keys off the distinct value_type values it sees,
+    and resultset expansion applies the same logic to the *expanded* result
+    value types. Streamed batches are subsets of the file, so both decisions
+    are computed here over the whole file instead.
+
+    Reads one row group at a time, keeping only the distinct types seen so
+    far, so the pre-pass stays memory-bounded like the main read. The value
+    column is only read for row groups that contain resultset rows.
+
+    `columns` is the post-exclusion column list: decisions must reflect the
+    same columns the single-DataFrame path would see after exclusions.
     """
-    distinct: set[str] = set()
-    for batch in parquet.iter_batches(batch_size=batch_size, columns=["value_type"]):
-        values = pc.unique(batch.column("value_type").drop_null()).to_pylist()
-        distinct.update(str(v) for v in values if v is not None)
-        if len(distinct) > 1:
-            return False
-    return len(distinct) == 1
+    if "value_type" not in columns:
+        return _ResultsBatchesPrepass(
+            value_type_uniform=False, resultset_value_types_uniform=False
+        )
+    has_value = "value" in columns
+
+    top_level_types: set[str] = set()
+    expanded_types: set[str] = set()
+
+    for row_group in range(parquet.metadata.num_row_groups):
+        value_type_column = parquet.read_row_group(
+            row_group, columns=["value_type"]
+        ).column("value_type")
+        top_level_types.update(
+            str(v)
+            for v in pc.unique(value_type_column.drop_null()).to_pylist()
+            if v is not None
+        )
+
+        # expanded types are only needed until two distinct values are seen
+        if not has_value or len(expanded_types) > 1:
+            continue
+        resultset_mask = pc.equal(value_type_column, pa.scalar("resultset"))
+        if not pc.any(resultset_mask).as_py():
+            continue
+        values = (
+            parquet.read_row_group(row_group, columns=["value"])
+            .filter(resultset_mask)
+            .column("value")
+            .to_pylist()
+        )
+        for raw in values:
+            for result in _parse_resultset_value(raw):
+                if isinstance(result, dict):
+                    expanded_types.add(_result_value_type(result))
+
+    return _ResultsBatchesPrepass(
+        value_type_uniform=len(top_level_types) == 1,
+        resultset_value_types_uniform=len(expanded_types) == 1,
+    )
+
+
+def _parse_resultset_value(raw: Any) -> list[Any]:
+    """Parse a resultset row's raw value into its non-null Result dicts.
+
+    Mirrors how `_expand_resultset_rows()` treats the value column: JSON
+    strings are parsed (anything else yields no results), non-list payloads
+    are treated as a single result, and null elements are dropped (explode +
+    notna upstream).
+    """
+    parsed = json.loads(raw) if isinstance(raw, str) and raw else []
+    if not isinstance(parsed, list):
+        parsed = [parsed]
+    return [result for result in parsed if result is not None]
+
+
+def _result_value_type(result: dict[str, Any]) -> str:
+    """Value type of a raw Result dict, mirroring expansion's inference.
+
+    Mirrors `infer_value_type()` inside `_expand_resultset_rows()`.
+    Used by the file-level pre-pass to decide expanded value-type uniformity.
+    (For dict-valued results in frames that mix dict and scalar values,
+    `pd.json_normalize` can leave the value NA so expansion infers "null"
+    where this returns "object"; both are non-castable types, so the cast
+    decision — the only consumer of uniformity — is unaffected.)
+    """
+    vtype = result.get("type")
+    if vtype is not None:
+        return str(vtype)
+    value = result.get("value")
+    if isinstance(value, bool):
+        return "boolean"
+    elif isinstance(value, (int, float)):
+        return "number"
+    elif isinstance(value, str):
+        return "string"
+    elif isinstance(value, list):
+        return "array"
+    elif isinstance(value, dict):
+        return "object"
+    else:
+        return "null"
 
 
 def _open_scanner_parquet(scan_dir: UPath, scanner: str) -> pq.ParquetFile:

@@ -1491,7 +1491,7 @@ wheels = [
 
 [[package]]
 name = "inspect-ai"
-version = "0.3.246"
+version = "0.3.248"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "agent-client-protocol" },
@@ -1536,9 +1536,9 @@ dependencies = [
     { name = "zipp" },
     { name = "zstandard" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f1/6f/6c4d56a838d77cda79a8beefb60019dc50f9d2d6beb1c5f414dde5db610e/inspect_ai-0.3.246.tar.gz", hash = "sha256:2edebb069318042bca0638de50be666a50e514096a90070ee00aceccf858c84b", size = 49563205, upload-time = "2026-07-10T23:54:07.489Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/97/f4/599b4efbc99bfcdd428246da2106aae83358504af4c0f29c46885ec59630/inspect_ai-0.3.248.tar.gz", hash = "sha256:43ca13fffa82db7dbb98f2ecf749b159d2cdca3075571d5c84ca5c7705a73e33", size = 49367201, upload-time = "2026-07-18T01:30:15.244Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/88/b2/635fc2d46379eb7da73cd04ec1b23486a113be55c256c5bce8193198f97e/inspect_ai-0.3.246-py3-none-any.whl", hash = "sha256:b010b5759332f8f780757bfcae854fcfe5f71c6387988a14ca6a7b024a4a9e88", size = 37185092, upload-time = "2026-07-10T23:53:59.87Z" },
+    { url = "https://files.pythonhosted.org/packages/3c/97/470fed5587567973f6fb03aec30aa14d95758e58a413732384aabce7abec/inspect_ai-0.3.248-py3-none-any.whl", hash = "sha256:2a2f742560085af047c3ca20eda76ba89ed423f9935004f5f5376babc912ffe7", size = 36901395, upload-time = "2026-07-18T01:30:06.86Z" },
 ]
 
 [[package]]
@@ -1669,7 +1669,7 @@ requires-dist = [
     { name = "huggingface-hub", marker = "extra == 'dev'" },
     { name = "ijson", specifier = ">=3.2.0" },
     { name = "importlib-metadata" },
-    { name = "inspect-ai", specifier = ">=0.3.245" },
+    { name = "inspect-ai", specifier = ">=0.3.248" },
     { name = "inspect-swe", specifier = ">=0.2.56" },
     { name = "jinja2", specifier = ">=3.0.0" },
     { name = "jsonlines", specifier = ">=3.0.0" },

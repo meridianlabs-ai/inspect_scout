@@ -167,14 +167,18 @@ def test_coerce_list_int_uses_yaml_not_int() -> None:
 def test_coerce_annotated_int_uses_int_not_yaml() -> None:
     """Annotated[int, ...] scalar-coerces: YAML would read "010" as octal 8."""
     assert _coerce_value("010", Annotated[int, "meta"]) == 10
+    assert _coerce_value("010", Annotated[int, "meta"] | None) == 10
 
 
 def test_coerce_annotated_datetime_not_yaml_date() -> None:
     """Annotated[datetime, ...] gives datetime: YAML would give a date."""
     result = _coerce_value("2025-01-15", Annotated[datetime, "meta"])
     assert isinstance(result, datetime)
+    optional_result = _coerce_value("2025-01-15", Annotated[datetime, "meta"] | None)
+    assert isinstance(optional_result, datetime)
 
 
 def test_coerce_annotated_str_stays_raw() -> None:
     """Annotated[str, ...] keeps value as-is (no YAML parsing)."""
     assert _coerce_value("true", Annotated[str, "meta"]) == "true"
+    assert _coerce_value("true", Annotated[str, "meta"] | None) == "true"

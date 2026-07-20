@@ -109,7 +109,7 @@ def _has_datetime_annotation(annotation: Any) -> bool:
     # any other generic are container parameters (list[datetime] does not
     # accept a bare datetime)
     if is_union_type(annotation):
-        return any(a is datetime for a in get_args(annotation))
+        return any(_has_datetime_annotation(a) for a in get_args(annotation))
     return False
 
 
@@ -126,7 +126,7 @@ def _has_int_annotation(annotation: Any) -> bool:
     # other generic are container parameters (list[int] does not accept a
     # bare int)
     if is_union_type(annotation):
-        return any(a is int for a in get_args(annotation))
+        return any(_has_int_annotation(a) for a in get_args(annotation))
     return False
 
 
@@ -140,7 +140,9 @@ def _is_str_only_annotation(annotation: Any) -> bool:
         return True
     # Only union members are alternatives (not e.g. list[str])
     if is_union_type(annotation):
-        return set(get_args(annotation)) == {str, NoneType}
+        members = [_unwrap_annotated(a) for a in get_args(annotation)]
+        non_none = [a for a in members if a is not NoneType]
+        return len(non_none) == 1 and _is_str_only_annotation(non_none[0])
     return False
 
 

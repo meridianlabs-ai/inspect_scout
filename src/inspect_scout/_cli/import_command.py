@@ -8,7 +8,8 @@ import importlib
 import inspect
 from datetime import datetime
 from pathlib import Path
-from typing import Any, AsyncIterator, Callable
+from types import NoneType
+from typing import Annotated, Any, AsyncIterator, Callable, get_args, get_origin
 
 import click
 import yaml
@@ -21,6 +22,7 @@ from inspect_scout._cli.common import (
 )
 from inspect_scout._display._display import display
 from inspect_scout._util.constants import DEFAULT_TRANSCRIPTS_DIR
+from inspect_scout._util.type_hints import is_union_type
 
 
 def _discover_sources() -> dict[str, Callable[..., Any]]:
@@ -39,34 +41,37 @@ def _discover_sources() -> dict[str, Callable[..., Any]]:
     return sources
 
 
+def _unwrap_annotated(annotation: Any) -> Any:
+    """Strip Annotated metadata, returning the underlying type.
+
+    Annotated is a metadata wrapper, not a container: Annotated[int, ...]
+    accepts the same values as int. Nested Annotated self-flattens, so a
+    single unwrap suffices.
+    """
+    if get_origin(annotation) is Annotated:
+        return get_args(annotation)[0]
+    return annotation
+
+
 def _get_type_name(annotation: Any) -> str:
     """Extract a readable type name from a type annotation."""
     if annotation is inspect.Parameter.empty:
         return ""
-    # Handle union types (e.g., str | None, list[str] | None)
-    origin = getattr(annotation, "__origin__", None)
-    args = getattr(annotation, "__args__", ())
+    annotation = _unwrap_annotated(annotation)
 
-    # Handle UnionType (X | Y)
-    if origin is not None and str(origin) == "typing.Union":
+    # Handle union types (e.g., str | None, typing.Union[str, None])
+    if is_union_type(annotation):
         # Filter out NoneType
-        non_none = [a for a in args if a is not type(None)]
-        if len(non_none) == 1:
-            return _get_type_name(non_none[0])
-        return " | ".join(_get_type_name(a) for a in non_none)
-
-    # Python 3.10+ union syntax (types.UnionType)
-    import types
-
-    if isinstance(annotation, types.UnionType):
-        non_none = [a for a in args if a is not type(None)]
+        non_none = [a for a in get_args(annotation) if a is not type(None)]
         if len(non_none) == 1:
             return _get_type_name(non_none[0])
         return " | ".join(_get_type_name(a) for a in non_none)
 
     # Handle generic types like list[str], dict[str, str]
+    origin = get_origin(annotation)
     if origin is not None:
         origin_name = getattr(origin, "__name__", str(origin))
+        args = get_args(annotation)
         if args:
             arg_names = ", ".join(_get_type_name(a) for a in args)
             return f"{origin_name}[{arg_names}]"
@@ -97,10 +102,15 @@ def _has_datetime_annotation(annotation: Any) -> bool:
     if isinstance(annotation, str):
         parts = [p.strip() for p in annotation.split("|")]
         return "datetime" in parts
+    annotation = _unwrap_annotated(annotation)
     if annotation is datetime:
         return True
-    args = getattr(annotation, "__args__", ())
-    return any(a is datetime for a in args)
+    # Union members are alternatives, so datetime among them counts; args of
+    # any other generic are container parameters (list[datetime] does not
+    # accept a bare datetime)
+    if is_union_type(annotation):
+        return any(_has_datetime_annotation(a) for a in get_args(annotation))
+    return False
 
 
 def _has_int_annotation(annotation: Any) -> bool:
@@ -109,31 +119,31 @@ def _has_int_annotation(annotation: Any) -> bool:
     if isinstance(annotation, str):
         parts = [p.strip() for p in annotation.split("|")]
         return "int" in parts
+    annotation = _unwrap_annotated(annotation)
     if annotation is int:
         return True
-    args = getattr(annotation, "__args__", ())
-    return any(a is int for a in args)
+    # Union members are alternatives, so int among them counts; args of any
+    # other generic are container parameters (list[int] does not accept a
+    # bare int)
+    if is_union_type(annotation):
+        return any(_has_int_annotation(a) for a in get_args(annotation))
+    return False
 
 
 def _is_str_only_annotation(annotation: Any) -> bool:
     """Check if annotation is strictly str or str | None (no other types)."""
-    import types
-
     if isinstance(annotation, str):
         parts = [p.strip() for p in annotation.split("|")]
         return parts == ["str"] or set(parts) == {"str", "None"}
+    annotation = _unwrap_annotated(annotation)
     if annotation is str:
         return True
-    # Only check args for union types (not e.g. list[str])
-    origin = getattr(annotation, "__origin__", None)
-    is_union = isinstance(annotation, types.UnionType) or (
-        origin is not None and str(origin) == "typing.Union"
-    )
-    if not is_union:
-        return False
-    args = getattr(annotation, "__args__", ())
-    non_none = [a for a in args if a is not type(None)]
-    return len(non_none) == 1 and non_none[0] is str
+    # Only union members are alternatives (not e.g. list[str])
+    if is_union_type(annotation):
+        members = [_unwrap_annotated(a) for a in get_args(annotation)]
+        non_none = [a for a in members if a is not NoneType]
+        return len(non_none) == 1 and _is_str_only_annotation(non_none[0])
+    return False
 
 
 def _coerce_value(value: str, annotation: Any) -> Any:

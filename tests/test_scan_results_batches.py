@@ -236,7 +236,7 @@ def test_arrow_reader_streams_remote_filesystem(
     shutil.copytree(FIXTURE_SCAN, scan_dir)
     parquet_path = scan_dir / "word_counter.parquet"
     table = pq.ParquetFile(parquet_path).read()
-    pq.write_table(table, parquet_path, row_group_size=8)
+    pq.write_table(table, parquet_path, row_group_size=2)
     file_size = parquet_path.stat().st_size
 
     # remote-style filesystem that counts bytes read
@@ -254,11 +254,13 @@ def test_arrow_reader_streams_remote_filesystem(
     monkeypatch.setattr(scout_file, "_resolve_parquet_source", resolve)
 
     results = scan_results_arrow(scan_dir.as_posix())
-    reader = results.reader("word_counter", streaming_batch_size=8)
+    reader = results.reader("word_counter", streaming_batch_size=2)
 
-    # reading the first batch should not have read the whole file
+    # reading the first batch should not have read the whole file (the
+    # reader does prefetch a bounded number of row groups ahead, so this
+    # is a coarse bound rather than a single-row-group bound)
     first = next(iter(reader))
-    assert len(first) == 8
+    assert len(first) == 2
     bytes_after_first = counter["bytes_read"]
     assert bytes_after_first < file_size
 

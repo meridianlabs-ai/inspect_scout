@@ -1050,12 +1050,15 @@ def _open_scanner_parquet(scan_dir: UPath, scanner: str) -> pq.ParquetFile:
     """Open a scanner's parquet file for streaming reads.
 
     Uses `_resolve_parquet_source()` scheme dispatch so cloud sources are read
-    lazily via HTTP range requests where PyArrow supports them.
+    lazily via HTTP range requests where PyArrow supports them. `pre_buffer`
+    is disabled explicitly (pyarrow >= 25 defaults it to True) since it makes
+    `iter_batches()` buffer the entire file up front, defeating streaming;
+    we prefer bounded memory over coalesced range requests here.
     """
     pa_path, pa_fs = _resolve_parquet_source(scan_dir / f"{scanner}.parquet")
     if pa_fs is not None:
-        return pq.ParquetFile(pa_path, filesystem=pa_fs)
-    return pq.ParquetFile(pa_path)
+        return pq.ParquetFile(pa_path, filesystem=pa_fs, pre_buffer=False)
+    return pq.ParquetFile(pa_path, pre_buffer=False)
 
 
 def _load_scanner_df(

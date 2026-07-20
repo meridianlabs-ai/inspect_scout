@@ -411,7 +411,10 @@ class FileRecorder(ScanRecorder):
                 pa_path, pa_fs = self._resolve_parquet_source(scanner)
 
                 if pa_fs is not None:
-                    pf = pq.ParquetFile(pa_path, filesystem=pa_fs)
+                    # pre_buffer coalesces each row group's column-chunk range
+                    # requests; memory stays bounded by the row group size
+                    # (explicit since the default changed in pyarrow 25).
+                    pf = pq.ParquetFile(pa_path, filesystem=pa_fs, pre_buffer=True)
                     for i in range(pf.metadata.num_row_groups):
                         rg_ids = pf.read_row_group(i, columns=[id_column])
                         mask = pc.equal(rg_ids[id_column], id_value)
@@ -542,6 +545,34 @@ class FileRecorder(ScanRecorder):
             errors=status.errors,
             scanners=scanners,
         )
+
+    @override
+    @staticmethod
+    def results_batches(
+        scan_location: str,
+        scanner: str,
+        *,
+        batch_size: int = 1024,
+        exclude_columns: list[str] | None = None,
+    ) -> Iterator[pd.DataFrame]:
+        parquet = _open_scanner_parquet(UPath(scan_location), scanner)
+
+        exclude = set(exclude_columns) if exclude_columns else set()
+        columns = [c for c in parquet.schema.names if c not in exclude]
+
+        # _cast_value_column() keys its cast decision on whole-frame uniformity
+        # of value_type, so compute uniformity over the whole file up front
+        # (with a memory-bounded pre-pass) to keep per-batch casting identical
+        # to the single-DataFrame path.
+        value_type_is_uniform = "value_type" in parquet.schema.names and (
+            _value_type_is_uniform(parquet, batch_size)
+        )
+
+        for batch in parquet.iter_batches(batch_size=batch_size, columns=columns):
+            df = pa.Table.from_batches([batch]).to_pandas(types_mapper=pd.ArrowDtype)
+            if value_type_is_uniform:
+                df = _cast_value_column(df)
+            yield df
 
     @override
     @staticmethod
@@ -1044,6 +1075,22 @@ def _resolve_parquet_source(
             return io.BytesIO(f.read()), None
 
     return str(scanner_path), None
+
+
+def _value_type_is_uniform(parquet: pq.ParquetFile, batch_size: int) -> bool:
+    """Whether the value_type column has exactly one distinct non-null value.
+
+    Scans only the value_type column in batches (keeping just the distinct
+    values seen so far and short-circuiting once two are found), so this
+    pre-pass stays memory-bounded like the main read.
+    """
+    distinct: set[str] = set()
+    for batch in parquet.iter_batches(batch_size=batch_size, columns=["value_type"]):
+        values = pc.unique(batch.column("value_type").drop_null()).to_pylist()
+        distinct.update(str(v) for v in values if v is not None)
+        if len(distinct) > 1:
+            return False
+    return len(distinct) == 1
 
 
 def _open_scanner_parquet(scan_dir: UPath, scanner: str) -> pq.ParquetFile:

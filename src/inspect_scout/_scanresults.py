@@ -4,20 +4,13 @@ from collections.abc import AsyncIterator, Iterator
 from typing import Any, Literal
 
 import pandas as pd
-import pyarrow as pa
-import pyarrow.compute as pc
-import pyarrow.parquet as pq
 from inspect_ai._util._async import run_coroutine
 from inspect_ai._util.json import to_json_str_safe
 from inspect_ai.log import expand_events
 from upath import UPath
 
 from ._recorder.factory import scan_recorder_type_for_location
-from ._recorder.file import (
-    LazyScannerMapping,
-    _cast_value_column,
-    _open_scanner_parquet,
-)
+from ._recorder.file import LazyScannerMapping, _cast_value_column
 from ._recorder.recorder import (
     ScanResultsArrow,
     ScanResultsDB,
@@ -189,24 +182,13 @@ def scan_results_batches(
     Yields:
         DataFrames of (up to expansion) `batch_size` result rows.
     """
-    parquet = _open_scanner_parquet(UPath(scan_location), scanner)
-
-    exclude = set(exclude_columns) if exclude_columns else set()
-    columns = [c for c in parquet.schema.names if c not in exclude]
-
-    # _cast_value_column() keys its cast decision on whole-frame uniformity of
-    # value_type, so compute uniformity over the whole file up front (with a
-    # memory-bounded pre-pass) to keep per-batch casting identical to the
-    # single-DataFrame path.
-    value_type_is_uniform = "value_type" in parquet.schema.names and (
-        _value_type_is_uniform(parquet, batch_size)
+    recorder = scan_recorder_type_for_location(scan_location)
+    batches = recorder.results_batches(
+        scan_location, scanner, batch_size=batch_size, exclude_columns=exclude_columns
     )
 
-    for batch in parquet.iter_batches(batch_size=batch_size, columns=columns):
-        df = pa.Table.from_batches([batch]).to_pandas(types_mapper=pd.ArrowDtype)
-        if value_type_is_uniform:
-            df = _cast_value_column(df)
-        # same transformations (and order) as scan_results_df()
+    # same transformations (and order) as scan_results_df()
+    for df in batches:
         df = _expand_events_in_df(df)
         if rows == "results":
             df = _expand_resultset_rows(df)
@@ -254,22 +236,6 @@ async def scan_results_batches_async(
         if batch is None:
             return
         yield batch
-
-
-def _value_type_is_uniform(parquet: pq.ParquetFile, batch_size: int) -> bool:
-    """Whether the value_type column has exactly one distinct non-null value.
-
-    Scans only the value_type column in batches (keeping just the distinct
-    values seen so far and short-circuiting once two are found), so this
-    pre-pass stays memory-bounded like the main read.
-    """
-    distinct: set[str] = set()
-    for batch in parquet.iter_batches(batch_size=batch_size, columns=["value_type"]):
-        values = pc.unique(batch.column("value_type").drop_null()).to_pylist()
-        distinct.update(str(v) for v in values if v is not None)
-        if len(distinct) > 1:
-            return False
-    return len(distinct) == 1
 
 
 def scan_results_db(

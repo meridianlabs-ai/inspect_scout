@@ -1,4 +1,5 @@
 import abc
+from collections.abc import Iterator
 from dataclasses import dataclass
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Literal, Mapping, Sequence
@@ -280,6 +281,26 @@ class ScanRecorder(abc.ABC):
         scanner: str | None = None,
         exclude_columns: list[str] | None = None,
     ) -> ScanResultsDF: ...
+
+    @staticmethod
+    @abc.abstractmethod
+    def results_batches(
+        scan_location: str,
+        scanner: str,
+        *,
+        batch_size: int = 1024,
+        exclude_columns: list[str] | None = None,
+    ) -> Iterator[pd.DataFrame]:
+        """Stream a scanner's results as raw DataFrame batches.
+
+        Yields the same rows as the scanner's `results_df()` DataFrame (value
+        column cast appropriately) but in batches of `batch_size` rows, with
+        memory bounded by `batch_size` rather than the size of the results.
+
+        Note that batches are read with synchronous I/O (unlike the other
+        recorder methods, which are async).
+        """
+        ...
 
     @staticmethod
     @abc.abstractmethod

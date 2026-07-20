@@ -2178,24 +2178,36 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
     def _init_s3_auth(self) -> None:
         assert self._conn is not None
-        # DuckDB's default credential_chain omits the SSO provider, so an SSO-only session (no
-        # static env creds) can't authenticate to S3. When an AWS config file is present, bind its
-        # profile and add `sso` to the chain; env/config/instance/process keep static-cred and
-        # instance-role paths working. Without a config file (bare env-cred containers), fall back
-        # to the default chain so those environments are unaffected. `sts` is omitted -- it errors
-        # without an ASSUME_ROLE_ARN.
+        # DuckDB's default credential_chain omits the SSO provider, so an SSO-only
+        # session (no static env creds) can't authenticate to S3. When an AWS config
+        # file is present, add `sso` to the chain and bind the profile explicitly:
+        # the sso provider resolves its profile only from a bound PROFILE clause
+        # (it ignores AWS_PROFILE in the environment), so SSO doesn't work without
+        # one. env/config/instance/process keep static-cred and instance-role paths
+        # working; `sts` is omitted -- it errors without an ASSUME_ROLE_ARN.
+        #
+        # DuckDB validates a bound PROFILE against the config file eagerly at
+        # CREATE SECRET and throws if the profile isn't defined there (e.g. no
+        # [default] section, or the profile lives only in the credentials file) --
+        # even when other chain providers could supply credentials. So fall back
+        # to the default chain if the profile-bound secret is rejected.
         config_file = os.environ.get("AWS_CONFIG_FILE") or os.path.expanduser(
             "~/.aws/config"
         )
         if os.path.isfile(config_file):
-            profile = os.environ.get("AWS_PROFILE", "default").replace("'", "''")
-            secret = (
-                "TYPE S3, PROVIDER credential_chain, "
-                f"CHAIN 'env;config;sso;instance;process', PROFILE '{profile}'"
-            )
-        else:
-            secret = "TYPE S3, PROVIDER credential_chain"
-        self._conn.execute(f"CREATE SECRET ({secret})")
+            profile = (os.environ.get("AWS_PROFILE") or "default").replace("'", "''")
+            try:
+                self._conn.execute(
+                    "CREATE SECRET (TYPE S3, PROVIDER credential_chain, "
+                    f"CHAIN 'env;config;sso;instance;process', PROFILE '{profile}')"
+                )
+                return
+            except duckdb.Error as ex:
+                logger.debug(
+                    f"S3 secret with profile '{profile}' failed ({ex}); "
+                    "falling back to default credential chain."
+                )
+        self._conn.execute("CREATE SECRET (TYPE S3, PROVIDER credential_chain)")
 
     def _is_hf(self) -> bool:
         return self._location is not None and self._location.startswith("hf://")

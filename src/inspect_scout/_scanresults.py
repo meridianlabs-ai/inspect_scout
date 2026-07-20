@@ -1,14 +1,23 @@
+import asyncio
 import json
+from collections.abc import AsyncIterator, Iterator
 from typing import Any, Literal
 
 import pandas as pd
+import pyarrow as pa
+import pyarrow.compute as pc
+import pyarrow.parquet as pq
 from inspect_ai._util._async import run_coroutine
 from inspect_ai._util.json import to_json_str_safe
 from inspect_ai.log import expand_events
 from upath import UPath
 
 from ._recorder.factory import scan_recorder_type_for_location
-from ._recorder.file import LazyScannerMapping, _cast_value_column
+from ._recorder.file import (
+    LazyScannerMapping,
+    _cast_value_column,
+    _open_scanner_parquet,
+)
 from ._recorder.recorder import (
     ScanResultsArrow,
     ScanResultsDB,
@@ -144,6 +153,123 @@ async def scan_results_df_async(
         errors=results.errors,
         scanners=scanners,
     )
+
+
+def scan_results_batches(
+    scan_location: str,
+    scanner: str,
+    *,
+    batch_size: int = 1024,
+    exclude_columns: list[str] | None = None,
+    rows: Literal["results", "transcripts"] = "results",
+) -> Iterator[pd.DataFrame]:
+    """Stream a scanner's results as pandas DataFrame batches.
+
+    Concatenating all batches yields the same rows as
+    `scan_results_df(scan_location, scanner=scanner, rows=rows)`, but memory
+    remains bounded by `batch_size` (for both local and cloud scan locations)
+    rather than scaling with the size of the scanner's results.
+
+    Note that batches are produced with synchronous parquet I/O. To consume
+    from async code, drive the iterator from a worker thread or use
+    `scan_results_batches_async()`.
+
+    Args:
+        scan_location: Location of scan (e.g. directory or s3 bucket).
+        scanner: Scanner name.
+        batch_size: Maximum number of parquet rows read per batch (note that
+            resultset expansion can yield more than `batch_size` rows per batch).
+        exclude_columns: List of column names to exclude when reading parquet files.
+            Useful for reducing memory usage by skipping large unused columns.
+        rows: Row granularity. Specify "results" to yield a row for each scanner result
+            (potentially multiple per transcript); Specify "transcript" to yield a row
+            for each transcript (in which case multiple results will be packed
+            into the `value` field as a JSON list of `Result`).
+
+    Yields:
+        DataFrames of (up to expansion) `batch_size` result rows.
+    """
+    parquet = _open_scanner_parquet(UPath(scan_location), scanner)
+
+    exclude = set(exclude_columns) if exclude_columns else set()
+    columns = [c for c in parquet.schema.names if c not in exclude]
+
+    # _cast_value_column() keys its cast decision on whole-frame uniformity of
+    # value_type, so compute uniformity over the whole file up front (with a
+    # memory-bounded pre-pass) to keep per-batch casting identical to the
+    # single-DataFrame path.
+    value_type_is_uniform = "value_type" in parquet.schema.names and (
+        _value_type_is_uniform(parquet, batch_size)
+    )
+
+    for batch in parquet.iter_batches(batch_size=batch_size, columns=columns):
+        df = pa.Table.from_batches([batch]).to_pandas(types_mapper=pd.ArrowDtype)
+        if value_type_is_uniform:
+            df = _cast_value_column(df)
+        # same transformations (and order) as scan_results_df()
+        df = _expand_events_in_df(df)
+        if rows == "results":
+            df = _expand_resultset_rows(df)
+        yield df
+
+
+async def scan_results_batches_async(
+    scan_location: str,
+    scanner: str,
+    *,
+    batch_size: int = 1024,
+    exclude_columns: list[str] | None = None,
+    rows: Literal["results", "transcripts"] = "results",
+) -> AsyncIterator[pd.DataFrame]:
+    """Stream a scanner's results as pandas DataFrame batches.
+
+    Async variant of `scan_results_batches()`: each batch (synchronous parquet
+    I/O and pandas conversion) is pulled in a worker thread so the event loop
+    is not blocked.
+
+    Args:
+        scan_location: Location of scan (e.g. directory or s3 bucket).
+        scanner: Scanner name.
+        batch_size: Maximum number of parquet rows read per batch (note that
+            resultset expansion can yield more than `batch_size` rows per batch).
+        exclude_columns: List of column names to exclude when reading parquet files.
+            Useful for reducing memory usage by skipping large unused columns.
+        rows: Row granularity. Specify "results" to yield a row for each scanner result
+            (potentially multiple per transcript); Specify "transcript" to yield a row
+            for each transcript (in which case multiple results will be packed
+            into the `value` field as a JSON list of `Result`).
+
+    Yields:
+        DataFrames of (up to expansion) `batch_size` result rows.
+    """
+    batches = scan_results_batches(
+        scan_location,
+        scanner,
+        batch_size=batch_size,
+        exclude_columns=exclude_columns,
+        rows=rows,
+    )
+    while True:
+        batch = await asyncio.to_thread(next, batches, None)
+        if batch is None:
+            return
+        yield batch
+
+
+def _value_type_is_uniform(parquet: pq.ParquetFile, batch_size: int) -> bool:
+    """Whether the value_type column has exactly one distinct non-null value.
+
+    Scans only the value_type column in batches (keeping just the distinct
+    values seen so far and short-circuiting once two are found), so this
+    pre-pass stays memory-bounded like the main read.
+    """
+    distinct: set[str] = set()
+    for batch in parquet.iter_batches(batch_size=batch_size, columns=["value_type"]):
+        values = pc.unique(batch.column("value_type").drop_null()).to_pylist()
+        distinct.update(str(v) for v in values if v is not None)
+        if len(distinct) > 1:
+            return False
+    return len(distinct) == 1
 
 
 def scan_results_db(

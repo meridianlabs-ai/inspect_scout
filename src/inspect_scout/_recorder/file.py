@@ -368,27 +368,7 @@ class FileRecorder(ScanRecorder):
             def _resolve_parquet_source(
                 self, scanner: str
             ) -> tuple[str | io.BytesIO, pafs.FileSystem | None]:
-                """Return (path, filesystem) for opening a parquet file.
-
-                For cloud paths with native PyArrow support (S3, GCS, ABFS),
-                returns a pyarrow filesystem that uses HTTP range requests.
-                For az:// (no native PyArrow support), downloads via fsspec
-                and returns a BytesIO. For local paths, returns (str, None).
-                """
-                scanner_path = scan_path / f"{scanner}.parquet"
-                path_str = scanner_path.as_posix()
-
-                if path_str.startswith(
-                    ("s3://", "gs://", "gcs://", "abfs://", "abfss://")
-                ):
-                    pa_fs, pa_path = pafs.FileSystem.from_uri(path_str)
-                    return pa_path, pa_fs
-
-                if path_str.startswith("az://"):
-                    with file(path_str, "rb") as f:
-                        return io.BytesIO(f.read()), None
-
-                return str(scanner_path), None
+                return _resolve_parquet_source(scan_path / f"{scanner}.parquet")
 
             @override
             def reader(
@@ -397,22 +377,13 @@ class FileRecorder(ScanRecorder):
                 streaming_batch_size: int = 1024,
                 exclude_columns: list[str] | None = None,
             ) -> pa.RecordBatchReader:
-                pa_path, pa_fs = self._resolve_parquet_source(scanner)
-
-                if pa_fs is not None:
-                    # Use pre_buffer=True to coalesce HTTP range requests,
-                    # then read() + to_reader() instead of iter_batches()
-                    # which doesn't support pre_buffer.
-                    parquet = pq.ParquetFile(pa_path, filesystem=pa_fs, pre_buffer=True)
-                else:
-                    parquet = pq.ParquetFile(pa_path)
+                # iter_batches() streams lazily for both local files and
+                # PyArrow cloud filesystems (which do ranged reads on demand),
+                # keeping memory bounded by streaming_batch_size.
+                parquet = _open_scanner_parquet(scan_path, scanner)
 
                 exclude = set(exclude_columns) if exclude_columns else set()
                 columns = [c for c in parquet.schema.names if c not in exclude]
-
-                if pa_fs is not None:
-                    table = parquet.read(columns=columns)
-                    return table.to_reader(max_chunksize=streaming_batch_size)
 
                 fields_by_name = {f.name: f for f in parquet.schema_arrow}
                 arrow_schema = pa.schema([fields_by_name[name] for name in columns])
@@ -1050,6 +1021,41 @@ def _cast_value_sql(value_type: str) -> str:
     else:
         # For string, null, array, object - keep as-is
         return "value"
+
+
+def _resolve_parquet_source(
+    scanner_path: UPath,
+) -> tuple[str | io.BytesIO, pafs.FileSystem | None]:
+    """Return (path, filesystem) for opening a parquet file.
+
+    For cloud paths with native PyArrow support (S3, GCS, ABFS), returns a
+    pyarrow filesystem that uses HTTP range requests. For az:// (no native
+    PyArrow support), downloads via fsspec and returns a BytesIO. For local
+    paths, returns (str, None).
+    """
+    path_str = scanner_path.as_posix()
+
+    if path_str.startswith(("s3://", "gs://", "gcs://", "abfs://", "abfss://")):
+        pa_fs, pa_path = pafs.FileSystem.from_uri(path_str)
+        return pa_path, pa_fs
+
+    if path_str.startswith("az://"):
+        with file(path_str, "rb") as f:
+            return io.BytesIO(f.read()), None
+
+    return str(scanner_path), None
+
+
+def _open_scanner_parquet(scan_dir: UPath, scanner: str) -> pq.ParquetFile:
+    """Open a scanner's parquet file for streaming reads.
+
+    Uses `_resolve_parquet_source()` scheme dispatch so cloud sources are read
+    lazily via HTTP range requests where PyArrow supports them.
+    """
+    pa_path, pa_fs = _resolve_parquet_source(scan_dir / f"{scanner}.parquet")
+    if pa_fs is not None:
+        return pq.ParquetFile(pa_path, filesystem=pa_fs)
+    return pq.ParquetFile(pa_path)
 
 
 def _load_scanner_df(

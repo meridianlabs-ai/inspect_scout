@@ -1114,13 +1114,17 @@ def _cast_value_column(df: pd.DataFrame) -> pd.DataFrame:
 
         try:
             if vtype == "boolean":
-                # Handle various string representations of booleans
+                # Handle string representations of booleans (parquet stores
+                # values as strings) as well as actual bools (resultset
+                # expansion parses JSON into native True/False).
                 df["value"] = df["value"].map(
                     {
                         "true": True,
                         "false": False,
                         "True": True,
                         "False": False,
+                        True: True,
+                        False: False,
                         None: None,
                     }
                 )

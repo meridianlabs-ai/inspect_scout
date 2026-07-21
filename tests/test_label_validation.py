@@ -1,12 +1,15 @@
 """Tests for label-based validation of resultsets."""
 
+import json
 import tempfile
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import pytest
 from inspect_ai.model import ChatMessageUser
 from inspect_scout import Result, Scanner, scanner
+from inspect_scout._scanresults import _expand_resultset_rows
 from inspect_scout._transcript.types import Transcript
 from inspect_scout._validation.validate import _validate_labels, is_positive_value
 from inspect_scout._validation.validation import validation_set
@@ -138,32 +141,208 @@ def test_label_validation_basic() -> None:
     assert case.target is None
 
 
-# The following integration tests are simplified to avoid complexity
-# The core functionality is validated by the parsing tests above
+# ============================================================================
+# Tests for label validation presentation in results DataFrames
+# (_expand_resultset_rows / _handle_label_validation)
+# ============================================================================
 
 
-@pytest.mark.skip(reason="Integration test - simplified to unit tests for now")
-def test_label_validation_propagation() -> None:
-    """Test that validation results are propagated to individual expanded rows."""
-    pass
+def _resultset_df(rows: list[dict[str, Any]]) -> pd.DataFrame:
+    """Build a scanner-results-shaped DataFrame of resultset rows.
+
+    Each row dict has: transcript_id, results (list of result dicts),
+    target (validation target), result (validation result).
+    """
+    return pd.DataFrame(
+        [
+            {
+                "transcript_id": row["transcript_id"],
+                "value": json.dumps(row["results"]),
+                "value_type": "resultset",
+                "validation_target": json.dumps(row["target"]),
+                "validation_result": json.dumps(row["result"]),
+            }
+            for row in rows
+        ]
+    )
 
 
-@pytest.mark.skip(reason="Integration test - simplified to unit tests for now")
-def test_synthetic_row_creation() -> None:
-    """Test that synthetic rows are created for missing labels with negative expected values."""
-    pass
+class TestLabelValidationExpansion:
+    """Label validation presentation is scoped per resultset row.
 
+    That is, per transcript/case, matching how it is computed at scan time
+    by _validate_labels().
+    """
 
-@pytest.mark.skip(reason="Integration test - simplified to unit tests for now")
-def test_at_least_one_validation() -> None:
-    """Test 'at least one' validation logic with multiple results for same label."""
-    pass
+    def test_one_row_per_transcript_label_pair(self) -> None:
+        """Regression test for whole-frame scoping (worked example in PR #545).
 
+        t1 truly contains deception (scanner finds it: true positive) and no
+        phishing (scanner stays silent: true negative). t2 is clean but the
+        scanner reports phishing (false positive) and stays silent on
+        deception (true negative). The DataFrame must surface all four
+        judgments as rows -- the whole-frame present_labels computation
+        yielded zero synthetic rows here because each label appeared
+        somewhere in the frame.
+        """
+        df = _resultset_df(
+            [
+                {
+                    "transcript_id": "t1",
+                    "results": [{"label": "deception", "value": "found"}],
+                    "target": {"deception": True, "phishing": False},
+                    "result": {"deception": True, "phishing": True},
+                },
+                {
+                    "transcript_id": "t2",
+                    "results": [{"label": "phishing", "value": "found"}],
+                    "target": {"deception": False, "phishing": False},
+                    "result": {"deception": True, "phishing": False},
+                },
+            ]
+        )
 
-@pytest.mark.skip(reason="Integration test - simplified to unit tests for now")
-def test_validation_failure() -> None:
-    """Test that validation correctly fails when no results match."""
-    pass
+        expanded = _expand_resultset_rows(df)
+
+        rows = {
+            (row["transcript_id"], row["label"]): (
+                row["value"],
+                row["validation_result"],
+            )
+            for _, row in expanded.iterrows()
+        }
+        assert rows == {
+            ("t1", "deception"): ("found", True),  # true positive
+            ("t1", "phishing"): (False, True),  # synthetic true negative
+            ("t2", "phishing"): ("found", False),  # false positive
+            ("t2", "deception"): (False, True),  # synthetic true negative
+        }
+
+        # synthetic rows carry a boolean value type
+        synthetic = expanded[
+            (expanded["transcript_id"] == "t1") & (expanded["label"] == "phishing")
+        ]
+        assert synthetic.iloc[0]["value_type"] == "boolean"
+
+        # internal bookkeeping column doesn't leak
+        assert not any(col.startswith("_resultset") for col in expanded.columns)
+
+    def test_no_synthetic_rows_without_stored_validation_result(self) -> None:
+        """Synthesis requires a stored per-label validation result.
+
+        Synthetic rows surface verdicts computed at scan time; if a row's
+        validation_result is missing (e.g. the scan errored), there are no
+        verdicts to surface, so no synthetic rows are created.
+        """
+        df = _resultset_df(
+            [
+                {
+                    "transcript_id": "t1",
+                    "results": [{"label": "deception", "value": "found"}],
+                    "target": {"deception": True, "phishing": False},
+                    "result": None,
+                }
+            ]
+        )
+
+        expanded = _expand_resultset_rows(df)
+
+        # only the real result row; no synthetic phishing row
+        assert expanded["label"].tolist() == ["deception"]
+        # the real row's validation_result is left as stored
+        assert expanded.iloc[0]["validation_result"] == "null"
+
+    def test_synthetic_rows_for_empty_resultset(self) -> None:
+        """An empty resultset still yields synthetic true-negative rows."""
+        df = _resultset_df(
+            [
+                {
+                    "transcript_id": "t1",
+                    "results": [],
+                    "target": {"phishing": False},
+                    "result": {"phishing": True},
+                }
+            ]
+        )
+
+        expanded = _expand_resultset_rows(df)
+
+        assert len(expanded) == 1
+        row = expanded.iloc[0]
+        assert row["transcript_id"] == "t1"
+        assert row["label"] == "phishing"
+        assert row["value"] == False  # noqa: E712
+        assert row["validation_result"] == True  # noqa: E712
+
+    def test_synthetic_rows_use_each_rows_own_target(self) -> None:
+        """Each transcript gets synthetic rows for its own expected labels."""
+        df = _resultset_df(
+            [
+                {
+                    "transcript_id": "t1",
+                    "results": [],
+                    "target": {"alpha": False},
+                    "result": {"alpha": True},
+                },
+                {
+                    "transcript_id": "t2",
+                    "results": [],
+                    "target": {"beta": False},
+                    "result": {"beta": True},
+                },
+            ]
+        )
+
+        expanded = _expand_resultset_rows(df)
+
+        labels_by_transcript = expanded.set_index("transcript_id")["label"]
+        assert labels_by_transcript["t1"] == "alpha"
+        assert labels_by_transcript["t2"] == "beta"
+
+    def test_scalar_validation_rows_unaffected(self) -> None:
+        """Non-label (scalar target) validation is left untouched."""
+        df = _resultset_df(
+            [
+                {
+                    "transcript_id": "t1",
+                    "results": [{"label": "x", "value": "found"}],
+                    "target": True,
+                    "result": True,
+                }
+            ]
+        )
+
+        expanded = _expand_resultset_rows(df)
+
+        assert len(expanded) == 1
+        # validation_result stays as stored (JSON scalar), no synthetic rows
+        assert expanded.iloc[0]["validation_result"] == "true"
+
+    def test_label_rows_handled_even_when_first_row_is_scalar(self) -> None:
+        """Label validation applies per row, not gated on the frame's first row."""
+        df = _resultset_df(
+            [
+                {
+                    "transcript_id": "t1",
+                    "results": [{"label": "x", "value": "found"}],
+                    "target": True,
+                    "result": True,
+                },
+                {
+                    "transcript_id": "t2",
+                    "results": [],
+                    "target": {"phishing": False},
+                    "result": {"phishing": True},
+                },
+            ]
+        )
+
+        expanded = _expand_resultset_rows(df)
+
+        t2_rows = expanded[expanded["transcript_id"] == "t2"]
+        assert len(t2_rows) == 1
+        assert t2_rows.iloc[0]["label"] == "phishing"
+        assert t2_rows.iloc[0]["validation_result"] == True  # noqa: E712
 
 
 # ============================================================================

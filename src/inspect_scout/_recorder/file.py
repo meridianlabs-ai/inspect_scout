@@ -370,25 +370,9 @@ class FileRecorder(ScanRecorder):
             ) -> tuple[str | io.BytesIO, pafs.FileSystem | None]:
                 """Return (path, filesystem) for opening a parquet file.
 
-                For cloud paths with native PyArrow support (S3, GCS, ABFS),
-                returns a pyarrow filesystem that uses HTTP range requests.
-                For az:// (no native PyArrow support), downloads via fsspec
-                and returns a BytesIO. For local paths, returns (str, None).
+                See `_parquet_source` for the resolution rules.
                 """
-                scanner_path = scan_path / f"{scanner}.parquet"
-                path_str = scanner_path.as_posix()
-
-                if path_str.startswith(
-                    ("s3://", "gs://", "gcs://", "abfs://", "abfss://")
-                ):
-                    pa_fs, pa_path = pafs.FileSystem.from_uri(path_str)
-                    return pa_path, pa_fs
-
-                if path_str.startswith("az://"):
-                    with file(path_str, "rb") as f:
-                        return io.BytesIO(f.read()), None
-
-                return str(scanner_path), None
+                return _parquet_source(scan_path / f"{scanner}.parquet")
 
             @override
             def reader(
@@ -1052,6 +1036,31 @@ def _cast_value_sql(value_type: str) -> str:
         return "value"
 
 
+def _parquet_source(
+    parquet_path: UPath,
+) -> tuple[str | io.BytesIO, pafs.FileSystem | None]:
+    """Return (source, filesystem) for opening a parquet file.
+
+    For cloud paths with native PyArrow support (S3, GCS, ABFS), returns a
+    pyarrow filesystem that uses HTTP range requests, so readers that select
+    columns or row groups only fetch the byte ranges they need. For other
+    remote protocols (e.g. az://, which PyArrow has no native support for),
+    downloads via fsspec and returns a BytesIO. For local paths, returns
+    (path, None).
+    """
+    path_str = parquet_path.as_posix()
+
+    if path_str.startswith(("s3://", "gs://", "gcs://", "abfs://", "abfss://")):
+        pa_fs, pa_path = pafs.FileSystem.from_uri(path_str)
+        return pa_path, pa_fs
+
+    if parquet_path.protocol not in ("", "file"):
+        with file(path_str, "rb") as f:
+            return io.BytesIO(f.read()), None
+
+    return path_str, None
+
+
 def _load_scanner_df(
     scan_dir: UPath,
     scanner_name: str,
@@ -1069,20 +1078,21 @@ def _load_scanner_df(
     Returns:
         DataFrame with the scanner results, value column cast appropriately.
     """
-    parquet_file = scan_dir / f"{scanner_name}.parquet"
-    # Use file() from inspect_ai to match original AsyncFilesystem behavior
-    with file(parquet_file.as_posix(), "rb") as f:
-        file_bytes = f.read()
+    source, pa_fs = _parquet_source(scan_dir / f"{scanner_name}.parquet")
+    # pre_buffer coalesces column-chunk reads: HTTP range requests on remote
+    # filesystems, and larger sequential reads on local paths (which makes a
+    # big difference on FUSE mounts like mountpoint-s3).
+    parquet = pq.ParquetFile(source, filesystem=pa_fs, pre_buffer=True)
 
-    # Determine columns to read (exclude specified columns if they exist)
+    # Project columns at the source: with a range-request filesystem this
+    # avoids downloading excluded columns at all (heavy columns like `input`
+    # can be >99% of the file), rather than filtering after a full read.
     columns: list[str] | None = None
     if exclude_columns:
-        parquet_schema = pq.read_schema(io.BytesIO(file_bytes))
-        all_columns = set(parquet_schema.names)
-        columns = [col for col in all_columns if col not in exclude_columns]
+        exclude = set(exclude_columns)
+        columns = [c for c in parquet.schema.names if c not in exclude]
 
-    table = pq.read_table(io.BytesIO(file_bytes), columns=columns)
-    df = table.to_pandas(types_mapper=pd.ArrowDtype)
+    df = parquet.read(columns=columns).to_pandas(types_mapper=pd.ArrowDtype)
     return _cast_value_column(df)
 
 

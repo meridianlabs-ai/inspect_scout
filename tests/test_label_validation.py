@@ -196,6 +196,50 @@ class TestLabelValidationExpansion:
         assert by_label["deception"] == True  # noqa: E712
         assert by_label["phishing"] == False  # noqa: E712
 
+    def test_one_row_per_transcript_label_pair(self) -> None:
+        """Regression test for whole-frame scoping (worked example in PR #545).
+
+        t1 truly contains deception (scanner finds it: true positive) and no
+        phishing (scanner stays silent: true negative). t2 is clean but the
+        scanner reports phishing (false positive) and stays silent on
+        deception (true negative). The DataFrame must surface all four
+        judgments as rows -- the whole-frame present_labels computation
+        yielded zero synthetic rows here because each label appeared
+        somewhere in the frame.
+        """
+        df = _resultset_df(
+            [
+                {
+                    "transcript_id": "t1",
+                    "results": [{"label": "deception", "value": "found"}],
+                    "target": {"deception": True, "phishing": False},
+                    "result": {"deception": True, "phishing": True},
+                },
+                {
+                    "transcript_id": "t2",
+                    "results": [{"label": "phishing", "value": "found"}],
+                    "target": {"deception": False, "phishing": False},
+                    "result": {"deception": True, "phishing": False},
+                },
+            ]
+        )
+
+        expanded = _expand_resultset_rows(df)
+
+        rows = {
+            (row["transcript_id"], row["label"]): (
+                row["value"],
+                row["validation_result"],
+            )
+            for _, row in expanded.iterrows()
+        }
+        assert rows == {
+            ("t1", "deception"): ("found", True),  # true positive
+            ("t1", "phishing"): (False, True),  # synthetic true negative
+            ("t2", "phishing"): ("found", False),  # false positive
+            ("t2", "deception"): (False, True),  # synthetic true negative
+        }
+
     def test_synthetic_rows_scoped_per_resultset_row(self) -> None:
         """A label in one transcript doesn't suppress another's synthetic row."""
         target = {"deception": True, "phishing": False}

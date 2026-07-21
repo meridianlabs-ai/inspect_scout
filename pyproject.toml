@@ -21,7 +21,7 @@ dependencies = [
     "fastapi>=0.128.1",
     "ijson>=3.2.0",
     "importlib-metadata",
-    "inspect_ai>=0.3.244",
+    "inspect-ai>=0.3.249",
     "inspect-swe>=0.2.56",
     "jinja2>=3.0.0",
     "jsonlines>=3.0.0",
@@ -61,6 +61,9 @@ dev = [
     "anthropic>=0.80.0",
     "arize-phoenix-client",
     "google-genai>=1.69.0",
+    # harbor (for the atif source tests): >=0.6.0 is the first release with the
+    # ATIF v1.7 schema the source parses; harbor itself requires Python >=3.12
+    "harbor>=0.6.0; python_version >= '3.12'",
     "huggingface_hub",
     "langsmith",
     "logfire>=3",
@@ -95,6 +98,9 @@ dev = [
     "anthropic",
     "arize-phoenix-client",
     "google-genai",
+    # harbor (for the atif source tests): >=0.6.0 is the first release with the
+    # ATIF v1.7 schema the source parses; harbor itself requires Python >=3.12
+    "harbor>=0.6.0; python_version >= '3.12'",
     "huggingface_hub",
     "langsmith",
     "logfire",
@@ -173,3 +179,9 @@ mypy_path = "src"
 files = ["src", "examples"]
 namespace_packages = true
 explicit_package_bases = true
+
+# harbor (used by the optional atif source) requires Python >=3.12, so it may
+# not be installed in the type-checking environment. Don't fail when missing.
+[[tool.mypy.overrides]]
+module = ["harbor.*"]
+ignore_missing_imports = true

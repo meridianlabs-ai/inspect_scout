@@ -15,7 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11"]
+        # rationale: test the supported floor and the latest release
+        python-version: &python-versions ["3.10", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - name: Lint with Ruff
@@ -29,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: *python-versions
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -46,7 +47,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
+          # Track inspect_ai main everywhere EXCEPT the release PR, where we
+          # validate against the pinned/shipped version pulled in via .[dev] below.
+          if [ "${{ github.head_ref }}" != "release-please--branches--main" ]; then
+            python -m pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
+          fi
           python -m pip install .[dev]
       - name: Run mypy
         run: |
@@ -56,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: *python-versions
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -73,7 +78,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
+          # Track inspect_ai main everywhere EXCEPT the release PR, where we
+          # validate against the pinned/shipped version pulled in via .[dev] below.
+          if [ "${{ github.head_ref }}" != "release-please--branches--main" ]; then
+            python -m pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
+          fi
           python -m pip install .[dev]
       - name: Run tests
         run: pytest
@@ -82,7 +91,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: *python-versions
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -92,7 +101,11 @@ jobs:
       - name: Install build dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
+          # Track inspect_ai main everywhere EXCEPT the release PR, where we
+          # validate against the pinned/shipped version pulled in via . below.
+          if [ "${{ github.head_ref }}" != "release-please--branches--main" ]; then
+            python -m pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
+          fi
           python -m pip install build
       - name: Build package
         run: python -m build
@@ -122,6 +135,13 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
+          # This job checks that the committed schema/type artifacts are in sync
+          # with the Python source — a regeneration-hygiene check, NOT a
+          # shipped-compatibility gate. The committed artifacts are generated
+          # against inspect_ai main, so this must always run against main; using
+          # the pinned/shipped version on the release PR would flag false drift
+          # for inspect_ai fields not yet released. (Shipped-version compatibility
+          # is covered by py-test / py-build / py-mypy.)
           python -m pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
           python -m pip install .
 

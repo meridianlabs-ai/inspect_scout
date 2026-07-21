@@ -217,12 +217,16 @@ def _logs_df_from_snapshot(snapshot: ScanTranscripts) -> "pd.DataFrame":
         # determine unique logs, re-read, then filter on sample_id
         snapshot_logs = snapshot_df["log"].unique().tolist()
         df = _index_logs(snapshot_logs)
+        if df.columns.empty:
+            return df
         return df[df["sample_id"].isin(snapshot_df["sample_id"])]
 
     else:
         # re-read from index (which will be cached) then filter
         logs = {v for v in snapshot.transcript_ids.values() if v is not None}
         df = _index_logs(list(logs))
+        if df.columns.empty:
+            return df
         return df[df["sample_id"].isin(snapshot.transcript_ids.keys())]
 
 
@@ -260,6 +264,10 @@ class EvalLogTranscriptsView(TranscriptsView):
         self._conn: sqlite3.Connection | None = None
         self._columns: set[str] = set()
 
+        # True when the input has no samples (zero-column DataFrame).
+        # Query methods return empty results without touching SQLite.
+        self._is_empty: bool = False
+
         # AsyncFilesystem (starts out none)
         self._fs: AsyncFilesystem | None = None
 
@@ -279,6 +287,14 @@ class EvalLogTranscriptsView(TranscriptsView):
                 df = self._logs_input
             else:
                 df = _index_logs(self._logs_input)
+
+            # Guard: zero-column DataFrames produce invalid SQL
+            # (e.g. eval logs with no samples). Set the empty flag and
+            # open a no-op connection so connect() is idempotent.
+            if df.columns.empty:
+                self._is_empty = True
+                self._conn = sqlite3.connect(":memory:")
+                return
 
             if self._cache_key:
                 self._conn = sqlite3.connect(
@@ -304,6 +320,8 @@ class EvalLogTranscriptsView(TranscriptsView):
     @override
     async def select(self, query: Query | None = None) -> AsyncIterator[TranscriptInfo]:
         assert self._conn is not None
+        if self._is_empty:
+            return
         query = query or Query()
 
         # Build SQL suffix using Query
@@ -405,6 +423,8 @@ class EvalLogTranscriptsView(TranscriptsView):
     @override
     async def count(self, query: Query | None = None) -> int:
         assert self._conn is not None
+        if self._is_empty:
+            return 0
         query = query or Query()
         # For count, only WHERE matters (ignore limit/shuffle/order_by)
         count_query = Query(where=query.where)
@@ -419,6 +439,8 @@ class EvalLogTranscriptsView(TranscriptsView):
         self, column: str, condition: Condition | None
     ) -> list[ScalarValue]:
         assert self._conn is not None
+        if self._is_empty:
+            return []
         col_name = validate_column(column, self._columns)
         quoted_column = quote_identifier(col_name)
         quoted_table = quote_identifier(TRANSCRIPTS)
@@ -440,6 +462,8 @@ class EvalLogTranscriptsView(TranscriptsView):
     @override
     async def transcript_ids(self, query: Query | None = None) -> dict[str, str | None]:
         assert self._conn is not None
+        if self._is_empty:
+            return {}
         query = query or Query()
 
         suffix, params, register_shuffle = query.to_sql_suffix(
@@ -472,62 +496,58 @@ class EvalLogTranscriptsView(TranscriptsView):
     ) -> Transcript:
         if not t.source_uri:
             raise ValueError("source_uri must be set")
-        if recorder_type_for_location(t.source_uri) is not EvalRecorder:
-            raise NotImplementedError("JSON format not yet supported")
-        zip_reader, entry = await self._get_zip_reader_and_entry(t)
-        if max_bytes is not None and entry.uncompressed_size > max_bytes:
-            raise TranscriptTooLargeError(
-                t.transcript_id, entry.uncompressed_size, max_bytes
-            )
-        with trace_action(
-            logger,
-            "Scout Eval Log Read",
-            f"Reading from {t.source_uri} ({entry.filename})",
-        ):
-            # When timelines are requested, load all events so that
-            # stored timeline UUID references can be resolved (stored
-            # timelines may reference any event type, not just the
-            # filtered subset).
-            async with await zip_reader.open_member(entry) as json_iterable:
-                events_filter = (
-                    "all" if content.timeline is not None else content.events
+        if self._is_empty:
+            raise ValueError("cannot read from an empty transcript view")
+
+        # When timelines are requested, load all events so that
+        # stored timeline UUID references can be resolved (stored
+        # timelines may reference any event type, not just the
+        # filtered subset).
+        events_filter = "all" if content.timeline is not None else content.events
+
+        recorder_type = recorder_type_for_location(t.source_uri)
+        if recorder_type is EvalRecorder:
+            zip_reader, entry = await self._get_zip_reader_and_entry(t)
+            if max_bytes is not None and entry.uncompressed_size > max_bytes:
+                raise TranscriptTooLargeError(
+                    t.transcript_id, entry.uncompressed_size, max_bytes
                 )
+            with trace_action(
+                logger,
+                "Scout Eval Log Read",
+                f"Reading from {t.source_uri} ({entry.filename})",
+            ):
+                async with await zip_reader.open_member(entry) as json_iterable:
+                    transcript = await load_filtered_transcript(
+                        json_iterable,
+                        t,
+                        content.messages,
+                        events_filter,
+                    )
+        else:
+            # JSON format - read sample via inspect_ai and serialize
+            with trace_action(
+                logger,
+                "Scout Eval Log Read",
+                f"Reading from {t.source_uri}",
+            ):
+                id_, epoch = self._get_sample_id_and_epoch(t)
+                sample = await recorder_type.read_log_sample(t.source_uri, id_, epoch)
+                sample_bytes = sample.model_dump_json().encode("utf-8")
+                # max_bytes guards the parse only: the full sample has
+                # already been fetched into memory above.
+                if max_bytes is not None and len(sample_bytes) > max_bytes:
+                    raise TranscriptTooLargeError(
+                        t.transcript_id, len(sample_bytes), max_bytes
+                    )
                 transcript = await load_filtered_transcript(
-                    json_iterable,
+                    io.BytesIO(sample_bytes),
                     t,
                     content.messages,
                     events_filter,
                 )
 
-            # Fallback: older eval logs don't store timelines, so build
-            # from events.
-            if (
-                content.timeline is not None
-                and not transcript.timelines
-                and transcript.events
-            ):
-                from inspect_ai.event import timeline_build
-
-                from .util import filter_timelines
-
-                raw_timeline = timeline_build(transcript.events)
-                timelines = filter_timelines([raw_timeline], content.timeline)
-                transcript = transcript.model_copy(update={"timelines": timelines})
-
-            # Filter events back down to what the scanner requested
-            # (we loaded "all" above only for timeline resolution).
-            if (
-                content.timeline is not None
-                and content.events is not None
-                and content.events != "all"
-            ):
-                from .util import filter_list
-
-                transcript = transcript.model_copy(
-                    update={"events": filter_list(transcript.events, content.events)}
-                )
-
-            return transcript
+        return _resolve_timelines_and_filter_events(transcript, content)
 
     @override
     async def read_messages_events(
@@ -535,6 +555,8 @@ class EvalLogTranscriptsView(TranscriptsView):
     ) -> TranscriptMessagesAndEvents:
         if not t.source_uri:
             raise ValueError("source_uri must be set")
+        if self._is_empty:
+            raise ValueError("cannot read from an empty transcript view")
 
         id_, epoch = self._get_sample_id_and_epoch(t)
         sample_filename = f"samples/{id_}_epoch_{epoch}.json"
@@ -620,6 +642,37 @@ class EvalLogTranscriptsView(TranscriptsView):
         return zip_reader, entry
 
 
+def _resolve_timelines_and_filter_events(
+    transcript: Transcript, content: TranscriptContent
+) -> Transcript:
+    """Post-process a loaded transcript for timeline requests."""
+    # Fallback: older eval logs don't store timelines, so build
+    # from events.
+    if content.timeline is not None and not transcript.timelines and transcript.events:
+        from inspect_ai.event import timeline_build
+
+        from .util import filter_timelines
+
+        raw_timeline = timeline_build(transcript.events)
+        timelines = filter_timelines([raw_timeline], content.timeline)
+        transcript = transcript.model_copy(update={"timelines": timelines})
+
+    # Filter events back down to what the scanner requested
+    # (we loaded "all" above only for timeline resolution).
+    if (
+        content.timeline is not None
+        and content.events is not None
+        and content.events != "all"
+    ):
+        from .util import filter_list
+
+        transcript = transcript.model_copy(
+            update={"events": filter_list(transcript.events, content.events)}
+        )
+
+    return transcript
+
+
 def transcripts_from_logs(logs: Logs) -> Transcripts:
     """Read sample transcripts from eval logs.
 
@@ -650,31 +703,44 @@ def _index_logs(logs: Logs) -> pd.DataFrame:
 
         def read_samples(path: str) -> pd.DataFrame:
             with trace_action(logger, "Scout Eval Log Index", f"Indexing {path}"):
-                # This cast is wonky, but the public function, samples_df, uses overloads
-                # to make the return type be a DataFrame when strict=True. Since we're
-                # calling the helper method, we'll just have to cast it.
-                progress.update(path)
-                df = cast(
-                    pd.DataFrame,
-                    _read_samples_df_serial(
-                        [path],
-                        TranscriptColumns,
-                        full=False,
-                        strict=True,
-                        progress=False,
-                    ),
-                )
-
-                # The transcript_id uses the computed sample_id
-                # value, which will properly handle old eval log
-                # that are missing uuids for samples (so we use the value
-                # from the synthesized sample_id column rather than the `id`
-                # prop from the sample itself.
-                if not df.empty:
-                    df["transcript_id"] = df["sample_id"]
-                return df
+                df = _read_samples([path])
+            progress.update(path)
+            return df
 
         return samples_df_with_caching(read_samples, logs)
+
+
+def _read_samples(paths: list[str]) -> pd.DataFrame:
+    """Read a combined samples DataFrame for the given eval logs.
+
+    Args:
+        paths: Paths to eval log files
+
+    Returns:
+        DataFrame with one row per sample from all logs
+    """
+    # This cast is wonky, but the public function, samples_df, uses overloads
+    # to make the return type be a DataFrame when strict=True. Since we're
+    # calling the helper method, we'll just have to cast it.
+    df = cast(
+        pd.DataFrame,
+        _read_samples_df_serial(
+            paths,
+            TranscriptColumns,
+            full=False,
+            strict=True,
+            progress=False,
+        ),
+    )
+
+    # The transcript_id uses the computed sample_id
+    # value, which will properly handle old eval log
+    # that are missing uuids for samples (so we use the value
+    # from the synthesized sample_id column rather than the `id`
+    # prop from the sample itself.
+    if not df.empty:
+        df["transcript_id"] = df["sample_id"]
+    return df
 
 
 def _compute_cache_key_from_logs(logs: Logs) -> str:

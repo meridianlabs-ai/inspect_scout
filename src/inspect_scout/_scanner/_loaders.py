@@ -1,10 +1,8 @@
 import inspect
-import types
 from typing import (
     Any,
     AsyncIterator,
     Callable,
-    Union,
     get_args,
     get_origin,
 )
@@ -16,6 +14,7 @@ from typing_extensions import Literal
 
 from .._transcript.types import Transcript, TranscriptContent
 from .._transcript.util import filter_list, filter_timelines, filter_transcript
+from .._util.type_hints import is_union_type
 from .loader import Loader, loader
 from .types import ScannerInput
 
@@ -187,13 +186,7 @@ def _matches_message_or_event_type(type_annotation: Any, union_type: Any) -> boo
         return True
 
     # Check if it's a Union type (e.g., ChatMessageUser | ChatMessageAssistant)
-    origin = get_origin(type_annotation)
-    # Handle both typing.Union and types.UnionType (from | syntax in Python 3.10+)
-    if (
-        origin is Union
-        or isinstance(origin, type)
-        and issubclass(origin, types.UnionType)
-    ):
+    if is_union_type(type_annotation):
         args = get_args(type_annotation)
         if args:
             # The type system should prevent mixing ChatMessage and Event types

@@ -234,25 +234,28 @@ def _handle_label_validation(
         return expanded, pd.DataFrame()
 
     # Propagate per-label results to rows whose own validation is label-based
-    # (i.e. their validation_target is a JSON dict keyed by label)
-    def assign_label_validation(row: "pd.Series[Any]") -> "pd.Series[Any]":
-        """Assign validation result based on the row's label."""
+    # (i.e. their validation_target is a JSON dict keyed by label). Only the
+    # validation_result column is modified (a whole-row apply would let pandas
+    # re-infer dtypes of untouched columns, e.g. object -> bool).
+    def assign_label_validation(row: "pd.Series[Any]") -> Any:
+        """Validation result for this row based on its label."""
+        result = row["validation_result"]
         label = row.get("label")
         if pd.isna(label):
-            return row
+            return result
 
         if _parse_json_dict(row.get("validation_target")) is None:
-            return row
+            return result
 
-        val_results_dict = _parse_json_dict(row.get("validation_result"))
+        val_results_dict = _parse_json_dict(result)
         if val_results_dict is not None and label in val_results_dict:
             # Replace overall validation_result with this label's specific result
-            row["validation_result"] = val_results_dict[label]
+            return val_results_dict[label]
 
-        return row
+        return result
 
     if not expanded.empty:
-        expanded = expanded.apply(assign_label_validation, axis=1)
+        expanded["validation_result"] = expanded.apply(assign_label_validation, axis=1)
 
     # Labels present in each resultset row's own expansion
     present_labels: dict[Any, set[str]] = {}

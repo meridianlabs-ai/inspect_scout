@@ -227,12 +227,12 @@ class TestLabelValidationExpansion:
         # internal bookkeeping column doesn't leak
         assert not any(col.startswith("_resultset") for col in expanded.columns)
 
-    def test_synthetic_rows_without_stored_validation_result(self) -> None:
-        """A label-based target alone drives synthesis.
+    def test_no_synthetic_rows_without_stored_validation_result(self) -> None:
+        """Synthesis requires a stored per-label validation result.
 
-        If a row's validation_result is missing (e.g. a scan error), its
-        expected-absent labels still get synthetic rows, with a None
-        validation result.
+        Synthetic rows surface verdicts computed at scan time; if a row's
+        validation_result is missing (e.g. the scan errored), there are no
+        verdicts to surface, so no synthetic rows are created.
         """
         df = _resultset_df(
             [
@@ -247,14 +247,10 @@ class TestLabelValidationExpansion:
 
         expanded = _expand_resultset_rows(df)
 
-        phishing = expanded[expanded["label"] == "phishing"]
-        assert len(phishing) == 1
-        assert phishing.iloc[0]["value"] == False  # noqa: E712
-        assert pd.isna(phishing.iloc[0]["validation_result"])
-
+        # only the real result row; no synthetic phishing row
+        assert expanded["label"].tolist() == ["deception"]
         # the real row's validation_result is left as stored
-        deception = expanded[expanded["label"] == "deception"]
-        assert deception.iloc[0]["validation_result"] == "null"
+        assert expanded.iloc[0]["validation_result"] == "null"
 
     def test_synthetic_rows_for_empty_resultset(self) -> None:
         """An empty resultset still yields synthetic true-negative rows."""

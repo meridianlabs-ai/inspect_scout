@@ -268,7 +268,12 @@ def _handle_label_validation(
         if parsed_target is None:
             # Not label-based validation for this row
             continue
-        parsed_results = _parse_json_dict(resultset_row.get("validation_result")) or {}
+        parsed_results = _parse_json_dict(resultset_row.get("validation_result"))
+        if parsed_results is None:
+            # Label validation always stores a dict result at scan time; if
+            # it's absent (e.g. the scan errored), don't synthesize rows for
+            # verdicts that were never computed
+            continue
 
         present = present_labels.get(resultset_row[_RESULTSET_INDEX], set())
         missing_labels = set(parsed_target.keys()) - present

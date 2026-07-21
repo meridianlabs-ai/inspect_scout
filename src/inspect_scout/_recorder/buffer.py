@@ -319,9 +319,20 @@ def resolve_success_value(value: bool | None, score: JsonValue | None) -> bool |
 def scanner_table(
     buffer_dir: UPath,
     scanner: str,
+    output_file: str,
     *,
     extra_inputs: list[UPath] | None = None,
-) -> bytes | None:
+) -> bool:
+    """Compact per-transcript buffer parquets into a single parquet file.
+
+    Streams batches from the buffer (and any `extra_inputs`) directly into
+    `output_file` (a local path), so peak memory stays bounded regardless of
+    the total size of the compacted output.
+
+    Returns:
+        True if `output_file` was written, False if there was nothing to
+        compact (in which case no file is created).
+    """
     import pyarrow as pa
     import pyarrow.dataset as ds
     import pyarrow.parquet as pq
@@ -372,7 +383,7 @@ def scanner_table(
         # avoid creating a schema-less empty parquet when there's nothing to
         # compact. If you *must* emit a file in that case, you need a known
         # schema.
-        return None
+        return False
     # set of paths whose batches need transcript_id filtering against
     # `buffer_tids` (paths NOT in the buffer dir → from extra_inputs)
     extra_paths_set: set[str] = set(extra_paths)
@@ -421,10 +432,12 @@ def scanner_table(
         accumulated.clear()
         accumulated_bytes = 0
 
-    # Create an in-memory buffer (use PyArrow's native type for efficiency)
-    buffer = pa.BufferOutputStream()
+    # Stream the compacted output directly to `output_file`. On large scans
+    # the compacted parquet can be multiple GB — materializing it in an
+    # in-memory buffer (and then copying it to bytes) caused a ~2x-output-size
+    # memory spike at scan finalize, large enough to OOM the host.
     writer = pq.ParquetWriter(
-        buffer,
+        output_file,
         schema,
         compression="zstd",
         use_dictionary=True,
@@ -477,13 +490,7 @@ def scanner_table(
     flush_accumulated(writer)
     writer.close()
 
-    # TODO: If we changed the signature of this function from:
-    #   bytes | None
-    #     to
-    #   pa.Buffer | None
-    # We could avoid the copy (that to_pybytes does) altogether.
-    # Keep in mind that the previous BytesIO.getvalue() made a copy too.
-    return buffer.getvalue().to_pybytes()
+    return True
 
 
 def cleanup_buffer_dir(buffer_dir: UPath) -> None:

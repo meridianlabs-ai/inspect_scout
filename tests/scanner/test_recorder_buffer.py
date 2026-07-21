@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 import json
 import tempfile
 from pathlib import Path
@@ -140,6 +139,7 @@ async def test_sanitize_table_names(
     recorder_buffer: RecorderBuffer,
     sample_transcript: TranscriptInfo,
     sample_results: list[ResultReport],
+    tmp_path: Path,
 ) -> None:
     """Test that table names with special characters are sanitized."""
     scanner_name = "test-scanner.with:special/chars"
@@ -148,13 +148,16 @@ async def test_sanitize_table_names(
     await recorder_buffer.record(sample_transcript, scanner_name, sample_results, None)
 
     # Should still be able to retrieve
-    scanner_table(recorder_buffer._buffer_dir, scanner_name)
+    scanner_table(
+        recorder_buffer._buffer_dir, scanner_name, str(tmp_path / "out.parquet")
+    )
 
 
 @pytest.mark.asyncio
 async def test_scanner_table_casts_mixed_transcript_score_to_string(
     recorder_buffer: RecorderBuffer,
     sample_results: list[ResultReport],
+    tmp_path: Path,
 ) -> None:
     scanner_name = "test_scanner"
     await recorder_buffer.record(
@@ -182,10 +185,11 @@ async def test_scanner_table_casts_mixed_transcript_score_to_string(
         None,
     )
 
-    parquet_bytes = scanner_table(recorder_buffer._buffer_dir, scanner_name)
-    assert parquet_bytes is not None
+    out_path = tmp_path / "out.parquet"
+    wrote = scanner_table(recorder_buffer._buffer_dir, scanner_name, str(out_path))
+    assert wrote
 
-    table = pq.read_table(io.BytesIO(parquet_bytes))
+    table = pq.read_table(out_path)
     assert table.schema.field("transcript_score").type == pa.string()
 
 
@@ -232,24 +236,23 @@ async def test_scanner_table_dedupes_extra_inputs_against_buffer(
 
     # snapshot the buffer's compacted output and use it as extra_inputs
     # — this mirrors what `_compact_with_prior` passes into `sync`.
-    first = scanner_table(recorder_buffer._buffer_dir, scanner_name)
-    assert first is not None
     prior_path = tmp_path / "prior.parquet"
-    prior_path.write_bytes(first)
+    assert scanner_table(recorder_buffer._buffer_dir, scanner_name, str(prior_path))
 
     # second compaction with the prior as extra_inputs. Without dedup
     # the output would have each tid's rows twice.
-    second = scanner_table(
+    second_path = tmp_path / "second.parquet"
+    assert scanner_table(
         recorder_buffer._buffer_dir,
         scanner_name,
+        str(second_path),
         extra_inputs=[UPath(prior_path)],
     )
-    assert second is not None
 
     # load and check: same row count as the original (no doubling),
     # same set of transcript_ids
-    first_tbl = pq.read_table(io.BytesIO(first))
-    second_tbl = pq.read_table(io.BytesIO(second))
+    first_tbl = pq.read_table(prior_path)
+    second_tbl = pq.read_table(second_path)
     assert second_tbl.num_rows == first_tbl.num_rows, (
         f"extra_inputs duplicated buffer rows: {second_tbl.num_rows} "
         f"vs expected {first_tbl.num_rows}"
@@ -287,10 +290,8 @@ async def test_scanner_table_keeps_extra_inputs_for_transcripts_not_in_buffer(
         sample_results,
         None,
     )
-    prior_bytes = scanner_table(recorder_buffer._buffer_dir, scanner_name)
-    assert prior_bytes is not None
     prior_path = tmp_path / "prior.parquet"
-    prior_path.write_bytes(prior_bytes)
+    assert scanner_table(recorder_buffer._buffer_dir, scanner_name, str(prior_path))
 
     # clear the buffer file for tid-old and write tid-new
     sdir = recorder_buffer._buffer_dir / f"scanner={scanner_name}"
@@ -308,13 +309,14 @@ async def test_scanner_table_keeps_extra_inputs_for_transcripts_not_in_buffer(
         None,
     )
 
-    out = scanner_table(
+    out_path = tmp_path / "out.parquet"
+    assert scanner_table(
         recorder_buffer._buffer_dir,
         scanner_name,
+        str(out_path),
         extra_inputs=[UPath(prior_path)],
     )
-    assert out is not None
-    tbl = pq.read_table(io.BytesIO(out))
+    tbl = pq.read_table(out_path)
     # both transcripts present: tid-new from buffer, tid-old from extras
     assert set(tbl.column("transcript_id").to_pylist()) == {"tid-old", "tid-new"}
 

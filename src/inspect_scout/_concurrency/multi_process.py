@@ -77,6 +77,13 @@ DEFAULT_MAX_PROCESS = 4
 # when parse_jobs iterator is very large. Producer will block when queue is full.
 PARSE_JOB_PREFETCH_SIZE = 50
 
+# Maximum number of items buffered in the upstream (results) queue.
+# Provides backpressure when workers produce results faster than the main
+# process can record them: each ResultItem embeds the scanned transcript(s),
+# so an unbounded queue can grow to many GB over a large scan. Workers block
+# (in a worker thread, not the event loop) when the queue is full.
+UPSTREAM_QUEUE_MAXSIZE = 100
+
 # Sentinel value to signal collectors to shut down during Ctrl-C.
 #
 # MUST be a sentinel: During Ctrl-C shutdown, workers are terminated before they can
@@ -187,7 +194,7 @@ def multi_process_strategy(
                 diagnostics=diagnostics,
                 overall_start_time=time.time(),
                 parse_job_queue=spawn_ctx.Queue(maxsize=PARSE_JOB_PREFETCH_SIZE),
-                upstream_queue=spawn_ctx.Queue(),
+                upstream_queue=spawn_ctx.Queue(maxsize=UPSTREAM_QUEUE_MAXSIZE),
                 shutdown_condition=manager.Condition(),
                 workers_ready_event=manager.Event(),
                 semaphore_registry=parent_registry.sync_manager_dict,
@@ -214,7 +221,9 @@ def multi_process_strategy(
             # ParseJob queue is bounded to prevent memory explosion when parse_jobs
             # iterator contains a huge number of items. Producer blocks when queue
             # is full, providing lazy consumption.
-            # Upstream queue is unbounded and multiplexes both results and metrics.
+            # Upstream queue multiplexes results, metrics, logging, and semaphore
+            # requests. It is bounded so result backlog can't grow without limit
+            # when the collector records slower than workers scan.
             parse_job_queue = ipc_ctx.parse_job_queue
             upstream_queue = ipc_ctx.upstream_queue
 

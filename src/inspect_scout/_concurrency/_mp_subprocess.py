@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import sys
 import time
+from queue import Full
 from threading import Condition
 from typing import Callable
 
@@ -105,7 +106,9 @@ def subprocess_main(
             "Worker main",
             f"Initialized with {task_count} max tasks. Waiting for start...",
         )
-        ipc_ctx.upstream_queue.put(_mp_common.WorkerReady(worker_id))
+        await run_sync_on_thread(
+            ipc_ctx.upstream_queue.put, _mp_common.WorkerReady(worker_id)
+        )
         await run_sync_on_thread(ipc_ctx.workers_ready_event.wait)
 
         # Run everything in a task group with shutdown monitor
@@ -142,7 +145,8 @@ def subprocess_main(
                     except Exception as ex:
                         print_diagnostics("Worker main", f"Work task error: {ex}")
                         # Send exception back to main process via upstream queue
-                        ipc_ctx.upstream_queue.put(ex)
+                        # (in a thread: the bounded queue can block when full)
+                        await run_sync_on_thread(ipc_ctx.upstream_queue.put, ex)
                         raise
                     finally:
                         # CRITICAL: Cancel the shutdown monitor to prevent hang.
@@ -176,7 +180,9 @@ def subprocess_main(
             # except blocks above would catch and handle it, making control flow unclear.
             # With else:, it's explicit: sentinel is sent ONLY on clean completion.
             print_diagnostics("Worker main", "Sending completion sentinel")
-            ipc_ctx.upstream_queue.put(_mp_common.WorkerComplete())
+            await run_sync_on_thread(
+                ipc_ctx.upstream_queue.put, _mp_common.WorkerComplete()
+            )
 
         print_diagnostics("Worker main", "exiting")
 
@@ -191,16 +197,36 @@ def subprocess_main(
     async def _record_to_queue(
         transcript: TranscriptInfo, scanner: str, results: list[ResultReport]
     ) -> None:
-        ipc_ctx.upstream_queue.put(_mp_common.ResultItem(transcript, scanner, results))
+        # put() blocks when the bounded queue is full (backpressure when the
+        # main process records slower than workers scan) — run it in a thread
+        # so only this task waits, not the worker's whole event loop
+        await run_sync_on_thread(
+            ipc_ctx.upstream_queue.put,
+            _mp_common.ResultItem(transcript, scanner, results),
+        )
 
     def _update_worker_metrics(metrics: ScanMetrics) -> None:
-        ipc_ctx.upstream_queue.put(_mp_common.MetricsItem(worker_id, metrics))
+        # sync context: never block the event loop on a full queue. Metrics
+        # are periodic snapshots — dropping one is harmless, the next
+        # update supersedes it.
+        try:
+            ipc_ctx.upstream_queue.put_nowait(
+                _mp_common.MetricsItem(worker_id, metrics)
+            )
+        except Full:
+            pass
 
     def _log_in_parent(record: logging.LogRecord) -> None:
         # Strip exc_info from record to avoid pickling traceback objects since it
         # cannot be serialized across process boundaries
         record.exc_info = None
-        ipc_ctx.upstream_queue.put(LoggingItem(record))
+        # sync context (called from the logging handler): never block on a
+        # full queue — under backpressure it's better to drop a log record
+        # than to stall the worker's event loop
+        try:
+            ipc_ctx.upstream_queue.put_nowait(LoggingItem(record))
+        except Full:
+            pass
 
     def _initialize_subprocess() -> None:
         # Set up sys.path with plugin directory before any user imports

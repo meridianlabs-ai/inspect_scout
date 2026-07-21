@@ -294,22 +294,45 @@ class FileRecorder(ScanRecorder):
         # prior compacted parquet is remote, download it to a local temp
         # file before passing to `scanner_table`.
         #
-        # write to a sibling `.tmp` then atomically rename so the same path
-        # is never simultaneously an input to scanner_table and the target
-        # of an in-progress write (avoids any read/write overlap and gives
-        # crash resilience: a failure mid-write leaves the prior compacted
-        # file intact).
+        # the compacted output is streamed to a local file (never held in
+        # memory — on large scans it can be multiple GB): directly to a
+        # sibling `.tmp` when the scan dir is local, or to a temp file that
+        # is then streamed up to the remote `.tmp`. The `.tmp` is atomically
+        # renamed into place so the same path is never simultaneously an
+        # input to scanner_table and the target of an in-progress write
+        # (avoids any read/write overlap and gives crash resilience: a
+        # failure mid-write leaves the prior compacted file intact).
         sync_fs = filesystem(scan_dir.as_posix())
+        local_scan_dir = scan_dir.protocol in ("", "file")
         async with AsyncFilesystem() as fs:
             for scanner in sorted(scan_spec.scanners.keys()):
                 output_path = _scanner_parquet_file(scan_dir, scanner)
-                parquet_bytes = await _compact_with_prior(
-                    scan_buffer_dir, scanner, prior=UPath(output_path)
-                )
-                if parquet_bytes is not None:
-                    tmp_path = f"{output_path}.tmp"
-                    await fs.write_file(tmp_path, parquet_bytes)
-                    sync_fs.mv(tmp_path, output_path)
+                if local_scan_dir:
+                    compact_file = f"{output_path}.tmp"
+                else:
+                    tmp_fd, compact_file = tempfile.mkstemp(suffix=".parquet")
+                    os.close(tmp_fd)
+                try:
+                    wrote = await _compact_with_prior(
+                        scan_buffer_dir,
+                        scanner,
+                        prior=UPath(output_path),
+                        output_file=compact_file,
+                    )
+                    if wrote:
+                        if local_scan_dir:
+                            sync_fs.mv(compact_file, output_path)
+                        else:
+                            tmp_path = f"{output_path}.tmp"
+                            with open(compact_file, "rb") as f:
+                                await fs.write_file_streaming(tmp_path, f)
+                            sync_fs.mv(tmp_path, output_path)
+                finally:
+                    # remove leftovers: the remote-upload temp file, or a
+                    # partially-written local `.tmp` after a failure (after
+                    # a successful local rename the path no longer exists)
+                    if os.path.exists(compact_file):
+                        os.unlink(compact_file)
 
         # sync summary and errors
         _sync_status_files(scan_dir, scan_buffer_dir, scan_spec, complete)
@@ -697,16 +720,19 @@ class FileRecorder(ScanRecorder):
 
 
 async def _compact_with_prior(
-    scan_buffer_dir: UPath, scanner: str, *, prior: UPath
-) -> bytes | None:
+    scan_buffer_dir: UPath, scanner: str, *, prior: UPath, output_file: str
+) -> bool:
     """Compact buffer parquets, optionally merging in a prior compacted output.
+
+    The compacted result is streamed to `output_file` (a local path);
+    returns True if it was written (False when there was nothing to compact).
 
     `scanner_table` requires uniform local paths. If `prior` exists on a
     remote filesystem, download it to a local temp file before passing it
     in, then clean up.
     """
     if not prior.exists():
-        return scanner_table(scan_buffer_dir, scanner)
+        return scanner_table(scan_buffer_dir, scanner, output_file)
 
     local_prior: UPath | None = None
     try:
@@ -718,7 +744,7 @@ async def _compact_with_prior(
             local_prior = UPath(tmp_name)
             local_prior.write_bytes(prior.read_bytes())
             extra = [local_prior]
-        return scanner_table(scan_buffer_dir, scanner, extra_inputs=extra)
+        return scanner_table(scan_buffer_dir, scanner, output_file, extra_inputs=extra)
     finally:
         if local_prior is not None:
             local_prior.unlink(missing_ok=True)

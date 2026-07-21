@@ -215,21 +215,13 @@ def _handle_label_validation(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Handle label-based validation for expanded resultset rows.
 
-    Label validation is computed at scan time per scanner invocation (see
-    `_validate_labels()`), so its presentation is scoped the same way: each
-    resultset row is checked against its own `validation_target`.
-
     This function:
     1. Propagates per-label validation results to individual expanded rows
-    2. Creates synthetic rows for expected-absent labels (negative expected
-       value) with no result in their own resultset row, making true
-       negatives visible in the DataFrame
+    2. Creates synthetic rows for missing labels (where expected value is negative)
 
     Args:
-        expanded: DataFrame of expanded result rows (carrying
-            `_RESULTSET_INDEX`); may be empty
-        resultset_rows: Original resultset rows before expansion (carrying
-            `_RESULTSET_INDEX`)
+        expanded: DataFrame of expanded result rows
+        resultset_rows: Original resultset rows before expansion
 
     Returns:
         Tuple of (expanded DataFrame with validation, synthetic rows DataFrame)

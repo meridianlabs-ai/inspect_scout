@@ -174,28 +174,6 @@ class TestLabelValidationExpansion:
     by _validate_labels().
     """
 
-    def test_propagates_per_label_validation_results(self) -> None:
-        """Each expanded row gets its own label's validation result."""
-        df = _resultset_df(
-            [
-                {
-                    "transcript_id": "t1",
-                    "results": [
-                        {"label": "deception", "value": "found"},
-                        {"label": "phishing", "value": ""},
-                    ],
-                    "target": {"deception": True, "phishing": True},
-                    "result": {"deception": True, "phishing": False},
-                }
-            ]
-        )
-
-        expanded = _expand_resultset_rows(df)
-
-        by_label = expanded.set_index("label")["validation_result"]
-        assert by_label["deception"] == True  # noqa: E712
-        assert by_label["phishing"] == False  # noqa: E712
-
     def test_one_row_per_transcript_label_pair(self) -> None:
         """Regression test for whole-frame scoping (worked example in PR #545).
 
@@ -240,51 +218,43 @@ class TestLabelValidationExpansion:
             ("t2", "deception"): (False, True),  # synthetic true negative
         }
 
-    def test_synthetic_rows_scoped_per_resultset_row(self) -> None:
-        """A label in one transcript doesn't suppress another's synthetic row."""
-        target = {"deception": True, "phishing": False}
+        # synthetic rows carry a boolean value type
+        synthetic = expanded[
+            (expanded["transcript_id"] == "t1") & (expanded["label"] == "phishing")
+        ]
+        assert synthetic.iloc[0]["value_type"] == "boolean"
+
+        # internal bookkeeping column doesn't leak
+        assert not any(col.startswith("_resultset") for col in expanded.columns)
+
+    def test_synthetic_rows_without_stored_validation_result(self) -> None:
+        """A label-based target alone drives synthesis.
+
+        If a row's validation_result is missing (e.g. a scan error), its
+        expected-absent labels still get synthetic rows, with a None
+        validation result.
+        """
         df = _resultset_df(
             [
                 {
                     "transcript_id": "t1",
-                    "results": [
-                        {"label": "deception", "value": "found"},
-                        {"label": "phishing", "value": "found"},
-                    ],
-                    "target": target,
-                    "result": {"deception": True, "phishing": False},
-                },
-                {
-                    "transcript_id": "t2",
                     "results": [{"label": "deception", "value": "found"}],
-                    "target": target,
-                    "result": {"deception": True, "phishing": True},
-                },
+                    "target": {"deception": True, "phishing": False},
+                    "result": None,
+                }
             ]
         )
 
         expanded = _expand_resultset_rows(df)
 
-        # three real results plus one synthetic true-negative for t2
-        assert len(expanded) == 4
+        phishing = expanded[expanded["label"] == "phishing"]
+        assert len(phishing) == 1
+        assert phishing.iloc[0]["value"] == False  # noqa: E712
+        assert pd.isna(phishing.iloc[0]["validation_result"])
 
-        t2_phishing = expanded[
-            (expanded["transcript_id"] == "t2") & (expanded["label"] == "phishing")
-        ]
-        assert len(t2_phishing) == 1
-        synthetic = t2_phishing.iloc[0]
-        assert synthetic["value"] == False  # noqa: E712
-        assert synthetic["value_type"] == "boolean"
-        assert synthetic["validation_result"] == True  # noqa: E712
-
-        # t1's phishing row is its real result, not a synthetic one
-        t1_phishing = expanded[
-            (expanded["transcript_id"] == "t1") & (expanded["label"] == "phishing")
-        ]
-        assert t1_phishing.iloc[0]["value"] == "found"
-
-        # internal bookkeeping column doesn't leak
-        assert not any(col.startswith("_resultset") for col in expanded.columns)
+        # the real row's validation_result is left as stored
+        deception = expanded[expanded["label"] == "deception"]
+        assert deception.iloc[0]["validation_result"] == "null"
 
     def test_synthetic_rows_for_empty_resultset(self) -> None:
         """An empty resultset still yields synthetic true-negative rows."""

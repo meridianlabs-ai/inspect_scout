@@ -15,6 +15,7 @@ from ._recorder.recorder import (
     ScanResultsDF,
     Status,
 )
+from ._validation.validate import is_positive_value
 
 
 def scan_status(scan_location: str) -> Status:
@@ -284,8 +285,7 @@ def _handle_label_validation(
         for label in sorted(missing_labels):
             expected_value = parsed_target[label]
             # Only create synthetic row if expected value is negative
-            negative_values = (False, None, "NONE", "none", 0, "")
-            if expected_value not in negative_values:
+            if is_positive_value(expected_value):
                 continue
 
             # Template the synthetic row on this row (its own transcript/case)

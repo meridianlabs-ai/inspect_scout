@@ -1,5 +1,5 @@
 {
-  "description": "Agent with 1 ModelEvent and different system prompt is classified as utility",
+  "description": "Agent with 1 ModelEvent and different system prompt is classified as utility The parent runs a tool-calling loop (dispatching to the checker), which utility classification requires: helper spans are only demoted to utility when the parent has an agentic loop for them to be subordinate to.",
   "events": [
     {
       "event": "span_begin",
@@ -26,14 +26,38 @@
       "timestamp": "2024-01-01T00:00:02Z",
       "completed": "2024-01-01T00:00:03Z",
       "input": [
-        {"role": "system", "content": "You are an orchestrator agent."},
-        {"role": "user", "content": "Solve the task."}
+        {
+          "role": "system",
+          "content": "You are an orchestrator agent."
+        },
+        {
+          "role": "user",
+          "content": "Solve the task."
+        }
       ],
       "output": {
         "usage": {
           "input_tokens": 50,
           "output_tokens": 25
-        }
+        },
+        "choices": [
+          {
+            "message": {
+              "role": "assistant",
+              "content": "",
+              "tool_calls": [
+                {
+                  "id": "call-1",
+                  "function": "safety_checker",
+                  "arguments": {
+                    "input": "validate this plan"
+                  }
+                }
+              ]
+            },
+            "stop_reason": "tool_calls"
+          }
+        ]
       }
     },
     {
@@ -53,8 +77,14 @@
       "timestamp": "2024-01-01T00:00:05Z",
       "completed": "2024-01-01T00:00:06Z",
       "input": [
-        {"role": "system", "content": "You are a safety checker. Validate the output."},
-        {"role": "user", "content": "Check this output."}
+        {
+          "role": "system",
+          "content": "You are a safety checker. Validate the output."
+        },
+        {
+          "role": "user",
+          "content": "Check this output."
+        }
       ],
       "output": {
         "usage": {
@@ -91,7 +121,9 @@
         "source": "span",
         "span_id": "parent-agent"
       },
-      "event_uuids": ["e-001"],
+      "event_uuids": [
+        "e-001"
+      ],
       "utility": false,
       "children": [
         {
@@ -101,7 +133,9 @@
             "source": "span",
             "span_id": "child-agent"
           },
-          "event_uuids": ["e-002"],
+          "event_uuids": [
+            "e-002"
+          ],
           "utility": true,
           "total_tokens": 45
         }

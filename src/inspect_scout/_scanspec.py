@@ -72,6 +72,15 @@ class ScanOptions(BaseModel):
     shuffle: bool | int | None = Field(default=None)
     """Shuffle order of transcripts."""
 
+    results_buffer: int | None = Field(default=None)
+    """Sync in-progress results to the scan location every N recorded results.
+
+    When set, partial results are periodically compacted to the final scan
+    location while the scan is still running, so they can be inspected
+    in-flight. When None (the default) results are only written to the scan
+    location when the scan completes (or is interrupted).
+    """
+
 
 class TranscriptField(TypedDict, total=False):
     """Field in transcript data frame."""

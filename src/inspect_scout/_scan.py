@@ -105,6 +105,7 @@ def scan(
     max_processes: int | None = None,
     limit: int | None = None,
     shuffle: bool | int | None = None,
+    results_buffer: int | None = None,
     tags: list[str] | None = None,
     metadata: dict[str, Any] | None = None,
     display: DisplayType | None = None,
@@ -139,6 +140,7 @@ def scan(
         max_processes: The maximum number of concurrent processes (for multiproccesing). Defaults to 4.
         limit: Limit the number of transcripts processed.
         shuffle: Shuffle the order of transcripts (pass an `int` to set a seed for shuffling).
+        results_buffer: Sync in-progress results to the scan location every N recorded results, so partial results can be inspected while the scan is still running. Defaults to None (results are only written to the scan location on completion or interruption).
         tags: One or more tags for this scan.
         metadata: Metadata for this scan.
         display: Display type: "rich", "plain", "log", or "none" (defaults to "rich").
@@ -169,6 +171,7 @@ def scan(
             max_processes=max_processes,
             limit=limit,
             shuffle=shuffle,
+            results_buffer=results_buffer,
             tags=tags,
             metadata=metadata,
             log_level=log_level,
@@ -194,6 +197,7 @@ async def scan_async(
     max_processes: int | None = None,
     limit: int | None = None,
     shuffle: bool | int | None = None,
+    results_buffer: int | None = None,
     tags: list[str] | None = None,
     metadata: dict[str, Any] | None = None,
     log_level: str | None = None,
@@ -227,6 +231,7 @@ async def scan_async(
         max_processes: The maximum number of concurrent processes (for multiproccesing). Defaults to 4.
         limit: Limit the number of transcripts processed.
         shuffle: Shuffle the order of transcripts (pass an `int` to set a seed for shuffling).
+        results_buffer: Sync in-progress results to the scan location every N recorded results, so partial results can be inspected while the scan is still running. Defaults to None (results are only written to the scan location on completion or interruption).
         tags: One or more tags for this scan.
         metadata: Metadata for this scan.
         log_level: Level for logging to the console: "debug", "http", "sandbox",
@@ -295,6 +300,9 @@ async def scan_async(
     scanjob._max_processes = max_processes or scanjob._max_processes
     scanjob._limit = limit or scanjob._limit
     scanjob._shuffle = shuffle if shuffle is not None else scanjob._shuffle
+    scanjob._results_buffer = (
+        results_buffer if results_buffer is not None else scanjob._results_buffer
+    )
 
     # tags and metadata
     scanjob._tags = tags or scanjob._tags
@@ -685,6 +693,43 @@ async def _scan_async_inner(
                         return None
 
                 scan_location = await recorder.location()
+
+                # periodic sync of in-progress results to the scan location.
+                # when `results_buffer` is set we compact partial results to
+                # the final location every N recorded reports so they can be
+                # inspected while the scan is still running. `sync(complete=
+                # False)` is safe to call repeatedly mid-scan (it never cleans
+                # the buffer and writes atomically); we serialize it with a
+                # lock and skip if a sync is already in flight so overlapping
+                # triggers don't pile up.
+                results_buffer = scan.spec.options.results_buffer
+                results_buffer_lock = anyio.Lock()
+                results_buffer_state = {"since_sync": 0, "syncing": False}
+
+                async def maybe_sync_results() -> None:
+                    if results_buffer is None or results_buffer <= 0:
+                        return
+                    async with results_buffer_lock:
+                        results_buffer_state["since_sync"] += 1
+                        if (
+                            results_buffer_state["syncing"]
+                            or results_buffer_state["since_sync"] < results_buffer
+                        ):
+                            return
+                        results_buffer_state["since_sync"] = 0
+                        results_buffer_state["syncing"] = True
+                    try:
+                        await recorder.sync(scan_location, complete=False)
+                    except Exception as ex:  # pylint: disable=W0718
+                        # a periodic sync failure must not bring down the scan;
+                        # the final sync (or a later periodic one) will retry.
+                        logger.warning(
+                            "Periodic results sync failed (scan continues): %s", ex
+                        )
+                    finally:
+                        async with results_buffer_lock:
+                            results_buffer_state["syncing"] = False
+
                 with active_scans_store() as active_store:
                     active_store.put_spec(
                         scan.spec.scan_id, scan.spec, total_scans, scan_location
@@ -701,6 +746,7 @@ async def _scan_async_inner(
                         active_store.put_scanner_results(
                             scan.spec.scan_id, scanner, results
                         )
+                        await maybe_sync_results()
 
                     def update_metrics(metrics: ScanMetrics) -> None:
                         active_store.put_metrics(scan.spec.scan_id, metrics)

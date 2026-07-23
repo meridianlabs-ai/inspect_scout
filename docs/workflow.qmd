@@ -289,7 +289,7 @@ For some scanning work you won't get any benefit from increasing max processes (
 
 ### Batch Mode
 
-Inspect AI supports calling the batch processing APIs for the [OpenAI](https://platform.openai.com/docs/guides/batch), [Anthropic](https://platform.claude.com/docs/en/build-with-claude/batch-processing), [Google](https://ai.google.dev/gemini-api/docs/batch-api?batch=file), and [Together AI](https://docs.together.ai/docs/batch-inference) providers. Batch processing has lower token costs (typically 50% of normal costs) and higher rate limits, but also substantially longer processing times—batched generations typically complete within an hour but can take much longer (up to 24 hours).
+Inspect AI supports calling the batch processing APIs for the [OpenAI](https://platform.openai.com/docs/guides/batch), [Anthropic](https://platform.claude.com/docs/en/build-with-claude/batch-processing), [Google](https://ai.google.dev/gemini-api/docs/batch-api?batch=file), and [Together AI](https://docs.together.ai/docs/batch-inference) providers. Batch processing has lower token costs (typically 50% of normal costs) and higher rate limits, but also substantially longer processing times—batched generations typically complete within an hour but can take much longer (up to 24 hours).
 
 Use batch processing by passing the `--batch` CLI argument or the `batch` option from `GenerateConfig`. For example:
 
@@ -304,6 +304,18 @@ If you don't require immediate results then batch processing can be an excellent
 -   The optimal processing flow for batch mode is to send *all of your transcripts* in a single batch group so that they all complete together. Therefore, when running in batch mode `--max-transcripts` is automatically set to a very high value (10,000). You may need to lower this if holding that many transcripts in memory is problematic.
 
 See the Inspect AI documentation on [Batch Mode](https://inspect.aisi.org.uk/models-batch.html) for additional details on batching as well as notes on provider specific behavior and configuration.
+
+### Monitoring In-Progress Results
+
+For long-running scans it can be useful to inspect partial results while the scan is still in flight—for example to sanity check that a scanner is behaving as expected before committing to a multi-hour run. By default results are only written to the scan location when the scan completes (or is interrupted).
+
+Use the `--results-buffer` option (or the `results_buffer` scan/scan-job/project option) to periodically sync in-progress results to the scan location every N recorded results:
+
+``` bash
+scout scan cybench_scan.py --results-buffer 100
+```
+
+With this set, the compacted scanner Parquet files at the scan location are refreshed every 100 results, so you can point `scan_results_df()` (or Scout View) at the scan directory and analyze what's been produced so far. Writes are atomic, so readers always observe a consistent snapshot. Periodic syncing adds some I/O overhead, so choose N to balance freshness against cost (larger values sync less often); leaving it unset disables periodic syncing entirely.
 
 ### Error Handling
 

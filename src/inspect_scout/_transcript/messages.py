@@ -410,14 +410,9 @@ async def transcript_messages(
             ``timeline_messages()``.
         events: Which non-message event types to interleave into the
             message thread as marked entries (``"all"``, a list of
-            event types, or ``None`` to disable interleaving). On a
-            flat transcript (top-level messages, no timelines) events
-            are spliced directly into the message thread; on the
-            timeline path they are spliced per-span, with span-external
-            events (e.g. root-level events or a pruned ``scorers``
-            span's events) collected via ``collect_span_external()``
-            and attached to the appropriate span. Inert on a
-            messages-only transcript.
+            event types, or ``None`` to disable interleaving). Flat
+            transcripts splice directly; the timeline path splices
+            per-span. Inert on a messages-only transcript.
 
     Yields:
         ``MessagesSegment`` (or ``TimelineMessages``) for each segment.

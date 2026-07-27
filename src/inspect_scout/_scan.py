@@ -615,15 +615,14 @@ async def _scan_async_inner(
                         union_transcript: Transcript | TranscriptHandle
                         on_complete: Callable[[], Awaitable[None]] | None
                         if streaming_eligible:
-                            # Lazy handle shared by the lead and all followers;
-                            # closed once the last job completes.
                             handle = await reader.open(
                                 job.transcript_info, union_content
                             )
                             union_transcript = handle
 
-                            # 1 lead + N followers; each on_complete decrements,
-                            # closing the handle when the count reaches zero.
+                            # Lazy handle shared by 1 lead + N followers; each
+                            # on_complete decrements, closing the handle when
+                            # the count reaches zero.
                             lead_idx, *follower_indices = sorted(job.scanner_indices)
                             remaining = 1 + len(follower_indices)
 

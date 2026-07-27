@@ -422,8 +422,6 @@ def scanner(
                     scanner_fn, scanner_config.content
                 )
 
-            # Carry the per-instance streaming capability from the scan fn into
-            # the typed config.
             if hasattr(scanner_fn, SCANNER_SUPPORTS_STREAMING_ATTR):
                 scanner_config.supports_streaming = bool(
                     getattr(scanner_fn, SCANNER_SUPPORTS_STREAMING_ATTR)

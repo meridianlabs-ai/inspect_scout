@@ -496,8 +496,11 @@ def agentic_events(*, big_payload: str = "x" * 200) -> list[Event]:
     return events
 
 
-def agentic_transcript() -> Transcript:
-    """Wrap `agentic_events()` in a Transcript.
+def agentic_transcript(events: list[Event] | None = None) -> Transcript:
+    """Wrap `agentic_events()` (or a caller-supplied list) in a Transcript.
+
+    Args:
+        events: Event list to embed; defaults to `agentic_events()`.
 
     Returns:
         A minimal `Transcript` suitable for streaming/batch pipeline tests.
@@ -505,7 +508,7 @@ def agentic_transcript() -> Transcript:
     return Transcript.model_construct(
         transcript_id="agentic-1",
         messages=[],
-        events=agentic_events(),
+        events=events if events is not None else agentic_events(),
         timelines=[],
         metadata={},
     )

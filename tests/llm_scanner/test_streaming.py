@@ -2,12 +2,14 @@
 
 Covers ``llm_scanner``'s streaming segmentation:
 
-- A ``TranscriptHandle`` input produces a Result equivalent to a
-  ``Transcript`` input over the same content.
+- A ``TranscriptHandle`` input produces the same prompts and Result as a
+  ``Transcript`` input over the same content (messages and events paths).
 - The ``SCANNER_SUPPORTS_STREAMING_ATTR`` capability attr is set only when
   streaming can work without the full transcript (static config), and not
-  when a callable ``question``/``template_variables`` or event/timeline
-  content would force materialization.
+  when a callable ``question``/``template_variables`` or timeline content
+  would force materialization.
+- The runtime mirror of the opt-in logic materializes the handle when a
+  callable ``question`` needs the full transcript.
 - Segment scanning is bounded by ``_SEGMENT_CONCURRENCY`` (no more than N
   ``generate`` calls in flight at once).
 - Segment order is preserved through reduction.
@@ -15,7 +17,8 @@ Covers ``llm_scanner``'s streaming segmentation:
 
 from __future__ import annotations
 
-from typing import cast
+import logging
+from typing import Any, Awaitable, Callable, cast
 
 import anyio
 import pytest
@@ -30,6 +33,7 @@ from inspect_ai.model import (
 from inspect_ai.tool import ToolChoice, ToolInfo
 from inspect_scout import llm_scanner
 from inspect_scout._llm_scanner import _llm_scanner as llm_scanner_mod
+from inspect_scout._scanner.extract import MessagesPreprocessor
 from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import SCANNER_SUPPORTS_STREAMING_ATTR, Scanner
 from inspect_scout._transcript.handle import MaterializedTranscriptHandle
@@ -38,6 +42,8 @@ from inspect_scout._transcript.types import (
     TranscriptContent,
     TranscriptInfo,
 )
+
+from tests.transcript.fixtures_agentic import agentic_transcript
 
 
 def _make_transcript(n_messages: int, *, words: int = 3) -> Transcript:
@@ -54,6 +60,8 @@ def _make_transcript(n_messages: int, *, words: int = 3) -> Transcript:
 
 
 def _handle_for(transcript: Transcript) -> MaterializedTranscriptHandle:
+    """Build a MaterializedTranscriptHandle for an arbitrary transcript."""
+
     async def load_fn() -> Transcript:
         return transcript
 
@@ -74,15 +82,8 @@ async def _scan(
     return out
 
 
-# ---------------------------------------------------------------------------
-# (a) handle input equivalence
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.anyio
-async def test_handle_input_equivalent_to_transcript_input() -> None:
-    """Scanning a handle yields the same Result as scanning the Transcript."""
-    transcript = _make_transcript(3)
+def _recording_model(recorded: list[str]) -> Model:
+    """A mock model that records the full rendered prompt of each call."""
 
     def capture(
         input_msgs: list[ChatMessage],
@@ -90,25 +91,87 @@ async def test_handle_input_equivalent_to_transcript_input() -> None:
         tool_choice: ToolChoice,
         config: GenerateConfig,
     ) -> ModelOutput:
+        recorded.append("\n".join(m.text for m in input_msgs))
         return ModelOutput.from_content(
             model="mockllm",
             content="Reasoning.\n\nANSWER: yes",
             stop_reason="stop",
         )
 
-    mock_model = get_model("mockllm/model", custom_outputs=capture, memoize=False)
+    return get_model("mockllm/model", custom_outputs=capture, memoize=False)
 
+
+def _yes_model() -> Model:
+    return _recording_model([])
+
+
+# ---------------------------------------------------------------------------
+# (a) handle input equivalence
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("make_transcript", "scanner_kwargs", "min_prompts"),
+    [
+        # Single segment: raw messages, fits in one prompt.
+        pytest.param(
+            lambda: _make_transcript(3),
+            {},
+            1,
+            id="messages-single-segment",
+        ),
+        # Multiple segments: 12 padded messages under a small context window.
+        pytest.param(
+            lambda: _make_transcript(12, words=80),
+            {"context_window": 400},
+            2,
+            id="messages-multi-segment",
+        ),
+        # Events content: the handle path routes to stream_timeline_messages
+        # (two-pass event streaming); the Transcript path routes to the
+        # materialized transcript_messages path. Prompts must still match.
+        pytest.param(
+            agentic_transcript,
+            {"content": TranscriptContent(events="all")},
+            2,
+            id="events",
+        ),
+    ],
+)
+async def test_handle_scan_equivalent_to_transcript_scan(
+    make_transcript: Callable[[], Transcript],
+    scanner_kwargs: dict[str, Any],
+    min_prompts: int,
+) -> None:
+    """Handle and Transcript inputs produce identical prompt streams + Result.
+
+    The mock model records the full rendered prompt of every generate call,
+    so any divergence between the streaming and materialized paths (e.g. a
+    truncated segment) fails the prompt-sequence equality below.
+    """
+    transcript = make_transcript()
+
+    recorded: list[str] = []
     scan_fn = llm_scanner(
         question="Is this helpful?",
         answer="boolean",
-        model=mock_model,
+        model=_recording_model(recorded),
+        **scanner_kwargs,
     )
 
     result_transcript = await _scan(scan_fn, transcript)
-    result_handle = await _scan(scan_fn, _handle_for(transcript))
+    prompts_transcript = list(recorded)
+    recorded.clear()
 
+    result_handle = await _scan(scan_fn, _handle_for(transcript))
+    prompts_handle = list(recorded)
+
+    assert len(prompts_transcript) >= min_prompts
+    assert prompts_handle == prompts_transcript
     assert result_handle.value == result_transcript.value
     assert result_handle.answer == result_transcript.answer
+    assert result_handle.explanation == result_transcript.explanation
 
 
 # ---------------------------------------------------------------------------
@@ -116,66 +179,52 @@ async def test_handle_input_equivalent_to_transcript_input() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_static_config_sets_handle_attr() -> None:
-    scan_fn = llm_scanner(question="static?", answer="boolean")
-    assert getattr(scan_fn, SCANNER_SUPPORTS_STREAMING_ATTR, False) is True
+async def _dynamic_question(_t: Transcript) -> str:
+    return "dynamic?"
 
 
-def test_callable_question_does_not_set_handle_attr() -> None:
-    async def question(_t: Transcript) -> str:
-        return "dynamic?"
-
-    scan_fn = llm_scanner(question=question, answer="boolean")
-    assert getattr(scan_fn, SCANNER_SUPPORTS_STREAMING_ATTR, False) is False
+def _dynamic_template_variables(_t: Transcript) -> dict[str, Any]:
+    return {"extra": 1}
 
 
-def test_callable_template_variables_does_not_set_handle_attr() -> None:
-    def template_variables(_t: Transcript) -> dict[str, object]:
-        return {"extra": 1}
-
-    scan_fn = llm_scanner(
-        question="static?",
-        answer="boolean",
-        template_variables=template_variables,
-    )
-    assert getattr(scan_fn, SCANNER_SUPPORTS_STREAMING_ATTR, False) is False
-
-
-def test_timeline_does_not_set_handle_attr() -> None:
-    scan_fn = llm_scanner(question="static?", answer="boolean", timeline="agent")
-    assert getattr(scan_fn, SCANNER_SUPPORTS_STREAMING_ATTR, False) is False
-
-
-def test_content_with_events_sets_handle_attr() -> None:
-    # Events content is streaming-eligible (consumed via
-    # stream_timeline_messages on the handle path), so a static config with
-    # events content still opts in to streaming.
-    scan_fn = llm_scanner(
-        question="static?",
-        answer="boolean",
-        content=TranscriptContent(events="all"),
-    )
-    assert getattr(scan_fn, SCANNER_SUPPORTS_STREAMING_ATTR, False) is True
-
-
-def test_content_with_timeline_does_not_set_handle_attr() -> None:
-    # A timeline content filter still forces materialization (named-timeline
-    # selection and timeline extraction need the full transcript).
-    scan_fn = llm_scanner(
-        question="static?",
-        answer="boolean",
-        content=TranscriptContent(timeline="all"),
-    )
-    assert getattr(scan_fn, SCANNER_SUPPORTS_STREAMING_ATTR, False) is False
-
-
-def test_content_messages_only_still_sets_handle_attr() -> None:
-    scan_fn = llm_scanner(
-        question="static?",
-        answer="boolean",
-        content=TranscriptContent(messages="all"),
-    )
-    assert getattr(scan_fn, SCANNER_SUPPORTS_STREAMING_ATTR, False) is True
+@pytest.mark.parametrize(
+    ("kwargs", "expected"),
+    [
+        pytest.param({}, True, id="static"),
+        pytest.param({"question": _dynamic_question}, False, id="callable-question"),
+        pytest.param(
+            {"template_variables": _dynamic_template_variables},
+            False,
+            id="callable-template-variables",
+        ),
+        pytest.param({"timeline": "agent"}, False, id="timeline"),
+        # Events content is streaming-eligible (consumed via
+        # stream_timeline_messages on the handle path).
+        pytest.param(
+            {"content": TranscriptContent(events="all")}, True, id="content-events"
+        ),
+        pytest.param(
+            {"content": TranscriptContent(messages="all")}, True, id="content-messages"
+        ),
+        # A timeline content filter still forces materialization
+        # (named-timeline selection and extraction need the full transcript).
+        pytest.param(
+            {"content": TranscriptContent(timeline="all")}, False, id="content-timeline"
+        ),
+        # Preprocessors receive per-segment message lists, so they stay
+        # streaming-safe.
+        pytest.param(
+            {"preprocessor": MessagesPreprocessor[Transcript]()},
+            True,
+            id="preprocessor",
+        ),
+    ],
+)
+def test_streaming_attr_gating(kwargs: dict[str, Any], expected: bool) -> None:
+    """SCANNER_SUPPORTS_STREAMING_ATTR is set only for streaming-safe configs."""
+    call_kwargs: dict[str, Any] = {"question": "static?", "answer": "boolean"} | kwargs
+    scan_fn = llm_scanner(**call_kwargs)
+    assert getattr(scan_fn, SCANNER_SUPPORTS_STREAMING_ATTR, False) is expected
 
 
 # ---------------------------------------------------------------------------
@@ -184,9 +233,20 @@ def test_content_messages_only_still_sets_handle_attr() -> None:
 
 
 @pytest.mark.anyio
-async def test_bounded_segment_concurrency(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize(
+    "make_input",
+    [
+        pytest.param(_handle_for, id="handle"),
+        pytest.param(lambda t: t, id="transcript"),
+    ],
+)
+async def test_bounded_segment_concurrency(
+    monkeypatch: pytest.MonkeyPatch,
+    make_input: Callable[[Transcript], Transcript | MaterializedTranscriptHandle],
+) -> None:
     """No more than _SEGMENT_CONCURRENCY generate calls run concurrently."""
-    monkeypatch.setattr(llm_scanner_mod, "_SEGMENT_CONCURRENCY", 2)
+    limit = 2
+    monkeypatch.setattr(llm_scanner_mod, "_SEGMENT_CONCURRENCY", limit)
 
     transcript = _make_transcript(12, words=80)
 
@@ -223,56 +283,10 @@ async def test_bounded_segment_concurrency(monkeypatch: pytest.MonkeyPatch) -> N
         context_window=400,
     )
 
-    await _scan(scan_fn, _handle_for(transcript))
+    await _scan(scan_fn, make_input(transcript))
 
     assert peak > 1, "test should exercise concurrency (multiple segments in flight)"
-    assert peak <= 2, f"peak in-flight {peak} exceeded _SEGMENT_CONCURRENCY=2"
-
-
-@pytest.mark.anyio
-async def test_bounded_segment_concurrency_materialized(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The Transcript (materialized) path is also bounded."""
-    monkeypatch.setattr(llm_scanner_mod, "_SEGMENT_CONCURRENCY", 2)
-
-    transcript = _make_transcript(12, words=80)
-
-    in_flight = 0
-    peak = 0
-
-    async def custom(
-        input_msgs: list[ChatMessage],
-        tools: list[ToolInfo],
-        tool_choice: ToolChoice,
-        config: GenerateConfig,
-    ) -> ModelOutput:
-        nonlocal in_flight, peak
-        in_flight += 1
-        peak = max(peak, in_flight)
-        try:
-            await anyio.sleep(0.01)
-        finally:
-            in_flight -= 1
-        return ModelOutput.from_content(
-            model="mockllm",
-            content="Reasoning.\n\nANSWER: yes",
-            stop_reason="stop",
-        )
-
-    mock_model = get_model("mockllm/model", custom_outputs=custom, memoize=False)
-
-    scan_fn = llm_scanner(
-        question="Is this helpful?",
-        answer="boolean",
-        model=mock_model,
-        context_window=400,
-    )
-
-    await _scan(scan_fn, transcript)
-
-    assert peak > 1, "test should exercise concurrency (multiple segments in flight)"
-    assert peak <= 2, f"peak in-flight {peak} exceeded _SEGMENT_CONCURRENCY=2"
+    assert peak <= limit, f"peak in-flight {peak} exceeded _SEGMENT_CONCURRENCY={limit}"
 
 
 # ---------------------------------------------------------------------------
@@ -280,14 +294,27 @@ async def test_bounded_segment_concurrency_materialized(
 # ---------------------------------------------------------------------------
 
 
+def _make_recording_reducer() -> tuple[
+    Callable[[list[Result]], Awaitable[Result]], list[str]
+]:
+    """Build a reducer that records the answers it receives, in order."""
+    recorded: list[str] = []
+
+    async def reducer(results: list[Result]) -> Result:
+        recorded.clear()
+        recorded.extend(str(r.answer) for r in results)
+        return results[0]
+
+    return reducer, recorded
+
+
 @pytest.mark.anyio
 async def test_segment_order_preserved_in_reduction() -> None:
     """Segment order survives concurrent scanning + reduction.
 
-    Each segment's mock answer encodes the message index it contains. With a
-    string answer the default reducer concatenates per-segment explanations
-    in order; asserting the merged explanation preserves ascending order
-    verifies the sort-by-index step.
+    Each segment's mock answer encodes the message index it contains. The
+    recording reducer captures per-segment answers in the order it receives
+    them; asserting that order is ascending verifies the sort-by-index step.
     """
     n = 8
     transcript = _make_transcript(n, words=80)
@@ -318,86 +345,33 @@ async def test_segment_order_preserved_in_reduction() -> None:
 
     mock_model = get_model("mockllm/model", custom_outputs=custom, memoize=False)
 
+    reducer, recorded_order = _make_recording_reducer()
     scan_fn = llm_scanner(
         question="What is here?",
         answer="string",
         model=mock_model,
         context_window=400,
         # Use a reducer that just records order so we don't depend on an LLM.
-        reducer=_recording_reducer,
+        reducer=reducer,
     )
 
     await _scan(scan_fn, _handle_for(transcript))
 
-    assert _recorded_order, "reducer should have received multiple segments"
+    assert recorded_order, "reducer should have received multiple segments"
     # Extract the leading index from each recorded answer ("seg0", "seg3", ...)
-    indices = [int(ans.removeprefix("seg")) for ans in _recorded_order]
+    indices = [int(ans.removeprefix("seg")) for ans in recorded_order]
     assert indices == sorted(indices), f"segment order not preserved: {indices}"
 
 
 # ---------------------------------------------------------------------------
-# (e) events content: handle path via stream_timeline_messages
+# (e) streaming fallback and runtime materialization
 # ---------------------------------------------------------------------------
 
 
-def _handle_for_transcript(transcript: Transcript) -> MaterializedTranscriptHandle:
-    """Build a MaterializedTranscriptHandle for an arbitrary transcript."""
-
-    async def load_fn() -> Transcript:
-        return transcript
-
-    info = TranscriptInfo(
-        **transcript.model_dump(exclude={"messages", "events", "timelines"})
-    )
-    return MaterializedTranscriptHandle(load_fn, info)
-
-
-def _yes_model() -> Model:
-    def capture(
-        input_msgs: list[ChatMessage],
-        tools: list[ToolInfo],
-        tool_choice: ToolChoice,
-        config: GenerateConfig,
-    ) -> ModelOutput:
-        return ModelOutput.from_content(
-            model="mockllm",
-            content="Reasoning.\n\nANSWER: yes",
-            stop_reason="stop",
-        )
-
-    return get_model("mockllm/model", custom_outputs=capture, memoize=False)
-
-
 @pytest.mark.anyio
-async def test_handle_events_scan_equals_transcript_scan() -> None:
-    """An events-content handle scan equals the materialized Transcript scan.
-
-    The agentic fixture carries events (no top-level messages). Scanning it
-    through a handle routes to ``stream_timeline_messages`` (two-pass event
-    streaming); scanning the same ``Transcript`` routes to the materialized
-    ``transcript_messages`` path. Both must produce the same Result.
-    """
-    from tests.transcript.fixtures_agentic import agentic_transcript
-
-    transcript = agentic_transcript()
-
-    scan_fn = llm_scanner(
-        question="Did the agent use tools?",
-        answer="boolean",
-        model=_yes_model(),
-        content=TranscriptContent(events="all"),
-    )
-
-    result_transcript = await _scan(scan_fn, transcript)
-    result_handle = await _scan(scan_fn, _handle_for_transcript(transcript))
-
-    assert result_handle.value == result_transcript.value
-    assert result_handle.answer == result_transcript.answer
-    assert result_handle.explanation == result_transcript.explanation
-
-
-@pytest.mark.anyio
-async def test_stub_unsupported_falls_back(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_stub_unsupported_falls_back(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
     """A _StubSkeletonUnsupported during streaming falls back to materialized.
 
     Monkeypatching ``needed_model_event_uuids`` to raise
@@ -407,8 +381,6 @@ async def test_stub_unsupported_falls_back(monkeypatch: pytest.MonkeyPatch) -> N
     """
     from inspect_scout._transcript import timeline_stream
     from inspect_scout._transcript.timeline_stream import _StubSkeletonUnsupported
-
-    from tests.transcript.fixtures_agentic import agentic_transcript
 
     transcript = agentic_transcript()
 
@@ -427,18 +399,50 @@ async def test_stub_unsupported_falls_back(monkeypatch: pytest.MonkeyPatch) -> N
 
     monkeypatch.setattr(timeline_stream, "needed_model_event_uuids", _raise)
 
-    fallback = await _scan(scan_fn, _handle_for_transcript(transcript))
+    with caplog.at_level(
+        logging.INFO, logger="inspect_scout._llm_scanner._llm_scanner"
+    ):
+        fallback = await _scan(scan_fn, _handle_for(transcript))
+
+    # Positive evidence the fallback path actually ran (the monkeypatched
+    # function was called and the scanner recovered).
+    assert any(
+        "falling back to materialized scan" in record.getMessage()
+        for record in caplog.records
+    ), "expected a fallback log record from the streaming events path"
 
     assert fallback.value == expected.value
     assert fallback.answer == expected.answer
     assert fallback.explanation == expected.explanation
 
 
-_recorded_order: list[str] = []
+@pytest.mark.anyio
+async def test_callable_question_with_handle_materializes() -> None:
+    """A callable question given a handle receives a materialized Transcript.
 
+    Mirrors the factory-time opt-in gating at runtime: scan() must call
+    handle.load() when the question callable needs the full transcript, so
+    the callable sees real messages rather than an empty info shell.
+    """
+    transcript = _make_transcript(3)
 
-async def _recording_reducer(results: list[Result]) -> Result:
-    _recorded_order.clear()
-    for r in results:
-        _recorded_order.append(str(r.answer))
-    return results[0]
+    seen: list[Transcript] = []
+
+    async def question(t: Transcript) -> str:
+        seen.append(t)
+        return "dynamic?"
+
+    scan_fn = llm_scanner(
+        question=question,
+        answer="boolean",
+        model=_yes_model(),
+    )
+
+    result = await _scan(scan_fn, _handle_for(transcript))
+    assert result.answer is not None
+
+    assert seen, "question callable should have been invoked"
+    for t in seen:
+        assert [m.id for m in t.messages] == [m.id for m in transcript.messages], (
+            "question callable should receive the materialized transcript content"
+        )

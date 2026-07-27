@@ -6,6 +6,10 @@ from pathlib import Path
 
 import pytest
 from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
+from inspect_scout._transcript.handle import (
+    MaterializedTranscriptHandle,
+    SpooledTranscriptHandle,
+)
 from inspect_scout._transcript.types import TranscriptContent
 from inspect_scout._util import constants as constants_mod
 
@@ -45,6 +49,7 @@ async def test_streamed_equals_materialized(
         info = infos[0]
         materialized = await view.read(info, content)
         async with await view.open(info, content) as h:
+            assert isinstance(h, SpooledTranscriptHandle)
             streamed_messages = [m async for m in h.messages()]
             streamed_events = [e async for e in h.events()]
             loaded = await h.load()
@@ -62,13 +67,32 @@ async def test_streamed_equals_materialized(
 @pytest.mark.asyncio
 async def test_small_file_uses_materialized_handle() -> None:
     # default threshold (64MB) >> fixture size -> MaterializedTranscriptHandle
-    from inspect_scout._transcript.handle import MaterializedTranscriptHandle
-
     view = EvalLogTranscriptsView(str(LOGS[0]))
     await view.connect()
     try:
         infos = [i async for i in view.select()]
         cm = await view.open(infos[0], TranscriptContent(messages="all", events=None))
+        async with cm as h:
+            assert isinstance(h, MaterializedTranscriptHandle)
+    finally:
+        await view.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_timeline_request_uses_materialized_handle(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Even above the spool threshold (forced to 0), a timeline request needs
+    # the full in-memory event set, so it must use the materialized path.
+    monkeypatch.setattr(constants_mod, "SPOOL_THRESHOLD_BYTES", 0)
+    view = EvalLogTranscriptsView(str(LOGS[0]))
+    await view.connect()
+    try:
+        infos = [i async for i in view.select()]
+        cm = await view.open(
+            infos[0],
+            TranscriptContent(messages="all", events="all", timeline="all"),
+        )
         async with cm as h:
             assert isinstance(h, MaterializedTranscriptHandle)
     finally:

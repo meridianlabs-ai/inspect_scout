@@ -523,12 +523,9 @@ def _is_compatible_with_type(scanner_type: Any, target_type: Any) -> bool:
             return True
 
         # A `Transcript | TranscriptHandle` union is compatible wherever a bare
-        # Transcript is: llm_scanner accepts a handle for streaming reads but
-        # falls back to materializing a Transcript. Accept the union when at
-        # least one member matches the target and every remaining member is a
-        # TranscriptHandle type. Requiring a genuine handle member here keeps
-        # this from swallowing partial non-handle unions, which the coverage
-        # check below rejects.
+        # Transcript is. Requiring a genuine handle member among the non-
+        # matching members keeps this from swallowing partial non-handle
+        # unions, which the coverage check below rejects.
         union_members = _get_union_members(scanner_type)
         if union_members is not None:
             others = {

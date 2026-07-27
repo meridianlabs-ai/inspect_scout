@@ -96,7 +96,6 @@ class BlobSpool:
 
     def close(self) -> None:
         if self._file is not None:
-            # Closing the file closes the fd and deletes the backing file.
             self._file.close()
             self._file = None
             self._fd = None
@@ -147,7 +146,6 @@ class ItemSpool:
 
     def close(self) -> None:
         if self._file is not None:
-            # Closing the file closes the fd and deletes the backing file.
             self._file.close()
             self._file = None
             self._fd = None

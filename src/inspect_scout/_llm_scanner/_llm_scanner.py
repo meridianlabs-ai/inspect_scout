@@ -469,7 +469,7 @@ def llm_scanner(
             )
 
         if handle is not None:
-            # Streaming handle path: messages-only, no timeline (span id None).
+
             async def stream_source() -> AsyncIterator[tuple[str | None, str]]:
                 async for seg in stream_segment_messages(
                     handle.messages(),
@@ -498,11 +498,8 @@ def llm_scanner(
     if content is not None:
         setattr(scan, SCANNER_CONTENT_ATTR, content)
 
-    # Opt in per-instance: streaming works only when the scan needs no full
-    # transcript. Callable question/template_variables take a Transcript, and
-    # named-timeline extraction (from `timeline` or content `timeline`) needs
-    # the full transcript; any of those forces materialization. Events content
-    # streams via stream_timeline_messages.
+    # Opt in per-instance when the scan needs no full transcript (must mirror
+    # `full_transcript_needed` in scan(), plus the content `timeline` case).
     content_forces_materialization = (
         content is not None and content.timeline is not None
     )

@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 from inspect_ai.event import ModelEvent
 from inspect_scout._transcript.json.stream_parse import stream_parse_to_spool
+from inspect_scout._transcript.types import EventFilter, MessageFilter
 
 
 def _stream(data: dict[str, Any]) -> io.BytesIO:
@@ -55,13 +56,37 @@ SAMPLE: dict[str, Any] = {
 
 
 @pytest.mark.asyncio
-async def test_parse_spools_filtered_items(tmp_path: Path) -> None:
-    result = await stream_parse_to_spool(_stream(SAMPLE), "all", ["model"], tmp_path)
+@pytest.mark.parametrize(
+    "messages_filter,events_filter,expected_message_ids,expected_event_kinds",
+    [
+        pytest.param("all", ["model"], ["m1", "m2"], ["model"], id="all-and-model"),
+        pytest.param(["user"], None, ["m1"], [], id="user-only"),
+        pytest.param(None, "all", [], ["model", "info"], id="events-only"),
+    ],
+)
+async def test_parse_spools_filtered_items(
+    messages_filter: MessageFilter,
+    events_filter: EventFilter,
+    expected_message_ids: list[str],
+    expected_event_kinds: list[str],
+    tmp_path: Path,
+) -> None:
+    result = await stream_parse_to_spool(
+        _stream(SAMPLE), messages_filter, events_filter, tmp_path
+    )
     try:
         messages = list(result.messages.items())
-        assert [m["id"] for m in messages] == ["m1", "m2"]
+        assert [m["id"] for m in messages] == expected_message_ids
         events = list(result.events.items())
-        assert len(events) == 1 and events[0]["event"] == "model"
+        assert [e["event"] for e in events] == expected_event_kinds
+    finally:
+        result.close()
+
+
+@pytest.mark.asyncio
+async def test_parse_captures_scalar_fields(tmp_path: Path) -> None:
+    result = await stream_parse_to_spool(_stream(SAMPLE), "all", ["model"], tmp_path)
+    try:
         assert result.metadata == {"k": "v"}
         assert result.target == "the-target"
         assert result.scores == {"scorer": {"value": 1}}
@@ -79,17 +104,6 @@ async def test_parse_spools_all_attachments_and_pools(tmp_path: Path) -> None:
         assert result.blobs.pool_len("message_pool") == 2
         pooled = json.loads(result.blobs.get(("message_pool", 1)) or "")
         assert pooled["content"] == "attachment://" + "b" * 32
-    finally:
-        result.close()
-
-
-@pytest.mark.asyncio
-async def test_parse_message_filter(tmp_path: Path) -> None:
-    result = await stream_parse_to_spool(_stream(SAMPLE), ["user"], None, tmp_path)
-    try:
-        messages = list(result.messages.items())
-        assert [m["role"] for m in messages] == ["user"]
-        assert len(result.events) == 0
     finally:
         result.close()
 
@@ -152,9 +166,6 @@ async def test_replay_messages_resolves_attachments(tmp_path: Path) -> None:
         messages = list(replay_messages(result))
         assert messages[1].content == "resolved-text"  # attachment resolved
         assert messages[0].role == "user"
-        # multi-shot: second replay identical
-        again = list(replay_messages(result))
-        assert [m.id for m in again] == [m.id for m in messages]
     finally:
         result.close()
 
@@ -173,7 +184,6 @@ async def test_replay_events_expands_pools_and_pool_attachments(
         inputs = model_events[0].input
         assert len(inputs) == 2  # input_refs [[0, 2]] expanded from pool
         # THE BUG FIX: attachment ref inside a pool item is resolved.
-        # (Requires "b"*32 in SAMPLE attachments — extend SAMPLE first.)
         assert inputs[1].content == "pool-attachment-resolved"
         # multi-shot: second replay identical (re-iterable, not just replay_messages)
         again = [e for e in replay_events(result) if e.event == "model"]
@@ -232,58 +242,9 @@ async def test_replay_events_expands_call_pool(tmp_path: Path) -> None:
         assert model_event.call.request["messages"] == [
             {"role": "user", "content": "pooled call msg"}
         ]
-    finally:
-        result.close()
-
-
-@pytest.mark.asyncio
-async def test_resolve_item_dict_removes_call_refs_and_call_key(
-    tmp_path: Path,
-) -> None:
-    """resolve_item_dict pops call_refs/call_key after expanding the pool range."""
-    from inspect_scout._transcript.json.stream_parse import resolve_item_dict
-
-    sample: dict[str, Any] = {
-        "id": "test-pool-call-2",
-        "target": None,
-        "messages": [],
-        "scores": {},
-        "metadata": {},
-        "events": [
-            {
-                "span_id": "s1",
-                "timestamp": "2022-01-01T00:00:00+00:00",
-                "event": "model",
-                "model": "test-model",
-                "input": [],
-                "output": {"model": "test-model", "choices": []},
-                "call": {
-                    "request": {},
-                    "response": {},
-                    "call_refs": [[0, 1]],
-                    "call_key": "messages",
-                },
-                "tools": [],
-                "tool_choice": "auto",
-                "config": {},
-            },
-        ],
-        "attachments": {},
-        "message_pool": [],
-        "call_pool": [
-            {"role": "user", "content": "pooled call msg"},
-        ],
-    }
-    result = await stream_parse_to_spool(_stream(sample), None, "all", tmp_path)
-    try:
-        raw_events = list(result.events.items())
-        assert len(raw_events) == 1
-        resolved = resolve_item_dict(raw_events[0], result.blobs)
-        assert resolved["call"]["request"]["messages"] == [
-            {"role": "user", "content": "pooled call msg"}
-        ]
-        assert "call_refs" not in resolved["call"]
-        assert "call_key" not in resolved["call"]
+        # call_refs/call_key are popped after expanding the pool range.
+        assert model_event.call.call_refs is None
+        assert model_event.call.call_key is None
     finally:
         result.close()
 

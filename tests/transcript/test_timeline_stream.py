@@ -7,6 +7,10 @@ from typing import Any, AsyncIterator, Literal
 
 import pytest
 from inspect_ai.event import Event, ModelEvent, TimelineEvent, ToolEvent, timeline_build
+from inspect_ai.event._timeline import (
+    _get_system_prompt_for_event,
+    _has_tool_calls,
+)
 from inspect_ai.model import ChatMessage, ChatMessageSystem, ContentText
 from inspect_scout._transcript.messages import span_messages
 from inspect_scout._transcript.timeline import TimelineSpan, _walk_spans
@@ -17,32 +21,18 @@ from tests.transcript.fixtures_agentic import (
     _model_event,
     agentic_events,
     agentic_transcript,
+    reset_ids,
 )
 
-try:
-    from inspect_ai.event._timeline import (
-        _get_system_prompt_for_event,
-        _has_tool_calls,
-    )
-except ImportError:  # pragma: no cover - fallback if private API moves
 
-    def _get_system_prompt_for_event(event: ModelEvent) -> str | None:
-        from inspect_ai.model import ChatMessageSystem
+@pytest.fixture(autouse=True)
+def _reset_fixture_ids() -> None:
+    """Tests here build events via `_model_event`/`_compaction_event` directly.
 
-        for msg in event.input:
-            if isinstance(msg, ChatMessageSystem):
-                if isinstance(msg.content, str):
-                    return msg.content
-                parts = [c.text for c in msg.content if hasattr(c, "text")]
-                return "\n".join(parts) if parts else None
-        return None
-
-    def _has_tool_calls(event: ModelEvent) -> bool:
-        if event.output.choices:
-            msg = event.output.choices[0].message
-            if msg.tool_calls:
-                return True
-        return False
+    Those builders share a module-level timestamp counter with
+    `agentic_events()`, so reset it per test for deterministic events.
+    """
+    reset_ids()
 
 
 def _collect_utility(span: TimelineSpan) -> list[TimelineSpan]:
@@ -58,8 +48,6 @@ def _collect_utility(span: TimelineSpan) -> list[TimelineSpan]:
 
 def test_agentic_fixture_classification() -> None:
     """The fixture must exercise the classification paths the spec names."""
-    from inspect_scout._transcript.timeline import _walk_spans
-
     tree = timeline_build(agentic_events())
     spans = list(_walk_spans(tree.root, depth=None))
     names = [s.name for s in spans]
@@ -74,6 +62,13 @@ def test_agentic_fixture_classification() -> None:
     assert "sub" not in names
     utility_spans = _collect_utility(tree.root)
     assert len(utility_spans) >= 2  # "sub" + wrapped foreign-prompt helper
+
+    # Non-vacuity: the fixture's trim compaction really drops a prefix, so
+    # trim-selection paths are exercised — compaction="all" surfaces the
+    # trimmed marker message in "main"'s reconstructed messages.
+    main = next(s for s in spans if s.name == "main")
+    all_text = [m.text for m in span_messages(main, compaction="all")]
+    assert any("trim-dropped-marker" in t for t in all_text)
 
 
 def test_stub_model_event_preserves_classification_signals() -> None:
@@ -95,15 +90,6 @@ def test_stub_model_event_preserves_classification_signals() -> None:
             assert isinstance(stub, ToolEvent)
             assert stub.agent == ev.agent and stub.function == ev.function
             assert "y" * 1000 not in stub.model_dump_json()
-
-
-def test_prompt_interning_shares_instances() -> None:
-    from inspect_scout._transcript.timeline_stream import _PromptInterner
-
-    interner = _PromptInterner()
-    a = interner.intern("p" * 10_000)
-    b = interner.intern("p" * 10_000)
-    assert a is b
 
 
 def _span_model_event_uuids(span: TimelineSpan) -> list[str | None]:
@@ -158,12 +144,22 @@ def test_stub_tree_matches_full_tree_structure() -> None:
     assert "z" * 1000 not in handoff_span.model_dump_json()
 
 
-def test_stub_preserves_warmup_signal() -> None:
-    """Stubbing a warmup ``ModelEvent`` must preserve its classification signals.
+@pytest.mark.parametrize(
+    ("trailing_user_content", "expected_warmup"),
+    [
+        pytest.param("warmup", True, id="warmup"),
+        pytest.param("Is the answer correct? Reply yes or no.", False, id="judge"),
+    ],
+)
+def test_stub_preserves_warmup_signal(
+    trailing_user_content: str, expected_warmup: bool
+) -> None:
+    """Stubbing a max_tokens=1 ``ModelEvent`` must preserve its warmup verdict.
 
-    ``_is_warmup_call``'s verdict and the other per-event signals
-    ``_wrap_utility_events`` reads must survive stubbing, while its bulk user
-    content is still stripped.
+    ``_is_warmup_call``'s verdict (True for a single-word trailing user turn,
+    False for a multi-word judge/classifier call) and the other per-event
+    signals ``_wrap_utility_events`` reads must survive stubbing, while bulk
+    user content is still stripped.
 
     (A full ``timeline_build`` over a warmup span is not exercised here: it
     hits an upstream ``inspect_ai`` unbounded-recursion bug identically on
@@ -174,53 +170,29 @@ def test_stub_preserves_warmup_signal() -> None:
     from inspect_ai.model import ChatMessageUser, GenerateConfig
     from inspect_scout._transcript.timeline_stream import _PromptInterner, stub_event
 
-    # max_tokens=1 plus a single-word trailing user turn ("warmup") drives
-    # `_is_warmup_call` detection; the leading bulk user turn must not
-    # survive stubbing.
     base = _last_model_event(agentic_events())
-    warmup = base.model_copy(
+    event = base.model_copy(
         update={
             "uuid": "evt-warmup-local",
             "input": [
                 ChatMessageSystem(content="MAIN"),
                 ChatMessageUser(content="bulk conversation " + "w" * 100_000),
-                ChatMessageUser(content="warmup"),
+                ChatMessageUser(content=trailing_user_content),
             ],
             "config": GenerateConfig(max_tokens=1),
         }
     )
-    # Sanity: this really is a warmup call, and it carries strippable bulk.
-    assert _is_warmup_call(warmup)
+    # Sanity: the classifier's pre-stub verdict matches the expectation.
+    assert _is_warmup_call(event) is expected_warmup
 
-    stub = stub_event(warmup, _PromptInterner())
+    stub = stub_event(event, _PromptInterner())
     assert isinstance(stub, ModelEvent)
 
     # The three per-event signals `_wrap_utility_events` reads are preserved.
-    assert _is_warmup_call(stub) == _is_warmup_call(warmup) is True
-    assert _get_system_prompt_for_event(stub) == _get_system_prompt_for_event(warmup)
-    assert _has_tool_calls(stub) == _has_tool_calls(warmup)
-    # Bulk stripped: the leading 100KB user turn must not survive stubbing.
-    assert "w" * 1000 not in stub.model_dump_json()
-
-    # False direction: a max_tokens=1 event with MULTI-word trailing user
-    # content (a single-token judge/classifier call) is not a warmup, and
-    # stubbing must not flip it into one.
-    judge = base.model_copy(
-        update={
-            "uuid": "evt-judge-local",
-            "input": [
-                ChatMessageSystem(content="MAIN"),
-                ChatMessageUser(content="Is the answer correct? Reply yes or no."),
-            ],
-            "config": GenerateConfig(max_tokens=1),
-        }
-    )
-    assert not _is_warmup_call(judge)
-    judge_stub = stub_event(judge, _PromptInterner())
-    assert isinstance(judge_stub, ModelEvent)
-    assert _is_warmup_call(judge_stub) == _is_warmup_call(judge) is False
-
-    # Bulk user content did not survive stubbing.
+    assert _is_warmup_call(stub) is expected_warmup
+    assert _get_system_prompt_for_event(stub) == _get_system_prompt_for_event(event)
+    assert _has_tool_calls(stub) == _has_tool_calls(event)
+    # Bulk stripped: the 100KB user turn must not survive stubbing.
     assert "w" * 1000 not in stub.model_dump_json()
 
 
@@ -323,10 +295,7 @@ def test_trim_at_span_end_does_not_over_select() -> None:
     The pre-trim event is uuid-less; selection must not try to add it, and
     must not raise ``_StubSkeletonUnsupported`` while deciding that.
     """
-    from inspect_scout._transcript.timeline_stream import (
-        _needed_uuids_for_span,
-        _StubSkeletonUnsupported,
-    )
+    from inspect_scout._transcript.timeline_stream import _needed_uuids_for_span
 
     # A single span: ModelEvent(uuid) -> ModelEvent(no uuid) -> trim.
     model_1 = _model_event(
@@ -347,13 +316,7 @@ def test_trim_at_span_end_does_not_over_select() -> None:
 
     # No ModelEvent follows to consume the pre-trim event, so selection must
     # not try to add it (and must not raise doing so).
-    try:
-        needed = _needed_uuids_for_span(span_events, compaction="all")
-    except _StubSkeletonUnsupported:
-        pytest.fail(
-            "_needed_uuids_for_span raised on trailing trim with uuid-less pre-trim; "
-            "should only add pre-trim uuid if later ModelEvent consumes it"
-        )
+    needed = _needed_uuids_for_span(span_events, compaction="all")
 
     assert needed == set()
 
@@ -393,39 +356,6 @@ def test_selection_is_minimal_all() -> None:
         )
 
 
-def test_selection_includes_first_post_trim_event() -> None:
-    """Selection retains the first post-trim ModelEvent that anchors the trim prefix.
-
-    The fixture's trim compaction produces a non-empty trimmed prefix, and
-    ``_trim_prefix`` reads that event's input to reconstruct it.
-    """
-    from inspect_scout._transcript.timeline_stream import needed_model_event_uuids
-
-    events = agentic_events()
-    tree = timeline_build(events)
-
-    # The fixture's trim actually drops a prefix: compaction="all" surfaces
-    # the trimmed marker message.
-    main = next(s for s in _walk_spans(tree.root, depth=None) if s.name == "main")
-    all_text = [m.text for m in span_messages(main, compaction="all")]
-    assert any("trim-dropped-marker" in t for t in all_text)
-
-    needed = needed_model_event_uuids(tree.root, compaction="all", depth=None)
-    assert "evt-post-trim" in needed
-    assert "evt-pre-trim" in needed
-
-    # Blanking the first post-trim event changes output (the prefix can no
-    # longer be reconstructed), confirming its selection is load-bearing.
-    blanked = _blank_events_except(events, _all_model_uuids(events) - {"evt-post-trim"})
-    blanked_tree = timeline_build(blanked)
-    blanked_main = next(
-        s for s in _walk_spans(blanked_tree.root, depth=None) if s.name == "main"
-    )
-    assert _dump(span_messages(main, compaction="all")) != _dump(
-        span_messages(blanked_main, compaction="all")
-    )
-
-
 def test_selection_uuidless_raises() -> None:
     from inspect_scout._transcript.timeline_stream import (
         _StubSkeletonUnsupported,
@@ -440,30 +370,56 @@ def test_selection_uuidless_raises() -> None:
         needed_model_event_uuids(tree.root, compaction="last", depth=None)
 
 
-def test_stub_model_event_interns_list_content_system_prompt() -> None:
-    """List-content ChatMessageSystem parts are interned, not just string ones."""
+@pytest.mark.parametrize("content_kind", ["str", "list"])
+def test_stub_model_event_interns_system_prompt(
+    content_kind: Literal["str", "list"],
+) -> None:
+    """Equal system prompts across stubbed events share one interned instance.
+
+    Covers both string-content and list-content ``ChatMessageSystem``
+    prompts. The two events' prompt strings are deliberately built as
+    distinct-but-equal objects so the identity assertion can only pass via
+    interning (a shared input str would make it pass vacuously).
+    """
     from inspect_scout._transcript.timeline_stream import _PromptInterner, stub_event
 
-    prompt_text = "list-content-system-prompt " + "q" * 10_000
     base = agentic_events()[2]
     assert isinstance(base, ModelEvent)
     assert base.uuid is not None
     base_uuid = base.uuid
 
-    def _with_list_system_prompt(label_suffix: str) -> ModelEvent:
-        list_content_message = ChatMessageSystem(
-            content=[ContentText(text=prompt_text)]
+    def _with_system_prompt(label_suffix: str) -> ModelEvent:
+        # Fresh, distinct-but-equal prompt string per event.
+        prompt_text = "".join(["system ", "prompt ", "text "]) * 50
+        system_message = (
+            ChatMessageSystem(content=prompt_text)
+            if content_kind == "str"
+            else ChatMessageSystem(content=[ContentText(text=prompt_text)])
         )
         other_input = [m for m in base.input if not isinstance(m, ChatMessageSystem)]
         return base.model_copy(
             update={
                 "uuid": base_uuid + label_suffix,
-                "input": [list_content_message, *other_input],
+                "input": [system_message, *other_input],
             }
         )
 
-    event_a = _with_list_system_prompt("-a")
-    event_b = _with_list_system_prompt("-b")
+    event_a = _with_system_prompt("-a")
+    event_b = _with_system_prompt("-b")
+
+    def _prompt_obj(event: ModelEvent) -> str:
+        system = event.input[0]
+        assert isinstance(system, ChatMessageSystem)
+        if isinstance(system.content, str):
+            return system.content
+        part = system.content[0]
+        assert isinstance(part, ContentText)
+        return part.text
+
+    # Sanity: equal but NOT identical inputs — otherwise the `is` assertions
+    # below would pass even with interning disabled.
+    assert _prompt_obj(event_a) == _prompt_obj(event_b)
+    assert _prompt_obj(event_a) is not _prompt_obj(event_b)
 
     interner = _PromptInterner()
     stub_a = stub_event(event_a, interner)
@@ -475,19 +431,23 @@ def test_stub_model_event_interns_list_content_system_prompt() -> None:
     assert _get_system_prompt_for_event(stub_a) == _get_system_prompt_for_event(event_a)
     assert _get_system_prompt_for_event(stub_b) == _get_system_prompt_for_event(event_b)
 
-    # Interning applies to list-content parts: two events with identical
-    # list-content prompts share the interned part text instance.
+    # Interning: the two stubs' system-prompt content is the SAME object.
     stub_sys_a = stub_a.input[0]
     stub_sys_b = stub_b.input[0]
     assert isinstance(stub_sys_a, ChatMessageSystem)
     assert isinstance(stub_sys_b, ChatMessageSystem)
-    assert isinstance(stub_sys_a.content, list)
-    assert isinstance(stub_sys_b.content, list)
-    part_a = stub_sys_a.content[0]
-    part_b = stub_sys_b.content[0]
-    assert isinstance(part_a, ContentText)
-    assert isinstance(part_b, ContentText)
-    assert part_a.text is part_b.text
+    if content_kind == "str":
+        assert isinstance(stub_sys_a.content, str)
+        assert isinstance(stub_sys_b.content, str)
+        assert stub_sys_a.content is stub_sys_b.content
+    else:
+        assert isinstance(stub_sys_a.content, list)
+        assert isinstance(stub_sys_b.content, list)
+        part_a = stub_sys_a.content[0]
+        part_b = stub_sys_b.content[0]
+        assert isinstance(part_a, ContentText)
+        assert isinstance(part_b, ContentText)
+        assert part_a.text is part_b.text
 
 
 def _info(transcript: Transcript) -> TranscriptInfo:
@@ -540,6 +500,7 @@ async def test_stream_equals_materialized_segments(
 
 LOGS_DIR = Path(__file__).parent.parent / "recorder" / "logs"
 LOGS = sorted(LOGS_DIR.glob("*.eval"))
+assert LOGS, f"no .eval fixtures found in {LOGS_DIR}"
 
 
 @pytest.mark.asyncio

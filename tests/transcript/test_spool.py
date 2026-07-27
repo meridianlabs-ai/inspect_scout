@@ -4,32 +4,28 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pytest
 from inspect_scout._transcript.json.spool import BlobSpool, ItemSpool
 
 
-def test_blob_spool_roundtrip(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "value",
+    ["hello world", "héllo — ünïcode 你好", ""],
+    ids=["ascii", "unicode", "empty"],
+)
+def test_blob_spool_roundtrip(value: str, tmp_path: Path) -> None:
     spool = BlobSpool(tmp_path)
     try:
-        spool.put("att1", "hello world")
+        spool.put("att1", value)
         spool.put(("message_pool", 0), json.dumps({"role": "user"}))
         spool.put(("message_pool", 1), json.dumps({"role": "assistant"}))
-        assert spool.get("att1") == "hello world"
+        assert spool.get("att1") == value
         assert json.loads(spool.get(("message_pool", 1)) or "") == {"role": "assistant"}
         assert spool.get("missing") is None
         assert spool.pool_len("message_pool") == 2
         assert spool.pool_len("call_pool") == 0
-    finally:
-        spool.close()
-
-
-def test_blob_spool_unicode(tmp_path: Path) -> None:
-    spool = BlobSpool(tmp_path)
-    try:
-        spool.put("u", "héllo — ünïcode 你好")
-        assert spool.get("u") == "héllo — ünïcode 你好"
     finally:
         spool.close()
 
@@ -72,54 +68,64 @@ def test_item_spool_interleaved_iterations(tmp_path: Path) -> None:
         spool.close()
 
 
-def test_close_idempotent(tmp_path: Path) -> None:
-    spool = BlobSpool(tmp_path)
-    spool.close()
-    spool.close()
-    ispool = ItemSpool(tmp_path)
-    ispool.close()
-    ispool.close()
-
-
-def test_blob_spool_closed_guards_raise(tmp_path: Path) -> None:
+def _populated_blob_spool(tmp_path: Path) -> BlobSpool:
     spool = BlobSpool(tmp_path)
     spool.put("k", "v")
-    spool.close()
-    with pytest.raises(ValueError, match="closed"):
-        spool.put("k2", "v2")
-    with pytest.raises(ValueError, match="closed"):
-        spool.get("k")
+    return spool
 
 
-def test_item_spool_closed_guards_raise(tmp_path: Path) -> None:
+def _populated_item_spool(tmp_path: Path) -> ItemSpool:
     spool = ItemSpool(tmp_path)
     spool.append({"n": 0})
+    return spool
+
+
+@pytest.mark.parametrize(
+    "factory,operations",
+    [
+        pytest.param(
+            _populated_blob_spool,
+            [lambda s: s.put("k2", "v2"), lambda s: s.get("k")],
+            id="blob",
+        ),
+        pytest.param(
+            _populated_item_spool,
+            [lambda s: s.append({"n": 1}), lambda s: list(s.items())],
+            id="item",
+        ),
+    ],
+)
+def test_spool_closed_lifecycle(
+    factory: Callable[[Path], Any],
+    operations: list[Callable[[Any], Any]],
+    tmp_path: Path,
+) -> None:
+    """After close(), every operation raises; close() itself is idempotent."""
+    spool = factory(tmp_path)
     spool.close()
-    with pytest.raises(ValueError, match="closed"):
-        spool.append({"n": 1})
-    with pytest.raises(ValueError, match="closed"):
-        list(spool.items())
+    spool.close()  # idempotent
+    for operation in operations:
+        with pytest.raises(ValueError, match="closed"):
+            operation(spool)
 
 
 def test_item_spool_closed_mid_iteration_raises(tmp_path: Path) -> None:
     """Closing between internal chunk-reads must also raise.
 
     Not just resuming from an already-buffered chunk: items() reads in
-    256KiB chunks; pad each item so the first chunk read
-    yields exactly one item's worth of buffer, forcing a second internal
-    pread (which re-checks self._fd) to fetch the next item.
+    bounded internal chunks, so spool enough data (~1MB across many items)
+    that the iterator cannot have buffered everything after yielding the
+    first item -- resuming it must perform another internal read, which
+    re-checks that the spool is still open.
     """
-    # Sized so the JSONL line (with trailing newline) for item 0 is exactly
-    # one 256KiB chunk -- item 0 is fully satisfied by the first pread, and
-    # fetching item 1 requires a second pread that re-checks self._fd.
-    chunk_size = 256 * 1024
-    prefix_len = len(json.dumps({"n": 0, "pad": ""}, separators=(",", ":"))) + 1
-    padded = "x" * (chunk_size - prefix_len)
+    padding = "x" * 10_000
+    n_items = 110  # ~1.1MB total, well past any single internal chunk read
     spool = ItemSpool(tmp_path)
-    spool.append({"n": 0, "pad": padded})
-    spool.append({"n": 1})
+    for i in range(n_items):
+        spool.append({"n": i, "pad": padding})
     it = spool.items()
-    assert next(it) == {"n": 0, "pad": padded}
+    assert next(it) == {"n": 0, "pad": padding}
     spool.close()
     with pytest.raises(ValueError, match="closed"):
-        next(it)
+        while True:
+            next(it)

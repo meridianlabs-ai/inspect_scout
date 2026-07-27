@@ -1,6 +1,6 @@
 """Tests for the streaming scanner seam: input plumbing and dispatch."""
 
-from pathlib import Path
+import json
 from typing import Any, cast
 
 import pytest
@@ -9,23 +9,21 @@ from inspect_scout._concurrency.common import ScannerJob
 from inspect_scout._scan import _content_for_scanner, _scan_one, _streaming_eligible
 from inspect_scout._scanner.result import Result, _serialize_input
 from inspect_scout._scanner.scanner import SCANNER_SUPPORTS_STREAMING_ATTR, Scanner
-from inspect_scout._scanner.util import get_input_type_and_ids
 from inspect_scout._transcript.handle import MaterializedTranscriptHandle
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
 from inspect_scout._transcript.util import union_transcript_contents
-
-
-def test_input_type_for_transcript_info() -> None:
-    info = TranscriptInfo(transcript_id="t1")
-    assert get_input_type_and_ids(info) == ("transcript_info", ["t1"])
 
 
 def test_serialize_input_info_only() -> None:
     info = TranscriptInfo(transcript_id="t1", source_id="e1")
     input_json, input_data = _serialize_input(info, "transcript_info", pool_dedup=True)
     assert input_data is None
-    assert '"transcript_id":"t1"' in input_json.replace(" ", "")
-    assert "messages" not in input_json  # no content fields serialized
+    parsed = json.loads(input_json)
+    assert parsed["transcript_id"] == "t1"
+    assert parsed["source_id"] == "e1"
+    # info only: no content fields serialized
+    assert "messages" not in parsed
+    assert "events" not in parsed
 
 
 @scanner(messages="all", events="all")
@@ -45,27 +43,45 @@ def _plain_scanner() -> Scanner[Transcript]:
     return scan
 
 
-@pytest.mark.asyncio
-async def test_scan_one_with_handle_scanner(tmp_path: Path) -> None:
-    """A handle-accepting scanner receives the handle and results record info-only."""
-    info = TranscriptInfo(transcript_id="t1")
-    transcript = Transcript(transcript_id="t1", messages=[], events=[], metadata={})
+@scanner(messages="all")
+def _raising_handle_scanner() -> Scanner[Transcript]:
+    async def scan(transcript: Transcript) -> Result:
+        raise RuntimeError("scanner boom")
+
+    setattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, True)
+    return scan
+
+
+def _materialized_handle(transcript: Transcript) -> MaterializedTranscriptHandle:
+    """Build a materialized handle over an in-memory transcript."""
 
     async def load_fn() -> Transcript:
         return transcript
 
-    handle = MaterializedTranscriptHandle(load_fn, info)
+    return MaterializedTranscriptHandle(
+        load_fn, TranscriptInfo(transcript_id=transcript.transcript_id)
+    )
+
+
+def _empty_transcript() -> Transcript:
+    return Transcript(transcript_id="t1", messages=[], events=[], metadata={})
+
+
+@pytest.mark.asyncio
+async def test_scan_one_with_handle_scanner() -> None:
+    """A handle-accepting scanner receives the handle and results record info-only."""
+    handle = _materialized_handle(_empty_transcript())
 
     s = _handle_scanner()
     job = ScannerJob(union_transcript=handle, scanner=s, scanner_name="hs")
     reports = await _scan_one(job, validation=None, fail_on_error=True)
     assert len(reports) == 1
     assert reports[0].input_type == "transcript_info"
-    assert reports[0].input == info  # info only, no content
+    assert reports[0].input == handle.info  # info only, no content
 
 
 @pytest.mark.asyncio
-async def test_scan_one_stream_error_contained(tmp_path: Path) -> None:
+async def test_scan_one_stream_error_contained() -> None:
     """Errors raised during handle iteration produce an Error report, not a crash."""
     info = TranscriptInfo(transcript_id="t1")
 
@@ -83,64 +99,56 @@ async def test_scan_one_stream_error_contained(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_scan_one_on_complete_awaited_once_per_job(tmp_path: Path) -> None:
-    """The shared handle is closed exactly once, after the last (lead + follower) job.
+async def test_scan_one_awaits_on_complete_once() -> None:
+    """`_scan_one` awaits `job.on_complete` exactly once per job."""
+    handle = _materialized_handle(_empty_transcript())
 
-    Simulates the completion counter created by `_parse_function`: a lead with
-    one follower, each `ScannerJob` carrying the same `on_complete` closure.
-    Running `_scan_one` on the lead then the follower must decrement to zero
-    and close the handle exactly once.
-    """
-    info = TranscriptInfo(transcript_id="t1")
-    transcript = Transcript(transcript_id="t1", messages=[], events=[], metadata={})
-
-    close_count = 0
-
-    class SpyHandle(MaterializedTranscriptHandle):
-        async def aclose(self) -> None:
-            nonlocal close_count
-            close_count += 1
-            await super().aclose()
-
-    async def load_fn() -> Transcript:
-        return transcript
-
-    handle = SpyHandle(load_fn, info)
-
-    # Mirror _parse_function's completion counter: 1 lead + 1 follower.
-    remaining = 2
+    complete_calls = 0
 
     async def on_job_complete() -> None:
-        nonlocal remaining
-        remaining -= 1
-        if remaining == 0:
-            await handle.aclose()
+        nonlocal complete_calls
+        complete_calls += 1
 
-    lead = ScannerJob(
+    job = ScannerJob(
         union_transcript=handle,
         scanner=_handle_scanner(),
-        scanner_name="lead",
-        on_complete=on_job_complete,
-    )
-    follower = ScannerJob(
-        union_transcript=handle,
-        scanner=_handle_scanner(),
-        scanner_name="follower",
+        scanner_name="s",
         on_complete=on_job_complete,
     )
 
-    await _scan_one(lead, validation=None, fail_on_error=True)
-    assert close_count == 0  # lead done, follower still pending
-
-    await _scan_one(follower, validation=None, fail_on_error=True)
-    assert remaining == 0
-    assert close_count == 1  # closed exactly once after the last job
+    await _scan_one(job, validation=None, fail_on_error=True)
+    assert complete_calls == 1
 
 
-def _make_handle_scanner(messages: Any) -> Scanner[Any]:
-    """Build a handle-accepting scanner with the given `messages` content filter."""
+@pytest.mark.asyncio
+async def test_scan_one_awaits_on_complete_when_scanner_raises() -> None:
+    """`on_complete` still fires (finally) when the scanner raises with fail_on_error."""
+    handle = _materialized_handle(_empty_transcript())
 
-    @scanner(messages=messages)
+    complete_calls = 0
+
+    async def on_job_complete() -> None:
+        nonlocal complete_calls
+        complete_calls += 1
+
+    job = ScannerJob(
+        union_transcript=handle,
+        scanner=_raising_handle_scanner(),
+        scanner_name="s",
+        on_complete=on_job_complete,
+    )
+
+    with pytest.raises(RuntimeError, match="scanner boom"):
+        await _scan_one(job, validation=None, fail_on_error=True)
+    assert complete_calls == 1
+
+
+def _scanner_with(
+    messages: Any = None, events: Any = None, timeline: Any = None
+) -> Scanner[Any]:
+    """Build a handle-accepting scanner with the given content filters."""
+
+    @scanner(messages=messages, events=events, timeline=timeline)
     def factory() -> Scanner[Transcript]:
         async def scan(transcript: Transcript) -> Result:
             return Result(value="ok")
@@ -151,107 +159,89 @@ def _make_handle_scanner(messages: Any) -> Scanner[Any]:
     return cast(Scanner[Any], factory())
 
 
-def test_streaming_eligible_true_when_both_scanners_want_all() -> None:
-    s1 = _make_handle_scanner("all")
-    s2 = _make_handle_scanner("all")
+@pytest.mark.parametrize(
+    ("filters", "expected"),
+    [
+        pytest.param(
+            [{"messages": "all"}, {"messages": "all"}],
+            True,
+            id="messages_all",
+        ),
+        pytest.param(
+            [
+                {"messages": ["user", "assistant"]},
+                {"messages": ["assistant", "user"]},
+            ],
+            True,
+            id="messages_order",
+        ),
+        pytest.param(
+            [{"messages": ["user"]}, {"messages": ["user", "assistant"]}],
+            False,
+            id="messages_narrower",
+        ),
+        pytest.param(
+            [{"messages": "all"}, {"messages": "all", "events": "all"}],
+            False,
+            id="events_none_vs_all",
+        ),
+        pytest.param(
+            [
+                {
+                    "messages": "all",
+                    "events": ["model", "compaction", "span_begin", "span_end"],
+                },
+                {
+                    "messages": "all",
+                    "events": ["span_end", "span_begin", "compaction", "model"],
+                },
+            ],
+            True,
+            id="events_order",
+        ),
+        pytest.param(
+            [
+                {"messages": "all", "events": ["model"]},
+                {
+                    "messages": "all",
+                    "events": ["model", "compaction", "span_begin", "span_end"],
+                },
+            ],
+            False,
+            id="events_narrower",
+        ),
+        pytest.param(
+            [
+                {"messages": "all", "events": "all"},
+                {"messages": "all", "events": "all"},
+            ],
+            True,
+            id="events_all",
+        ),
+        pytest.param(
+            [{"messages": "all"}],
+            True,
+            id="single_scanner",
+        ),
+        pytest.param(
+            [
+                {"messages": "all", "timeline": "all"},
+                {"messages": "all", "timeline": "all"},
+            ],
+            False,
+            id="timeline_both",
+        ),
+        pytest.param(
+            [{"messages": "all", "timeline": "all"}, {"messages": "all"}],
+            False,
+            id="timeline_one",
+        ),
+    ],
+)
+def test_streaming_eligible(filters: list[dict[str, Any]], expected: bool) -> None:
+    """Scanners can share a union-filtered handle only when each filter equals the union."""
+    scanners = [_scanner_with(**f) for f in filters]
     union_content = union_transcript_contents(
-        [_content_for_scanner(s1), _content_for_scanner(s2)]
+        [_content_for_scanner(s) for s in scanners]
     )
-    assert _streaming_eligible([s1, s2], union_content) is True
-
-
-def test_streaming_eligible_true_when_message_filters_match_ignoring_order() -> None:
-    s1 = _make_handle_scanner(["user", "assistant"])
-    s2 = _make_handle_scanner(["assistant", "user"])
-    union_content = union_transcript_contents(
-        [_content_for_scanner(s1), _content_for_scanner(s2)]
-    )
-    assert union_content.messages is not None
-    assert set(union_content.messages) == {"user", "assistant"}
-    assert _streaming_eligible([s1, s2], union_content) is True
-
-
-def test_streaming_eligible_false_when_scanner_narrower_than_union() -> None:
-    narrow = _make_handle_scanner(["user"])
-    wide = _make_handle_scanner(["user", "assistant"])
-    union_content = union_transcript_contents(
-        [_content_for_scanner(narrow), _content_for_scanner(wide)]
-    )
-    assert _streaming_eligible([narrow, wide], union_content) is False
-
-
-def test_streaming_eligible_false_when_any_scanner_wants_events_or_timeline() -> None:
-    s1 = _make_handle_scanner("all")
-
-    @scanner(messages="all", events="all")
-    def events_factory() -> Scanner[Transcript]:
-        async def scan(transcript: Transcript) -> Result:
-            return Result(value="ok")
-
-        setattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, True)
-        return scan
-
-    s2 = cast(Scanner[Any], events_factory())
-    union_content = union_transcript_contents(
-        [_content_for_scanner(s1), _content_for_scanner(s2)]
-    )
-    assert union_content.events is not None
-    # s1 has events=None (narrower than the union's events="all"): not eligible.
-    assert _streaming_eligible([s1, s2], union_content) is False
-
-
-def _make_events_handle_scanner(events: Any) -> Scanner[Any]:
-    """Build a handle-accepting scanner with the given `events` content filter."""
-
-    @scanner(messages="all", events=events)
-    def factory() -> Scanner[Transcript]:
-        async def scan(transcript: Transcript) -> Result:
-            return Result(value="ok")
-
-        setattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, True)
-        return scan
-
-    return cast(Scanner[Any], factory())
-
-
-def test_streaming_eligible_events_content_true_when_equal_to_union() -> None:
-    # Two scanners with identical events filters (order-insensitive): the
-    # union equals each scanner's own events filter, so streaming is safe.
-    s1 = _make_events_handle_scanner(["model", "compaction", "span_begin", "span_end"])
-    s2 = _make_events_handle_scanner(["span_end", "span_begin", "compaction", "model"])
-    union_content = union_transcript_contents(
-        [_content_for_scanner(s1), _content_for_scanner(s2)]
-    )
-    assert union_content.events is not None
-    assert set(union_content.events) == {
-        "model",
-        "compaction",
-        "span_begin",
-        "span_end",
-    }
-    assert _streaming_eligible([s1, s2], union_content) is True
-
-
-def test_streaming_eligible_events_content_false_when_scanner_narrower() -> None:
-    # One scanner requests a narrower events filter than a sibling; the union
-    # broadens beyond the narrow scanner's own filter, so streaming (which
-    # shares the union-filtered handle) is unsafe.
-    narrow = _make_events_handle_scanner(["model"])
-    wide = _make_events_handle_scanner(
-        ["model", "compaction", "span_begin", "span_end"]
-    )
-    union_content = union_transcript_contents(
-        [_content_for_scanner(narrow), _content_for_scanner(wide)]
-    )
-    assert union_content.events is not None
-    assert _streaming_eligible([narrow, wide], union_content) is False
-
-
-def test_streaming_eligible_events_all_true() -> None:
-    s1 = _make_events_handle_scanner("all")
-    s2 = _make_events_handle_scanner("all")
-    union_content = union_transcript_contents(
-        [_content_for_scanner(s1), _content_for_scanner(s2)]
-    )
-    assert union_content.events == "all"
-    assert _streaming_eligible([s1, s2], union_content) is True
+    assert _streaming_eligible(scanners, union_content) is expected

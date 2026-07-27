@@ -241,12 +241,8 @@ def llm_scanner(
             are loaded automatically, along with model events (needed for
             positioning). ``model``/``tool`` and structural events are never
             interleaved (they are already the message thread). On timeline
-            scans, interleaving is per-span: an event that lives inside a
-            scanned span's own content is spliced into that span's message
-            thread (and hence its own Result); an event outside any scanned
-            span's content (e.g. a final score attached to a root-level
-            ``scorers`` phase) attaches chronologically to the last
-            preceding scanned span instead.
+            scans interleaving is per-span, with events outside any scanned
+            span attaching to the last preceding one.
         context_window: Override the model's context window size for chunking.
             When set, transcripts exceeding this limit are split into multiple
             segments, each scanned independently.
@@ -454,15 +450,6 @@ def llm_scanner(
                 reducer=reducer,
             )
 
-        # Scan segments through a bounded concurrency window. At most
-        # _SEGMENT_CONCURRENCY segments are scanned (and hence retained) at a
-        # time, so a large transcript can't spawn one task per segment. The
-        # segment source streams lazily on both paths, so unstarted segments
-        # aren't materialized either.
-        #
-        # Order matters for reduction (explanation concatenation, LLM synthesis
-        # prompt assembly, majority tiebreak), so each result carries its
-        # segment index and is sorted back into order before aggregation.
         async def stream_via_timeline(target: TranscriptHandle) -> Result:
             """Streaming events path via `stream_timeline_messages`.
 
@@ -574,9 +561,6 @@ def llm_scanner(
                 reducer=reducer,
             )
 
-        # Materialized scan: transcript_messages() picks the strategy itself
-        # (flat interleave, timeline with per-span splicing, or plain
-        # messages; events= is inert on the messages-only path).
         return await scan_materialized(info_transcript, events=events)
 
     # set name for collection by @scanner if specified

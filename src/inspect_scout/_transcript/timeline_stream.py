@@ -447,22 +447,14 @@ async def stream_timeline_messages(
         events: Which non-message event types to interleave into each
             span's message thread, forwarded to `timeline_messages()`
             (`"all"`, a list of event types, or `None` (default) to
-            disable interleaving). Span-external events (e.g. root-level
-            events or a pruned `scorers` span's events) are collected via
-            `collect_span_external()` and spliced into the appropriate
-            span. When set with `compaction != "all"`, pass 1's `needed`
-            set is widened with the `compaction="all"` selection so the
-            compaction-pruned/fork discriminator (see `_AnchorWalk`) can
-            reconstruct the untruncated thread from full inputs -- an
-            extra retention of one full `ModelEvent` per pruned region.
+            disable interleaving). Setting it widens pass 1's retention;
+            see the inline notes at the `needed` computation.
         include_scorers: Whether to include scorer spans in message
             extraction, mirroring `transcript_messages`' parameter.
             Defaults to `False`: `scorers` spans are pruned from the tree
             used for pass 1 selection and the final walk, so grader
-            `ModelEvent`s never appear in any thread; the unpruned
-            skeleton remains the `events`-collection source, so a pruned
-            span's other events (e.g. its final `ScoreEvent`) still
-            surface as span-external entries.
+            `ModelEvent`s never appear in any thread, while their other
+            events still surface as span-external entries.
 
     Yields:
         `TimelineMessages` segments, identical to calling `timeline_messages`

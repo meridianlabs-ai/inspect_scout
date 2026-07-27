@@ -189,13 +189,11 @@ class _AnchorWalk:
     a ``MODEL (BRANCH)`` entry at the current anchor; if present, the turn
     was compaction-pruned and stays hidden.
 
-    Known limitation (id-less messages only, unreachable for Inspect logs
-    since Inspect auto-mints message ids): the text-hash fallback is
-    order-based, so a fork whose output text equals a later on-thread
-    turn's text steals that turn's occurrence (pinned by
-    ``test_idless_duplicate_text_fork_steals_anchor_known_limitation``).
-    If a non-Inspect importer ever produces id-less messages, escalate to
-    uuid-keyed anchoring rather than patching the heuristic.
+    Known limitation, id-less messages only (unreachable for Inspect logs,
+    which auto-mint message ids): the order-based text-hash fallback lets a
+    fork steal the occurrence of a later on-thread turn with equal text
+    (pinned by ``test_idless_duplicate_text_fork_steals_anchor_known_limitation``).
+    Escalate to uuid-keyed anchoring rather than patching the heuristic.
     """
 
     def __init__(
@@ -354,11 +352,11 @@ def _collect_span_external(
     for item in span.content:
         if isinstance(item, TimelineEvent):
             if is_scannable:
-                continue  # owned by this span's own splice (span_interleaved_messages)
+                continue
             event = item.event
             if isinstance(event, ModelEvent):
                 if span_in_scorers:
-                    continue  # grader ModelEvents never render, even as branches
+                    continue
                 text = _off_thread_model_text(event)
             else:
                 text = _interleavable_text(event, events)
@@ -392,14 +390,9 @@ def collect_span_external(
     ``timeline_messages(..., span_external=...)``.
 
     ``ModelEvent``s collected this way always render as ``MODEL (BRANCH)``
-    entries, except grader model calls under a ``scorers`` span (or its
-    descendants), which never render. ``scorers`` spans are collected here
-    (rather than spliced) because ``transcript_messages`` prunes them from
-    the walked tree by default -- without this, their events (e.g. the
-    final ``ScoreEvent``) would be lost. Callers that walk a ``scorers``
-    span normally (``include_scorers=True`` with a direct ``ModelEvent``)
-    must pre-filter it from the tree passed here to avoid double-rendering
-    -- see ``scorers_collection_source``.
+    entries, except grader model calls under a ``scorers`` span, which never
+    render. Pass the tree through ``scorers_collection_source`` first -- it
+    documents the ``include_scorers`` handling.
 
     Args:
         timeline: The (unpruned, or caller-pre-filtered) timeline or span
@@ -407,9 +400,7 @@ def collect_span_external(
         events: Which event types to interleave (``"all"`` or a list).
         depth: Maximum nesting level of scannable spans, matching
             ``timeline_messages()``. A scannable span beyond this limit is
-            never walked, so its events (including its own on-thread
-            ``ModelEvent``s, which then have no thread to be on) are
-            collected as external, attributed to the last walked span.
+            never walked, so its own events are collected as external too.
 
     Returns:
         Mapping of scannable span id (or ``""``) to ``(event_id,
@@ -497,6 +488,24 @@ def interleave_events(
     return list(walk.spliced(messages))
 
 
+class _ModelOutputOp(NamedTuple):
+    """A ModelEvent's output-message id and its branch text if off-thread."""
+
+    message_id: str
+    branch_text: str
+
+
+class _RenderedOp(NamedTuple):
+    """A non-model event already rendered to its ``[E#]`` entry text."""
+
+    event_id: str
+    text: str
+
+
+_ReplayOp = _ModelOutputOp | _RenderedOp
+"""One recorded anchor-walk input, replayed once the thread is reconstructed."""
+
+
 async def stream_interleave_events(
     handle: "TranscriptHandle",
     events: EventsSpec = "all",
@@ -518,12 +527,9 @@ async def stream_interleave_events(
     retaining only the region-last ``ModelEvent`` (whose input carries the
     region's conversation) plus an op log of output-message ids and
     pre-rendered branch text, replayed against the reconstructed thread.
-
-    Warning:
-        The events-only reconstruction assumes a single linear
-        conversation; multi-agent transcripts must use
-        ``stream_timeline_messages`` instead (``llm_scanner`` routes them
-        there automatically).
+    That reconstruction carries ``interleave_events``' linear-conversation
+    limitation; ``llm_scanner`` routes multi-agent transcripts to
+    ``stream_timeline_messages`` instead.
     """
     message_ids = [_message_id(m) async for m in handle.messages()]
     types = None if events == "all" else ["model", "compaction", *events]
@@ -559,22 +565,21 @@ async def stream_interleave_events(
 
     # Events-only: `skeleton` keeps compaction events plus the region-last
     # ModelEvent (all span_messages reads); `ops` records the anchor walk's
-    # inputs for replay once the thread exists: ("m", output_message_id,
-    # rendered_branch_text_or_"") or ("e", event_id, rendered_text).
+    # inputs for replay once the thread exists.
     skeleton: list[Event] = []
-    ops: list[tuple[str, str, str]] = []
+    ops: list[_ReplayOp] = []
     async for event in handle.events(types=types):
         if isinstance(event, ModelEvent):
             mid = _model_output_id(event)
             if mid is not None:
-                ops.append(("m", mid, _off_thread_model_text(event) or ""))
+                ops.append(_ModelOutputOp(mid, _off_thread_model_text(event) or ""))
             _skeleton_add(skeleton, event)
         elif isinstance(event, CompactionEvent):
             _skeleton_add(skeleton, event)
         else:
             rendered = _interleavable_text(event, events)
             if rendered is not None:
-                ops.append(("e", _event_id(event), rendered))
+                ops.append(_RenderedOp(_event_id(event), rendered))
 
     thread = span_messages(skeleton, compaction=compaction)
     excluded_ids = _compaction_excluded_ids(
@@ -584,13 +589,13 @@ async def stream_interleave_events(
     walk = _AnchorWalk(
         [_message_id(m) for m in thread], events, excluded_ids=excluded_ids
     )
-    for kind, a, b in ops:
-        if kind == "m":
-            consumed = walk.add_model_output(a)
-            if not consumed and a not in excluded_ids and b:
-                walk.add_rendered(a, b)
+    for op in ops:
+        if isinstance(op, _ModelOutputOp):
+            consumed = walk.add_model_output(op.message_id)
+            if not consumed and op.message_id not in excluded_ids and op.branch_text:
+                walk.add_rendered(op.message_id, op.branch_text)
         else:
-            walk.add_rendered(a, b)
+            walk.add_rendered(op.event_id, op.text)
 
     for message in walk.spliced(thread):
         yield message

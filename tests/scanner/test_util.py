@@ -7,7 +7,7 @@ from inspect_ai.event import ModelEvent, ToolEvent
 from inspect_ai.model import ChatMessageAssistant, ChatMessageUser, ModelOutput
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_scout._scanner.util import get_input_type_and_ids
-from inspect_scout._transcript.types import Transcript
+from inspect_scout._transcript.types import Transcript, TranscriptInfo
 
 
 @pytest.mark.parametrize(
@@ -24,6 +24,7 @@ from inspect_scout._transcript.types import Transcript
             "transcript",
             ["t1"],
         ),
+        (TranscriptInfo(transcript_id="t1"), "transcript_info", ["t1"]),
         (ChatMessageUser(content="hello", id="m1"), "message", ["m1"]),
         (ChatMessageAssistant(content="response", id="m2"), "message", ["m2"]),
         (
@@ -57,6 +58,7 @@ from inspect_scout._transcript.types import Transcript
 )
 def test_single_items_return_correct_type_and_id(
     input_value: Transcript
+    | TranscriptInfo
     | ChatMessageUser
     | ChatMessageAssistant
     | ToolEvent

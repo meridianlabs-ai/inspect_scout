@@ -134,64 +134,57 @@ async def test_streamed_equals_materialized(
 
 
 @pytest.mark.asyncio
-async def test_small_content_uses_materialized_handle(
+@pytest.mark.parametrize(
+    "force_zero_threshold,content,transcript_id",
+    [
+        pytest.param(
+            # Default threshold (64MB) >> tiny fixture content.
+            False,
+            TranscriptContent(messages="all", events="all"),
+            "t-with-events",
+            id="small-content",
+        ),
+        pytest.param(
+            # Even with threshold forced to 0, a timeline request isn't
+            # messages/events-only content, so it must use the materialized path.
+            True,
+            TranscriptContent(messages="all", events="all", timeline="all"),
+            "t-with-events",
+            id="timeline-request",
+        ),
+        pytest.param(
+            True,
+            TranscriptContent(messages="all", events=None),
+            "does-not-exist",
+            id="unknown-transcript",
+        ),
+    ],
+)
+async def test_routing_to_materialized_handle(
     parquet_db: ParquetTranscriptsDB,
-) -> None:
-    # Default threshold (64MB) >> tiny fixture content -> MaterializedTranscriptHandle.
-    try:
-        infos = [i async for i in parquet_db.select()]
-        info = next(i for i in infos if i.transcript_id == "t-with-events")
-        cm = await parquet_db.open(
-            info, TranscriptContent(messages="all", events="all")
-        )
-        async with cm as h:
-            assert isinstance(h, MaterializedTranscriptHandle)
-    finally:
-        await parquet_db.disconnect()
-
-
-@pytest.mark.asyncio
-async def test_timeline_request_uses_materialized_handle(
-    parquet_db: ParquetTranscriptsDB,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    # Even with threshold forced to 0, a timeline request isn't
-    # messages/events-only content, so it must use the materialized path.
-    monkeypatch.setattr(constants_mod, "SPOOL_THRESHOLD_BYTES", 0)
-    try:
-        infos = [i async for i in parquet_db.select()]
-        info = next(i for i in infos if i.transcript_id == "t-with-events")
-        cm = await parquet_db.open(
-            info, TranscriptContent(messages="all", events="all", timeline="all")
-        )
-        async with cm as h:
-            assert isinstance(h, MaterializedTranscriptHandle)
-    finally:
-        await parquet_db.disconnect()
-
-
-@pytest.mark.asyncio
-async def test_unknown_transcript_uses_materialized_handle(
-    parquet_db: ParquetTranscriptsDB,
+    force_zero_threshold: bool,
+    content: TranscriptContent,
+    transcript_id: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from inspect_scout._transcript.types import TranscriptInfo
 
-    monkeypatch.setattr(constants_mod, "SPOOL_THRESHOLD_BYTES", 0)
+    if force_zero_threshold:
+        monkeypatch.setattr(constants_mod, "SPOOL_THRESHOLD_BYTES", 0)
     try:
-        missing = TranscriptInfo(
-            transcript_id="does-not-exist",
+        known = {i.transcript_id: i async for i in parquet_db.select()}
+        info = known.get(transcript_id) or TranscriptInfo(
+            transcript_id=transcript_id,
             source_type="test",
             source_id="source-x",
             source_uri="test://missing.json",
             metadata={},
         )
-        cm = await parquet_db.open(
-            missing, TranscriptContent(messages="all", events=None)
-        )
+        cm = await parquet_db.open(info, content)
         async with cm as h:
             assert isinstance(h, MaterializedTranscriptHandle)
-            loaded = await h.load()
-            assert loaded.messages == []
+            if transcript_id not in known:
+                loaded = await h.load()
+                assert loaded.messages == []
     finally:
         await parquet_db.disconnect()

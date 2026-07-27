@@ -6,7 +6,7 @@ import io
 import json
 import pickle
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import anyio
 import ijson  # type: ignore
@@ -14,13 +14,17 @@ import pytest
 from inspect_scout._transcript.handle import (
     MaterializedTranscriptHandle,
     SpooledTranscriptHandle,
-    TranscriptHandle,
 )
 from inspect_scout._transcript.json.stream_parse import (
     StreamParseResult,
     stream_parse_to_spool,
 )
-from inspect_scout._transcript.types import Transcript, TranscriptInfo
+from inspect_scout._transcript.types import (
+    EventFilter,
+    MessageFilter,
+    Transcript,
+    TranscriptInfo,
+)
 
 INFO = TranscriptInfo(transcript_id="t1", source_type="eval_log", source_id="e1")
 
@@ -47,6 +51,15 @@ def _spooled_handle(tmp_path: Path) -> SpooledTranscriptHandle:
     return SpooledTranscriptHandle(INFO, parse, fallback)
 
 
+def _materialized_handle() -> MaterializedTranscriptHandle:
+    transcript = Transcript(transcript_id="t1", messages=[], events=[], metadata={})
+
+    async def load_fn() -> Transcript:
+        return transcript
+
+    return MaterializedTranscriptHandle(load_fn, INFO)
+
+
 @pytest.mark.asyncio
 async def test_spooled_handle_multi_shot(tmp_path: Path) -> None:
     async with _spooled_handle(tmp_path) as handle:
@@ -67,19 +80,16 @@ async def test_spooled_handle_load_memoized(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_handle_refuses_pickle(tmp_path: Path) -> None:
-    handle = _spooled_handle(tmp_path)
+@pytest.mark.parametrize("handle_kind", ["spooled", "materialized"])
+async def test_handle_refuses_pickle(handle_kind: str, tmp_path: Path) -> None:
+    handle: SpooledTranscriptHandle | MaterializedTranscriptHandle = (
+        _spooled_handle(tmp_path)
+        if handle_kind == "spooled"
+        else _materialized_handle()
+    )
     with pytest.raises(TypeError, match="cannot be pickled"):
         pickle.dumps(handle)
     await handle.aclose()
-
-
-@pytest.mark.asyncio
-async def test_spooled_handle_lazy_and_cleanup(tmp_path: Path) -> None:
-    handle = _spooled_handle(tmp_path)
-    # not yet parsed: aclose before use is safe
-    await handle.aclose()
-    await handle.aclose()  # idempotent
 
 
 @pytest.mark.asyncio
@@ -120,31 +130,30 @@ def _spooled_handle_with_bad_parse(
 
 
 @pytest.mark.asyncio
-async def test_spooled_handle_fallback_via_messages_first() -> None:
+@pytest.mark.parametrize("first_call", ["messages", "load"])
+async def test_spooled_handle_fallback(first_call: str) -> None:
     fallback_transcript = _fallback_transcript()
     async with _spooled_handle_with_bad_parse(fallback_transcript) as handle:
-        messages = [m async for m in handle.messages()]
+        if first_call == "messages":
+            messages = [m async for m in handle.messages()]
+            loaded = await handle.load()
+        else:
+            loaded = await handle.load()
+            messages = [m async for m in handle.messages()]
         assert [m.id for m in messages] == ["fb1"]
-
-        loaded = await handle.load()
         assert loaded is fallback_transcript
 
 
 @pytest.mark.asyncio
-async def test_spooled_handle_fallback_via_load_first() -> None:
-    fallback_transcript = _fallback_transcript()
-    async with _spooled_handle_with_bad_parse(fallback_transcript) as handle:
-        loaded = await handle.load()
-        assert loaded is fallback_transcript
-
-        messages = [m async for m in handle.messages()]
-        assert [m.id for m in messages] == ["fb1"]
-
-
-@pytest.mark.asyncio
-async def test_spooled_handle_use_after_close_raises(tmp_path: Path) -> None:
-    handle = _spooled_handle(tmp_path)
+@pytest.mark.parametrize("handle_kind", ["spooled", "materialized"])
+async def test_handle_use_after_close_raises(handle_kind: str, tmp_path: Path) -> None:
+    handle: SpooledTranscriptHandle | MaterializedTranscriptHandle = (
+        _spooled_handle(tmp_path)
+        if handle_kind == "spooled"
+        else _materialized_handle()
+    )
     await handle.aclose()
+    await handle.aclose()  # idempotent
 
     with pytest.raises(RuntimeError, match="closed"):
         await handle.load()
@@ -152,20 +161,6 @@ async def test_spooled_handle_use_after_close_raises(tmp_path: Path) -> None:
     with pytest.raises(RuntimeError, match="closed"):
         async for _ in handle.messages():
             pass
-
-
-@pytest.mark.asyncio
-async def test_materialized_handle_use_after_close_raises() -> None:
-    transcript = Transcript(transcript_id="t1", messages=[], events=[], metadata={})
-
-    async def load_fn() -> Transcript:
-        return transcript
-
-    handle = MaterializedTranscriptHandle(load_fn, INFO)
-    await handle.aclose()
-
-    with pytest.raises(RuntimeError, match="closed"):
-        await handle.load()
 
 
 @pytest.mark.asyncio
@@ -216,11 +211,12 @@ async def test_spooled_handle_aclose_during_first_parse_does_not_leak(
     aclose() takes the same lock as the first parse (``_ensure_parsed``), so
     the two can never truly interleave: aclose() either runs to completion
     before the parse starts (in which case the parse call below observes
-    ``self._closed`` and raises before producing a StreamParseResult at all),
-    or it blocks until the in-flight parse has stored its StreamParseResult,
-    then closes it immediately. Either way, no StreamParseResult can be
-    produced and left un-closed -- verified here by asserting the result
-    that *was* produced ends up with all of its spool fds released.
+    the closed handle and raises before producing a StreamParseResult at
+    all), or it blocks until the in-flight parse has stored its
+    StreamParseResult, then closes it immediately. Either way, no
+    StreamParseResult can be produced and left un-closed -- verified here
+    by asserting the result that *was* produced is closed (its spools
+    refuse further access).
     """
     produced: list[StreamParseResult] = []
 
@@ -248,16 +244,18 @@ async def test_spooled_handle_aclose_during_first_parse_does_not_leak(
         await anyio.sleep(0.01)  # let the parse start before racing aclose()
         tg.start_soon(handle.aclose)
 
-    assert handle._closed is True
-    assert handle._result is None  # closed, and not left dangling as "open"
+    # The handle is closed: further use raises.
+    with pytest.raises(RuntimeError, match="closed"):
+        await handle.load()
 
     # If the parse won the race and produced a result, aclose() must have
-    # closed it -- its spool fds must all be released, not leaked.
+    # closed it -- its spools must refuse further access, not leak.
     if produced:
         result = produced[0]
-        assert result.messages._fd is None
-        assert result.events._fd is None
-        assert result.blobs._fd is None
+        with pytest.raises(ValueError, match="closed"):
+            list(result.messages.items())
+        with pytest.raises(ValueError, match="closed"):
+            result.blobs.get("x")
 
 
 def _large_sample(n_messages: int) -> dict[str, Any]:
@@ -278,17 +276,20 @@ async def test_spooled_handle_cancel_mid_stream_releases_fds(tmp_path: Path) -> 
 
     Iterate ``handle.messages()`` incrementally over a spool of ~200 messages,
     cancel the task group after consuming only a few items (deterministically,
-    via a cancel scope -- no timing), then close the handle and assert every
-    spool fd is released. Mirrors the ``_fd is None`` inspection used by
-    ``test_spooled_handle_aclose_during_first_parse_does_not_leak``.
+    via a cancel scope -- no timing), then close the handle and assert the
+    spools are closed (they refuse further access) and the handle refuses
+    further use.
     """
     n_messages = 200
     sample_bytes = json.dumps(_large_sample(n_messages)).encode()
+    produced: list[StreamParseResult] = []
 
     async def parse() -> StreamParseResult:
-        return await stream_parse_to_spool(
+        result = await stream_parse_to_spool(
             io.BytesIO(sample_bytes), "all", None, tmp_path
         )
+        produced.append(result)
+        return result
 
     async def fallback() -> Transcript:
         raise AssertionError("fallback should not be called")
@@ -314,19 +315,20 @@ async def test_spooled_handle_cancel_mid_stream_releases_fds(tmp_path: Path) -> 
     assert 0 < len(consumed) < n_messages
     assert consumed[:3] == ["m0", "m1", "m2"]
 
-    # The parse ran and produced a live result whose spool fds are open.
-    assert handle._result is not None
-    result = handle._result
-    assert result.messages._fd is not None
+    # The parse ran and produced a live result: the spools are still readable.
+    assert len(produced) == 1
+    result = produced[0]
+    assert len(list(result.messages.items())) == n_messages
 
     await handle.aclose()
 
-    # All spool fds released, nothing leaked.
-    assert result.messages._fd is None
-    assert result.events._fd is None
-    assert result.blobs._fd is None
-    assert handle._result is None
-    assert handle._closed is True
+    # The spools are closed (nothing leaked) and the handle refuses reuse.
+    with pytest.raises(ValueError, match="closed"):
+        list(result.messages.items())
+    with pytest.raises(ValueError, match="closed"):
+        result.blobs.get("x")
+    with pytest.raises(RuntimeError, match="closed"):
+        await handle.load()
 
 
 def _mixed_messages() -> list[dict[str, Any]]:
@@ -393,55 +395,35 @@ def _mixed_materialized_handle() -> MaterializedTranscriptHandle:
 
 
 @pytest.mark.asyncio
-async def test_messages_types_filters_to_role(tmp_path: Path) -> None:
-    for handle in (_mixed_spooled_handle(tmp_path), _mixed_materialized_handle()):
-        async with handle:
-            users = [m async for m in handle.messages(types=["user"])]
-            assert [m.role for m in users] == ["user", "user"]
-            assert [m.id for m in users] == ["m2", "m4"]
-
-
-@pytest.mark.asyncio
-async def test_events_types_filters_to_event(tmp_path: Path) -> None:
-    for handle in (_mixed_spooled_handle(tmp_path), _mixed_materialized_handle()):
-        async with handle:
-            infos = [e async for e in handle.events(types=["info"])]
-            assert [e.event for e in infos] == ["info", "info"]
-
-
-@pytest.mark.asyncio
-async def test_types_none_yields_everything(tmp_path: Path) -> None:
-    for handle in (_mixed_spooled_handle(tmp_path), _mixed_materialized_handle()):
-        async with handle:
-            msgs = [m async for m in handle.messages()]
-            msgs_explicit = [m async for m in handle.messages(types=None)]
-            evts = [e async for e in handle.events()]
-            assert [m.id for m in msgs] == ["m1", "m2", "m3", "m4"]
-            assert [m.id for m in msgs_explicit] == ["m1", "m2", "m3", "m4"]
-            assert [e.event for e in evts] == ["info", "state", "info"]
-
-
-@pytest.mark.asyncio
-async def test_types_all_behaves_like_none(tmp_path: Path) -> None:
-    for handle in (_mixed_spooled_handle(tmp_path), _mixed_materialized_handle()):
-        async with handle:
-            msgs = [m async for m in handle.messages(types="all")]
-            evts = [e async for e in handle.events(types="all")]
-            assert [m.id for m in msgs] == ["m1", "m2", "m3", "m4"]
-            assert [e.event for e in evts] == ["info", "state", "info"]
-
-
-@pytest.mark.asyncio
-async def test_spooled_handle_is_transcript_handle(tmp_path: Path) -> None:
-    handle = _spooled_handle(tmp_path)
-    assert isinstance(handle, TranscriptHandle)
-    await handle.aclose()
-
-
-@pytest.mark.asyncio
-async def test_materialized_handle_is_transcript_handle() -> None:
-    async def load_fn() -> Transcript:
-        return Transcript(transcript_id="t1", messages=[], events=[], metadata={})
-
-    handle = MaterializedTranscriptHandle(load_fn, INFO)
-    assert isinstance(handle, TranscriptHandle)
+@pytest.mark.parametrize("handle_kind", ["spooled", "materialized"])
+@pytest.mark.parametrize(
+    "message_types,event_types,expected_message_ids,expected_event_kinds",
+    [
+        pytest.param(["user"], ["info"], ["m2", "m4"], ["info", "info"], id="narrowed"),
+        pytest.param(
+            None, None, ["m1", "m2", "m3", "m4"], ["info", "state", "info"], id="none"
+        ),
+        pytest.param(
+            "all", "all", ["m1", "m2", "m3", "m4"], ["info", "state", "info"], id="all"
+        ),
+    ],
+)
+async def test_types_filters(
+    handle_kind: str,
+    message_types: MessageFilter,
+    event_types: EventFilter,
+    expected_message_ids: list[str],
+    expected_event_kinds: list[str],
+    tmp_path: Path,
+) -> None:
+    factories: dict[
+        str, Callable[[], SpooledTranscriptHandle | MaterializedTranscriptHandle]
+    ] = {
+        "spooled": lambda: _mixed_spooled_handle(tmp_path),
+        "materialized": _mixed_materialized_handle,
+    }
+    async with factories[handle_kind]() as handle:
+        msgs = [m async for m in handle.messages(types=message_types)]
+        evts = [e async for e in handle.events(types=event_types)]
+        assert [m.id for m in msgs] == expected_message_ids
+        assert [e.event for e in evts] == expected_event_kinds

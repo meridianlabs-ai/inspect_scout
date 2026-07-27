@@ -11,6 +11,7 @@ after the attachments section, so they cannot be filtered during the parse.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 from dataclasses import dataclass, field
@@ -186,9 +187,17 @@ async def stream_parse_to_spool(
 
     state = ParseState()
 
-    messages_spool = ItemSpool(spool_dir)
-    events_spool = ItemSpool(spool_dir)
-    blobs = BlobSpool(spool_dir)
+    # Unwind already-opened spools if a later constructor fails (e.g. EMFILE /
+    # ENOSPC): until `result` exists, nothing else can close them. Disarmed
+    # via pop_all() once all three are open; from then on the
+    # `except BaseException: result.close()` below owns cleanup.
+    with contextlib.ExitStack() as unwind:
+        messages_spool = ItemSpool(spool_dir)
+        unwind.callback(messages_spool.close)
+        events_spool = ItemSpool(spool_dir)
+        unwind.callback(events_spool.close)
+        blobs = BlobSpool(spool_dir)
+        unwind.pop_all()
     result = StreamParseResult(messages_spool, events_spool, blobs)
 
     messages_coro = (

@@ -105,6 +105,45 @@ async def test_parse_nan_raises(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_partial_spool_construction_failure_closes_opened_spools(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A constructor failing mid-construction must close the earlier spools.
+
+    The item spools open before the blob spool; if the blob spool's open
+    fails (e.g. EMFILE/ENOSPC), the already-opened fds must not leak. Spy on
+    close() of every ItemSpool created and fail BlobSpool construction.
+    """
+    from inspect_scout._transcript.json import stream_parse
+    from inspect_scout._transcript.json.spool import ItemSpool
+
+    created: list[ItemSpool] = []
+    closed: list[ItemSpool] = []
+
+    class SpyItemSpool(ItemSpool):
+        def __init__(self, dir: Path) -> None:
+            super().__init__(dir)
+            created.append(self)
+
+        def close(self) -> None:
+            closed.append(self)
+            super().close()
+
+    class FailingBlobSpool:
+        def __init__(self, dir: Path) -> None:
+            raise OSError("out of file descriptors")
+
+    monkeypatch.setattr(stream_parse, "ItemSpool", SpyItemSpool)
+    monkeypatch.setattr(stream_parse, "BlobSpool", FailingBlobSpool)
+
+    with pytest.raises(OSError, match="file descriptors"):
+        await stream_parse_to_spool(_stream(SAMPLE), "all", "all", tmp_path)
+
+    assert len(created) == 2  # messages + events spools opened before failure
+    assert set(closed) == set(created)  # ...both closed on (LIFO) unwind
+
+
+@pytest.mark.asyncio
 async def test_replay_messages_resolves_attachments(tmp_path: Path) -> None:
     from inspect_scout._transcript.json.stream_parse import replay_messages
 

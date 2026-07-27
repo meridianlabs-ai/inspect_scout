@@ -324,7 +324,6 @@ async def stream_segment_messages(
         pending_chunk.append((msg, text))
         pending_chars += len(text)
 
-    # Flush the final pending chunk
     if pending_chunk:
         chunk_messages, chunk_texts, tokens = await close_chunk()
 
@@ -343,7 +342,6 @@ async def stream_segment_messages(
         current_texts.extend(chunk_texts)
         running_tokens += tokens
 
-    # Yield the final segment
     if current_messages:
         yield MessagesSegment(
             messages=current_messages,

@@ -38,7 +38,7 @@ def test_blob_spool_no_file_left_behind(tmp_path: Path) -> None:
     spool = BlobSpool(tmp_path)
     spool.put("k", "v")
     spool.close()
-    assert list(tmp_path.iterdir()) == []  # unlinked on creation (POSIX)
+    assert list(tmp_path.iterdir()) == []  # deleted when the fd closes
 
 
 def test_item_spool_reiterable(tmp_path: Path) -> None:

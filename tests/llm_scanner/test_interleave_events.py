@@ -93,6 +93,7 @@ def _model_event(user_text: str, output: ModelOutput) -> ModelEvent:
         input=[ChatMessageUser(content=user_text)],
         output=output,
         role="assistant",
+        config=GenerateConfig(),
     )
 
 
@@ -509,6 +510,7 @@ async def test_stream_multi_agent_branch_entries_match_materialized() -> None:
         input=[ChatMessageUser(content="agent-b-question-1")],
         output=out_b1,
         role="assistant",
+        config=GenerateConfig(),
     )
     model_b2 = ModelEvent.model_construct(
         event="model",
@@ -516,6 +518,7 @@ async def test_stream_multi_agent_branch_entries_match_materialized() -> None:
         input=[ChatMessageUser(content="agent-b-question-2")],
         output=out_b2,
         role="assistant",
+        config=GenerateConfig(),
     )
 
     transcript = Transcript(
@@ -560,6 +563,7 @@ async def test_stream_interleave_events_only_matches_materialized(
         ],
         output=out2,
         role="assistant",
+        config=GenerateConfig(),
     )
     transcript = Transcript(
         transcript_id="t",
@@ -712,6 +716,7 @@ def _spanless_two_agent_flat_events() -> list[Event]:
         input=[ChatMessageUser(content="agent-a-question-1")],
         output=out_a1,
         role="assistant",
+        config=GenerateConfig(),
     )
     model_b1 = ModelEvent.model_construct(
         event="model",
@@ -719,6 +724,7 @@ def _spanless_two_agent_flat_events() -> list[Event]:
         input=[ChatMessageUser(content="agent-b-question-1")],
         output=out_b1,
         role="assistant",
+        config=GenerateConfig(),
     )
     model_a2 = ModelEvent.model_construct(
         event="model",
@@ -730,6 +736,7 @@ def _spanless_two_agent_flat_events() -> list[Event]:
         ],
         output=out_a2,
         role="assistant",
+        config=GenerateConfig(),
     )
     model_b2 = ModelEvent.model_construct(
         event="model",
@@ -741,6 +748,7 @@ def _spanless_two_agent_flat_events() -> list[Event]:
         ],
         output=out_b2,
         role="assistant",
+        config=GenerateConfig(),
     )
     return [
         model_a1,

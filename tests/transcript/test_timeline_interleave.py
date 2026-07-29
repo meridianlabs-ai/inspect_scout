@@ -26,6 +26,7 @@ from inspect_ai.model import (
     ChatMessageSystem,
     ChatMessageUser,
     ContentReasoning,
+    GenerateConfig,
     ModelOutput,
     get_model,
 )
@@ -67,6 +68,7 @@ def _model_event(input_msgs: list[ChatMessage], output: ModelOutput) -> ModelEve
         input=list(input_msgs),
         output=output,
         role="assistant",
+        config=GenerateConfig(),
     )
 
 

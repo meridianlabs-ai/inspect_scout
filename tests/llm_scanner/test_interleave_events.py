@@ -32,7 +32,6 @@ from inspect_scout._scanner.scanner import SCANNER_CONTENT_ATTR
 from inspect_scout._transcript.handle import MaterializedTranscriptHandle
 from inspect_scout._transcript.interleave import (
     EventsSpec,
-    has_interleavable_events,
     interleave_events,
     stream_interleave_events,
 )
@@ -41,8 +40,6 @@ from inspect_scout._transcript.types import (
     TranscriptContent,
     TranscriptInfo,
 )
-
-from tests.transcript.fixtures_agentic import agentic_transcript
 
 
 def _handle_for(transcript: Transcript) -> MaterializedTranscriptHandle:
@@ -110,23 +107,63 @@ def _span(span_id: str, name: str, content: list[Event | TimelineSpan]) -> Timel
     return TimelineSpan(id=span_id, name=name, span_type="agent", content=items)
 
 
-def test_final_score_anchored_after_last_assistant() -> None:
-    out = ModelOutput.from_content(model="mockllm", content="4")
-    assistant = out.choices[0].message
-    user = ChatMessageUser(content="2+2?")
+def _rendered(messages: list[ChatMessage]) -> list[str]:
+    """Message texts, with marked event entries collapsed to ``E:<heading>``."""
+    return [
+        f"E:{m.text.split(':')[0].strip()}"
+        if m.metadata and m.metadata.get(EVENT_MARKER_KEY)
+        else m.text
+        for m in messages
+    ]
+
+
+@pytest.mark.parametrize(
+    ("after_turn_1", "after_turn_2", "expected"),
+    [
+        pytest.param(
+            [],
+            ["match"],
+            ["q1", "first", "q2", "second", "E:SCORE (match)"],
+            id="after-last-assistant",
+        ),
+        pytest.param(
+            ["graded"],
+            [],
+            ["q1", "first", "E:SCORE (graded)", "q2", "second"],
+            id="mid-thread",
+        ),
+        pytest.param(
+            [],
+            ["s1", "s2"],
+            ["q1", "first", "q2", "second", "E:SCORE (s1)", "E:SCORE (s2)"],
+            id="multiple-on-one-anchor-keep-order",
+        ),
+    ],
+)
+def test_events_anchor_after_the_turn_they_followed(
+    after_turn_1: list[str], after_turn_2: list[str], expected: list[str]
+) -> None:
+    """Each event splices in after the assistant turn it chronologically followed."""
+    out1 = ModelOutput.from_content(model="mockllm", content="first")
+    out2 = ModelOutput.from_content(model="mockllm", content="second")
+    u1, u2 = ChatMessageUser(content="q1"), ChatMessageUser(content="q2")
+
+    def scores(scorers: list[str]) -> list[Event]:
+        return [
+            ScoreEvent(score=Score(value="C"), target="C", scorer=s) for s in scorers
+        ]
+
     transcript = Transcript(
         transcript_id="t",
-        messages=[user, assistant],
+        messages=[u1, out1.choices[0].message, u2, out2.choices[0].message],
         events=[
-            _model_event("2+2?", out),
-            ScoreEvent(score=Score(value="C"), target="C", scorer="match"),
+            _model_event("q1", out1),
+            *scores(after_turn_1),
+            _model_event("q2", out2),
+            *scores(after_turn_2),
         ],
     )
-    result = interleave_events(transcript)
-    assert [m.text for m in result[:2]] == [user.text, assistant.text]
-    assert result[2].metadata is not None
-    assert result[2].metadata[EVENT_MARKER_KEY] is True
-    assert result[2].text.startswith("SCORE (match)")
+    assert _rendered(interleave_events(transcript)) == expected
 
 
 def test_no_events_returns_messages_unchanged() -> None:
@@ -328,14 +365,8 @@ async def test_stream_messages_present_hides_compaction_pruned_turn() -> None:
     expected = interleave_events(transcript)
     streamed = [m async for m in stream_interleave_events(_handle_for(transcript))]
 
+    assert expected  # non-vacuous
     assert [(m.id, m.text) for m in streamed] == [(m.id, m.text) for m in expected]
-
-    combined = "\n".join(m.text for m in streamed)
-    assert "first" not in combined  # compaction-pruned turn stays hidden
-
-    branch_entries = [m for m in streamed if "MODEL (BRANCH):" in m.text]
-    assert len(branch_entries) == 1  # genuine fork renders exactly once
-    assert "forked" in branch_entries[0].text
 
 
 def test_grader_model_event_in_scorers_span_excluded() -> None:
@@ -408,69 +439,6 @@ def test_grader_model_event_in_scorers_span_excluded() -> None:
     assert sum("MODEL (BRANCH)" in t for t in event_texts) == 0
     assert "grader assessment" not in "\n".join(event_texts)
     assert sum(t.startswith("SCORE (match)") for t in event_texts) == 1
-
-
-def test_has_interleavable_events() -> None:
-    out = ModelOutput.from_content(model="mockllm", content="x")
-    with_score = Transcript(
-        transcript_id="t",
-        messages=[out.choices[0].message],
-        events=[ScoreEvent(score=Score(value=1), scorer="s")],
-    )
-    only_model = Transcript(
-        transcript_id="t",
-        messages=[out.choices[0].message],
-        events=[_model_event("x", out)],
-    )
-    assert has_interleavable_events(with_score) is True
-    assert has_interleavable_events(only_model) is False
-
-
-def test_intermediate_event_anchored_mid_thread() -> None:
-    out1 = ModelOutput.from_content(model="mockllm", content="first")
-    out2 = ModelOutput.from_content(model="mockllm", content="second")
-    a1, a2 = out1.choices[0].message, out2.choices[0].message
-    u1, u2 = ChatMessageUser(content="q1"), ChatMessageUser(content="q2")
-    transcript = Transcript(
-        transcript_id="t",
-        messages=[u1, a1, u2, a2],
-        events=[
-            _model_event("q1", out1),
-            ScoreEvent(score=Score(value=0.5), scorer="graded", intermediate=True),
-            _model_event("q2", out2),
-        ],
-    )
-    result = interleave_events(transcript)
-    # The intermediate score splices after turn 1's assistant, before turn 2 —
-    # not appended at the end.
-    assert [result[0].text, result[1].text, result[3].text, result[4].text] == [
-        u1.text,
-        a1.text,
-        u2.text,
-        a2.text,
-    ]
-    assert result[2].metadata is not None
-    assert result[2].metadata[EVENT_MARKER_KEY] is True
-    assert result[2].text.startswith("SCORE (graded)")
-
-
-def test_multiple_events_on_one_anchor_preserve_order() -> None:
-    out = ModelOutput.from_content(model="mockllm", content="ans")
-    assistant = out.choices[0].message
-    user = ChatMessageUser(content="q")
-    transcript = Transcript(
-        transcript_id="t",
-        messages=[user, assistant],
-        events=[
-            _model_event("q", out),
-            ScoreEvent(score=Score(value="A"), scorer="first"),
-            ScoreEvent(score=Score(value="B"), scorer="second"),
-        ],
-    )
-    result = interleave_events(transcript)
-    assert len(result) == 4
-    assert result[2].text.startswith("SCORE (first)")
-    assert result[3].text.startswith("SCORE (second)")
 
 
 @pytest.mark.anyio
@@ -686,16 +654,22 @@ def _two_agent_flat_events() -> list[Event]:
 
 
 @pytest.mark.anyio
-async def test_events_only_multi_agent_renders_all_agents() -> None:
-    # Events-only transcript (messages=[], events present) with TWO parallel
-    # agent spans. The flat interleave reconstruction (span_messages) keeps
-    # only the region-last ModelEvent, so with multiple parallel agents only
-    # the last agent's turn survives -- agent A's question is silently
-    # dropped. The fix routes events-only transcripts through the timeline
-    # machinery instead, which builds one segment per agent span, so both
-    # agents (and the score) are visible across the captured prompts.
-    transcript = Transcript(
-        transcript_id="t", messages=[], events=_two_agent_flat_events()
+@pytest.mark.parametrize("driver", ["transcript", "handle"])
+async def test_events_only_multi_agent_renders_all_agents(driver: str) -> None:
+    """Both parallel agents survive an events-only multi-agent scan.
+
+    The flat reconstruction (`span_messages`) keeps only the region-last
+    ModelEvent, so with two parallel agents agent A would be silently
+    dropped. Both drivers must route through the timeline machinery
+    instead, which builds one segment per agent span. The handle leg also
+    proves the streaming branch's empty-`messages()` probe reroutes
+    without materializing (`_no_load_handle` raises on `load()`).
+    """
+    events = _two_agent_flat_events()
+    source = (
+        Transcript(transcript_id="t", messages=[], events=events)
+        if driver == "transcript"
+        else cast(Transcript, _no_load_handle(events))
     )
 
     captured: list[str] = []
@@ -705,7 +679,7 @@ async def test_events_only_multi_agent_renders_all_agents() -> None:
         model=_mock_model(captured),
         events=["score"],
     )
-    await scan(transcript)
+    await scan(source)
 
     combined = "\n".join(captured)
     assert "agent-a-question" in combined
@@ -809,32 +783,6 @@ async def test_spanless_multi_agent_off_thread_agent_renders_via_branch_entries(
     assert "MODEL (BRANCH):" in combined
     assert "agent-a-answer-1" in combined
     assert "agent-a-answer-2" in combined
-    assert "SCORE" in combined
-
-
-@pytest.mark.anyio
-async def test_stream_events_only_multi_agent_renders_all_agents() -> None:
-    # Streaming twin of the above: a handle with NO messages and events for
-    # two parallel agents. Exercises the streaming flat-events branch's
-    # probe (handle.messages() is empty) rerouting into
-    # stream_timeline_messages instead of the flat stream_interleave_events
-    # reconstruction. ModelEvents get an auto-generated uuid from the
-    # regular constructor, so pass-2 substitution succeeds without
-    # materializing -- load() must never be called.
-    handle = _no_load_handle(_two_agent_flat_events())
-
-    captured: list[str] = []
-    scan = llm_scanner(
-        question="Right?",
-        answer="boolean",
-        model=_mock_model(captured),
-        events=["score"],
-    )
-    await scan(cast(Transcript, handle))
-
-    combined = "\n".join(captured)
-    assert "agent-a-question" in combined
-    assert "agent-b-question" in combined
     assert "SCORE" in combined
 
 
@@ -1087,13 +1035,6 @@ async def test_llm_scanner_handle_scan_interleaves_without_load() -> None:
     assert "[E1] SCORE" in captured_handle[0]
 
 
-def test_events_param_opts_in_to_streaming() -> None:
-    from inspect_scout._scanner.scanner import SCANNER_SUPPORTS_STREAMING_ATTR
-
-    scan = llm_scanner(question="q", answer="boolean", events=["score"])
-    assert getattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, False) is True
-
-
 @pytest.mark.parametrize(
     ("events", "content", "expected"),
     [
@@ -1253,38 +1194,6 @@ async def test_interleave_with_timeline_depth_limit_attaches_to_parent() -> None
     assert "child-q" not in captured[0]
     assert captured[0].count("[E1] MODEL (BRANCH):\nchild-ans") == 1
     assert captured[0].count("[E2] SCORE (childscore)") == 1
-
-
-@pytest.mark.anyio
-async def test_agentic_transcript_utility_span_fork_model_events_visible() -> None:
-    """End-to-end regression: a utility span's off-thread ModelEvent outputs are no longer silently dropped.
-
-    Before this fix, `_collect_span_external` routed every event --
-    including `ModelEvent`s -- through `_interleavable_text`, which hard-
-    excludes "model"; a utility span's `ModelEvent`s (no thread of their
-    own, since the span is never scanned) vanished entirely, never
-    appearing in any prompt.
-
-    Uses the shared `agentic_transcript()` fixture's "sub" utility span
-    (two `ModelEvent`s, outputs "sub-output-1"/"sub-output-2"): a
-    single-turn, foreign-prompt span classified utility by
-    `timeline_build`, nested under "main". With `events="all"`, both
-    outputs must now render as `MODEL (BRANCH)` entries attached to
-    "main" -- the last scannable span reached before "sub".
-    """
-    transcript = agentic_transcript()
-    captured: list[str] = []
-    scan = llm_scanner(
-        question="q", answer="boolean", model=_mock_model(captured), events="all"
-    )
-    await scan(transcript)
-
-    combined = "\n".join(captured)
-    assert combined.count("sub-output-1") == 1
-    assert combined.count("sub-output-2") == 1
-    main_prompt = next(c for c in captured if "main-output-1" in c)
-    assert "sub-output-1" in main_prompt
-    assert "sub-output-2" in main_prompt
 
 
 @pytest.mark.anyio

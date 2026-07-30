@@ -305,6 +305,18 @@ If you don't require immediate results then batch processing can be an excellent
 
 See the Inspect AI documentation on [Batch Mode](https://inspect.aisi.org.uk/models-batch.html) for additional details on batching as well as notes on provider specific behavior and configuration.
 
+### Monitoring In-Progress Results
+
+By default, results are only written to the scan location when the scan completes (or is interrupted). For long-running scans it can be useful to look at partial results while the scan is still in flight—for example, to sanity check that a scanner is behaving as expected before committing to a multi-hour run.
+
+Use the `--results-buffer` option (or the `results_buffer` scan/scan job/project option) to additionally sync in-progress results to the scan location every N recorded results:
+
+``` bash
+scout scan cybench_scan.py --results-buffer 100
+```
+
+You can then point `scan_results_df()` (or Scout View) at the scan location to analyze what's been produced so far. Writes are atomic, so readers always observe a consistent snapshot. Syncs run in the background so they don't slow down scanning, but they do add I/O overhead—choose N to balance freshness against cost.
+
 ### Error Handling
 
 By default, if errors occur during a scan they are caught and reported and the overall scan operation is not aborted. In that case the scan is not yet marked "complete". You can then choose to retry the failed scans with `scan resume` or complete the scan (ignoring errors) with `scan complete`:

@@ -123,8 +123,7 @@ class RecorderBuffer:
                 self._state.summary = Summary(
                     complete=False, scanners=list(spec.scanners.keys())
                 )
-                with open(scan_summary_file.as_posix(), "w") as f:
-                    f.write(self._state.summary.model_dump_json(indent=2))
+                _persist_scan_summary(self._buffer_dir, self._state.summary)
 
         self._error_file = self._buffer_dir.joinpath(SCAN_ERRORS)
 
@@ -248,8 +247,7 @@ class RecorderBuffer:
         async with self._state.lock:
             assert self._state.summary is not None  # set in __init__
             self._state.summary._report(transcript, scanner, results, metrics)
-            with open(self._buffer_dir.joinpath(SCAN_SUMMARY).as_posix(), "w") as f:
-                f.write(self._state.summary.model_dump_json(indent=2))
+            _persist_scan_summary(self._buffer_dir, self._state.summary)
 
         # record errors (open(..., "at") gives OS-atomic appends)
         for result in results:
@@ -265,8 +263,7 @@ class RecorderBuffer:
         async with self._state.lock:
             assert self._state.summary is not None  # set in __init__
             self._state.summary._report_metrics(scanner, metrics)
-            with open(self._buffer_dir.joinpath(SCAN_SUMMARY).as_posix(), "w") as f:
-                f.write(self._state.summary.model_dump_json(indent=2))
+            _persist_scan_summary(self._buffer_dir, self._state.summary)
 
     async def is_recorded(self, transcript_id: str, scanner: str) -> bool:
         sdir = self._buffer_dir / f"scanner={_sanitize_component(scanner)}"
@@ -484,6 +481,20 @@ def scanner_table(
     # We could avoid the copy (that to_pybytes does) altogether.
     # Keep in mind that the previous BytesIO.getvalue() made a copy too.
     return buffer.getvalue().to_pybytes()
+
+
+def _persist_scan_summary(buffer_dir: UPath, summary: Summary) -> None:
+    """Atomically persist the buffer's summary file.
+
+    A mid-scan results sync (see the `results_buffer` scan option) may read
+    `_summary.json` concurrently with a record; write-to-tmp + rename keeps
+    readers from ever observing a truncated file.
+    """
+    summary_file = buffer_dir.joinpath(SCAN_SUMMARY)
+    tmp_file = buffer_dir.joinpath(f".{SCAN_SUMMARY}.tmp")
+    with open(tmp_file.as_posix(), "w") as f:
+        f.write(summary.model_dump_json(indent=2))
+    os.replace(tmp_file.as_posix(), summary_file.as_posix())
 
 
 def cleanup_buffer_dir(buffer_dir: UPath) -> None:

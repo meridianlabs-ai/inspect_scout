@@ -1,11 +1,9 @@
 import inspect
-from types import UnionType
 from typing import (
     Any,
     Callable,
     Literal,
     Type,
-    Union,
     get_args,
     get_origin,
     get_type_hints,
@@ -40,6 +38,7 @@ from inspect_ai.model._chat_message import (
 )
 
 from .._transcript.types import EventType, MessageType, Transcript
+from .._util.type_hints import is_union_type
 
 # Reverse mappings for inferring filters from types
 TYPE_TO_MESSAGE_FILTER: dict[type[Any], str] = {
@@ -137,7 +136,7 @@ def infer_filters_from_type(
     event_filters = []
 
     # Handle Union types
-    if get_origin(input_type) in (Union, UnionType):
+    if is_union_type(input_type):
         for arg in get_args(input_type):
             if arg in TYPE_TO_MESSAGE_FILTER:
                 message_filters.append(TYPE_TO_MESSAGE_FILTER[arg])
@@ -465,18 +464,9 @@ def _can_handle_all_types(
     return _is_compatible_with_type(scanner_type, required_type)
 
 
-def _is_union_type(type_hint: Any) -> bool:
-    """Check if a type hint is a union, in either spelling.
-
-    Covers ``typing.Union[X, Y]`` and the ``X | Y`` syntax (distinct types
-    before Python 3.14, unified from 3.14 on).
-    """
-    return get_origin(type_hint) is Union or isinstance(type_hint, UnionType)
-
-
 def _get_union_members(type_hint: Any) -> set[Type[Any]] | None:
     """Get the member types of a Union, or None if not a Union."""
-    if _is_union_type(type_hint):
+    if is_union_type(type_hint):
         return set(get_args(type_hint))
     return None
 
@@ -517,7 +507,7 @@ def _is_compatible_with_type(scanner_type: Any, target_type: Any) -> bool:
 
         # Unions never match on origin alone (every union's origin is Union,
         # so a partial union would wrongly match a full one)
-        if _is_union_type(scanner_type) or _is_union_type(target_type):
+        if is_union_type(scanner_type) or is_union_type(target_type):
             return _union_covers_union(scanner_type, target_type)
 
         # Try to check subclass relationship

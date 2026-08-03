@@ -20,7 +20,8 @@ import multiprocessing
 import signal
 import time
 from multiprocessing.context import SpawnProcess
-from typing import AsyncIterator, Awaitable, Callable
+from types import FrameType
+from typing import Any, AsyncIterator, Awaitable, Callable
 
 import anyio
 from anyio import create_task_group
@@ -91,6 +92,9 @@ _SHUTDOWN_SENTINEL = ShutdownSentinel()
 # Singleton guard - only one multi_process_strategy can be active at a time
 _active: bool = False
 
+# Return/parameter type of signal.signal() (typeshed's private signal._HANDLER)
+SignalHandler = Callable[[int, FrameType | None], Any] | int | None
+
 
 def multi_process_strategy(
     *,
@@ -147,22 +151,29 @@ def multi_process_strategy(
                 "Another multi_process_strategy is already running. Only one instance can be active at a time."
             )
         _active = True
-        # Create Manager and parent registry for cross-process semaphore coordination
-        spawn_ctx = multiprocessing.get_context("spawn")
-        manager = spawn_ctx.Manager()
-        parent_registry = ParentSemaphoreRegistry(manager)
 
-        # Initialize parent's concurrency system with cross-process registry
-        # This ensures parent creates ManagerSemaphore instances in shared registry
-        # when it receives SemaphoreRequest from children
-        init_concurrency(parent_registry)
+        # None until SIG_IGN is actually installed; lets the finally below know
+        # whether there is an original handler to restore
+        original_sigint_handler: SignalHandler = None
 
-        inspect_log_handler = find_inspect_log_handler()
-
-        # Block SIGINT before creating processes - workers will inherit SIG_IGN
-        original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
-
+        # The try must begin before any process-wide state is mutated so the
+        # finally can restore it on every failure path, including setup errors
         try:
+            # Create Manager and parent registry for cross-process semaphore coordination
+            spawn_ctx = multiprocessing.get_context("spawn")
+            manager = spawn_ctx.Manager()
+            parent_registry = ParentSemaphoreRegistry(manager)
+
+            # Initialize parent's concurrency system with cross-process registry
+            # This ensures parent creates ManagerSemaphore instances in shared registry
+            # when it receives SemaphoreRequest from children
+            init_concurrency(parent_registry)
+
+            inspect_log_handler = find_inspect_log_handler()
+
+            # Block SIGINT before creating processes - workers will inherit SIG_IGN
+            original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
             # Distribute tasks evenly: some processes get base+1, others get base
             # This ensures we use exactly task_count total tasks
             base_tasks = task_count // max_processes
@@ -364,7 +375,13 @@ def multi_process_strategy(
                     )
 
         finally:
-            signal.signal(signal.SIGINT, original_sigint_handler)
+            if original_sigint_handler is not None:
+                signal.signal(signal.SIGINT, original_sigint_handler)
+            # Restore the default in-process registry. Leaving the cross-process
+            # ParentSemaphoreRegistry installed would leak into any subsequent
+            # inspect_ai usage in this process — degrading adaptive/resizable
+            # concurrency requests to fixed-limit MP semaphores.
+            init_concurrency()
             _active = False
 
     return the_func

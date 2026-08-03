@@ -44,19 +44,28 @@ if TYPE_CHECKING:
 
 
 # ---------------------------------------------------------------------------
-# copyreg reducer: make inspect_ai Model picklable via cloudpickle
+# Pickler-scoped reducer: make inspect_ai Model picklable via cloudpickle
 # ---------------------------------------------------------------------------
 # ModelAPI subclasses contain unpicklable state (anyio.Lock, httpx.AsyncClient,
 # SDK async clients).  When a scanner closure captures a Model instance,
 # cloudpickle fails with "cannot pickle '_thread.RLock' object".
 #
-# We register a copyreg reducer that converts Model → ModelConfig for
-# serialization, then reconstructs via get_model() on unpickle.  get_model()
-# uses memoize=True by default, so repeated unpickles in the same worker
-# reuse the cached instance rather than creating duplicate HTTP clients.
+# We reduce Model → ModelConfig for serialization, then reconstruct via
+# get_model() on unpickle.  get_model() uses memoize=True by default, so
+# repeated unpickles in the same worker reuse the cached instance rather than
+# creating duplicate HTTP clients.
+#
+# The reducer is scoped to a dedicated `ScoutPickler` (via reducer_override)
+# rather than registered globally with `copyreg.pickle(Model, ...)`.  A global
+# registration pollutes `copyreg.dispatch_table`, which `copy.copy()` and
+# `copy.deepcopy()` also consult — so merely importing scout would change what
+# `copy(model)` means process-wide, aliasing the memoized instance instead of
+# producing a distinct copy (see issue #537).  reducer_override is consulted
+# only by our pickler and is invisible to the copy module.  The unpickle side
+# needs no registration: the pickled data embeds `_reconstruct_model` directly.
 # ---------------------------------------------------------------------------
 
-import copyreg
+import io
 
 from inspect_ai.model import get_model
 from inspect_ai.model._model import Model
@@ -78,7 +87,30 @@ def _reduce_model(model: Model) -> tuple[Callable[..., Any], tuple[ModelConfig]]
     return (_reconstruct_model, (model_to_model_config(model),))
 
 
-copyreg.pickle(Model, _reduce_model)
+class ScoutPickler(cloudpickle.Pickler):  # type: ignore[misc]
+    """cloudpickle Pickler that can serialize inspect_ai Model instances.
+
+    The Model reducer is applied via `reducer_override` (consulted per-pickler,
+    before any dispatch table) so it stays scoped to serialization and never
+    leaks into `copy.copy()` / `copy.deepcopy()` semantics (issue #537).
+    """
+
+    def reducer_override(self, obj: Any) -> Any:
+        if isinstance(obj, Model):
+            return _reduce_model(obj)
+        return super().reducer_override(obj)
+
+
+def scout_dumps(obj: Any) -> bytes:
+    """Serialize an object with cloudpickle, adding Model support.
+
+    Mirrors `cloudpickle.dumps` but uses `ScoutPickler`, so scanner closures
+    that capture inspect_ai `Model` instances survive the roundtrip without
+    globally overriding pickle/copy behavior for `Model`.
+    """
+    with io.BytesIO() as file:
+        ScoutPickler(file).dump(obj)
+        return file.getvalue()
 
 
 class DillCallable:
@@ -94,7 +126,7 @@ class DillCallable:
         Args:
             func: The callable to wrap (can be closure, lambda, etc)
         """
-        self._pickled_func: bytes = cloudpickle.dumps(func)
+        self._pickled_func: bytes = scout_dumps(func)
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """Call the wrapped function.

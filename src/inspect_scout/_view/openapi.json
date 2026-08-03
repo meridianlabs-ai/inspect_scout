@@ -1994,6 +1994,11 @@
       "ContentDocument": {
         "description": "Document content (e.g. a PDF).",
         "properties": {
+          "citations": {
+            "default": false,
+            "title": "Citations",
+            "type": "boolean"
+          },
           "document": {
             "title": "Document",
             "type": "string"
@@ -2027,7 +2032,8 @@
           "type",
           "document",
           "filename",
-          "mime_type"
+          "mime_type",
+          "citations"
         ],
         "title": "ContentDocument",
         "type": "object"

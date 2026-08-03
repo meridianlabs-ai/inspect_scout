@@ -1082,17 +1082,16 @@ def _load_scanner_df(
     # pre_buffer coalesces column-chunk reads: HTTP range requests on remote
     # filesystems, and larger sequential reads on local paths (which makes a
     # big difference on FUSE mounts like mountpoint-s3).
-    parquet = pq.ParquetFile(source, filesystem=pa_fs, pre_buffer=True)
+    with pq.ParquetFile(source, filesystem=pa_fs, pre_buffer=True) as parquet:
+        # Project columns at the source: with a range-request filesystem this
+        # avoids downloading excluded columns at all (heavy columns like `input`
+        # can be >99% of the file), rather than filtering after a full read.
+        columns: list[str] | None = None
+        if exclude_columns:
+            exclude = set(exclude_columns)
+            columns = [c for c in parquet.schema_arrow.names if c not in exclude]
 
-    # Project columns at the source: with a range-request filesystem this
-    # avoids downloading excluded columns at all (heavy columns like `input`
-    # can be >99% of the file), rather than filtering after a full read.
-    columns: list[str] | None = None
-    if exclude_columns:
-        exclude = set(exclude_columns)
-        columns = [c for c in parquet.schema.names if c not in exclude]
-
-    df = parquet.read(columns=columns).to_pandas(types_mapper=pd.ArrowDtype)
+        df = parquet.read(columns=columns).to_pandas(types_mapper=pd.ArrowDtype)
     return _cast_value_column(df)
 
 

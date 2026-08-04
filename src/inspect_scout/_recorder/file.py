@@ -1,12 +1,16 @@
 import asyncio
+import functools
 import io
 import json
 import os
 import tempfile
 from collections.abc import Iterator, Mapping
 from logging import getLogger
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence, cast
 
+import anyio
+import anyio.to_thread
 import duckdb
 import pandas as pd
 import pyarrow as pa
@@ -120,6 +124,7 @@ class FileRecorder(ScanRecorder):
         # used the same scan_location (the buffer dir is deterministic per
         # scan_location, so unrelated remnants would otherwise carry over)
         cleanup_buffer_dir(RecorderBuffer.buffer_dir(self._scan_dir.as_posix()))
+        _clear_prior_parquet_cache(self._scan_dir.as_posix())
 
         self._scan_buffer = RecorderBuffer(
             self._scan_dir.as_posix(),
@@ -148,6 +153,10 @@ class FileRecorder(ScanRecorder):
         self._scan_fs = filesystem(self._scan_dir.as_posix())
         self._scan_spec = await _read_scan_spec(self._scan_dir)
 
+        # a new run starts here: any prior parquet cached by an earlier
+        # run against this location is no longer trustworthy
+        _clear_prior_parquet_cache(scan_location)
+
         self._seed_buffer_summary_from_scan_dir()
         # clear errors of transcripts that are about to be retried
         buffer_dir = RecorderBuffer.buffer_dir(self._scan_dir.as_posix())
@@ -173,6 +182,10 @@ class FileRecorder(ScanRecorder):
         self._scan_dir = UPath(scan_location)
         self._scan_fs = filesystem(self._scan_dir.as_posix())
         self._scan_spec = await _read_scan_spec(self._scan_dir)
+
+        # a new run starts here: any prior parquet cached by an earlier
+        # run against this location is no longer trustworthy
+        _clear_prior_parquet_cache(scan_location)
 
         self._seed_buffer_summary_from_scan_dir()
         self._seed_buffer_errors_from_scan_dir()
@@ -287,36 +300,41 @@ class FileRecorder(ScanRecorder):
         # call's buffer rows. once that's in place, cleaning up the buffer
         # after sync is safe — the data lives on in the compacted output.
         #
-        # `scanner_table` uses pyarrow's `ds.dataset(list)` which requires
-        # uniform path types: the buffer dir is always local (per scout's
-        # existing convention — see `RecorderBuffer.buffer_dir`), but the
-        # scan dir may be on a remote filesystem (e.g. s3://). When the
-        # prior compacted parquet is remote, download it to a local temp
-        # file before passing to `scanner_table`.
+        # this may run mid-scan (see the `results_buffer` scan option) with
+        # scanning still in flight, so it must stay off the event loop as
+        # much as possible: compaction runs in a worker thread, remote
+        # priors are downloaded at most once per run, and remote writes go
+        # through the async filesystem.
         #
-        # write to a sibling `.tmp` then atomically rename so the same path
-        # is never simultaneously an input to scanner_table and the target
-        # of an in-progress write (avoids any read/write overlap and gives
-        # crash resilience: a failure mid-write leaves the prior compacted
-        # file intact).
-        sync_fs = filesystem(scan_dir.as_posix())
+        # remote object stores expose new objects atomically (an object only
+        # becomes visible once fully uploaded), so we PUT directly to the
+        # final key. local filesystems expose partial writes, so there we
+        # write to a sibling `.tmp` and atomically rename — either way the
+        # same path is never simultaneously an input to scanner_table and
+        # the target of an in-progress write, and readers always observe a
+        # complete file.
+        remote = scan_dir.protocol not in ("", "file")
         async with AsyncFilesystem() as fs:
             for scanner in sorted(scan_spec.scanners.keys()):
                 output_path = _scanner_parquet_file(scan_dir, scanner)
                 parquet_bytes = await _compact_with_prior(
-                    scan_buffer_dir, scanner, prior=UPath(output_path)
+                    fs, scan_buffer_dir, scanner, prior=UPath(output_path)
                 )
                 if parquet_bytes is not None:
-                    tmp_path = f"{output_path}.tmp"
-                    await fs.write_file(tmp_path, parquet_bytes)
-                    sync_fs.mv(tmp_path, output_path)
+                    if remote:
+                        await fs.write_file(output_path, parquet_bytes)
+                    else:
+                        tmp_path = f"{output_path}.tmp"
+                        await fs.write_file(tmp_path, parquet_bytes)
+                        filesystem(scan_dir.as_posix()).mv(tmp_path, output_path)
 
-        # sync summary and errors
-        _sync_status_files(scan_dir, scan_buffer_dir, scan_spec, complete)
+            # sync summary and errors
+            await _sync_status_files(fs, scan_dir, scan_buffer_dir, scan_spec, complete)
 
         # cleanup scan buffer if we are complete
         if complete:
             cleanup_buffer_dir(scan_buffer_dir)
+            _clear_prior_parquet_cache(scan_location)
 
         return Status(
             complete=complete,
@@ -680,32 +698,60 @@ class FileRecorder(ScanRecorder):
         return scans
 
 
+# local copies of previously-compacted scanner parquets, downloaded from
+# remote scan dirs at most once per scan run. keyed by buffer dir (which is
+# deterministic per scan_location), mapping scanner -> local temp path (or
+# None when the scan dir had no prior parquet when first checked). the cache
+# stays valid for the whole run because this process is the only writer of
+# the compacted outputs and everything it adds to them comes from the buffer
+# (which `scanner_table` treats as authoritative per transcript_id), so the
+# pre-run parquet remains the correct merge input for every subsequent sync.
+# without it, each periodic sync (see the `results_buffer` scan option)
+# would re-download the ever-growing compacted output it wrote itself.
+# cleared when a run starts (`init`/`resume`/`attach`) and when a sync
+# completes the scan.
+_prior_parquet_cache: dict[str, dict[str, str | None]] = {}
+
+
+def _clear_prior_parquet_cache(scan_location: str) -> None:
+    cache = _prior_parquet_cache.pop(
+        RecorderBuffer.buffer_dir(scan_location).as_posix(), None
+    )
+    if cache:
+        for local_path in cache.values():
+            if local_path is not None:
+                Path(local_path).unlink(missing_ok=True)
+
+
 async def _compact_with_prior(
-    scan_buffer_dir: UPath, scanner: str, *, prior: UPath
+    fs: AsyncFilesystem, scan_buffer_dir: UPath, scanner: str, *, prior: UPath
 ) -> bytes | None:
-    """Compact buffer parquets, optionally merging in a prior compacted output.
+    """Compact buffer parquets, merging in a prior compacted output (if any).
 
-    `scanner_table` requires uniform local paths. If `prior` exists on a
-    remote filesystem, download it to a local temp file before passing it
-    in, then clean up.
+    `scanner_table` requires uniform local paths and does blocking CPU +
+    local file work, so remote priors are downloaded through the async
+    filesystem (at most once per run — see `_prior_parquet_cache`) and the
+    compaction itself runs in a worker thread. This keeps the event loop
+    responsive when syncs run mid-scan.
     """
-    if not prior.exists():
-        return scanner_table(scan_buffer_dir, scanner)
-
-    local_prior: UPath | None = None
-    try:
-        if prior.protocol in ("", "file"):
-            extra = [prior]
-        else:
-            tmp_fd, tmp_name = tempfile.mkstemp(suffix=".parquet")
+    if prior.protocol in ("", "file"):
+        extra = [prior] if prior.exists() else None
+    else:
+        cache = _prior_parquet_cache.setdefault(scan_buffer_dir.as_posix(), {})
+        if scanner in cache:
+            local_prior = cache[scanner]
+        elif await fs.exists(prior.as_posix()):
+            tmp_fd, local_prior = tempfile.mkstemp(suffix=".parquet")
             os.close(tmp_fd)
-            local_prior = UPath(tmp_name)
-            local_prior.write_bytes(prior.read_bytes())
-            extra = [local_prior]
-        return scanner_table(scan_buffer_dir, scanner, extra_inputs=extra)
-    finally:
-        if local_prior is not None:
-            local_prior.unlink(missing_ok=True)
+            await fs.get_file(prior.as_posix(), local_prior)
+            cache[scanner] = local_prior
+        else:
+            local_prior = None
+            cache[scanner] = None
+        extra = [UPath(local_prior)] if local_prior is not None else None
+    return await anyio.to_thread.run_sync(
+        functools.partial(scanner_table, scan_buffer_dir, scanner, extra_inputs=extra)
+    )
 
 
 def _scanner_parquet_file(scan_dir: UPath, scanner: str) -> str:
@@ -1158,17 +1204,30 @@ def _cast_value_column(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def _sync_status_files(
-    scan_dir: UPath, scan_buffer_dir: UPath, scan_spec: ScanSpec, complete: bool
+async def _sync_status_files(
+    fs: AsyncFilesystem,
+    scan_dir: UPath,
+    scan_buffer_dir: UPath,
+    scan_spec: ScanSpec,
+    complete: bool,
 ) -> None:
-    """Copy summary and errors from buffer to scan directory."""
+    """Copy summary and errors from buffer to scan directory.
+
+    Buffer reads are local (see `RecorderBuffer.buffer_dir`); the scan dir
+    may be remote, so writes go through the async filesystem to keep the
+    event loop free during mid-scan syncs.
+    """
     # copy scan summary (update with complete status)
-    with file((scan_dir / SCAN_SUMMARY).as_posix(), "w") as f:
-        summary = read_scan_summary(scan_buffer_dir, scan_spec)
-        summary.complete = complete
-        f.write(summary.model_dump_json())
+    summary = read_scan_summary(scan_buffer_dir, scan_spec)
+    summary.complete = complete
+    await fs.write_file(
+        (scan_dir / SCAN_SUMMARY).as_posix(),
+        summary.model_dump_json().encode("utf-8"),
+    )
 
     # copy errors
-    with file((scan_dir / SCAN_ERRORS).as_posix(), "w") as f:
-        for error in _read_scan_errors(scan_buffer_dir):
-            f.write(error.model_dump_json(warnings=False) + "\n")
+    errors = "".join(
+        error.model_dump_json(warnings=False) + "\n"
+        for error in _read_scan_errors(scan_buffer_dir)
+    )
+    await fs.write_file((scan_dir / SCAN_ERRORS).as_posix(), errors.encode("utf-8"))

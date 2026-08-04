@@ -392,6 +392,17 @@
             ],
             "title": "Results"
           },
+          "results_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results Buffer"
+          },
           "scanners": {
             "anyOf": [
               {
@@ -6198,6 +6209,17 @@
             ],
             "title": "Results"
           },
+          "results_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results Buffer"
+          },
           "scanners": {
             "anyOf": [
               {
@@ -6483,6 +6505,17 @@
               }
             ],
             "title": "Results"
+          },
+          "results_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results Buffer"
           },
           "scanners": {
             "anyOf": [
@@ -7525,6 +7558,17 @@
             ],
             "title": "Results"
           },
+          "results_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results Buffer"
+          },
           "scanners": {
             "anyOf": [
               {
@@ -7746,6 +7790,17 @@
             "default": 25,
             "title": "Max Transcripts",
             "type": "integer"
+          },
+          "results_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results Buffer"
           },
           "shuffle": {
             "anyOf": [

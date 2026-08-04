@@ -67,7 +67,8 @@ def test_value_cast_applied_after_exclusion() -> None:
 def test_value_cast_skipped_when_value_type_excluded() -> None:
     """Excluding value_type leaves value as the raw strings stored in parquet."""
     scan_dir = UPath(SCAN_DIR.as_posix())
-    raw = pq.read_table(str(SCAN_DIR / "word_counter.parquet"), columns=["value"])
+    with pq.ParquetFile(str(SCAN_DIR / "word_counter.parquet")) as parquet_file:
+        raw = parquet_file.read(columns=["value"])
     df = _load_scanner_df(scan_dir, "word_counter", exclude_columns=["value_type"])
     assert "value_type" not in df.columns
     assert df["value"].tolist() == raw.column("value").to_pylist()
@@ -91,9 +92,7 @@ def test_load_scanner_df_from_fsspec_only_protocol(memory_scan_dir: UPath) -> No
     local = _load_scanner_df(
         UPath(SCAN_DIR.as_posix()), "word_counter", exclude_columns=EXCLUDED
     )
-    remote = _load_scanner_df(
-        memory_scan_dir, "word_counter", exclude_columns=EXCLUDED
-    )
+    remote = _load_scanner_df(memory_scan_dir, "word_counter", exclude_columns=EXCLUDED)
     pd.testing.assert_frame_equal(remote, local)
 
 

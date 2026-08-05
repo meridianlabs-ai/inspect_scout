@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.4.46](https://github.com/meridianlabs-ai/inspect_scout/compare/0.4.45...0.4.46) (2026-08-05)
+
+
+### Features
+
+* add results_buffer option for periodic sync of in-progress results ([#550](https://github.com/meridianlabs-ai/inspect_scout/issues/550)) ([243006d](https://github.com/meridianlabs-ai/inspect_scout/commit/243006dc698fe61a4afe5a8b995b36e43695525e))
+
+
+### Bug Fixes
+
+* absence-implied true-negative validation rows suppressed by labels on other transcripts ([#545](https://github.com/meridianlabs-ai/inspect_scout/issues/545)) ([c86ea5f](https://github.com/meridianlabs-ai/inspect_scout/commit/c86ea5f52191d4ce11822f13ccace74af6580cb0))
+* **deps:** relax click pin to allow 8.3.2+ (matches inspect_ai[#4596](https://github.com/meridianlabs-ai/inspect_scout/issues/4596)) ([#551](https://github.com/meridianlabs-ai/inspect_scout/issues/551)) ([2c8501e](https://github.com/meridianlabs-ai/inspect_scout/commit/2c8501e1b930b6d20d5db8494531ce9737829536))
+
+
+### Performance Improvements
+
+* project columns before download in _load_scanner_df ([#539](https://github.com/meridianlabs-ai/inspect_scout/issues/539)) ([c963e85](https://github.com/meridianlabs-ai/inspect_scout/commit/c963e858b0c214de1b9eadd91606603bfb1e0531))
+
 ## [0.4.45](https://github.com/meridianlabs-ai/inspect_scout/compare/v0.4.44...0.4.45) (2026-07-20)
 
 

@@ -368,24 +368,33 @@ source, so fixtures alone prove self-consistency, not fidelity):
    resume --last` on our fixture files must not error (guards against fixtures
    drifting from the real schema).
 
-## 6. Open questions
+## 6. Decisions
 
-1. **Where to develop first** — inspect_swe from the start (recommended; the
-   migration cost was already paid once for Claude Code, and the
-   `AgentEventLoader` seam exists) vs scout-local then upstream. Cross-repo
-   iteration means scout PRs pin a new `inspect-swe` release.
-2. **Copied-fork overlap** — import parent and fork both (duplicated prefix
-   content across two transcripts) or attempt prefix-dedup? Proposal: import
-   both, record `forked_from_id`; dedup is analysis-time concern.
-3. **Rollback semantics** — replay `thread_rolled_back` (drop truncated items,
-   matching what the model saw) vs keep items + boundary InfoEvent (matching
-   the compaction philosophy of "boundary stays in the timeline"). Proposal:
-   replay for `accumulated_messages`/ModelEvent.input, keep an InfoEvent in the
-   event stream.
-4. **Paginated mode scope** — full support in phase 1, or legacy +
-   `history_base` resolution only?
-5. **`archived_sessions/`** — include in default discovery or behind a param?
-6. **`exec`/`mcp`-sourced rollouts** — codex's own pickers hide them; we likely
-   *want* them (headless runs are exactly what scout analyzes). Include, record
-   `source` in metadata.
-7. **zstandard dependency** — add, or skip `.zst` with a warning?
+1. **Develop in inspect_swe first** — the parsing library goes in
+   `inspect_swe/_codex_cli/_events/` from the start; scout gets the thin shell.
+   Cross-repo iteration: editable install of a local inspect_swe checkout into
+   scout's venv (verified working — the claude_code source suite passes against
+   an editable inspect_swe). Landing scout changes requires a released
+   `inspect-swe` pin bump.
+2. **Copied forks: import both parent and fork** as separate transcripts,
+   recording `forked_from_id` in metadata. A fork is genuinely two divergent
+   conversations sharing a prefix (unlike the plan/exec slug pair, which is one
+   conversation split across files); prefix dedup is an analysis-time concern.
+3. **Rollbacks: replay for model view, preserve in timeline** — rolled-back
+   items stay in the event timeline (they were real model calls); the
+   accumulated-messages reconstruction replays the truncation so subsequent
+   `ModelEvent.input` reflects what the model actually saw; an InfoEvent marks
+   the boundary. Open implementation detail: how `span_messages` merges
+   `Transcript.messages` across the boundary (may need graft/trim treatment
+   like compaction).
+4. **Paginated mode: legacy + `history_base` resolution in phase 1.** Ignoring
+   `history_base` would silently truncate paginated fork/subagent transcripts,
+   so parent-prefix resolution is required; `item_completed`/TurnItem extras
+   (e.g. untruncated command output) are a later enhancement.
+5. **`archived_sessions/` behind a param** — e.g. `include_archived: bool =
+   False` (`-P include_archived=true`).
+6. **Include `exec`/`mcp`-sourced rollouts**, recording `source` in metadata —
+   codex's pickers hide them, but headless runs are exactly what scout analyzes.
+7. **Support `.zst`** — `zstandard; python_version < '3.14'` + stdlib
+   `compression.zstd` on 3.14+ (precedent: the conditional `zipfile-zstd` dev
+   dependency).

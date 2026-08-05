@@ -13,9 +13,11 @@ You can populate a transcript database in a variety of ways depending on where y
 
 3. [Claude Code](#claude-code): Read transcript data from local Claude Code sessions.
 
-4. [Harbor](#harbor): Read transcript data from Harbor agent trajectory (ATIF) files.
+4. [Codex CLI](#codex-cli): Read transcript data from local Codex CLI sessions.
 
-5. [Transcript API](#transcript-api): Python API for creating and inserting transcripts.
+5. [Harbor](#harbor): Read transcript data from Harbor agent trajectory (ATIF) files.
+
+6. [Transcript API](#transcript-api): Python API for creating and inserting transcripts.
 
 6. [Arrow Import](#arrow-import): Efficient direct insertion using `RecordBatchReader`.
 
@@ -276,6 +278,51 @@ Claude Code transcripts are mapped to the database schema as follows:
 | `task_set` | Project directory path |
 | `task_id` | Session slug (conversation summary) |
 | `agent` | `"claude-code"` |
+
+
+## Codex CLI
+
+[Codex CLI](https://developers.openai.com/codex/cli) is OpenAI's agentic coding tool. Scout can import transcripts directly from Codex's session ("rollout") files, which are stored at `$CODEX_HOME/sessions/` (`~/.codex/sessions/` by default).
+
+Use the `codex()` transcript source to import sessions. Each Codex thread is one rollout file and becomes one transcript. Sub-agent threads spawned via `spawn_agent` are nested inside their parent's transcript; forked threads import as separate transcripts linked via `forked_from_id` metadata; compaction boundaries are preserved as `CompactionEvent`s while messages are stitched across them.
+
+```python
+from inspect_scout import transcripts_db
+from inspect_scout.sources import codex
+
+async with transcripts_db("s3://my-transcript-db/") as db:
+    await db.insert(codex())
+```
+
+By default, all sessions in `$CODEX_HOME/sessions` are imported. You can narrow the import by specifying a directory, thread ID, or time range (archived sessions can be included with `include_archived=True`):
+
+```python
+# Import sessions from a specific directory
+await db.insert(codex(
+    path="~/.codex/sessions/2026/08",
+))
+
+# Import a specific thread by ID
+await db.insert(codex(
+    session_id="0199aaaa-0000-7000-8000-000000000001",
+))
+
+# Import sessions from a time range
+from datetime import datetime
+await db.insert(codex(
+    from_time=datetime(2026, 1, 1),
+    to_time=datetime(2026, 6, 30),
+))
+```
+
+Codex transcripts are mapped to the database schema as follows:
+
+| Field | Value |
+|-------|-------|
+| `source_type` | `"codex_cli"` |
+| `task_set` | Session working directory (`cwd`) |
+| `task_id` | Thread name (from `session_index.jsonl`), else thread ID |
+| `agent` | `"codex-cli"` |
 
 
 ## Harbor

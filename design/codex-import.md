@@ -1,5 +1,19 @@
 # Codex CLI importer — research and design
 
+> **Status**: implemented. The parsing library lives in inspect_swe
+> (`_codex_cli/_events/rollout_models.py`, `rollout_extraction.py`,
+> `rollout.py` — branch `claude/codex-rollout-events`); the scout source is
+> `sources/_codex/` with tests in `tests/sources/codex_source/`. Landing on
+> main requires an inspect-swe release + pin bump (the scout source imports
+> `inspect_swe._codex_cli._events.*`). Fixtures were cross-validated against
+> the real codex 0.146.1 binary (`codex exec resume <thread-id>` loads every
+> fixture without parse errors). Notable deltas from the plan below:
+> `thread_rolled_back` carries `num_turns` (user turns to drop), so rollback
+> replay tracks user-turn start indices; hosted `web_search_call` items have
+> no output item and emit self-contained tool spans; `token_count` events
+> arrive after the response, so usage is attached to the just-flushed
+> ModelEvent.
+
 Research notes and a design proposal for a `codex` transcript source, based on
 (1) a deep-dive into the existing Claude Code importer, (2) the OpenAI Codex CLI
 rollout format (from the `openai/codex` source, HEAD ≈ v0.146.1/0.147-alpha,

@@ -32,6 +32,14 @@ _POOLS = ("message_pool", "call_pool")
 # large one never exists as a single string.
 _ENCODER = json.JSONEncoder(ensure_ascii=False, separators=(",", ":"))
 
+# Stand-in for the sample metadata, which is copied from its spool rather than
+# parsed; see `_merged_metadata`.
+_SPOOLED_SAMPLE_METADATA = object()
+
+# Longest an `attachment://<32 hex>` ref can be, less one: how much of the
+# previous chunk a scan must revisit so a ref split across chunks is still found.
+_REF_OVERLAP = len("attachment://") + 32 - 1
+
 
 def pooled_passthrough(
     info: TranscriptInfo, result: StreamParseResult
@@ -98,22 +106,34 @@ def pooled_passthrough(
     def emit(text: str) -> None:
         emit_bytes(text.encode("utf-8"))
 
-    # Everything up to "messages". Written key by key through the incremental
-    # encoder rather than dumped whole: sample metadata lands here, and for a
-    # metadata-dominated transcript it is most of the envelope. Dumping it in
-    # one call would build the entire value as a `str` first, which costs two
-    # bytes per character for anything non-ASCII.
+    # Everything up to "messages", written key by key through the incremental
+    # encoder rather than dumped whole -- and sample metadata, which for a
+    # metadata-dominated transcript is most of the envelope, is copied
+    # straight from its spool without ever becoming objects or a `str`.
     emit("{")
-    for index, (key, value) in enumerate(
-        {
-            **info.model_dump(exclude={"metadata"}),
-            "metadata": _merged_metadata(info, result),
-        }.items()
-    ):
-        emit(("," if index else "") + _dumps(key) + ":")
+    for key, value in info.model_dump(exclude={"metadata"}).items():
+        emit(_dumps(key) + ":")
         for fragment in _ENCODER.iterencode(value):
             emit(fragment)
-    emit(',"messages":[')
+        emit(",")
+    emit('"metadata":{')
+    for index, (key, value) in enumerate(_merged_metadata(info, result).items()):
+        emit(("," if index else "") + _dumps(key) + ":")
+        if value is _SPOOLED_SAMPLE_METADATA:
+            # Scan with an overlap: unlike whole items, these chunks are
+            # arbitrary byte slices, so a ref can straddle two of them.
+            tail = b""
+            for chunk in result.metadata_json.chunks():
+                chunks.append(chunk)
+                attachment_ids.update(
+                    match.decode("ascii")
+                    for match in ATTACHMENT_REF_BYTES.findall(tail + chunk)
+                )
+                tail = chunk[-(_REF_OVERLAP):]
+        else:
+            for fragment in _ENCODER.iterencode(value):
+                emit(fragment)
+    emit('},"messages":[')
     for index, message in enumerate(result.messages.items()):
         if index:
             emit(",")
@@ -219,10 +239,17 @@ def _dumps(value: Any) -> str:
 
 
 def _merged_metadata(info: TranscriptInfo, result: StreamParseResult) -> dict[str, Any]:
-    """Transcript metadata plus unthinned fields, mirroring handle.load()."""
+    """Transcript metadata plus unthinned fields, mirroring handle.load().
+
+    `sample_metadata` maps to `_SPOOLED_SAMPLE_METADATA`, a stand-in the
+    caller replaces by copying the value out of the spool: parsing it back
+    into objects is exactly what the spool exists to avoid. Key order still
+    matches the merge `handle.load()` performs, so the emitted object is
+    identical either way.
+    """
     overrides: dict[str, Any] = {}
-    if result.metadata:
-        overrides["sample_metadata"] = result.metadata
+    if result.has_metadata:
+        overrides["sample_metadata"] = _SPOOLED_SAMPLE_METADATA
     if result.target is not None:
         overrides["target"] = result.target
     if result.scores:

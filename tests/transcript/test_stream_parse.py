@@ -87,7 +87,8 @@ async def test_parse_spools_filtered_items(
 async def test_parse_captures_scalar_fields(tmp_path: Path) -> None:
     result = await stream_parse_to_spool(_stream(SAMPLE), "all", ["model"], tmp_path)
     try:
-        assert result.metadata == {"k": "v"}
+        assert result.metadata() == {"k": "v"}
+        assert result.has_metadata
         assert result.target == "the-target"
         assert result.scores == {"scorer": {"value": 1}}
     finally:
@@ -331,5 +332,49 @@ async def test_resolve_strings_empty_string_attachment_not_treated_as_missing(
     try:
         messages = list(replay_messages(result))
         assert messages[0].content == ""
+    finally:
+        result.close()
+
+
+@pytest.mark.parametrize(
+    "metadata,expected_present",
+    [
+        pytest.param({"k": "v"}, True, id="present"),
+        pytest.param({}, False, id="empty-object"),
+        pytest.param(None, False, id="absent"),
+        pytest.param({"nested": {"a": [1, 2, {"b": None}]}}, True, id="nested"),
+        pytest.param({"unicode": "héllo 你好"}, True, id="unicode"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_metadata_spools_instead_of_building_objects(
+    metadata: dict[str, Any] | None, expected_present: bool, tmp_path: Path
+) -> None:
+    """Metadata is spooled as text and only becomes objects when asked for.
+
+    `has_metadata` must match the truthiness of the dict the parse used to
+    expose, since callers gate the `sample_metadata` key on it.
+    """
+    sample = {key: value for key, value in SAMPLE.items() if key != "metadata"}
+    if metadata is not None:
+        sample["metadata"] = metadata
+
+    result = await stream_parse_to_spool(_stream(sample), "all", "all", tmp_path)
+    try:
+        assert result.has_metadata is expected_present
+        assert result.metadata() == (metadata if expected_present else {})
+    finally:
+        result.close()
+
+
+@pytest.mark.asyncio
+async def test_metadata_is_not_cached_between_calls(tmp_path: Path) -> None:
+    """Each call reparses: caching would restore the retention being avoided."""
+    result = await stream_parse_to_spool(_stream(SAMPLE), "all", "all", tmp_path)
+    try:
+        first = result.metadata()
+        second = result.metadata()
+        assert first == second
+        assert first is not second
     finally:
         result.close()

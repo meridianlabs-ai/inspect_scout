@@ -1063,13 +1063,16 @@ def _info_placeholder_transcript(info: TranscriptInfo) -> Transcript:
     )
 
 
-async def _transcript_for_record(handle: TranscriptHandle) -> ReportInput:
+async def _transcript_for_record(
+    handle: TranscriptHandle, *, fail_on_error: bool = False
+) -> ReportInput:
     """Produce the record value for `handle`.
 
     A spooled handle emits its column strings straight from the spool. Any
     other handle materializes. Falls back to an info-only placeholder if the
     content can't be read: a result (or error) that was already produced
-    should still be recorded.
+    should still be recorded. `fail_on_error` opts out of that containment so
+    a defect here surfaces instead of emptying every transcript in the scan.
     """
     try:
         if isinstance(handle, SpooledTranscriptHandle):
@@ -1080,7 +1083,14 @@ async def _transcript_for_record(handle: TranscriptHandle) -> ReportInput:
                     input_json=input_json, input_data_json=input_data_json
                 )
         return await handle.load()
+
+    # errors that should bring down the scan (matching the scan-call sites)
+    except PrerequisiteError:
+        raise
+
     except Exception:  # pylint: disable=W0718
+        if fail_on_error:
+            raise
         logger.warning(
             "Unable to materialize transcript %s for the result record; "
             "recording metadata only.",
@@ -1283,7 +1293,9 @@ async def _scan_one(
             # in full at write time. Doing it here -- after the scan, success
             # or error -- keeps it out of memory for the scan itself.
             if handle_input is not None:
-                report_input = await _transcript_for_record(handle_input)
+                report_input = await _transcript_for_record(
+                    handle_input, fail_on_error=fail_on_error
+                )
 
             # always append a result (success or error) if we have type_and_ids
             if type_and_ids is not None:

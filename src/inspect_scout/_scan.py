@@ -1066,6 +1066,31 @@ async def _single_item_iter(item: Any) -> AsyncIterator[Any]:
     yield item
 
 
+def _info_placeholder_transcript(info: TranscriptInfo) -> Transcript:
+    """An empty `Transcript` carrying only `info`'s metadata."""
+    return Transcript.model_construct(
+        **info.model_dump(), messages=[], events=[], timelines=[]
+    )
+
+
+async def _transcript_for_record(handle: TranscriptHandle) -> Transcript:
+    """Materialize `handle` for the result record.
+
+    Falls back to an info-only placeholder if the content can't be read: a
+    result (or error) that was already produced should still be recorded.
+    """
+    try:
+        return await handle.load()
+    except Exception:  # pylint: disable=W0718
+        logger.warning(
+            "Unable to materialize transcript %s for the result record; "
+            "recording metadata only.",
+            handle.info.transcript_id,
+            exc_info=True,
+        )
+        return _info_placeholder_transcript(handle.info)
+
+
 async def _scan_one(
     job: ScannerJob,
     *,
@@ -1122,12 +1147,13 @@ async def _scan_one(
         report_input: ScannerInput
         if isinstance(union, Transcript):
             report_input = union
-            input_type: ScannerInputNames = "transcript"
         else:
-            report_input = union.info
-            input_type = "transcript_info"
+            # The stream raised, so the content is unreadable; record an
+            # info-only placeholder rather than re-reading it. Mirrors the
+            # placeholder built by `_reports_for_parse_error`.
+            report_input = _info_placeholder_transcript(union.info)
         return ResultReport(
-            input_type=input_type,
+            input_type="transcript",
             input_ids=[_job_transcript_id(job)],
             input=report_input,
             result=None,
@@ -1188,20 +1214,35 @@ async def _scan_one(
             error: Error | None = None
             validation_result = None
 
-            # Handle inputs record info only; match concrete classes rather
-            # than the runtime_checkable protocol.
+            # Match the concrete handle classes rather than the
+            # runtime_checkable protocol.
+            handle_input = (
+                loader_result
+                if isinstance(
+                    loader_result,
+                    (MaterializedTranscriptHandle, SpooledTranscriptHandle),
+                )
+                else None
+            )
             report_input: ScannerInput
-            if isinstance(
-                loader_result,
-                (MaterializedTranscriptHandle, SpooledTranscriptHandle),
-            ):
-                report_input = loader_result.info
-            else:
+            loader_input: ScannerInput | None = None
+            if handle_input is None:
                 # mypy can't subtract the protocol, so cast the narrowed value.
-                report_input = cast(ScannerInput, loader_result)
+                loader_input = cast(ScannerInput, loader_result)
+                report_input = loader_input
 
             try:
-                type_and_ids = get_input_type_and_ids(report_input)
+                if handle_input is not None:
+                    # Ids come from info; the transcript itself is materialized
+                    # after the scan (below) so streamed content is not retained
+                    # while the scanner runs.
+                    type_and_ids: tuple[ScannerInputNames, list[str]] | None = (
+                        "transcript",
+                        [handle_input.info.transcript_id],
+                    )
+                else:
+                    assert loader_input is not None
+                    type_and_ids = get_input_type_and_ids(loader_input)
                 if type_and_ids is None:
                     continue
 
@@ -1236,6 +1277,14 @@ async def _scan_one(
                     traceback=traceback.format_exc(),
                     refusal=isinstance(ex, RefusalError),
                 )
+
+            # Materialize a streamed handle for the record. Results must be
+            # self-contained (readable without the original logs), and a
+            # parquet cell is an atomic value, so the transcript has to exist
+            # in full at write time. Doing it here -- after the scan, success
+            # or error -- keeps it out of memory for the scan itself.
+            if handle_input is not None:
+                report_input = await _transcript_for_record(handle_input)
 
             # always append a result (success or error) if we have type_and_ids
             if type_and_ids is not None:

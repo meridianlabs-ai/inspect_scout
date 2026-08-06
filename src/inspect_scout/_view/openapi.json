@@ -8429,9 +8429,6 @@
                 "$ref": "#/components/schemas/Transcript"
               },
               {
-                "$ref": "#/components/schemas/TranscriptInfo"
-              },
-              {
                 "$ref": "#/components/schemas/ChatMessageSystem"
               },
               {
@@ -8632,7 +8629,6 @@
           "input_type": {
             "enum": [
               "transcript",
-              "transcript_info",
               "event",
               "events",
               "message",

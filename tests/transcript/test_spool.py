@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 import pytest
-from inspect_scout._transcript.json.spool import BlobSpool, ItemSpool
+from inspect_scout._transcript.json.spool import BlobSpool, ByteSpool, ItemSpool
 
 
 @pytest.mark.parametrize(
@@ -117,6 +117,12 @@ def _populated_item_spool(tmp_path: Path) -> ItemSpool:
     return spool
 
 
+def _populated_byte_spool(tmp_path: Path) -> ByteSpool:
+    spool = ByteSpool(tmp_path)
+    spool.write(b"{}")
+    return spool
+
+
 @pytest.mark.parametrize(
     "factory,operations",
     [
@@ -129,6 +135,15 @@ def _populated_item_spool(tmp_path: Path) -> ItemSpool:
             _populated_item_spool,
             [lambda s: s.append({"n": 1}), lambda s: list(s.items())],
             id="item",
+        ),
+        pytest.param(
+            _populated_byte_spool,
+            [
+                lambda s: s.write(b"x"),
+                lambda s: s.read(),
+                lambda s: list(s.chunks()),
+            ],
+            id="byte",
         ),
     ],
 )
@@ -166,3 +181,56 @@ def test_item_spool_closed_mid_iteration_raises(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="closed"):
         while True:
             next(it)
+
+
+@pytest.mark.parametrize(
+    "size",
+    [0, 1, 2, 1024 * 1024 - 1, 1024 * 1024, 1024 * 1024 + 1, 3 * 1024 * 1024 + 7],
+    ids=[
+        "empty",
+        "one-byte",
+        "empty-object",
+        "one-below-chunk",
+        "exactly-one-chunk",
+        "one-above-chunk",
+        "several-chunks",
+    ],
+)
+def test_byte_spool_roundtrips_across_chunk_boundaries(
+    size: int, tmp_path: Path
+) -> None:
+    """Ragged writes reassemble byte-exactly, however they land in chunks.
+
+    `chunks()` slices at fixed offsets rather than at value boundaries, so the
+    sizes either side of a chunk are the interesting ones.
+    """
+    payload = bytes(range(256)) * (size // 256) + bytes(range(size % 256))
+    spool = ByteSpool(tmp_path)
+    try:
+        for start in range(0, len(payload), 7919):  # a prime, so writes stay ragged
+            spool.write(payload[start : start + 7919])
+
+        assert len(spool) == len(payload)
+        assert spool.read() == payload
+        assert b"".join(spool.chunks()) == payload
+        assert b"".join(spool.chunks(chunk_size=4096)) == payload
+        assert all(len(chunk) <= 4096 for chunk in spool.chunks(chunk_size=4096))
+    finally:
+        spool.close()
+
+
+def test_byte_spool_is_reiterable(tmp_path: Path) -> None:
+    spool = ByteSpool(tmp_path)
+    try:
+        spool.write(b'{"k":"v"}')
+        assert b"".join(spool.chunks()) == b'{"k":"v"}'
+        assert b"".join(spool.chunks()) == b'{"k":"v"}'  # second pass identical
+    finally:
+        spool.close()
+
+
+def test_byte_spool_no_file_left_behind(tmp_path: Path) -> None:
+    spool = ByteSpool(tmp_path)
+    spool.write(b"payload")
+    spool.close()
+    assert list(tmp_path.iterdir()) == []  # deleted when the fd closes

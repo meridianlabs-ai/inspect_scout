@@ -1,5 +1,6 @@
 """Tests for the streaming scanner seam: input plumbing and dispatch."""
 
+from pathlib import Path
 from typing import Any, cast
 
 import pytest
@@ -244,3 +245,48 @@ def test_streaming_eligible(filters: list[dict[str, Any]], expected: bool) -> No
         [_content_for_scanner(s) for s in scanners]
     )
     assert _streaming_eligible(scanners, union_content) is expected
+
+
+@pytest.mark.asyncio
+async def test_scan_one_records_serialized_input_for_spooled_handle(
+    tmp_path: Path,
+) -> None:
+    """A spooled handle records pre-serialized columns, not a Transcript.
+
+    The scanner streams; the record must still be self-contained, but it is
+    produced from the spool rather than by materializing the transcript.
+    """
+    import io
+    import json as _json
+
+    from inspect_scout._scanner.result import SerializedTranscript
+    from inspect_scout._transcript.handle import SpooledTranscriptHandle
+    from inspect_scout._transcript.json.stream_parse import stream_parse_to_spool
+
+    data = _json.dumps(
+        {
+            "id": "t1",
+            "messages": [{"id": "m1", "role": "user", "content": "hi"}],
+            "events": [],
+            "attachments": {},
+        }
+    ).encode()
+    parsed = await stream_parse_to_spool(io.BytesIO(data), "all", "all", tmp_path)
+
+    async def parse() -> object:
+        return parsed
+
+    async def fallback() -> Transcript:
+        raise AssertionError("fallback should not be called")
+
+    handle = SpooledTranscriptHandle(TranscriptInfo(transcript_id="t1"), parse, fallback)
+
+    job = ScannerJob(
+        union_transcript=handle, scanner=_handle_scanner(), scanner_name="hs"
+    )
+    reports = await _scan_one(job, validation=None, fail_on_error=True)
+
+    assert len(reports) == 1
+    assert reports[0].input_type == "transcript"
+    assert isinstance(reports[0].input, SerializedTranscript)
+    assert _json.loads(reports[0].input.input_json)["transcript_id"] == "t1"

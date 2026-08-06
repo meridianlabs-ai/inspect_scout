@@ -72,7 +72,15 @@ from ._scanjob import (
 )
 from ._scanjob_config import ScanJobConfig
 from ._scanner.loader import config_for_loader
-from ._scanner.result import Error, Result, ResultReport, ResultValidation, as_resultset
+from ._scanner.result import (
+    Error,
+    ReportInput,
+    Result,
+    ResultReport,
+    ResultValidation,
+    SerializedTranscript,
+    as_resultset,
+)
 from ._scanner.scanner import Scanner, config_for_scanner, scanner_supports_streaming
 from ._scanner.types import ScannerInput, ScannerInputNames
 from ._scanner.util import get_input_type_and_ids
@@ -82,6 +90,7 @@ from ._transcript.handle import (
     SpooledTranscriptHandle,
     TranscriptHandle,
 )
+from ._transcript.json.passthrough import pooled_passthrough
 from ._transcript.transcripts import ScannerWork, Transcripts, TranscriptsReader
 from ._transcript.types import (
     EventFilter,
@@ -1062,13 +1071,22 @@ def _info_placeholder_transcript(info: TranscriptInfo) -> Transcript:
     )
 
 
-async def _transcript_for_record(handle: TranscriptHandle) -> Transcript:
-    """Materialize `handle` for the result record.
+async def _transcript_for_record(handle: TranscriptHandle) -> ReportInput:
+    """Produce the record value for `handle`.
 
-    Falls back to an info-only placeholder if the content can't be read: a
-    result (or error) that was already produced should still be recorded.
+    A spooled handle emits its column strings straight from the spool. Any
+    other handle materializes. Falls back to an info-only placeholder if the
+    content can't be read: a result (or error) that was already produced
+    should still be recorded.
     """
     try:
+        if isinstance(handle, SpooledTranscriptHandle):
+            parsed = await handle.parsed_result()
+            if parsed is not None:
+                input_json, input_data_json = pooled_passthrough(handle.info, parsed)
+                return SerializedTranscript(
+                    input_json=input_json, input_data_json=input_data_json
+                )
         return await handle.load()
     except Exception:  # pylint: disable=W0718
         logger.warning(
@@ -1133,7 +1151,7 @@ async def _scan_one(
         E.g. a corrupt sample surfacing lazily.
         """
         union = job.union_transcript
-        report_input: ScannerInput
+        report_input: ReportInput
         if isinstance(union, Transcript):
             report_input = union
         else:
@@ -1213,7 +1231,7 @@ async def _scan_one(
                 )
                 else None
             )
-            report_input: ScannerInput
+            report_input: ReportInput
             loader_input: ScannerInput | None = None
             if handle_input is None:
                 # mypy can't subtract the protocol, so cast the narrowed value.

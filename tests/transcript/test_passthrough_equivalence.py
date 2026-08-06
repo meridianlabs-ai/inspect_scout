@@ -20,12 +20,23 @@ _CHAT_MESSAGE_ADAPTER: TypeAdapter[ChatMessage] = TypeAdapter(ChatMessage)
 
 
 def _sample_bytes() -> bytes:
-    """A sample with pooled model inputs and an attachment ref."""
+    """A sample with pooled model inputs and attachment refs.
+
+    Three pooled messages, but the event references only the last one
+    (position [2, 3)) -- pruning must drop positions 0-1 and the surviving
+    ref must remap 2 -> 0. Each pooled message has clearly distinct content
+    so a wrong remap surfaces as a content mismatch, not just a structural
+    one (Task 2's tests already cover the raw-ref-level remap; this checks
+    remapped refs expand back to the *right* content).
+    """
     att = "b" * 32
+    top_att = "c" * 32
     return json.dumps(
         {
             "id": "t1",
-            "messages": [{"id": "m1", "role": "user", "content": "hi"}],
+            "messages": [
+                {"id": "m1", "role": "user", "content": f"attachment://{top_att}"}
+            ],
             "events": [
                 {
                     "event": "model",
@@ -34,7 +45,7 @@ def _sample_bytes() -> bytes:
                     "working_start": 100.0,
                     "model": "test-model",
                     "input": [],
-                    "input_refs": [[0, 1]],
+                    "input_refs": [[2, 3]],
                     "tools": [],
                     "tool_choice": "none",
                     "config": {},
@@ -43,15 +54,20 @@ def _sample_bytes() -> bytes:
             ],
             "events_data": {
                 "messages": [
+                    {"id": "sys0", "role": "system", "content": "pool entry zero"},
+                    {"id": "sys1", "role": "system", "content": "pool entry one"},
                     {
-                        "id": "sys1",
+                        "id": "sys2",
                         "role": "system",
                         "content": f"attachment://{att}",
-                    }
+                    },
                 ],
                 "calls": [],
             },
-            "attachments": {att: "expanded system prompt"},
+            "attachments": {
+                att: "expanded system prompt",
+                top_att: "expanded user content",
+            },
         }
     ).encode()
 

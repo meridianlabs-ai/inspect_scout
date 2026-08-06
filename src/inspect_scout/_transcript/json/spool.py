@@ -124,25 +124,48 @@ class ItemSpool:
         return self._count
 
     def items(self) -> Iterator[dict[str, Any]]:
+        # Reads a chunk at a time, tracking position with a cursor and
+        # collecting the pieces of a straddling line in a list. The obvious
+        # alternatives are both quadratic: growing the buffer with ``+=``
+        # re-copies the whole line on every chunk (a 44MB item costs ~3.8GB of
+        # copying), and re-slicing the buffer past each line re-copies the
+        # remaining chunk once per line.
         if self._fd is None:
             raise ValueError("spool is closed")
         end = self._write_offset
         offset = 0
-        buffer = b""
         chunk_size = 256 * 1024
-        while offset < end or b"\n" in buffer:
-            newline = buffer.find(b"\n")
-            if newline == -1:
-                read_len = min(chunk_size, end - offset)
-                if read_len <= 0:
-                    break
-                if self._fd is None:
-                    raise ValueError("spool is closed")
-                buffer += _read_at(self._fd, self._lock, read_len, offset)
-                offset += read_len
+        parts: list[bytes] = []  # pieces of a line split across chunks
+        buffer = b""
+        cursor = 0
+        while True:
+            newline = buffer.find(b"\n", cursor)
+            if newline != -1:
+                segment = buffer[cursor:newline]
+                cursor = newline + 1
+                if parts:
+                    parts.append(segment)
+                    line = b"".join(parts)
+                    parts.clear()
+                else:
+                    line = segment
+                yield json.loads(line)
                 continue
-            line, buffer = buffer[:newline], buffer[newline + 1 :]
-            yield json.loads(line)
+
+            # no complete line left: keep the tail and read the next chunk
+            if cursor < len(buffer):
+                parts.append(buffer[cursor:])
+            buffer = b""
+            cursor = 0
+            if offset >= end:
+                break
+            if self._fd is None:
+                raise ValueError("spool is closed")
+            read_len = min(chunk_size, end - offset)
+            buffer = _read_at(self._fd, self._lock, read_len, offset)
+            offset += read_len
+            if not buffer:
+                break
 
     def close(self) -> None:
         if self._file is not None:

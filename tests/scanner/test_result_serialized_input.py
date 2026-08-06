@@ -11,9 +11,7 @@ def test_serialized_transcript_passes_strings_through() -> None:
         input_json='{"transcript_id":"t1","events":[]}',
         input_data_json='{"messages":[],"calls":[]}',
     )
-    input_json, input_data_json = _serialize_input(
-        value, "transcript", pool_dedup=True
-    )
+    input_json, input_data_json = _serialize_input(value, "transcript", pool_dedup=True)
     assert input_json == '{"transcript_id":"t1","events":[]}'
     assert input_data_json == '{"messages":[],"calls":[]}'
 

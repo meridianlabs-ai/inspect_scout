@@ -12,6 +12,9 @@ from ijson.utils import coroutine as _ijson_coroutine  # type: ignore
 ATTACHMENT_PREFIX = "attachment://"
 ATTACHMENT_PREFIX_LEN = len(ATTACHMENT_PREFIX)
 ATTACHMENT_REF_PATTERN = re.compile(r"attachment://([a-f0-9]{32})")
+ATTACHMENT_REF_BYTES = re.compile(rb"attachment://([a-f0-9]{32})")
+"""``ATTACHMENT_REF_PATTERN`` over UTF-8 bytes, for scanning serialized JSON
+without decoding it first. Refs are ASCII, so the two always agree."""
 ATTACHMENTS_PREFIX = "attachments."
 MESSAGES_ITEM_PREFIX = "messages.item"
 EVENTS_ITEM_PREFIX = "events.item"
@@ -321,6 +324,7 @@ __all__ = [
     "TARGET_PREFIX",
     "ATTACHMENT_PREFIX",
     "ATTACHMENT_PREFIX_LEN",
+    "ATTACHMENT_REF_BYTES",
     "ATTACHMENT_REF_PATTERN",
     "ATTACHMENTS_PREFIX",
     "MESSAGES_ITEM_PREFIX",

@@ -23,16 +23,25 @@ from inspect_ai.event._pool import (
 from pydantic import JsonValue
 
 from ..types import TranscriptInfo
-from .reducer import ATTACHMENT_REF_PATTERN
+from .reducer import ATTACHMENT_REF_BYTES, ATTACHMENT_REF_PATTERN
 from .stream_parse import StreamParseResult
 
 _POOLS = ("message_pool", "call_pool")
 
+# Same settings as `_dumps`; `iterencode` yields the value in fragments so a
+# large one never exists as a single string.
+_ENCODER = json.JSONEncoder(ensure_ascii=False, separators=(",", ":"))
+
 
 def pooled_passthrough(
     info: TranscriptInfo, result: StreamParseResult
-) -> tuple[str, str | None]:
+) -> tuple[bytes, bytes | None]:
     """Build `(input_json, input_data_json)` from a spooled parse.
+
+    The envelope is emitted incrementally: each message and event is
+    serialized as the spool replays it and appended to a list of chunks, so
+    the full set of items never exists as Python objects at once and no
+    ``json.dumps`` ever runs over the whole envelope.
 
     Args:
         info: Transcript metadata for the envelope.
@@ -40,7 +49,9 @@ def pooled_passthrough(
 
     Returns:
         The `input` column value, and the `input_data` column value or None
-        when nothing is pooled and no attachments are referenced.
+        when nothing is pooled and no attachments are referenced. UTF-8 bytes
+        rather than ``str``: these go straight into a parquet column, and
+        decoding would double a non-ASCII value in memory for nothing.
     """
     # Pass 1: which pool positions and attachments do the events reference?
     # `collect_pool_ref_positions` walks inspect_ai's POOL_REF_FIELDS registry
@@ -69,37 +80,69 @@ def pooled_passthrough(
         dropped = dropped or len(fetched) != len(referenced[pool])
 
     # Pass 2: re-emit events with refs remapped onto the pruned pools.
-    events = [
-        remap_pool_refs(
-            _drop_unmapped_refs(event, pos_maps) if dropped else event,
-            pos_maps["message_pool"],
-            pos_maps["call_pool"],
-        )
-        for event in result.events.items()
-    ]
+    #
+    # Attachment ids may be referenced from messages, from events, or from
+    # inside a pool entry -- scan all three or refs dangle. Each chunk is
+    # scanned as it is emitted: an id cannot straddle two chunks because every
+    # item is serialized whole, so this sees exactly what a scan of the
+    # finished envelope would.
+    chunks: list[bytes | memoryview] = []
+    attachment_ids: set[str] = set()
 
-    envelope: dict[str, Any] = {
-        **info.model_dump(exclude={"metadata"}),
-        "metadata": _merged_metadata(info, result),
-        "messages": list(result.messages.items()),
-        "events": events,
-        "timelines": [],
-    }
-    envelope_json = _dumps(envelope)
+    def emit_bytes(data: bytes | memoryview) -> None:
+        attachment_ids.update(
+            match.decode("ascii") for match in ATTACHMENT_REF_BYTES.findall(data)
+        )
+        chunks.append(data)
+
+    def emit(text: str) -> None:
+        emit_bytes(text.encode("utf-8"))
+
+    # Everything up to "messages". Written key by key through the incremental
+    # encoder rather than dumped whole: sample metadata lands here, and for a
+    # metadata-dominated transcript it is most of the envelope. Dumping it in
+    # one call would build the entire value as a `str` first, which costs two
+    # bytes per character for anything non-ASCII.
+    emit("{")
+    for index, (key, value) in enumerate(
+        {
+            **info.model_dump(exclude={"metadata"}),
+            "metadata": _merged_metadata(info, result),
+        }.items()
+    ):
+        emit(("," if index else "") + _dumps(key) + ":")
+        for fragment in _ENCODER.iterencode(value):
+            emit(fragment)
+    emit(',"messages":[')
+    for index, message in enumerate(result.messages.items()):
+        if index:
+            emit(",")
+        emit(_dumps(message))
+    emit('],"events":[')
+    for index, event in enumerate(result.events.items()):
+        if index:
+            emit(",")
+        emit(
+            _dumps(
+                remap_pool_refs(
+                    _drop_unmapped_refs(event, pos_maps) if dropped else event,
+                    pos_maps["message_pool"],
+                    pos_maps["call_pool"],
+                )
+            )
+        )
+    emit('],"timelines":[]}')
+
+    envelope_json = b"".join(chunks)
+    chunks.clear()
+
     pools_json = _dumps(
         {
             "messages": pool_entries["message_pool"],
             "calls": pool_entries["call_pool"],
         }
     )
-
-    # Attachment ids may be referenced from messages, from events, or from
-    # inside a pool entry -- scan all three or refs dangle. Scanning the two
-    # serialized forms we already have to produce avoids serializing every
-    # item a second time just to search it.
-    attachment_ids = set(ATTACHMENT_REF_PATTERN.findall(envelope_json)) | set(
-        ATTACHMENT_REF_PATTERN.findall(pools_json)
-    )
+    attachment_ids.update(ATTACHMENT_REF_PATTERN.findall(pools_json))
     attachments = {
         att_id: content
         for att_id in sorted(attachment_ids)
@@ -115,7 +158,7 @@ def pooled_passthrough(
     }
     if attachments:
         input_data["attachments"] = attachments
-    return envelope_json, _dumps(input_data)
+    return envelope_json, _dumps(input_data).encode("utf-8")
 
 
 _POOL_FOR_FIELD = {"message": "message_pool", "call": "call_pool"}

@@ -1,5 +1,7 @@
 """Tests for the streaming scanner seam: input plumbing and dispatch."""
 
+import io
+import json
 from pathlib import Path
 from typing import Any, cast
 
@@ -8,9 +10,16 @@ from inspect_ai.model import ChatMessageUser
 from inspect_scout import scanner
 from inspect_scout._concurrency.common import ScannerJob
 from inspect_scout._scan import _content_for_scanner, _scan_one, _streaming_eligible
-from inspect_scout._scanner.result import Result
+from inspect_scout._scanner.result import Result, SerializedTranscript
 from inspect_scout._scanner.scanner import SCANNER_SUPPORTS_STREAMING_ATTR, Scanner
-from inspect_scout._transcript.handle import MaterializedTranscriptHandle
+from inspect_scout._transcript.handle import (
+    MaterializedTranscriptHandle,
+    SpooledTranscriptHandle,
+)
+from inspect_scout._transcript.json.stream_parse import (
+    StreamParseResult,
+    stream_parse_to_spool,
+)
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
 from inspect_scout._transcript.util import union_transcript_contents
 
@@ -256,14 +265,7 @@ async def test_scan_one_records_serialized_input_for_spooled_handle(
     The scanner streams; the record must still be self-contained, but it is
     produced from the spool rather than by materializing the transcript.
     """
-    import io
-    import json as _json
-
-    from inspect_scout._scanner.result import SerializedTranscript
-    from inspect_scout._transcript.handle import SpooledTranscriptHandle
-    from inspect_scout._transcript.json.stream_parse import stream_parse_to_spool
-
-    data = _json.dumps(
+    data = json.dumps(
         {
             "id": "t1",
             "messages": [{"id": "m1", "role": "user", "content": "hi"}],
@@ -273,20 +275,61 @@ async def test_scan_one_records_serialized_input_for_spooled_handle(
     ).encode()
     parsed = await stream_parse_to_spool(io.BytesIO(data), "all", "all", tmp_path)
 
-    async def parse() -> object:
+    async def parse() -> StreamParseResult:
         return parsed
 
     async def fallback() -> Transcript:
         raise AssertionError("fallback should not be called")
 
-    handle = SpooledTranscriptHandle(TranscriptInfo(transcript_id="t1"), parse, fallback)
+    handle = SpooledTranscriptHandle(
+        TranscriptInfo(transcript_id="t1"), parse, fallback
+    )
 
     job = ScannerJob(
         union_transcript=handle, scanner=_handle_scanner(), scanner_name="hs"
     )
-    reports = await _scan_one(job, validation=None, fail_on_error=True)
+    try:
+        reports = await _scan_one(job, validation=None, fail_on_error=True)
+    finally:
+        await handle.aclose()
 
     assert len(reports) == 1
     assert reports[0].input_type == "transcript"
     assert isinstance(reports[0].input, SerializedTranscript)
-    assert _json.loads(reports[0].input.input_json)["transcript_id"] == "t1"
+    assert json.loads(reports[0].input.input_json)["transcript_id"] == "t1"
+
+
+@pytest.mark.asyncio
+async def test_scan_one_records_after_scan_completes() -> None:
+    """The record value is produced after the scan call, not before.
+
+    Bounded-memory streaming only holds if the record isn't materialized
+    while the scanner runs. Pin the ordering via a shared call log rather
+    than reaching into `_scan_one`'s internals, so hoisting
+    `_transcript_for_record` above the scan call would fail this test.
+    """
+    calls: list[str] = []
+
+    async def load_fn() -> Transcript:
+        calls.append("load")
+        return _empty_transcript()
+
+    handle = MaterializedTranscriptHandle(load_fn, TranscriptInfo(transcript_id="t1"))
+
+    @scanner(messages="all", events="all")
+    def factory() -> Scanner[Transcript]:
+        async def scan(transcript: Transcript) -> Result:
+            calls.append("scan")
+            return Result(value="ok")
+
+        setattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, True)
+        return scan
+
+    job = ScannerJob(
+        union_transcript=handle,
+        scanner=factory(),
+        scanner_name="order",
+    )
+    await _scan_one(job, validation=None, fail_on_error=True)
+
+    assert calls == ["scan", "load"]

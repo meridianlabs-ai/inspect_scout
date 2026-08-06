@@ -4,7 +4,7 @@ import time
 from collections.abc import Sequence
 from multiprocessing.context import SpawnProcess
 from multiprocessing.queues import Queue
-from queue import Empty
+from queue import Empty, Full
 from typing import Any, Callable
 
 import anyio
@@ -125,8 +125,15 @@ async def shutdown_subprocesses(
     # PHASE 5: Inject shutdown sentinel to wake collector
     print_diagnostics("SubprocessShutdown", "Phase 5: Injecting shutdown sentinel")
     try:
-        ctx.upstream_queue.put(shutdown_sentinel)
+        # put_nowait: the queue is bounded, and a blocking put on a full queue
+        # would hang shutdown. If the queue is full the collector cannot be
+        # blocked on get() anyway, so the wake-up sentinel isn't needed.
+        ctx.upstream_queue.put_nowait(shutdown_sentinel)
         print_diagnostics("SubprocessShutdown", "Injected upstream queue sentinel")
+    except Full:
+        print_diagnostics(
+            "SubprocessShutdown", "Upstream queue full - sentinel not needed"
+        )
     except (ValueError, OSError) as e:
         # Queue already closed - collector likely already exited via cancellation
         print_diagnostics("SubprocessShutdown", f"Upstream queue closed: {e}")

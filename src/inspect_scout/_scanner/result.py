@@ -92,6 +92,34 @@ class ResultValidation(BaseModel):
     """The split the validation case belongs to (e.g., 'dev', 'test')."""
 
 
+class SerializedTranscript(BaseModel):
+    """Recorder column values for an already-serialized transcript.
+
+    Produced by the spooled pooled-passthrough path, which emits the compact
+    (pool-condensed, attachment-ref) form straight from the transcript spool
+    rather than building a `Transcript` and re-condensing it.
+    `_serialize_input` passes these strings through unchanged.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    input_json: str
+    """Value for the `input` column: transcript JSON, events pool-condensed."""
+
+    input_data_json: str | None = None
+    """Value for the `input_data` column: `{messages, calls, attachments}`,
+    or None when nothing is pooled and there are no attachments."""
+
+
+ReportInput = ScannerInput | SerializedTranscript
+"""What a `ResultReport` may carry: a live scanner input, or -- for spooled
+transcript handles -- pre-serialized column values.
+
+Deliberately NOT part of `ScannerInput`: that alias is public API, bounds
+`Loader[T]` and the `@scanner` type parameter, and drives the OpenAPI schema.
+"""
+
+
 class ResultReport(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
@@ -99,7 +127,7 @@ class ResultReport(BaseModel):
 
     input_ids: list[str]
 
-    input: ScannerInput
+    input: ReportInput
 
     result: Result | None
 
@@ -211,7 +239,7 @@ class ResultReport(BaseModel):
 
 
 def _serialize_input(
-    input: ScannerInput,
+    input: ReportInput,
     input_type: ScannerInputNames,
     *,
     pool_dedup: bool,
@@ -219,11 +247,15 @@ def _serialize_input(
     """Serialize scanner input, optionally condensing events.
 
     Only "transcript" input pools events separately (second tuple element);
-    all other input types return None there.
+    all other input types return None there. A `SerializedTranscript` is
+    already in column form and is passed through unchanged.
 
     Returns:
         (input_json, input_data_json | None)
     """
+    if isinstance(input, SerializedTranscript):
+        return input.input_json, input.input_data_json
+
     if not pool_dedup or input_type not in ("transcript", "events"):
         return to_json_str_compact(input), None
 

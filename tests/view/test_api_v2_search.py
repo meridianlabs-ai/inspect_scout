@@ -1,5 +1,6 @@
 """Tests for transcript search endpoints."""
 
+import asyncio
 import base64
 from collections.abc import AsyncIterator, Awaitable, Callable
 from pathlib import Path
@@ -15,11 +16,24 @@ from google.genai.errors import ClientError as GoogleClientError
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai.model._chat_message import ChatMessageAssistant, ChatMessageUser
 from inspect_scout._scanner.result import Result
+from inspect_scout._transcript.handle import SpooledTranscriptHandle, TranscriptHandle
 from inspect_scout._transcript.types import Transcript
+from inspect_scout._util import constants as constants_mod
 from inspect_scout._view._api_v2 import v2_api_app
 from inspect_scout._view._api_v2_search import LLM_SEARCH_TEMPLATE
 from inspect_scout._view._api_v2_types import SearchRequest
 from pydantic import TypeAdapter
+
+LOGS_DIR = Path(__file__).parent.parent / "recorder" / "logs"
+
+
+@pytest.fixture
+def eval_log() -> Path:
+    """First eval log fixture file (resolved lazily to keep collection safe)."""
+    logs = sorted(LOGS_DIR.glob("*.eval"))
+    if not logs:
+        pytest.skip(f"no .eval fixture logs in {LOGS_DIR}")
+    return logs[0]
 
 
 def _fake_httpx_response(status_code: int) -> httpx.Response:
@@ -80,6 +94,19 @@ async def transcript_location(tmp_path: Path) -> AsyncIterator[Path]:
     location.mkdir(parents=True, exist_ok=True)
     await _populate_transcripts(location, [_create_transcript()])
     yield location
+
+
+async def _first_eval_log_transcript_id(log: Path) -> str:
+    """Fetch the transcript_id of the first sample in an eval log."""
+    from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
+
+    view = EvalLogTranscriptsView(str(log))
+    await view.connect()
+    try:
+        infos = [info async for info in view.select()]
+        return infos[0].transcript_id
+    finally:
+        await view.disconnect()
 
 
 class TestSearchEndpoint:
@@ -272,6 +299,78 @@ class TestSearchEndpoint:
             "model": "openai/gpt-5.4-mini",
         }
         assert llm_calls == [expected_call, expected_call]
+
+    def test_llm_search_uses_streaming_handle(
+        self,
+        client: TestClient,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        eval_log: Path,
+    ) -> None:
+        """The LLM search scanner receives a live spooled handle it can consume.
+
+        Guards the view-connection-lifetime contract: `scan(handle)` must run
+        inside the view's `async with`, so the handle's streamed reads succeed
+        while the scanner is running.
+        """
+        # Force EvalLogTranscriptsView.open() to take the spooled-handle
+        # branch regardless of sample size.
+        monkeypatch.setattr(constants_mod, "SPOOL_THRESHOLD_BYTES", 0)
+
+        transcript_id = asyncio.run(_first_eval_log_transcript_id(eval_log))
+
+        received_handles: list[object] = []
+        streamed_message_counts: list[int] = []
+
+        def fake_llm_scanner(
+            *,
+            question: str,
+            answer: str,
+            template: str,
+            model: str | None,
+            reducer: object,
+        ) -> Callable[[TranscriptHandle], Awaitable[Result]]:
+            async def _scan(handle: TranscriptHandle) -> Result:
+                received_handles.append(handle)
+                # Consume the handle: streaming reads must work while the
+                # view's resources are still open.
+                msgs = [m async for m in handle.messages()]
+                streamed_message_counts.append(len(msgs))
+                return Result(
+                    value="The assistant says the needle is in the haystack.",
+                    explanation="LLM summary.",
+                )
+
+            return _scan
+
+        encoded_dir = _base64url(str(eval_log))
+        with (
+            patch(
+                "inspect_scout._view._api_v2_search.scout_data_dir",
+                side_effect=_search_data_dir(tmp_path / "search-data"),
+            ),
+            patch(
+                "inspect_scout._view._api_v2_search.llm_scanner",
+                side_effect=fake_llm_scanner,
+            ),
+        ):
+            response = client.post(
+                f"/transcripts/{encoded_dir}/{transcript_id}/search",
+                json={
+                    "messages": "all",
+                    "query": "Where is the needle?",
+                    "type": "llm",
+                    "model": "openai/gpt-5.4-mini",
+                },
+            )
+
+        assert response.status_code == 200
+        assert set(response.json().keys()) == {"id", "result"}
+
+        # The streamed (spooled) handle path was exercised and consumable.
+        assert len(received_handles) == 1
+        assert isinstance(received_handles[0], SpooledTranscriptHandle)
+        assert streamed_message_counts[0] > 0
 
     @pytest.mark.parametrize(
         ("payload", "field_name"),

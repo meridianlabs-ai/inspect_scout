@@ -11,7 +11,7 @@ from shortuuid import uuid
 
 from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
 from inspect_scout._transcript.types import Transcript
-from inspect_scout._util._json import to_json_str_compact
+from inspect_scout._util._json import to_json_bytes_compact, to_json_str_compact
 
 logger = getLogger(__name__)
 
@@ -92,6 +92,38 @@ class ResultValidation(BaseModel):
     """The split the validation case belongs to (e.g., 'dev', 'test')."""
 
 
+class SerializedTranscript(BaseModel):
+    """Recorder column values for an already-serialized transcript.
+
+    Produced by the spooled pooled-passthrough path, which emits the compact
+    (pool-condensed, attachment-ref) form straight from the transcript spool
+    rather than building a `Transcript` and re-condensing it.
+    `_serialize_input` passes these values through unchanged.
+
+    Carried as UTF-8 bytes, not `str`: the values go straight into a parquet
+    column, which pyarrow encodes as UTF-8 regardless, and a `str` of
+    non-ASCII text costs two bytes per character in memory.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    input_json: bytes
+    """Value for the `input` column: transcript JSON, events pool-condensed."""
+
+    input_data_json: bytes | None = None
+    """Value for the `input_data` column: `{messages, calls, attachments}`,
+    or None when nothing is pooled and there are no attachments."""
+
+
+ReportInput = ScannerInput | SerializedTranscript
+"""What a `ResultReport` may carry: a live scanner input, or -- for spooled
+transcript handles -- pre-serialized column values.
+
+Deliberately NOT part of `ScannerInput`: that alias is public API, bounds
+`Loader[T]` and the `@scanner` type parameter, and drives the OpenAPI schema.
+"""
+
+
 class ResultReport(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
@@ -99,7 +131,7 @@ class ResultReport(BaseModel):
 
     input_ids: list[str]
 
-    input: ScannerInput
+    input: ReportInput
 
     result: Result | None
 
@@ -113,8 +145,9 @@ class ResultReport(BaseModel):
 
     def to_df_columns(
         self, *, pool_dedup: bool = True
-    ) -> dict[str, str | bool | int | float | None]:
-        columns: dict[str, str | bool | int | float | None] = {}
+    ) -> dict[str, str | bytes | bool | int | float | None]:
+        # `input`/`input_data` are UTF-8 bytes: see `_serialize_input`.
+        columns: dict[str, str | bytes | bool | int | float | None] = {}
 
         # input (transcript, event, or message)
         columns["input_type"] = self.input_type
@@ -211,27 +244,37 @@ class ResultReport(BaseModel):
 
 
 def _serialize_input(
-    input: ScannerInput,
+    input: ReportInput,
     input_type: ScannerInputNames,
     *,
     pool_dedup: bool,
-) -> tuple[str, str | None]:
+) -> tuple[bytes, bytes | None]:
     """Serialize scanner input, optionally condensing events.
+
+    Only "transcript" input pools events separately (second tuple element);
+    all other input types return None there. A `SerializedTranscript` is
+    already in column form and is passed through unchanged.
+
+    Every branch returns UTF-8 bytes so the `input` column holds one type
+    regardless of which path produced it.
 
     Returns:
         (input_json, input_data_json | None)
     """
+    if isinstance(input, SerializedTranscript):
+        return input.input_json, input.input_data_json
+
     if not pool_dedup or input_type not in ("transcript", "events"):
-        return to_json_str_compact(input), None
+        return to_json_bytes_compact(input), None
 
     if input_type == "transcript":
         assert isinstance(input, Transcript)
         condensed_events, events_data = condense_events(input.events)
         condensed = input.model_copy(update={"events": condensed_events})
-        return to_json_str_compact(condensed), to_json_str_compact(events_data)
+        return to_json_bytes_compact(condensed), to_json_bytes_compact(events_data)
 
     # input_type == "events"
     assert isinstance(input, Sequence)
     events = cast(Sequence[Event], input)
     condensed_events, events_data = condense_events(events)
-    return to_json_str_compact(condensed_events), to_json_str_compact(events_data)
+    return to_json_bytes_compact(condensed_events), to_json_bytes_compact(events_data)

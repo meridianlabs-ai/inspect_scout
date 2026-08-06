@@ -105,6 +105,7 @@ def scan(
     max_processes: int | None = None,
     limit: int | None = None,
     shuffle: bool | int | None = None,
+    results_buffer: int | None = None,
     tags: list[str] | None = None,
     metadata: dict[str, Any] | None = None,
     display: DisplayType | None = None,
@@ -139,6 +140,7 @@ def scan(
         max_processes: The maximum number of concurrent processes (for multiproccesing). Defaults to 4.
         limit: Limit the number of transcripts processed.
         shuffle: Shuffle the order of transcripts (pass an `int` to set a seed for shuffling).
+        results_buffer: Sync in-progress results to the scan location every N recorded results so they can be inspected while the scan is still running (defaults to None, which syncs results only on completion or interruption).
         tags: One or more tags for this scan.
         metadata: Metadata for this scan.
         display: Display type: "rich", "plain", "log", or "none" (defaults to "rich").
@@ -169,6 +171,7 @@ def scan(
             max_processes=max_processes,
             limit=limit,
             shuffle=shuffle,
+            results_buffer=results_buffer,
             tags=tags,
             metadata=metadata,
             log_level=log_level,
@@ -194,6 +197,7 @@ async def scan_async(
     max_processes: int | None = None,
     limit: int | None = None,
     shuffle: bool | int | None = None,
+    results_buffer: int | None = None,
     tags: list[str] | None = None,
     metadata: dict[str, Any] | None = None,
     log_level: str | None = None,
@@ -227,6 +231,7 @@ async def scan_async(
         max_processes: The maximum number of concurrent processes (for multiproccesing). Defaults to 4.
         limit: Limit the number of transcripts processed.
         shuffle: Shuffle the order of transcripts (pass an `int` to set a seed for shuffling).
+        results_buffer: Sync in-progress results to the scan location every N recorded results so they can be inspected while the scan is still running (defaults to None, which syncs results only on completion or interruption).
         tags: One or more tags for this scan.
         metadata: Metadata for this scan.
         log_level: Level for logging to the console: "debug", "http", "sandbox",
@@ -295,6 +300,9 @@ async def scan_async(
     scanjob._max_processes = max_processes or scanjob._max_processes
     scanjob._limit = limit or scanjob._limit
     scanjob._shuffle = shuffle if shuffle is not None else scanjob._shuffle
+    scanjob._results_buffer = (
+        results_buffer if results_buffer is not None else scanjob._results_buffer
+    )
 
     # tags and metadata
     scanjob._tags = tags or scanjob._tags
@@ -685,6 +693,51 @@ async def _scan_async_inner(
                         return None
 
                 scan_location = await recorder.location()
+
+                # periodic sync of in-progress results to the scan location.
+                # when `results_buffer` is set we compact partial results to
+                # the scan location every N recorded results so they can be
+                # inspected while the scan is still running. syncs run as
+                # background tasks so their latency (which can be substantial
+                # for remote locations like S3) stays off the recording path;
+                # if a sync is still in flight when the next one comes due we
+                # skip it (a later trigger or the final sync picks up the new
+                # results). `record_results` runs on the main event loop in
+                # both concurrency strategies, so plain counters are safe.
+                results_buffer = scan.spec.options.results_buffer
+                results_sync_tg: TaskGroup | None = None
+                results_since_sync = 0
+                results_sync_running = False
+
+                async def periodic_results_sync() -> None:
+                    nonlocal results_sync_running
+                    try:
+                        await recorder.sync(scan_location, complete=False)
+                    except Exception as ex:
+                        # a periodic sync failure must not bring down the
+                        # scan -- the final sync (or a later periodic one)
+                        # will retry.
+                        logger.warning(
+                            f"Periodic results sync failed (scan continues): {ex}"
+                        )
+                    finally:
+                        results_sync_running = False
+
+                def maybe_start_results_sync() -> None:
+                    nonlocal results_since_sync, results_sync_running
+                    if (
+                        results_buffer is None
+                        or results_buffer <= 0
+                        or results_sync_tg is None
+                    ):
+                        return
+                    results_since_sync += 1
+                    if results_sync_running or results_since_sync < results_buffer:
+                        return
+                    results_since_sync = 0
+                    results_sync_running = True
+                    results_sync_tg.start_soon(periodic_results_sync)
+
                 with active_scans_store() as active_store:
                     active_store.put_spec(
                         scan.spec.scan_id, scan.spec, total_scans, scan_location
@@ -701,20 +754,31 @@ async def _scan_async_inner(
                         active_store.put_scanner_results(
                             scan.spec.scan_id, scanner, results
                         )
+                        maybe_start_results_sync()
 
                     def update_metrics(metrics: ScanMetrics) -> None:
                         active_store.put_metrics(scan.spec.scan_id, metrics)
                         scan_display.metrics(metrics)
 
                     try:
-                        await strategy(
-                            parse_jobs=_parse_jobs(scan, recorder, tr),
-                            parse_function=_parse_function,
-                            scan_function=_scan_function,
-                            record_results=record_results,
-                            update_metrics=update_metrics,
-                            reader_cm_factory=_reader_cm_factory,
-                        )
+                        # host periodic results syncs in a task group scoped
+                        # to the strategy: leaving the block awaits any sync
+                        # still in flight, so one can never race the final
+                        # sync below (and an error in the strategy cancels
+                        # any in-flight sync -- its writes are atomic).
+                        async with anyio.create_task_group() as tg:
+                            results_sync_tg = tg
+                            try:
+                                await strategy(
+                                    parse_jobs=_parse_jobs(scan, recorder, tr),
+                                    parse_function=_parse_function,
+                                    scan_function=_scan_function,
+                                    record_results=record_results,
+                                    update_metrics=update_metrics,
+                                    reader_cm_factory=_reader_cm_factory,
+                                )
+                            finally:
+                                results_sync_tg = None
 
                         # we've been throttle metrics calculation, now report it all
                         for scanner in metrics_accum:

@@ -164,9 +164,9 @@ def scan_results_batches(
     remains bounded by `batch_size` rather than scaling with the size of the
     scanner's results. This holds for local paths and for cloud locations
     PyArrow can read natively (`s3://`, `gs://`, `abfs://`), which are read
-    with HTTP range requests. `az://` locations are the exception: PyArrow
-    has no native filesystem for them, so the parquet file is downloaded in
-    full before batching and memory scales with file size.
+    with HTTP range requests. Remote protocols PyArrow has no native
+    filesystem for (e.g. `az://`) are the exception: the parquet file is
+    downloaded in full before batching, so memory scales with file size.
 
     Note that batches are produced with synchronous parquet I/O. To consume
     from async code, drive the iterator from a worker thread or use

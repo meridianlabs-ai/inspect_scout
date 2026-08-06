@@ -340,7 +340,7 @@ def test_arrow_reader_streams_remote_filesystem(
     def resolve(scanner_path: Any) -> Any:
         return str(scanner_path), counting_fs
 
-    monkeypatch.setattr(scout_file, "_resolve_parquet_source", resolve)
+    monkeypatch.setattr(scout_file, "_parquet_source", resolve)
 
     results = scan_results_arrow(scan_dir.as_posix())
     reader = results.reader("word_counter", streaming_batch_size=2)

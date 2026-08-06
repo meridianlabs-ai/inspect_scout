@@ -44,12 +44,12 @@ from .reducer import (
     ParseState,
     _item_coroutine,
     _unfiltered_item_coroutine,
-    metadata_coroutine,
     scores_coroutine,
+    spooling_metadata_coroutine,
     target_coroutine,
     timeline_item_coroutine,
 )
-from .spool import BlobSpool, ItemSpool
+from .spool import BlobSpool, ByteSpool, ItemSpool
 
 # Section constants for prefix classification (mirrors load_filtered.py)
 _SECTION_OTHER = 0
@@ -124,16 +124,40 @@ class StreamParseResult:
     messages: ItemSpool
     events: ItemSpool
     blobs: BlobSpool
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata_json: ByteSpool
     target: str | list[str] | None = None
     scores: dict[str, Any] = field(default_factory=dict)
     timelines: list[dict[str, Any]] = field(default_factory=list)
+
+    @property
+    def has_metadata(self) -> bool:
+        """Whether sample metadata is present and non-empty.
+
+        Mirrors the truthiness of the dict this used to be: an absent section
+        spools nothing, and an empty object spools exactly ``{}``.
+        """
+        return len(self.metadata_json) > 2
+
+    def metadata(self) -> dict[str, Any]:
+        """Sample metadata as objects, parsed from the spool on each call.
+
+        A method rather than a field because this is the expensive thing the
+        spool exists to avoid: for a metadata-heavy transcript the result can
+        be gigabytes. Deliberately not cached -- holding it would reinstate
+        the retention this spool removes. Call it once and keep the result if
+        you need it repeatedly.
+        """
+        if not self.has_metadata:
+            return {}
+        parsed: dict[str, Any] = json.loads(self.metadata_json.read())
+        return parsed
 
     def close(self) -> None:
         """Close all spools (idempotent)."""
         self.messages.close()
         self.events.close()
         self.blobs.close()
+        self.metadata_json.close()
 
 
 async def stream_parse_to_spool(
@@ -197,8 +221,10 @@ async def stream_parse_to_spool(
         events_spool = ItemSpool(spool_dir)
         unwind.callback(events_spool.close)
         blobs = BlobSpool(spool_dir)
+        unwind.callback(blobs.close)
+        metadata_spool = ByteSpool(spool_dir)
         unwind.pop_all()
-    result = StreamParseResult(messages_spool, events_spool, blobs)
+    result = StreamParseResult(messages_spool, events_spool, blobs, metadata_spool)
 
     messages_coro = (
         _item_coroutine(_SpoolSink(messages_spool), set(), messages_config)
@@ -212,7 +238,7 @@ async def stream_parse_to_spool(
     )
     timelines_coro = timeline_item_coroutine(state)
     attachments_coro = _spool_attachments_coroutine(blobs)
-    metadata_coro = metadata_coroutine(state)
+    metadata_coro = spooling_metadata_coroutine(metadata_spool.write)
     target_coro: CoroutineGen | None = target_coroutine(state)
     scores_coro = scores_coroutine(state)
     message_pool_coros = [
@@ -352,7 +378,6 @@ async def stream_parse_to_spool(
                     for coro in call_pool_coros:
                         coro.send((prefix, event, value))
 
-        result.metadata = state.metadata
         result.target = state.target
         result.scores = state.scores
         result.timelines = state.timelines

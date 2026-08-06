@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from inspect_scout._transcript.json.passthrough import pooled_passthrough
-from inspect_scout._transcript.json.spool import BlobSpool, ItemSpool
+from inspect_scout._transcript.json.spool import BlobSpool, ByteSpool, ItemSpool
 from inspect_scout._transcript.json.stream_parse import StreamParseResult
 from inspect_scout._transcript.types import TranscriptInfo
 
@@ -21,7 +21,7 @@ def _result(tmp_path: Path, events: list[dict[str, Any]]) -> StreamParseResult:
         blobs.put(("message_pool", i), json.dumps({"role": "user", "content": f"m{i}"}))
     for event in events:
         event_spool.append(event)
-    return StreamParseResult(messages, event_spool, blobs)
+    return StreamParseResult(messages, event_spool, blobs, ByteSpool(tmp_path))
 
 
 def test_prunes_pool_to_referenced_entries_and_remaps(tmp_path: Path) -> None:
@@ -90,7 +90,7 @@ def test_collects_attachments_referenced_from_pool_entries(tmp_path: Path) -> No
     )
     blobs.put(att, "the real content")
     events.append({"event": "model", "input_refs": [[0, 1]]})
-    result = StreamParseResult(messages, events, blobs)
+    result = StreamParseResult(messages, events, blobs, ByteSpool(tmp_path))
     try:
         _, input_data_json = pooled_passthrough(
             TranscriptInfo(transcript_id="t1"), result
@@ -124,7 +124,7 @@ def test_prunes_and_remaps_call_pool_via_call_refs(tmp_path: Path) -> None:
             "call": {"call_refs": [[1, 3]], "call_key": "arguments"},
         }
     )
-    result = StreamParseResult(messages, events, blobs)
+    result = StreamParseResult(messages, events, blobs, ByteSpool(tmp_path))
     try:
         input_json, input_data_json = pooled_passthrough(
             TranscriptInfo(transcript_id="t1"), result
@@ -150,7 +150,7 @@ def test_envelope_carries_info_and_messages(tmp_path: Path) -> None:
     events = ItemSpool(tmp_path)
     blobs = BlobSpool(tmp_path)
     messages.append({"id": "m1", "role": "user", "content": "hello"})
-    result = StreamParseResult(messages, events, blobs)
+    result = StreamParseResult(messages, events, blobs, ByteSpool(tmp_path))
     try:
         input_json, _ = pooled_passthrough(
             TranscriptInfo(transcript_id="t1", source_id="e1"), result

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import json
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Generator, Literal, Protocol, cast
 
@@ -252,6 +253,85 @@ def metadata_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
             continue
 
 
+class JsonTextWriter:
+    """Re-serialize a stream of ijson events as JSON text.
+
+    The inverse of ``ijson.parse``: feed it the events for one value and it
+    writes that value back out, byte for byte as
+    ``json.dumps(value, ensure_ascii=False, separators=(",", ":"))`` would --
+    without ever building the value as Python objects. Use it for a subtree
+    large enough that the object graph is the problem.
+
+    Assumes numbers arrive as ``int``/``float`` (ijson's ``use_float=True``);
+    ``Decimal`` would raise, as it would from ``json.dumps``.
+    """
+
+    _ENCODER = json.JSONEncoder(ensure_ascii=False, separators=(",", ":"))
+
+    def __init__(self, write: Callable[[bytes], Any]) -> None:
+        self._write = write
+        self._nonempty: list[bool] = []  # per open container: has an item yet
+        self._after_key = False
+
+    def _separator(self) -> None:
+        """Write the comma between siblings, if this is not the first."""
+        if self._after_key:  # a value right after "key": never takes one
+            self._after_key = False
+            return
+        if self._nonempty:
+            if self._nonempty[-1]:
+                self._write(b",")
+            self._nonempty[-1] = True
+
+    def event(self, event: str, value: Any) -> None:
+        if event == "map_key":
+            if self._nonempty and self._nonempty[-1]:
+                self._write(b",")
+            if self._nonempty:
+                self._nonempty[-1] = True
+            self._write(self._ENCODER.encode(value).encode("utf-8") + b":")
+            self._after_key = True
+            return
+        if event in ("start_map", "start_array"):
+            self._separator()
+            self._write(b"{" if event == "start_map" else b"[")
+            self._nonempty.append(False)
+            return
+        if event in ("end_map", "end_array"):
+            self._nonempty.pop()
+            self._write(b"}" if event == "end_map" else b"]")
+            return
+        self._separator()
+        self._write(self._ENCODER.encode(value).encode("utf-8"))
+
+
+@_ijson_coroutine  # type: ignore
+def spooling_metadata_coroutine(
+    write: Callable[[bytes], Any],
+) -> CoroutineGen:  # pragma: no cover
+    """``metadata_coroutine`` that writes JSON text instead of building objects.
+
+    Sample metadata can be most of a transcript (measured at 1,377 MB of a
+    3,223 MB sample), and as an object graph it costs roughly twice that,
+    retained for the lifetime of the handle. Written as text it stays on disk
+    until something actually needs it.
+    """
+    writer: JsonTextWriter | None = None
+    while True:
+        prefix, event, value = yield
+        if not (prefix == "metadata" or prefix.startswith(METADATA_PREFIX)):
+            continue
+        if prefix == "metadata" and event == "start_map":
+            writer = JsonTextWriter(write)
+            writer.event(event, value)
+            continue
+        if writer is None:
+            continue
+        writer.event(event, value)
+        if prefix == "metadata" and event == "end_map":
+            writer = None
+
+
 SCORES_PREFIX = "scores."
 
 
@@ -325,6 +405,8 @@ __all__ = [
     "ATTACHMENT_PREFIX",
     "ATTACHMENT_PREFIX_LEN",
     "ATTACHMENT_REF_BYTES",
+    "JsonTextWriter",
+    "spooling_metadata_coroutine",
     "ATTACHMENT_REF_PATTERN",
     "ATTACHMENTS_PREFIX",
     "MESSAGES_ITEM_PREFIX",

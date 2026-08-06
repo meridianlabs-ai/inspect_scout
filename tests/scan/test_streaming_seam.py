@@ -6,10 +6,16 @@ from pathlib import Path
 from typing import Any, cast
 
 import pytest
+from inspect_ai._util.error import PrerequisiteError
 from inspect_ai.model import ChatMessageUser
 from inspect_scout import scanner
 from inspect_scout._concurrency.common import ScannerJob
-from inspect_scout._scan import _content_for_scanner, _scan_one, _streaming_eligible
+from inspect_scout._scan import (
+    _content_for_scanner,
+    _scan_one,
+    _streaming_eligible,
+    _transcript_for_record,
+)
 from inspect_scout._scanner.result import Result, SerializedTranscript
 from inspect_scout._scanner.scanner import SCANNER_SUPPORTS_STREAMING_ATTR, Scanner
 from inspect_scout._transcript.handle import (
@@ -333,3 +339,38 @@ async def test_scan_one_records_after_scan_completes() -> None:
     await _scan_one(job, validation=None, fail_on_error=True)
 
     assert calls == ["scan", "load"]
+
+
+@pytest.mark.parametrize(
+    ("error", "fail_on_error", "expect_raise"),
+    [
+        pytest.param(RuntimeError("boom"), False, False, id="contained"),
+        pytest.param(RuntimeError("boom"), True, True, id="fail_on_error"),
+        pytest.param(PrerequisiteError("boom"), False, True, id="prerequisite"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_transcript_for_record_error_propagation(
+    error: Exception, fail_on_error: bool, expect_raise: bool
+) -> None:
+    """Record-path failures follow the same rules as the scan-call sites.
+
+    Containment here is deliberate -- a result already produced should still
+    be recorded -- but a `PrerequisiteError` must always bring the scan down,
+    and `fail_on_error` must surface a genuine record-path defect rather than
+    quietly emptying every transcript in the scan.
+    """
+
+    async def load_fn() -> Transcript:
+        raise error
+
+    handle = MaterializedTranscriptHandle(load_fn, TranscriptInfo(transcript_id="t1"))
+
+    if expect_raise:
+        with pytest.raises(type(error)):
+            await _transcript_for_record(handle, fail_on_error=fail_on_error)
+    else:
+        recorded = await _transcript_for_record(handle, fail_on_error=fail_on_error)
+        assert isinstance(recorded, Transcript)
+        assert recorded.messages == []
+        assert recorded.events == []

@@ -101,6 +101,52 @@ class BlobSpool:
             self._fd = None
 
 
+class ByteSpool:
+    """Append-only spool of raw bytes for one value, read back in chunks.
+
+    Its own file rather than a ``BlobSpool`` entry: a value is written
+    incrementally, so anything else appending to the same file in between
+    would interleave with it.
+    """
+
+    def __init__(self, dir: Path) -> None:
+        self._file: IO[bytes] | None = _open_spool_file(dir, ".bytes")
+        self._fd: int | None = self._file.fileno()
+        self._lock = threading.Lock()
+        self._write_offset = 0
+
+    def write(self, data: bytes) -> None:
+        if self._fd is None:
+            raise ValueError("spool is closed")
+        _write_at(self._fd, self._lock, data, self._write_offset)
+        self._write_offset += len(data)
+
+    def __len__(self) -> int:
+        return self._write_offset
+
+    def chunks(self, chunk_size: int = 1024 * 1024) -> Iterator[bytes]:
+        """Yield the value in chunks, so it never exists whole in memory."""
+        if self._fd is None:
+            raise ValueError("spool is closed")
+        offset = 0
+        while offset < self._write_offset:
+            read_len = min(chunk_size, self._write_offset - offset)
+            yield _read_at(self._fd, self._lock, read_len, offset)
+            offset += read_len
+
+    def read(self) -> bytes:
+        """The whole value. Prefer ``chunks()`` when it may be large."""
+        if self._fd is None:
+            raise ValueError("spool is closed")
+        return _read_at(self._fd, self._lock, self._write_offset, 0)
+
+    def close(self) -> None:
+        if self._file is not None:
+            self._file.close()
+            self._file = None
+            self._fd = None
+
+
 class ItemSpool:
     """JSONL spool of dicts supporting multiple concurrent iterations."""
 

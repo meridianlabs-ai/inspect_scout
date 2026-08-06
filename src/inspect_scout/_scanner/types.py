@@ -7,11 +7,10 @@ from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 from typing_extensions import Literal
 
-from .._transcript.types import Transcript, TranscriptInfo
+from .._transcript.types import Transcript
 
 ScannerInput = Union[
     Transcript,
-    TranscriptInfo,
     ChatMessage,
     Sequence[ChatMessage],
     Event,
@@ -23,8 +22,6 @@ ScannerInput = Union[
 
 ScannerInputNames = Literal[
     "transcript",
-    # info-only input record used by streaming handle scans
-    "transcript_info",
     "event",
     "events",
     "message",

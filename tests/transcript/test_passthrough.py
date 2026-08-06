@@ -1,0 +1,100 @@
+"""Pruning, remapping, and envelope assembly for the pooled passthrough."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+from inspect_scout._transcript.json.passthrough import pooled_passthrough
+from inspect_scout._transcript.json.spool import BlobSpool, ItemSpool
+from inspect_scout._transcript.json.stream_parse import StreamParseResult
+from inspect_scout._transcript.types import TranscriptInfo
+
+
+def _result(tmp_path: Path, events: list[dict[str, Any]]) -> StreamParseResult:
+    """Build a StreamParseResult with a 3-entry message pool, no messages."""
+    messages = ItemSpool(tmp_path)
+    event_spool = ItemSpool(tmp_path)
+    blobs = BlobSpool(tmp_path)
+    for i in range(3):
+        blobs.put(("message_pool", i), json.dumps({"role": "user", "content": f"m{i}"}))
+    for event in events:
+        event_spool.append(event)
+    return StreamParseResult(messages, event_spool, blobs)
+
+
+def test_prunes_pool_to_referenced_entries_and_remaps(tmp_path: Path) -> None:
+    # One event referencing only pool positions [2,3) -- entries 0 and 1 are
+    # unreferenced and must be dropped, leaving the survivor at position 0.
+    result = _result(tmp_path, [{"event": "model", "input_refs": [[2, 3]]}])
+    try:
+        input_json, input_data_json = pooled_passthrough(
+            TranscriptInfo(transcript_id="t1"), result
+        )
+    finally:
+        result.close()
+
+    assert input_data_json is not None
+    data = json.loads(input_data_json)
+    assert data["messages"] == [{"role": "user", "content": "m2"}]
+    events = json.loads(input_json)["events"]
+    assert events[0]["input_refs"] == [[0, 1]]
+
+
+def test_empty_pools_and_no_attachments_yield_no_input_data(tmp_path: Path) -> None:
+    result = _result(tmp_path, [])
+    try:
+        input_json, input_data_json = pooled_passthrough(
+            TranscriptInfo(transcript_id="t1"), result
+        )
+    finally:
+        result.close()
+
+    assert input_data_json is None
+    assert json.loads(input_json)["events"] == []
+
+
+def test_collects_attachments_referenced_from_pool_entries(tmp_path: Path) -> None:
+    # The ref lives inside a POOL entry, not the event -- a naive scan of
+    # events alone would miss it and emit a dangling attachment:// ref.
+    att = "a" * 32
+    messages = ItemSpool(tmp_path)
+    events = ItemSpool(tmp_path)
+    blobs = BlobSpool(tmp_path)
+    blobs.put(
+        ("message_pool", 0),
+        json.dumps({"role": "user", "content": f"attachment://{att}"}),
+    )
+    blobs.put(att, "the real content")
+    events.append({"event": "model", "input_refs": [[0, 1]]})
+    result = StreamParseResult(messages, events, blobs)
+    try:
+        _, input_data_json = pooled_passthrough(
+            TranscriptInfo(transcript_id="t1"), result
+        )
+    finally:
+        result.close()
+
+    assert input_data_json is not None
+    assert json.loads(input_data_json)["attachments"] == {att: "the real content"}
+
+
+def test_envelope_carries_info_and_messages(tmp_path: Path) -> None:
+    messages = ItemSpool(tmp_path)
+    events = ItemSpool(tmp_path)
+    blobs = BlobSpool(tmp_path)
+    messages.append({"id": "m1", "role": "user", "content": "hello"})
+    result = StreamParseResult(messages, events, blobs)
+    try:
+        input_json, _ = pooled_passthrough(
+            TranscriptInfo(transcript_id="t1", source_id="e1"), result
+        )
+    finally:
+        result.close()
+
+    envelope = json.loads(input_json)
+    assert envelope["transcript_id"] == "t1"
+    assert envelope["source_id"] == "e1"
+    assert envelope["messages"] == [{"id": "m1", "role": "user", "content": "hello"}]
+    assert envelope["timelines"] == []

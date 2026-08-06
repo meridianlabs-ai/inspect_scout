@@ -206,6 +206,15 @@ def call_pool_item_coroutine(state: ParseState, item_prefix: str) -> CoroutineGe
 
 @_ijson_coroutine  # type: ignore
 def attachments_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
+    """Collect the attachments table.
+
+    Keeps every attachment rather than only those already referenced. Pool
+    entries under ``events_data`` can carry refs too, and that section follows
+    ``attachments`` in the file, so a membership test here cannot know about
+    them yet -- it silently dropped exactly the attachments a pooled system
+    prompt needs. ``state.attachment_refs`` is still collected, because the
+    early exit in ``load_filtered`` keys off it.
+    """
     attachments_prefix_len = len(ATTACHMENTS_PREFIX)
     while True:
         prefix, event, value = yield
@@ -219,8 +228,7 @@ def attachments_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cove
             if end == -1
             else prefix[attachments_prefix_len:end]
         )
-        if attachment_id in state.attachment_refs:
-            state.attachments[attachment_id] = value
+        state.attachments[attachment_id] = value
 
 
 @_ijson_coroutine  # type: ignore

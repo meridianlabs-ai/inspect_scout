@@ -1240,12 +1240,17 @@ async def _scan_one(
                 loader_input = cast(ScannerInput, loader_result)
                 report_input = loader_input
 
+            # Reset per iteration and before the `try`: the error path below
+            # reads this, so a raise inside the `try` must not leave it holding
+            # the previous item's ids (this runs in a loop) or unbound.
+            type_and_ids: tuple[ScannerInputNames, list[str]] | None = None
+
             try:
                 if handle_input is not None:
                     # Ids come from info; the transcript itself is materialized
                     # after the scan (below) so streamed content is not retained
                     # while the scanner runs.
-                    type_and_ids: tuple[ScannerInputNames, list[str]] | None = (
+                    type_and_ids = (
                         "transcript",
                         [handle_input.info.transcript_id],
                     )

@@ -10,6 +10,7 @@ the real ``on_complete`` counter in ``_scan.py``.
 
 from __future__ import annotations
 
+import json
 import tempfile
 from pathlib import Path
 
@@ -245,3 +246,72 @@ def test_scan_e2e_events_through_streaming_seam(
         control_values = control_df["value"].tolist()
 
     assert streamed_values == control_values
+
+
+@scanner(name="attachment_scanner", messages="all", events="all")
+def attachment_scanner_factory() -> Scanner[Transcript]:
+    """Messages+events llm_scanner over an attachment-bearing eval log."""
+    return llm_scanner(
+        question="Is this conversation helpful?",
+        answer="boolean",
+        content=TranscriptContent(messages="all", events="all"),
+    )
+
+
+# The one example log whose samples externalize content as `attachment://`
+# refs -- inspect_ai does that for any text value over 100 chars, so the
+# recorded events are full of refs the reader has to resolve.
+_ATTACHMENT_LOG = LOGS_DIR / (
+    "2025-09-23T08-09-58-04-00_theory-of-mind_bbB4eRCx2rFJLyPH42Cj9r.eval"
+)
+
+
+def _scan_input_column(monkeypatch: pytest.MonkeyPatch, *, spool_threshold: int) -> str:
+    """`scan_results_df`'s `input` value for a one-transcript scan."""
+    monkeypatch.setattr(
+        "inspect_scout._util.constants.SPOOL_THRESHOLD_BYTES", spool_threshold
+    )
+    with tempfile.TemporaryDirectory() as tmpdir:
+        status = scan(
+            scanners=[attachment_scanner_factory()],
+            transcripts=transcripts_from(str(_ATTACHMENT_LOG)),
+            scans=tmpdir,
+            limit=1,
+            max_processes=1,  # in-process so the monkeypatched threshold applies
+            model="mockllm/model",
+            model_args={"custom_outputs": _mock_responses(40)},
+            display="none",
+        )
+        assert status.complete
+        assert status.location is not None
+        results = scan_results_df(status.location, scanner="attachment_scanner")
+        return str(results.scanners["attachment_scanner"]["input"].tolist()[0])
+
+
+def test_recorded_input_resolves_attachments_like_materialized(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A streamed scan's recorded transcript must be readable.
+
+    The pooled passthrough copies events out of the spool with their
+    `attachment://<hash>` refs intact and ships the lookup table inside
+    `input_data`, which `scan_results_df` drops. If nothing resolves those
+    refs on the read path, every externalized value (any text over 100
+    chars: system prompts, model output, tool results) reaches the caller of
+    this public API as a dangling hash.
+    """
+    created, _ = _spy_spooled_handles(monkeypatch)
+
+    streamed_input = _scan_input_column(monkeypatch, spool_threshold=0)
+    assert created, "no SpooledTranscriptHandle was created -- not streaming"
+
+    # Control: a threshold nothing can exceed forces the materialized path.
+    created.clear()
+    control_input = _scan_input_column(monkeypatch, spool_threshold=2**62)
+    assert not created, "control run streamed -- not a materialized comparison"
+
+    assert "attachment://" not in streamed_input
+    streamed = json.loads(streamed_input)
+    control = json.loads(control_input)
+    assert streamed["messages"] == control["messages"]
+    assert streamed["events"] == control["events"]

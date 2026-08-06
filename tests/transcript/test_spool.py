@@ -1,0 +1,131 @@
+"""Tests for spool primitives."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any, Callable
+
+import pytest
+from inspect_scout._transcript.json.spool import BlobSpool, ItemSpool
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["hello world", "héllo — ünïcode 你好", ""],
+    ids=["ascii", "unicode", "empty"],
+)
+def test_blob_spool_roundtrip(value: str, tmp_path: Path) -> None:
+    spool = BlobSpool(tmp_path)
+    try:
+        spool.put("att1", value)
+        spool.put(("message_pool", 0), json.dumps({"role": "user"}))
+        spool.put(("message_pool", 1), json.dumps({"role": "assistant"}))
+        assert spool.get("att1") == value
+        assert json.loads(spool.get(("message_pool", 1)) or "") == {"role": "assistant"}
+        assert spool.get("missing") is None
+        assert spool.pool_len("message_pool") == 2
+        assert spool.pool_len("call_pool") == 0
+    finally:
+        spool.close()
+
+
+def test_blob_spool_no_file_left_behind(tmp_path: Path) -> None:
+    spool = BlobSpool(tmp_path)
+    spool.put("k", "v")
+    spool.close()
+    assert list(tmp_path.iterdir()) == []  # deleted when the fd closes
+
+
+def test_item_spool_reiterable(tmp_path: Path) -> None:
+    spool = ItemSpool(tmp_path)
+    try:
+        items: list[dict[str, Any]] = [
+            {"role": "user", "content": "a"},
+            {"role": "assistant", "content": "b"},
+        ]
+        for item in items:
+            spool.append(item)
+        assert len(spool) == 2
+        assert list(spool.items()) == items
+        assert list(spool.items()) == items  # second iteration identical
+    finally:
+        spool.close()
+
+
+def test_item_spool_interleaved_iterations(tmp_path: Path) -> None:
+    spool = ItemSpool(tmp_path)
+    try:
+        for i in range(3):
+            spool.append({"n": i})
+        it1 = spool.items()
+        it2 = spool.items()
+        assert next(it1) == {"n": 0}
+        assert next(it2) == {"n": 0}
+        assert next(it1) == {"n": 1}
+        assert list(it2) == [{"n": 1}, {"n": 2}]
+    finally:
+        spool.close()
+
+
+def _populated_blob_spool(tmp_path: Path) -> BlobSpool:
+    spool = BlobSpool(tmp_path)
+    spool.put("k", "v")
+    return spool
+
+
+def _populated_item_spool(tmp_path: Path) -> ItemSpool:
+    spool = ItemSpool(tmp_path)
+    spool.append({"n": 0})
+    return spool
+
+
+@pytest.mark.parametrize(
+    "factory,operations",
+    [
+        pytest.param(
+            _populated_blob_spool,
+            [lambda s: s.put("k2", "v2"), lambda s: s.get("k")],
+            id="blob",
+        ),
+        pytest.param(
+            _populated_item_spool,
+            [lambda s: s.append({"n": 1}), lambda s: list(s.items())],
+            id="item",
+        ),
+    ],
+)
+def test_spool_closed_lifecycle(
+    factory: Callable[[Path], Any],
+    operations: list[Callable[[Any], Any]],
+    tmp_path: Path,
+) -> None:
+    """After close(), every operation raises; close() itself is idempotent."""
+    spool = factory(tmp_path)
+    spool.close()
+    spool.close()  # idempotent
+    for operation in operations:
+        with pytest.raises(ValueError, match="closed"):
+            operation(spool)
+
+
+def test_item_spool_closed_mid_iteration_raises(tmp_path: Path) -> None:
+    """Closing between internal chunk-reads must also raise.
+
+    Not just resuming from an already-buffered chunk: items() reads in
+    bounded internal chunks, so spool enough data (~1MB across many items)
+    that the iterator cannot have buffered everything after yielding the
+    first item -- resuming it must perform another internal read, which
+    re-checks that the spool is still open.
+    """
+    padding = "x" * 10_000
+    n_items = 110  # ~1.1MB total, well past any single internal chunk read
+    spool = ItemSpool(tmp_path)
+    for i in range(n_items):
+        spool.append({"n": i, "pad": padding})
+    it = spool.items()
+    assert next(it) == {"n": 0, "pad": padding}
+    spool.close()
+    with pytest.raises(ValueError, match="closed"):
+        while True:
+            next(it)

@@ -10,13 +10,14 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass
+from logging import getLogger
 from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from inspect_scout._scanner.extract import MessagesAsStr
+    from inspect_scout._transcript.interleave import EventsSpec, SpanExternalEvents
 
 from inspect_ai.event import (
-    ModelEvent,
     Timeline,
     TimelineEvent,
     TimelineSpan,
@@ -33,6 +34,8 @@ from inspect_ai.event._timeline import (
     _timeline_content_discriminator,
 )
 from inspect_ai.model import ChatMessage, Model
+
+logger = getLogger(__name__)
 
 # Re-export everything that moved to inspect_ai.event
 __all__ = [
@@ -172,6 +175,8 @@ async def timeline_messages(
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     prompt_reserve: int | float = 0.2,
+    events: EventsSpec | None = None,
+    span_external: SpanExternalEvents | None = None,
 ) -> AsyncIterator[TimelineMessages]:
     """Yield pre-rendered message segments from timeline spans.
 
@@ -211,6 +216,17 @@ async def timeline_messages(
             an ``int`` reserves that many tokens (plus a small safety
             margin). Default ``0.2`` leaves 80% of the window for
             messages. Forwarded to ``segment_messages()``.
+        events: Which non-message event types to interleave into each
+            span's message thread as marked entries (``"all"``, a list
+            of event types, or ``None`` (default) to disable
+            interleaving). When set, each span's thread is built via
+            ``span_interleaved_messages()`` before segmentation.
+        span_external: Optional mapping of span id to ``(event_id,
+            rendered_text)`` entries to append after that span's own
+            messages, before segmentation (so they count toward the
+            token budget). The reserved key ``""`` prepends its entries
+            to the first scannable span. Ignored when ``events`` is
+            ``None``.
 
     Yields:
         TimelineMessages for each segment. Empty spans are skipped.
@@ -219,10 +235,39 @@ async def timeline_messages(
 
     root = timeline.root if isinstance(timeline, Timeline) else timeline
 
+    if events is not None:
+        from inspect_scout._transcript.interleave import (
+            _event_message,
+            span_interleaved_messages,
+        )
+
+    span_external = span_external or {}
     counter = 0
+    is_first_span = True
     for span in _walk_spans(root, depth=depth):
+        source: TimelineSpan | list[ChatMessage]
+        if events is None:
+            source = span
+        else:
+            # Splice interleavable events (which resolves compaction) and
+            # attach span-external entries: leading ones to the first
+            # scannable span, trailing ones after their own span.
+            source = span_interleaved_messages(
+                span, events=events, compaction=compaction
+            )
+            if is_first_span:
+                leading = span_external.get("", [])
+                if leading:
+                    source = [
+                        _event_message(eid, text) for eid, text in leading
+                    ] + source
+            trailing = span_external.get(span.id, [])
+            if trailing:
+                source = source + [_event_message(eid, text) for eid, text in trailing]
+        is_first_span = False
+
         async for seg in segment_messages(
-            span,
+            source,
             messages_as_str=messages_as_str,
             model=model,
             context_window=context_window,
@@ -236,6 +281,14 @@ async def timeline_messages(
                 span=span,
             )
             counter += 1
+
+    if is_first_span and span_external:
+        dropped = sum(len(entries) for entries in span_external.values())
+        logger.debug(
+            "timeline_messages: no scannable span was walked; dropping "
+            "%d span-external event(s)",
+            dropped,
+        )
 
 
 def _walk_spans(
@@ -269,13 +322,12 @@ def _walk_spans(
     Yields:
         Scannable TimelineSpan nodes in depth-first order.
     """
+    from inspect_scout._transcript.interleave import span_is_scannable
+
     if depth is not None and depth <= 0:
         return
 
-    is_scannable = not span.utility and any(
-        isinstance(item, TimelineEvent) and isinstance(item.event, ModelEvent)
-        for item in span.content
-    )
+    is_scannable = span_is_scannable(span)
 
     if is_scannable:
         next_depth = _scannable_depth + 1

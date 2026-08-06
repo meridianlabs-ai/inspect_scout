@@ -4,7 +4,7 @@ import hashlib
 import json
 from collections.abc import Sequence
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Path
 from fastapi import Query as QueryParam
@@ -16,6 +16,7 @@ from .._llm_scanner import ResultReducer
 from .._llm_scanner._llm_scanner import llm_scanner
 from .._query import Column, Query
 from .._scanner.result import Result
+from .._scanner.scanner import Scanner
 from .._transcript.database.factory import transcripts_view
 from .._transcript.types import TranscriptContent
 from .._util.appdirs import scout_data_dir
@@ -231,42 +232,48 @@ def create_search_router() -> APIRouter:
             events=request.events,
         )
 
-        # Load transcript
+        # Load transcript and run search
+        content = TranscriptContent(
+            messages=request.messages,
+            events=request.events,
+        )
         async with transcripts_view(transcript_dir) as view:
             condition = Column("transcript_id") == id
             infos = [info async for info in view.select(Query(where=[condition]))]
             if not infos:
                 raise HTTPException(status_code=404, detail="Transcript not found")
-            transcript = await view.read(
-                infos[0],
-                TranscriptContent(
-                    messages=request.messages,
-                    events=request.events,
-                ),
-            )
 
-        # Run search
-        if isinstance(request, GrepSearchRequest):
-            output = await grep_scanner(
-                request.query,
-                regex=request.regex,
-                ignore_case=request.ignore_case,
-                word_boundary=request.word_boundary,
-            )(transcript)
-        else:
-            try:
-                output = await llm_scanner(
-                    question=request.query,
-                    answer="string",
-                    template=LLM_SEARCH_TEMPLATE,
-                    model=request.model,
-                    reducer=ResultReducer.llm(model=request.model),
+            if isinstance(request, GrepSearchRequest):
+                transcript = await view.read(infos[0], content)
+                output = await grep_scanner(
+                    request.query,
+                    regex=request.regex,
+                    ignore_case=request.ignore_case,
+                    word_boundary=request.word_boundary,
                 )(transcript)
-            except Exception as err:
-                raise HTTPException(
-                    status_code=502,
-                    detail=str(err),
-                ) from err
+            else:
+                # Keep the view (and its DB connection) open for the whole LLM
+                # call: the streaming handle reads through the view's resources,
+                # which must stay live until the handle is closed.
+                handle = await view.open(infos[0], content)
+                async with handle:
+                    # llm_scanner() is typed as Scanner[Transcript] but its scan
+                    # fn also accepts a TranscriptHandle (streaming path); widen
+                    # the static type here to match the runtime contract.
+                    scan: Scanner[Any] = llm_scanner(
+                        question=request.query,
+                        answer="string",
+                        template=LLM_SEARCH_TEMPLATE,
+                        model=request.model,
+                        reducer=ResultReducer.llm(model=request.model),
+                    )
+                    try:
+                        output = await scan(handle)
+                    except Exception as err:
+                        raise HTTPException(
+                            status_code=502,
+                            detail=str(err),
+                        ) from err
 
         if isinstance(output, list):
             raise RuntimeError(

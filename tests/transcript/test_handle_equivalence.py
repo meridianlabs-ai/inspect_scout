@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import io
+import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
@@ -10,7 +13,16 @@ from inspect_scout._transcript.handle import (
     MaterializedTranscriptHandle,
     SpooledTranscriptHandle,
 )
-from inspect_scout._transcript.types import TranscriptContent
+from inspect_scout._transcript.json.load_filtered import load_filtered_transcript
+from inspect_scout._transcript.json.stream_parse import (
+    StreamParseResult,
+    stream_parse_to_spool,
+)
+from inspect_scout._transcript.types import (
+    Transcript,
+    TranscriptContent,
+    TranscriptInfo,
+)
 from inspect_scout._util import constants as constants_mod
 
 LOGS_DIR = Path(__file__).parent.parent / "recorder" / "logs"
@@ -105,3 +117,81 @@ async def test_timeline_request_uses_materialized_handle(
 # range-encoded refs, and the consolidated `events_data` schema) is covered
 # at the `stream_parse_to_spool`/`replay_*` level in
 # tests/transcript/test_stream_parse.py instead.
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        TranscriptContent(messages="all", events="all"),
+        TranscriptContent(messages=None, events="all"),
+    ],
+    ids=["messages-and-events", "events-only"],
+)
+@pytest.mark.asyncio
+async def test_attachment_refs_only_inside_pool_entries_resolve(
+    content: TranscriptContent, tmp_path: Path
+) -> None:
+    """A ref reachable only through a pool entry resolves on both paths.
+
+    `attachments` precedes `events_data` in the sample, so a membership test
+    while the attachments stream cannot know a pooled message will need one.
+    The streamed path spools every attachment and resolved these already; the
+    materialized path dropped them, leaving `attachment://<hash>` as literal
+    text -- and which path runs depends only on whether the sample crosses the
+    spool threshold. The events-only case matters most: with messages filtered
+    out, nothing else registers the ref.
+    """
+    att = "a" * 32
+    sample = {
+        "id": "s1",
+        "messages": [{"id": "m1", "role": "user", "content": "hello"}],
+        "attachments": {att: "POOLED SYSTEM PROMPT"},
+        "events": [
+            {
+                "span_id": "s1",
+                "timestamp": "2022-01-01T00:00:00+00:00",
+                "working_start": 0,
+                "event": "model",
+                "model": "m",
+                "input": [],
+                "input_refs": [[0, 1]],
+                "output": {"model": "m", "choices": []},
+                "tools": [],
+                "tool_choice": "auto",
+                "config": {},
+            }
+        ],
+        "events_data": {
+            "messages": [
+                {"id": "p0", "role": "system", "content": f"attachment://{att}"}
+            ],
+            "calls": [],
+        },
+    }
+    data = json.dumps(sample).encode()
+    info = TranscriptInfo(transcript_id="t1")
+
+    materialized = await load_filtered_transcript(
+        io.BytesIO(data), info, content.messages, content.events
+    )
+    parsed = await stream_parse_to_spool(
+        io.BytesIO(data), content.messages, content.events, tmp_path
+    )
+
+    async def parse() -> StreamParseResult:
+        return parsed
+
+    async def fallback() -> Transcript:
+        raise AssertionError("fallback should not be called")
+
+    handle = SpooledTranscriptHandle(info, parse, fallback)
+    try:
+        streamed = await handle.load()
+    finally:
+        await handle.aclose()
+
+    def pooled_input(transcript: Transcript) -> Any:
+        return transcript.events[0].model_dump()["input"]
+
+    assert pooled_input(materialized) == pooled_input(streamed)
+    assert pooled_input(materialized)[0]["content"] == "POOLED SYSTEM PROMPT"

@@ -80,6 +80,49 @@ def test_collects_attachments_referenced_from_pool_entries(tmp_path: Path) -> No
     assert json.loads(input_data_json)["attachments"] == {att: "the real content"}
 
 
+def test_prunes_and_remaps_call_pool_via_call_refs(tmp_path: Path) -> None:
+    # message_pool and call_pool are seeded with disjoint referenced position
+    # sets ({3,4} vs {1,2}) and disjoint content ("kind": "message"/"call").
+    # If the message/call position maps were swapped when calling
+    # `remap_pool_refs`, the message positions (3,4) would be looked up in
+    # the call map (keyed 1,2) and vice versa -- a KeyError, not a silent
+    # pass. `input_refs`/`call_refs` alone (as in the other tests) can't
+    # detect this because they only ever populate one of the two maps.
+    messages = ItemSpool(tmp_path)
+    events = ItemSpool(tmp_path)
+    blobs = BlobSpool(tmp_path)
+    for i in range(5):
+        blobs.put(("message_pool", i), json.dumps({"kind": "message", "idx": i}))
+    for i in range(4):
+        blobs.put(("call_pool", i), json.dumps({"kind": "call", "idx": i}))
+    events.append(
+        {
+            "event": "tool",
+            "input_refs": [[3, 5]],
+            "call": {"call_refs": [[1, 3]], "call_key": "arguments"},
+        }
+    )
+    result = StreamParseResult(messages, events, blobs)
+    try:
+        input_json, input_data_json = pooled_passthrough(
+            TranscriptInfo(transcript_id="t1"), result
+        )
+    finally:
+        result.close()
+
+    assert input_data_json is not None
+    data = json.loads(input_data_json)
+    assert data["messages"] == [
+        {"kind": "message", "idx": 3},
+        {"kind": "message", "idx": 4},
+    ]
+    assert data["calls"] == [{"kind": "call", "idx": 1}, {"kind": "call", "idx": 2}]
+
+    event = json.loads(input_json)["events"][0]
+    assert event["input_refs"] == [[0, 2]]
+    assert event["call"]["call_refs"] == [[0, 2]]
+
+
 def test_envelope_carries_info_and_messages(tmp_path: Path) -> None:
     messages = ItemSpool(tmp_path)
     events = ItemSpool(tmp_path)

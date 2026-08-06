@@ -4,7 +4,7 @@ import shutil
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path
-from typing import IO, Any
+from typing import IO, Any, Literal
 
 import pandas as pd
 import pyarrow.fs as pafs
@@ -17,12 +17,12 @@ from inspect_scout import (
     scan,
     scan_results_arrow,
     scan_results_batches,
-    scan_results_batches_async,
     scan_results_df,
     scanner,
 )
 from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._transcript.types import Transcript
+from inspect_scout.aio import scan_results_batches_async
 
 # Test data locations
 LOGS_DIR = Path(__file__).parent.parent / "examples" / "scanner" / "logs"
@@ -106,6 +106,26 @@ def uniform_resultset_scanner_factory() -> Scanner[Transcript]:
     return scan_transcript
 
 
+@scanner(name="dict_value_resultset_scanner", messages="all")
+def dict_value_resultset_scanner_factory() -> Scanner[Transcript]:
+    """Resultsets mixing dict-valued and scalar-valued results.
+
+    `pd.json_normalize()` flattens the dict value into `value.*` columns and
+    leaves the dict row's own `value` NA, which (NaN being a float) would be
+    inferred as "number" and make the expanded types look uniformly numeric.
+    Expansion reads the value from the parsed Result instead, so the dict
+    survives as "object" and the mixed types leave the column uncast.
+    """
+
+    async def scan_transcript(transcript: Transcript) -> list[Result]:
+        return [
+            Result(label="a", value={"confidence": 0.9}),
+            Result(label="b", value=5),
+        ]
+
+    return scan_transcript
+
+
 @pytest.fixture(scope="module")
 def scan_location() -> Iterator[str]:
     """Run a single scan with all test scanners over two transcripts."""
@@ -117,6 +137,7 @@ def scan_location() -> Iterator[str]:
                 mixed_scanner_factory(),
                 segregated_resultset_scanner_factory(),
                 uniform_resultset_scanner_factory(),
+                dict_value_resultset_scanner_factory(),
             ],
             transcripts=transcripts_from(LOGS_DIR),
             scans=tmpdir,
@@ -130,7 +151,7 @@ def assert_batches_match_df(
     scan_location: str,
     scanner_name: str,
     *,
-    rows: str = "results",
+    rows: Literal["results", "transcripts"] = "results",
     exclude_columns: list[str] | None = None,
     batch_size: int = 1,
 ) -> list[pd.DataFrame]:
@@ -138,7 +159,7 @@ def assert_batches_match_df(
     expected = scan_results_df(
         scan_location,
         scanner=scanner_name,
-        rows=rows,  # type: ignore[arg-type]
+        rows=rows,
         exclude_columns=exclude_columns,
     ).scanners[scanner_name]
     batches = list(
@@ -146,7 +167,7 @@ def assert_batches_match_df(
             scan_location,
             scanner_name,
             batch_size=batch_size,
-            rows=rows,  # type: ignore[arg-type]
+            rows=rows,
             exclude_columns=exclude_columns,
         )
     )
@@ -217,6 +238,16 @@ def test_parity_resultset_types_uniform_across_batches(scan_location: str) -> No
     actual = pd.concat(batches, ignore_index=True)
     assert pd.api.types.is_numeric_dtype(actual["value"].dtype)
     assert sorted(actual["value"].tolist()) == [1.5, 1.5, 2.0, 2.0]
+
+
+def test_parity_resultset_dict_and_scalar_values(scan_location: str) -> None:
+    """Dict-valued results keep their value and don't force a numeric cast."""
+    batches = assert_batches_match_df(scan_location, "dict_value_resultset_scanner")
+    actual = pd.concat(batches, ignore_index=True)
+    by_label = dict(zip(actual["label"], actual["value"], strict=True))
+    assert by_label["a"] == {"confidence": 0.9}
+    assert by_label["b"] == 5
+    assert sorted(actual["value_type"].unique()) == ["number", "object"]
 
 
 def test_parity_rows_transcripts(scan_location: str) -> None:

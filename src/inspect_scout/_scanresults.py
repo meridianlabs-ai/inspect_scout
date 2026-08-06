@@ -161,8 +161,12 @@ def scan_results_batches(
 
     Concatenating all batches yields the same rows as
     `scan_results_df(scan_location, scanner=scanner, rows=rows)`, but memory
-    remains bounded by `batch_size` (for both local and cloud scan locations)
-    rather than scaling with the size of the scanner's results.
+    remains bounded by `batch_size` rather than scaling with the size of the
+    scanner's results. This holds for local paths and for cloud locations
+    PyArrow can read natively (`s3://`, `gs://`, `abfs://`), which are read
+    with HTTP range requests. `az://` locations are the exception: PyArrow
+    has no native filesystem for them, so the parquet file is downloaded in
+    full before batching and memory scales with file size.
 
     Note that batches are produced with synchronous parquet I/O. To consume
     from async code, drive the iterator from a worker thread or use
@@ -518,27 +522,21 @@ def _expand_resultset_rows(
     # Use max_level=1 to prevent deep flattening of nested structures within value
     result_fields = pd.json_normalize(expanded["value"].tolist(), max_level=1)
 
-    # Handle case where value field is an object/dict that got flattened
+    # Handle case where value field is an object/dict that got flattened.
     # Even with max_level=1, pd.json_normalize flattens first-level dicts,
-    # creating columns like value.confidence, value.message_numbers
-    # We need to reconstruct the value column from these flattened columns
+    # creating columns like value.confidence, value.message_numbers. Take the
+    # value column straight from the parsed Result dicts instead: normalize
+    # only reliably produces a plain "value" column when no result in the
+    # frame is dict-valued, and when results mix dict and scalar values it
+    # leaves the dict rows' "value" as NaN (their contents stranded in the
+    # flattened columns), which would otherwise be inferred as "number".
     value_cols = [col for col in result_fields.columns if col.startswith("value.")]
-    if value_cols and "value" not in result_fields.columns:
-        # Reconstruct value column as a dict from the flattened columns
-        def reconstruct_value(row: pd.Series) -> dict[str, Any]:
-            """Reconstruct the value dict from flattened value.* columns."""
-            value_dict = {}
-            for col in value_cols:
-                # Remove 'value.' prefix to get the field name
-                field_name = col.replace("value.", "")
-                val = row[col]
-                # Only include non-NA values (handles mixed schemas)
-                if not (isinstance(val, float) and pd.isna(val)):
-                    value_dict[field_name] = val
-            return value_dict
-
-        result_fields["value"] = result_fields.apply(reconstruct_value, axis=1)
-        # Drop the flattened columns now that we've reconstructed value
+    if value_cols:
+        result_fields["value"] = [
+            result.get("value") if isinstance(result, dict) else None
+            for result in expanded["value"]
+        ]
+        # Drop the flattened columns now that we've restored value
         result_fields = result_fields.drop(columns=value_cols)
 
     # Drop the old result-related columns from expanded dataframe

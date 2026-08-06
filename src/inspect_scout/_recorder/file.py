@@ -1130,6 +1130,11 @@ def _results_batches_prepass(
             if v is not None
         )
 
+        # both decisions are "mixed" for good once two distinct types are
+        # seen, so stop reading row groups we can no longer learn from
+        if len(top_level_types) > 1 and (not has_value or len(expanded_types) > 1):
+            break
+
         # expanded types are only needed until two distinct values are seen
         if not has_value or len(expanded_types) > 1:
             continue
@@ -1170,12 +1175,10 @@ def _parse_resultset_value(raw: Any) -> list[Any]:
 def _result_value_type(result: dict[str, Any]) -> str:
     """Value type of a raw Result dict, mirroring expansion's inference.
 
-    Mirrors `infer_value_type()` inside `_expand_resultset_rows()`.
+    Mirrors `infer_value_type()` inside `_expand_resultset_rows()`, which
+    takes the value straight from the parsed Result dict just as this does,
+    so dict-valued results infer "object" on both paths.
     Used by the file-level pre-pass to decide expanded value-type uniformity.
-    (For dict-valued results in frames that mix dict and scalar values,
-    `pd.json_normalize` can leave the value NA so expansion infers "null"
-    where this returns "object"; both are non-castable types, so the cast
-    decision — the only consumer of uniformity — is unaffected.)
     """
     vtype = result.get("type")
     if vtype is not None:

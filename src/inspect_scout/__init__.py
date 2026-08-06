@@ -48,7 +48,6 @@ from ._scanner.types import ScannerInput
 from ._scanresults import (
     scan_results_arrow,
     scan_results_batches,
-    scan_results_batches_async,
     scan_results_df,
     scan_status,
 )
@@ -135,7 +134,6 @@ __all__ = [
     "scan_results_arrow",
     "ScanResultsArrow",
     "scan_results_batches",
-    "scan_results_batches_async",
     "Summary",
     # transcript
     "transcripts_db",

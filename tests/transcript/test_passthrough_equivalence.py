@@ -119,7 +119,7 @@ async def test_passthrough_expands_to_the_materialized_transcript(
     assert input_data_json is not None
     data_obj = json.loads(input_data_json)
 
-    expanded = expand_events(json.dumps(envelope["events"]), input_data_json)
+    expanded = expand_events(json.dumps(envelope["events"]), input_data_json.decode())
     resolved = _resolve_attachments(
         [e.model_dump(mode="json") for e in expanded], data_obj["attachments"]
     )

@@ -1,29 +1,17 @@
 """Tests for the streaming scanner seam: input plumbing and dispatch."""
 
-import json
 from typing import Any, cast
 
 import pytest
+from inspect_ai.model import ChatMessageUser
 from inspect_scout import scanner
 from inspect_scout._concurrency.common import ScannerJob
 from inspect_scout._scan import _content_for_scanner, _scan_one, _streaming_eligible
-from inspect_scout._scanner.result import Result, _serialize_input
+from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import SCANNER_SUPPORTS_STREAMING_ATTR, Scanner
 from inspect_scout._transcript.handle import MaterializedTranscriptHandle
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
 from inspect_scout._transcript.util import union_transcript_contents
-
-
-def test_serialize_input_info_only() -> None:
-    info = TranscriptInfo(transcript_id="t1", source_id="e1")
-    input_json, input_data = _serialize_input(info, "transcript_info", pool_dedup=True)
-    assert input_data is None
-    parsed = json.loads(input_json)
-    assert parsed["transcript_id"] == "t1"
-    assert parsed["source_id"] == "e1"
-    # info only: no content fields serialized
-    assert "messages" not in parsed
-    assert "events" not in parsed
 
 
 @scanner(messages="all", events="all")
@@ -69,15 +57,26 @@ def _empty_transcript() -> Transcript:
 
 @pytest.mark.asyncio
 async def test_scan_one_with_handle_scanner() -> None:
-    """A handle-accepting scanner receives the handle and results record info-only."""
-    handle = _materialized_handle(_empty_transcript())
+    """A handle scanner gets the handle, but the record keeps the full transcript.
+
+    Results must stay self-contained (readable without the original logs), so
+    the streamed transcript is materialized for the record even though the
+    scanner itself never held it.
+    """
+    transcript = Transcript(
+        transcript_id="t1",
+        messages=[ChatMessageUser(content="hello", id="m1")],
+        events=[],
+        metadata={},
+    )
+    handle = _materialized_handle(transcript)
 
     s = _handle_scanner()
     job = ScannerJob(union_transcript=handle, scanner=s, scanner_name="hs")
     reports = await _scan_one(job, validation=None, fail_on_error=True)
     assert len(reports) == 1
-    assert reports[0].input_type == "transcript_info"
-    assert reports[0].input == handle.info  # info only, no content
+    assert reports[0].input_type == "transcript"
+    assert reports[0].input == transcript
 
 
 @pytest.mark.asyncio

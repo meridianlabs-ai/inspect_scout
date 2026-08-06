@@ -15,7 +15,12 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from inspect_ai.event._pool import collect_pool_ref_positions, remap_pool_refs
+from inspect_ai.event._pool import (
+    POOL_REF_FIELDS,
+    collect_pool_ref_positions,
+    remap_pool_refs,
+)
+from pydantic import JsonValue
 
 from ..types import TranscriptInfo
 from .reducer import ATTACHMENT_REF_PATTERN
@@ -47,21 +52,29 @@ def pooled_passthrough(
     }
 
     # Fetch the surviving pool entries and build old -> new position maps.
-    # Ascending order keeps pool ordering stable.
+    # Both come from one fetched list so they cannot disagree about which
+    # entries survived -- a mismatch would silently point refs at the wrong
+    # pool entry. Ascending order keeps pool ordering stable.
     pool_entries: dict[str, list[Any]] = {}
     pos_maps: dict[str, dict[int, int]] = {}
+    dropped = False
     for pool in _POOLS:
-        kept = sorted(p for p in referenced[pool] if p < result.blobs.pool_len(pool))
-        pos_maps[pool] = {old: new for new, old in enumerate(kept)}
-        pool_entries[pool] = [
-            json.loads(raw)
-            for raw in (result.blobs.get((pool, old)) for old in kept)
-            if raw is not None
+        fetched = [
+            (position, raw)
+            for position in sorted(referenced[pool])
+            if (raw := result.blobs.get((pool, position))) is not None
         ]
+        pos_maps[pool] = {old: new for new, (old, _) in enumerate(fetched)}
+        pool_entries[pool] = [json.loads(raw) for _, raw in fetched]
+        dropped = dropped or len(fetched) != len(referenced[pool])
 
     # Pass 2: re-emit events with refs remapped onto the pruned pools.
     events = [
-        remap_pool_refs(event, pos_maps["message_pool"], pos_maps["call_pool"])
+        remap_pool_refs(
+            _drop_unmapped_refs(event, pos_maps) if dropped else event,
+            pos_maps["message_pool"],
+            pos_maps["call_pool"],
+        )
         for event in result.events.items()
     ]
 
@@ -103,6 +116,58 @@ def pooled_passthrough(
     if attachments:
         input_data["attachments"] = attachments
     return envelope_json, _dumps(input_data)
+
+
+_POOL_FOR_FIELD = {"message": "message_pool", "call": "call_pool"}
+
+
+def _drop_unmapped_refs(
+    event: dict[str, Any], pos_maps: dict[str, dict[int, int]]
+) -> dict[str, Any]:
+    """Copy of `event` with refs to positions the spool doesn't have removed.
+
+    `remap_pool_refs` looks every referenced position up in the map and would
+    raise `KeyError` for one that was never spooled. The materialized path
+    expands refs by slicing, which silently drops such positions, so drop
+    them here too: the two paths must not diverge on the same input.
+
+    Walks `POOL_REF_FIELDS` for the same reason `collect_pool_ref_positions`
+    does -- it stays correct when upstream adds a new `*_refs` field.
+    """
+    pruned = event
+    for field in POOL_REF_FIELDS:
+        pruned = _drop_unmapped_refs_at_path(
+            pruned, field.path, pos_maps[_POOL_FOR_FIELD[field.pool]]
+        )
+    return pruned
+
+
+def _drop_unmapped_refs_at_path(
+    node: dict[str, Any], path: tuple[str, ...], pos_map: dict[int, int]
+) -> dict[str, Any]:
+    """`node` with unmapped positions removed from the refs list at `path`."""
+    key, rest = path[0], path[1:]
+    child = node.get(key)
+    if rest:
+        if not isinstance(child, dict):
+            return node
+        new_child = _drop_unmapped_refs_at_path(child, rest, pos_map)
+        return node if new_child is child else {**node, key: new_child}
+    if not isinstance(child, list):
+        return node
+    # Emit one single-position range per surviving position; `remap_pool_refs`
+    # re-compresses them into contiguous ranges.
+    kept: list[JsonValue] = [
+        [position, position + 1]
+        for ref in child
+        if isinstance(ref, (list, tuple))
+        and len(ref) == 2
+        and isinstance(ref[0], int)
+        and isinstance(ref[1], int)
+        for position in range(ref[0], ref[1])
+        if position in pos_map
+    ]
+    return {**node, key: kept}
 
 
 def _dumps(value: Any) -> str:

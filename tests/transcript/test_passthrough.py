@@ -42,6 +42,28 @@ def test_prunes_pool_to_referenced_entries_and_remaps(tmp_path: Path) -> None:
     assert events[0]["input_refs"] == [[0, 1]]
 
 
+def test_refs_past_the_pool_are_dropped_not_raised(tmp_path: Path) -> None:
+    # A ref range that runs past the spooled pool (positions 0-2 exist, the
+    # event asks for 1-3). The materialized path expands refs by slicing and
+    # silently drops position 3, so the passthrough must too -- looking the
+    # unspooled position up would raise KeyError, and `_transcript_for_record`
+    # would swallow it and record an empty transcript for the whole scan.
+    result = _result(tmp_path, [{"event": "model", "input_refs": [[1, 4]]}])
+    try:
+        input_json, input_data_json = pooled_passthrough(
+            TranscriptInfo(transcript_id="t1"), result
+        )
+    finally:
+        result.close()
+
+    assert input_data_json is not None
+    assert json.loads(input_data_json)["messages"] == [
+        {"role": "user", "content": "m1"},
+        {"role": "user", "content": "m2"},
+    ]
+    assert json.loads(input_json)["events"][0]["input_refs"] == [[0, 2]]
+
+
 def test_empty_pools_and_no_attachments_yield_no_input_data(tmp_path: Path) -> None:
     result = _result(tmp_path, [])
     try:

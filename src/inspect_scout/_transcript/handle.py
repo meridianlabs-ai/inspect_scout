@@ -283,8 +283,10 @@ def _merge_unthinned(base: dict[str, Any], result: StreamParseResult) -> dict[st
     Mirrors ``_merge_unthinned`` in ``json/load_filtered.py``.
     """
     overrides: dict[str, Any] = {}
-    if result.metadata:
-        overrides["sample_metadata"] = result.metadata
+    if result.has_metadata:
+        # `load()` materializes, so the metadata has to become objects here --
+        # this is the one path the spool cannot spare.
+        overrides["sample_metadata"] = result.metadata()
     if result.target is not None:
         overrides["target"] = result.target
     if result.scores:

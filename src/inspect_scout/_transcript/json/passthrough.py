@@ -22,15 +22,12 @@ from inspect_ai.event._pool import (
 )
 from pydantic import JsonValue
 
+from ..._util._json import to_json_bytes_compact
 from ..types import TranscriptInfo
 from .reducer import ATTACHMENT_REF_BYTES, ATTACHMENT_REF_PATTERN
 from .stream_parse import StreamParseResult
 
 _POOLS = ("message_pool", "call_pool")
-
-# Same settings as `_dumps`; `iterencode` yields the value in fragments so a
-# large one never exists as a single string.
-_ENCODER = json.JSONEncoder(ensure_ascii=False, separators=(",", ":"))
 
 # Stand-in for the sample metadata, which is copied from its spool rather than
 # parsed; see `_merged_metadata`.
@@ -106,15 +103,21 @@ def pooled_passthrough(
     def emit(text: str) -> None:
         emit_bytes(text.encode("utf-8"))
 
-    # Everything up to "messages", written key by key through the incremental
-    # encoder rather than dumped whole -- and sample metadata, which for a
-    # metadata-dominated transcript is most of the envelope, is copied
-    # straight from its spool without ever becoming objects or a `str`.
+    # Everything up to "messages", written key by key rather than dumped whole
+    # -- and sample metadata, which for a metadata-dominated transcript is most
+    # of the envelope, is copied straight from its spool without ever becoming
+    # objects or a `str`.
+    #
+    # These values (unlike the spooled items below) originate from index rows
+    # rather than from parsed transcript JSON, so they can hold types stdlib
+    # `json` refuses -- a parquet TIMESTAMP column arrives as a `datetime`.
+    # `to_json_bytes_compact` is what the materialized path uses, so coercion
+    # of those, of NaN/Infinity, and of anything unserializable matches it
+    # exactly. Values here are small: the large one is spooled.
     emit("{")
     for key, value in info.model_dump(exclude={"metadata"}).items():
         emit(_dumps(key) + ":")
-        for fragment in _ENCODER.iterencode(value):
-            emit(fragment)
+        emit_bytes(to_json_bytes_compact(value))
         emit(",")
     emit('"metadata":{')
     for index, (key, value) in enumerate(_merged_metadata(info, result).items()):
@@ -131,8 +134,7 @@ def pooled_passthrough(
                 )
                 tail = chunk[-(_REF_OVERLAP):]
         else:
-            for fragment in _ENCODER.iterencode(value):
-                emit(fragment)
+            emit_bytes(to_json_bytes_compact(value))
     emit('},"messages":[')
     for index, message in enumerate(result.messages.items()):
         if index:

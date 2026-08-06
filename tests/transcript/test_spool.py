@@ -53,6 +53,43 @@ def test_item_spool_reiterable(tmp_path: Path) -> None:
         spool.close()
 
 
+@pytest.mark.parametrize(
+    "char_count",
+    [1, 90_000, 400_000],
+    ids=["single-chunk", "spans-chunks", "spans-many-chunks"],
+)
+def test_item_spool_item_spanning_internal_chunks(
+    char_count: int, tmp_path: Path
+) -> None:
+    """Items larger than the internal read chunk reassemble byte-exactly.
+
+    Uses 3-byte characters so that multi-byte sequences straddle the internal
+    chunk boundaries (which are powers of two): assembly works on raw bytes and
+    must not decode a partial chunk.
+    """
+    spool = ItemSpool(tmp_path)
+    try:
+        big = {"pad": "你" * char_count}
+        following = {"n": 1}
+        spool.append(big)
+        spool.append(following)
+        assert list(spool.items()) == [big, following]
+    finally:
+        spool.close()
+
+
+def test_item_spool_many_items_per_chunk(tmp_path: Path) -> None:
+    """Many items inside one internal chunk are all yielded, in order."""
+    spool = ItemSpool(tmp_path)
+    try:
+        items: list[dict[str, Any]] = [{"n": i} for i in range(5_000)]
+        for item in items:
+            spool.append(item)
+        assert list(spool.items()) == items
+    finally:
+        spool.close()
+
+
 def test_item_spool_interleaved_iterations(tmp_path: Path) -> None:
     spool = ItemSpool(tmp_path)
     try:

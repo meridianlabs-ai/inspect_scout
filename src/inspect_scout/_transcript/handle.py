@@ -196,6 +196,14 @@ class SpooledTranscriptHandle:
                 return None
             return self._result
 
+    async def parsed_result(self) -> StreamParseResult | None:
+        """The spooled parse, or None if the JSON-error fallback was used.
+
+        Parses on first use like the iterators do, so the record path works
+        regardless of whether anything has streamed yet.
+        """
+        return await self._ensure_parsed()
+
     async def messages(
         self, *, types: MessageFilter | None = None
     ) -> AsyncIterator[ChatMessage]:

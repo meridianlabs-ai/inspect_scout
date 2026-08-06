@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,7 @@ from inspect_scout._transcript.json.passthrough import pooled_passthrough
 from inspect_scout._transcript.json.spool import BlobSpool, ByteSpool, ItemSpool
 from inspect_scout._transcript.json.stream_parse import StreamParseResult
 from inspect_scout._transcript.types import TranscriptInfo
+from inspect_scout._util._json import to_json_bytes_compact
 
 
 def _result(tmp_path: Path, events: list[dict[str, Any]]) -> StreamParseResult:
@@ -163,3 +165,30 @@ def test_envelope_carries_info_and_messages(tmp_path: Path) -> None:
     assert envelope["source_id"] == "e1"
     assert envelope["messages"] == [{"id": "m1", "role": "user", "content": "hello"}]
     assert envelope["timelines"] == []
+
+
+def test_index_metadata_values_json_stdlib_refuses_are_coerced(
+    tmp_path: Path,
+) -> None:
+    """Non-JSON-native metadata values must not abort the record.
+
+    Unlike the spooled items, `TranscriptInfo` fields come from index rows, so
+    a parquet TIMESTAMP column arrives as a `datetime`. Encoding it with stdlib
+    `json` raises, and the caller turns any exception here into an empty
+    placeholder transcript -- losing the whole recorded input for every
+    transcript in the scan, with only a log line to show for it. Coercion must
+    match the materialized path, which serializes these with pydantic.
+    """
+    info = TranscriptInfo(
+        transcript_id="t1",
+        metadata={"created": datetime(2026, 8, 6, 12, 30, tzinfo=timezone.utc)},
+    )
+
+    input_json, _ = pooled_passthrough(info, _result(tmp_path, []))
+
+    envelope = json.loads(input_json)
+    assert envelope["metadata"]["created"].startswith("2026-08-06T12:30:00")
+    # ...and identical to how the materialized path renders the same value.
+    assert json.dumps(
+        envelope["metadata"]["created"]
+    ).encode() == to_json_bytes_compact(info.metadata["created"])

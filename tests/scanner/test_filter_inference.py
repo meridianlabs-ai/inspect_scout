@@ -327,3 +327,36 @@ def test_decorator_without_parentheses_fails_for_base_type() -> None:
             return scan
 
         base_scanner()
+
+
+def test_infer_newly_filterable_event_types() -> None:
+    """Event types added to the filter enum should infer like any other."""
+    from inspect_ai.event._score_edit import ScoreEditEvent
+
+    @scanner()
+    def score_edit_scanner() -> Scanner[ScoreEditEvent]:
+        async def scan(event: ScoreEditEvent) -> Result:
+            return Result(value={"name": event.score_name})
+
+        return scan
+
+    instance: Any = score_edit_scanner()
+    assert registry_info(instance).metadata[SCANNER_CONFIG].content.events == [
+        "score_edit"
+    ]
+
+
+def test_unmapped_event_type_raises() -> None:
+    """An Event with no filter mapping must fail loudly, not scan zero events."""
+    from inspect_ai.event._subtask import SubtaskEvent
+
+    with pytest.raises(TypeError, match="no corresponding events filter"):
+
+        @scanner()
+        def subtask_scanner() -> Scanner[SubtaskEvent]:
+            async def scan(event: SubtaskEvent) -> Result:
+                return Result(value={"name": event.name})
+
+            return scan
+
+        subtask_scanner()

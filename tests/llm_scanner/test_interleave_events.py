@@ -31,6 +31,7 @@ from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import SCANNER_CONTENT_ATTR
 from inspect_scout._transcript.handle import MaterializedTranscriptHandle
 from inspect_scout._transcript.interleave import (
+    INTERLEAVE_DEPENDENCIES,
     EventsSpec,
     interleave_events,
     stream_interleave_events,
@@ -1046,11 +1047,16 @@ async def test_llm_scanner_handle_scan_interleaves_without_load() -> None:
 @pytest.mark.parametrize(
     ("events", "content", "expected"),
     [
-        pytest.param(["score"], None, {"score", "model"}, id="selected-plus-model"),
+        pytest.param(
+            ["score"],
+            None,
+            {"score", *INTERLEAVE_DEPENDENCIES},
+            id="selected-plus-dependencies",
+        ),
         pytest.param(
             ["score"],
             TranscriptContent(events=["error"]),
-            {"score", "error", "model"},
+            {"score", "error", *INTERLEAVE_DEPENDENCIES},
             id="merges-content-events",
         ),
         pytest.param("all", None, "all", id="all"),
@@ -1064,6 +1070,18 @@ def test_events_param_extends_loaded_events(
     scan = llm_scanner(question="q", answer="boolean", events=events, content=content)
     loaded = getattr(scan, SCANNER_CONTENT_ATTR).events
     assert (loaded if loaded == "all" else set(loaded)) == expected
+
+
+def test_loaded_events_cover_interleave_dependencies() -> None:
+    """The load filter must be a superset of what the machinery re-requests.
+
+    `stream_interleave_events` asks the handle for compaction and span events
+    to derive compaction pruning and scorer exclusion; if the content filter
+    never loaded them the handle yields nothing and both silently degrade.
+    """
+    scan = llm_scanner(question="q", answer="boolean", events=["score"])
+    loaded = getattr(scan, SCANNER_CONTENT_ATTR).events
+    assert INTERLEAVE_DEPENDENCIES <= set(loaded)
 
 
 @pytest.mark.anyio

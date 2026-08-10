@@ -31,7 +31,11 @@ from .._transcript.handle import (
     SpooledTranscriptHandle,
     TranscriptHandle,
 )
-from .._transcript.interleave import EventsSpec, stream_interleave_events
+from .._transcript.interleave import (
+    INTERLEAVE_DEPENDENCIES,
+    EventsSpec,
+    stream_interleave_events,
+)
 from .._transcript.messages import (
     _effective_segment_budget,
     stream_segment_messages,
@@ -567,8 +571,8 @@ def llm_scanner(
     if name is not None:
         setattr(scan, SCANNER_NAME_ATTR, name)
 
-    # extend the loaded events with the interleave selection, plus model
-    # events (which anchor interleaved entries to their assistant turn)
+    # extend the loaded events with the interleave selection, plus the
+    # structural events the walk runs on (see INTERLEAVE_DEPENDENCIES)
     if events is not None:
         existing_events = content.events if content is not None else None
         loaded_events: Literal["all"] | list[EventType | str]
@@ -576,7 +580,9 @@ def llm_scanner(
             loaded_events = "all"
         else:
             existing = list(existing_events) if existing_events is not None else []
-            loaded_events = list(dict.fromkeys([*existing, *events, "model"]))
+            loaded_events = list(
+                dict.fromkeys([*existing, *events, *sorted(INTERLEAVE_DEPENDENCIES)])
+            )
         content = TranscriptContent(
             messages=content.messages if content is not None else None,
             events=loaded_events,

@@ -48,6 +48,16 @@ _NON_INTERLEAVED: frozenset[EventType] = frozenset(
     {"model", "tool", "compaction", "span_begin", "span_end"}
 )
 
+INTERLEAVE_DEPENDENCIES: frozenset[EventType] = _NON_INTERLEAVED
+"""Event types interleaving needs loaded even though it never renders them.
+
+The same set, for the same reason: these carry the structure the walk runs on
+-- model events anchor entries, compaction events drive pruning, span events
+delimit scorer spans, tool events nest sub-agent models. A caller that filters
+them out gets silent degradation rather than an error, so any content filter
+built for interleaving must be a superset of this.
+"""
+
 EventsSpec = Literal["all"] | list[EventType | str]
 """Which event types to interleave: ``"all"`` or an explicit list.
 

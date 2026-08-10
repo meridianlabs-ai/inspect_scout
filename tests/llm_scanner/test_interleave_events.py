@@ -1800,3 +1800,27 @@ def test_scorer_span_ids_matches_event_tree_under_fuzz() -> None:
             ]
     finally:
         logging.disable(logging.NOTSET)
+
+
+def test_selective_load_preserves_compaction_pruning() -> None:
+    """A selective `events=` load must keep compaction events.
+
+    Without them `_compaction_excluded_ids` sees no CompactionEvent, so a turn
+    the run deliberately pruned resurfaces as a spurious `MODEL (BRANCH)`
+    entry. The existing compaction tests feed a handle every event directly,
+    so the load filter never runs and cannot catch this; asserting
+    `INTERLEAVE_DEPENDENCIES <= set(loaded)` cannot either, being the constant
+    compared with itself.
+    """
+    transcript = _compaction_pruned_and_fork_transcript()
+    scan = llm_scanner(question="q", answer="boolean", events=["score"])
+    loaded = getattr(scan, SCANNER_CONTENT_ATTR).events
+    filtered = Transcript(
+        transcript_id="t",
+        messages=transcript.messages,
+        events=[e for e in transcript.events if e.event in loaded],
+    )
+    entries = _event_texts(interleave_events(filtered, events=["score"]))
+    assert not any("first" in t for t in entries), (
+        "compaction-pruned turn must stay hidden"
+    )

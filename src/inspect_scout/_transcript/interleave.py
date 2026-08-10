@@ -62,6 +62,12 @@ branch span at all (without one it unrolls the branch into its parent, so the
 scanner reads the branch as the main thread). A caller that filters any of them
 out gets silent degradation rather than an error, so any content filter built
 for interleaving must be a superset of this.
+
+``span_end`` is retained without a demonstrated consumer: ``scorer_span_ids``
+reads begins only, and no probe has produced output that differs without ends.
+It stays because over-loading costs a few filtered events while under-loading
+is the silent-degradation bug this constant exists to prevent -- every member
+here was added after that failure, twice.
 """
 
 _NON_INTERLEAVED: Final[frozenset[EventType]] = frozenset(

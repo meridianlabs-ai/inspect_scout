@@ -87,8 +87,22 @@ EVENT_FILTER_TO_TYPE: dict[str, type[Event]] = {
 }
 
 
+def _spans_event_union(input_type: Any) -> bool:
+    """Whether `input_type` is a union covering the whole `Event` alias.
+
+    `Event` is itself a union, so `Event | None` and `ChatMessage | Event`
+    flatten to every concrete event type. They name the base type rather than
+    a selection of events, and are treated as such.
+    """
+    return is_union_type(input_type) and set(get_args(Event)).issubset(
+        get_args(input_type)
+    )
+
+
 def _unmapped_event_types(input_type: Any) -> list[type[Any]]:
     """Concrete Event subclasses in `input_type` that have no filter mapping."""
+    if _spans_event_union(input_type):
+        return []
     candidates = get_args(input_type) if is_union_type(input_type) else [input_type]
     return [
         t
@@ -160,6 +174,11 @@ def infer_filters_from_type(
                 return None, None, False
         else:
             return None, None, False
+
+    # Handled like the bare `Event` check above: a union spanning the whole
+    # alias is the base type, not a selection of concrete events.
+    if _spans_event_union(input_type):
+        return None, None, False
 
     # An Event subclass with no filter mapping would otherwise infer nothing, leaving
     # content.events as None — which filters down to an empty list, silently handing

@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 from inspect_ai._util.registry import registry_info
+from inspect_ai.event._event import Event
 from inspect_ai.event._model import ModelEvent
 from inspect_ai.event._tool import ToolEvent
 from inspect_ai.model._chat_message import (
@@ -15,6 +16,7 @@ from inspect_ai.model._chat_message import (
 )
 from inspect_scout import Result, Scanner, Transcript, scanner
 from inspect_scout._scanner.scanner import SCANNER_CONFIG
+from inspect_scout._scanner.validate import infer_filters_from_type
 
 
 def test_infer_single_message_type() -> None:
@@ -360,3 +362,25 @@ def test_unmapped_event_type_raises() -> None:
             return scan
 
         subtask_scanner()
+
+
+@pytest.mark.parametrize(
+    "annotation",
+    [
+        pytest.param(Event, id="bare-event"),
+        pytest.param(Event | None, id="optional-event"),
+        pytest.param(ChatMessageUser | Event, id="message-or-event"),
+    ],
+)
+def test_full_event_union_infers_no_filter(annotation: Any) -> None:
+    """`Event` is a Union alias, so these flatten to every concrete event type.
+
+    They name the base type rather than a selection, and inference declines
+    base types. Flagging their deprecated members (StepEvent/SubtaskEvent) as
+    unmapped would reject annotations that are explicitly supported.
+    """
+
+    def scan(value: Any) -> None: ...
+
+    scan.__annotations__ = {"value": annotation}
+    assert infer_filters_from_type(scan, globals()) == (None, None, False)

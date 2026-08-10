@@ -28,6 +28,39 @@ from .invalidationTopics import notify_topics
 from .types import ViewConfig
 
 
+def resolve_data_dirs(
+    view_config: ViewConfig, project: ProjectConfig
+) -> tuple[str | None, str]:
+    """Resolve the transcripts/scans dirs from CLI overrides and the project."""
+    transcripts_path = view_config.transcripts_cli or project.transcripts
+    scans_path = view_config.scans_cli or project.scans or DEFAULT_SCANS_DIR
+    return transcripts_path, scans_path
+
+
+def build_app_config(view_config: ViewConfig, project: ProjectConfig) -> AppConfig:
+    """Build the app config payload.
+
+    Shared by the live /app-config endpoint and the static bundler so the
+    two can never drift apart.
+    """
+    transcripts_path, scans_path = resolve_data_dirs(view_config, project)
+    return AppConfig(
+        **project.model_dump(exclude={"transcripts", "scans", "results"}),
+        home_dir=UPath(PathlibPath.home()).resolve().as_uri(),
+        project_dir=UPath(PathlibPath.cwd()).resolve().as_uri(),
+        transcripts=AppDir(
+            dir=UPath(transcripts_path).resolve().as_uri(),
+            source="cli" if view_config.transcripts_cli else "project",
+        )
+        if transcripts_path is not None
+        else None,
+        scans=AppDir(
+            dir=UPath(scans_path).resolve().as_uri(),
+            source="cli" if view_config.scans_cli else "project",
+        ),
+    )
+
+
 def create_config_router(
     view_config: ViewConfig | None = None,
 ) -> APIRouter:
@@ -52,24 +85,7 @@ def create_config_router(
     def config(request: Request) -> AppConfig:
         """Return application configuration."""
         EvalLogTranscriptsView.clear_cache()
-        project = read_project()
-        transcripts_path = view_config.transcripts_cli or project.transcripts
-        scans_path = view_config.scans_cli or project.scans or DEFAULT_SCANS_DIR
-        return AppConfig(
-            **project.model_dump(exclude={"transcripts", "scans", "results"}),
-            home_dir=UPath(PathlibPath.home()).resolve().as_uri(),
-            project_dir=UPath(PathlibPath.cwd()).resolve().as_uri(),
-            transcripts=AppDir(
-                dir=UPath(transcripts_path).resolve().as_uri(),
-                source="cli" if view_config.transcripts_cli else "project",
-            )
-            if transcripts_path is not None
-            else None,
-            scans=AppDir(
-                dir=UPath(scans_path).resolve().as_uri(),
-                source="cli" if view_config.scans_cli else "project",
-            ),
-        )
+        return build_app_config(view_config, read_project())
 
     @router.get(
         "/project/config",

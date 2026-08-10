@@ -31,6 +31,7 @@ from .._query import Query, ScalarValue
 from .._query.order_by import OrderBy
 from .._recorder.active_scans_store import ActiveScanInfo, active_scans_store
 from .._recorder.factory import scan_recorder_for_location
+from .._recorder.recorder import ScanResultsDF
 from .._scanjob_config import ScanJobConfig
 from .._scanjobs import scan_jobs_view
 from .._scanresults import scan_results_arrow_async, scan_results_df_async
@@ -53,6 +54,39 @@ _SCAN_JSON_COLUMNS = frozenset(JSON_COLUMNS) | {"scan_events", "input_data"}
 
 # TODO: temporary simulation tracking currently running scans (by location path)
 _running_scans: set[str] = set()
+
+
+def encode_scan_row_json(fields: dict[str, Any]) -> str:
+    """Encode result row columns as a JSON object.
+
+    Columns in ``_SCAN_JSON_COLUMNS`` are pre-serialized JSON strings in
+    parquet and are embedded raw to avoid double-encoding. Shared by the
+    live row endpoint and the static bundler so the two can never drift
+    apart.
+    """
+    parts: list[str] = []
+    for col, value in fields.items():
+        if value is None:
+            serialized = "null"
+        elif col in _SCAN_JSON_COLUMNS and isinstance(value, str) and value:
+            serialized = value
+        else:
+            serialized = json.dumps(value)
+        parts.append(json.dumps(col) + ":" + serialized)
+    return "{" + ",".join(parts) + "}"
+
+
+def strip_transcripts_data(status: ScanResultsDF) -> ScanResultsDF:
+    """Null out the (potentially large) transcripts data blob in a scan status.
+
+    Shared by the live scan status endpoint and the static bundler so the
+    two can never drift apart.
+    """
+    if status.spec.transcripts:
+        status.spec.transcripts = status.spec.transcripts.model_copy(
+            update={"data": None}
+        )
+    return status
 
 
 def _build_scan_zip(scan_path: UPath) -> Response:
@@ -243,15 +277,7 @@ def create_scans_router(
             recorder_status_with_df = await scan_results_df_async(
                 str(scan_path), rows="transcripts"
             )
-
-            if recorder_status_with_df.spec.transcripts:
-                recorder_status_with_df.spec.transcripts = (
-                    recorder_status_with_df.spec.transcripts.model_copy(
-                        update={"data": None}
-                    )
-                )
-
-            return recorder_status_with_df
+            return strip_transcripts_data(recorder_status_with_df)
         except FileNotFoundError as err:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
@@ -365,21 +391,8 @@ def create_scans_router(
                 detail=f"No row found for uuid: {uuid}",
             ) from err
 
-        # Build JSON manually: columns in JSON_COLUMNS are pre-serialized
-        # JSON strings in parquet and are embedded raw to avoid double-encoding.
-        parts: list[str] = []
-        for col in requested:
-            value = row[col]
-            if value is None:
-                serialized = "null"
-            elif col in _SCAN_JSON_COLUMNS and isinstance(value, str) and value:
-                serialized = value
-            else:
-                serialized = json.dumps(value)
-            parts.append(json.dumps(col) + ":" + serialized)
-
         return Response(
-            content="{" + ",".join(parts) + "}",
+            content=encode_scan_row_json({col: row[col] for col in requested}),
             media_type="application/json",
         )
 

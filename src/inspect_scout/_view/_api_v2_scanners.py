@@ -13,6 +13,43 @@ from ._api_v2_types import ScannerInfo, ScannerParam, ScannersResponse
 from ._server_common import InspectPydanticJSONResponse
 
 
+def build_scanners_response() -> ScannersResponse:
+    """Build info about all registered scanner factories.
+
+    Shared by the live /scanners endpoint and the static bundler so the
+    two can never drift apart.
+    """
+
+    def param_schema(p: inspect.Parameter) -> dict[str, Any]:
+        if p.annotation == inspect.Parameter.empty:
+            return {"type": "any"}
+        return json_schema(p.annotation).model_dump(exclude_none=True)
+
+    scanner_objs = registry_find(lambda info: info.type == "scanner")
+    items = [
+        ScannerInfo(
+            name=registry_info(s).name,
+            version=registry_info(s).metadata.get("scanner_version", 0),
+            description=s.__doc__.split("\n")[0] if s.__doc__ else None,
+            params=[
+                ScannerParam(
+                    name=p.name,
+                    schema=param_schema(p),
+                    required=p.default == inspect.Parameter.empty,
+                    default=(
+                        p.default if p.default != inspect.Parameter.empty else None
+                    ),
+                )
+                for p in inspect.signature(
+                    cast(Callable[..., Any], s)
+                ).parameters.values()
+            ],
+        )
+        for s in scanner_objs
+    ]
+    return ScannersResponse(items=items)
+
+
 def create_scanners_router() -> APIRouter:
     """Create scanners API router.
 
@@ -30,35 +67,7 @@ def create_scanners_router() -> APIRouter:
     )
     def scanners() -> ScannersResponse:
         """Return info about all registered scanner factories."""
-
-        def param_schema(p: inspect.Parameter) -> dict[str, Any]:
-            if p.annotation == inspect.Parameter.empty:
-                return {"type": "any"}
-            return json_schema(p.annotation).model_dump(exclude_none=True)
-
-        scanner_objs = registry_find(lambda info: info.type == "scanner")
-        items = [
-            ScannerInfo(
-                name=registry_info(s).name,
-                version=registry_info(s).metadata.get("scanner_version", 0),
-                description=s.__doc__.split("\n")[0] if s.__doc__ else None,
-                params=[
-                    ScannerParam(
-                        name=p.name,
-                        schema=param_schema(p),
-                        required=p.default == inspect.Parameter.empty,
-                        default=(
-                            p.default if p.default != inspect.Parameter.empty else None
-                        ),
-                    )
-                    for p in inspect.signature(
-                        cast(Callable[..., Any], s)
-                    ).parameters.values()
-                ],
-            )
-            for s in scanner_objs
-        ]
-        return ScannersResponse(items=items)
+        return build_scanners_response()
 
     @router.post(
         "/code",

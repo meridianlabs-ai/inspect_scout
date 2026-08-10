@@ -376,11 +376,41 @@ def test_full_event_union_infers_no_filter(annotation: Any) -> None:
     """`Event` is a Union alias, so these flatten to every concrete event type.
 
     They name the base type rather than a selection, and inference declines
-    base types. Flagging their deprecated members (StepEvent/SubtaskEvent) as
-    unmapped would reject annotations that are explicitly supported.
+    base types. Without this, their deprecated StepEvent/SubtaskEvent members
+    trip the unmapped-type check, replacing the loader's own diagnostic with a
+    misleading one. See `test_full_event_union_still_rejected_by_loader` for
+    what these annotations actually do end to end.
     """
 
     def scan(value: Any) -> None: ...
 
     scan.__annotations__ = {"value": annotation}
     assert infer_filters_from_type(scan, globals()) == (None, None, False)
+
+
+@pytest.mark.parametrize(
+    "annotation",
+    [
+        pytest.param(Event | None, id="optional-event"),
+        pytest.param(ChatMessageUser | Event, id="message-or-event"),
+    ],
+)
+def test_full_event_union_still_rejected_by_loader(annotation: Any) -> None:
+    """Declining inference is not the same as supporting the annotation.
+
+    These were rejected before the EventType widening too. The loader cannot
+    route a union spanning both input kinds (or one including None), and that
+    is the error the author should see -- not a complaint about the deprecated
+    event types the alias happens to contain.
+    """
+
+    def factory() -> Any:
+        async def scan(value: Any) -> Result:
+            return Result(value={})
+
+        scan.__annotations__ = {"value": annotation, "return": Result}
+        return scan
+
+    factory.__annotations__ = {"return": Scanner[annotation]}
+    with pytest.raises(RuntimeError, match="must conform to ChatMessage or Event"):
+        scanner(events="all")(factory)()

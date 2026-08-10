@@ -68,7 +68,14 @@ def test_refs_past_the_pool_are_dropped_not_raised(tmp_path: Path) -> None:
     assert json.loads(input_json)["events"][0]["input_refs"] == [[0, 2]]
 
 
-def test_empty_pools_and_no_attachments_yield_no_input_data(tmp_path: Path) -> None:
+def test_empty_pools_still_emit_input_data(tmp_path: Path) -> None:
+    """Empty pools emit `{"messages":[],"calls":[]}`, not None.
+
+    The materialized path runs `condense_events` unconditionally for a
+    transcript input, so it emits empty pools rather than omitting the column.
+    Returning None here would make the recorded row differ from the
+    materialized one for any transcript with no pooled content.
+    """
     result = _result(tmp_path, [])
     try:
         input_json, input_data_json = pooled_passthrough(
@@ -77,8 +84,32 @@ def test_empty_pools_and_no_attachments_yield_no_input_data(tmp_path: Path) -> N
     finally:
         result.close()
 
-    assert input_data_json is None
+    assert input_data_json is not None
+    assert json.loads(input_data_json) == {"messages": [], "calls": []}
     assert json.loads(input_json)["events"] == []
+
+
+def test_envelope_omits_unset_and_subclass_fields(tmp_path: Path) -> None:
+    """The envelope carries exactly the field set the materialized path emits.
+
+    `to_json_safe` passes exclude_none=True and the materialized path builds a
+    `Transcript`, so unset fields are omitted and subclass-only fields (a
+    parquet index row carries `filename`) are dropped.
+    """
+
+    class _IndexRow(TranscriptInfo):
+        filename: str = "shard-0.parquet"
+
+    result = _result(tmp_path, [])
+    try:
+        input_json, _ = pooled_passthrough(_IndexRow(transcript_id="t1"), result)
+    finally:
+        result.close()
+
+    envelope = json.loads(input_json)
+    assert "filename" not in envelope
+    assert not [k for k, v in envelope.items() if v is None]
+    assert envelope["transcript_id"] == "t1"
 
 
 def test_collects_attachments_referenced_from_pool_entries(tmp_path: Path) -> None:

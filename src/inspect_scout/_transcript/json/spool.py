@@ -35,7 +35,9 @@ def _read_at(fd: int, lock: threading.Lock, length: int, offset: int) -> bytes:
     return data
 
 
-def _write_at(fd: int, lock: threading.Lock, data: bytes, offset: int) -> None:
+def _write_at(
+    fd: int, lock: threading.Lock, data: bytes | memoryview, offset: int
+) -> None:
     """Write all of ``data`` at ``offset`` (portable ``os.pwrite``)."""
     with lock:
         os.lseek(fd, offset, os.SEEK_SET)
@@ -115,7 +117,7 @@ class ByteSpool:
         self._lock = threading.Lock()
         self._write_offset = 0
 
-    def write(self, data: bytes) -> None:
+    def write(self, data: bytes | memoryview) -> None:
         if self._fd is None:
             raise ValueError("spool is closed")
         _write_at(self._fd, self._lock, data, self._write_offset)

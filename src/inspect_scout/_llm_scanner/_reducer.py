@@ -317,6 +317,18 @@ async def reduce_timeline_results(
     return as_resultset(per_span)
 
 
+def _empty_result() -> "Result":
+    """Outcome for a transcript that produced no scannable segments.
+
+    `value=None` rather than a reducer default: the reducers index `results[0]`
+    / `results[-1]` and raise IndexError on an empty list, and "no scannable
+    content" is genuinely unknown rather than a negative finding.
+    """
+    from inspect_scout._scanner.result import Result
+
+    return Result(value=None, explanation="No scannable content in transcript.")
+
+
 async def aggregate_results(
     *,
     results: list[tuple[str | None, Result]],
@@ -346,6 +358,11 @@ async def aggregate_results(
         reducer: Optional caller-supplied reducer. When ``None``,
             :func:`default_reducer` is used.
     """
+    if not results:
+        # Reducers index results[0]/results[-1]; a transcript with no scannable
+        # content reached them and raised IndexError for numeric answers.
+        return _empty_result()
+
     if len(results) == 1:
         return results[0][1]
 

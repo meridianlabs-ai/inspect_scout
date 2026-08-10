@@ -99,6 +99,20 @@ Compaction = Literal["all", "last"] | int
 reconstructed from model events (events-only transcripts)."""
 
 
+class EventsOnlyInterleaveUnsupported(Exception):
+    """A flat interleave driver was given a transcript with no messages.
+
+    Reconstructing the thread from events alone cannot be made to agree with
+    the materialized driver inside a bounded-memory streaming pass: `trim`
+    compaction needs the whole trimmed prefix, which the region-last skeleton
+    deliberately does not retain, so an entire compaction region goes missing.
+
+    `llm_scanner` never hit this -- it routes every handle without messages to
+    `stream_timeline_messages`, which handles span structure properly. Callers
+    reaching it directly should do the same.
+    """
+
+
 def _interleavable_text(event: Event, events: EventsSpec = "all") -> str | None:
     if event.event in _NON_INTERLEAVED:
         return None
@@ -226,17 +240,6 @@ def scorer_span_ids(begins: Iterable[SpanBeginEvent]) -> frozenset[str]:
         # A falsy span id is a root to event_tree's bucket() and can never be a
         # scorers member; keeping "" would mark every span-less event a grader.
         if span_id and any(rooted_at_scorers(b, frozenset()) for b in spans)
-    )
-
-
-async def _stream_scorer_span_ids(handle: "TranscriptHandle") -> frozenset[str]:
-    """Resolve grader spans up front from one cheap span-begin-only pass."""
-    return scorer_span_ids(
-        [
-            event
-            async for event in handle.events(types=["span_begin"])
-            if isinstance(event, SpanBeginEvent)
-        ]
     )
 
 
@@ -524,12 +527,6 @@ def collect_span_external(
     return dict(external)
 
 
-def has_interleavable_events(
-    transcript: Transcript, events: EventsSpec = "all"
-) -> bool:
-    return any(_interleavable_text(e, events) is not None for e in transcript.events)
-
-
 def interleave_events(
     transcript: Transcript,
     events: EventsSpec = "all",
@@ -576,9 +573,9 @@ def interleave_events(
                 compaction="last",
             )
     else:
-        messages = span_messages(transcript.events, compaction=compaction)
-        excluded_ids = _compaction_excluded_ids(
-            transcript.events, (_message_id(m) for m in messages), compaction
+        raise EventsOnlyInterleaveUnsupported(
+            "interleave_events needs transcript.messages; use timeline_messages "
+            "for an events-only transcript"
         )
 
     excluded = _scorers_model_event_ids(transcript.events)
@@ -591,30 +588,6 @@ def interleave_events(
         walk.add(event)
 
     return list(walk.spliced(messages))
-
-
-class _ModelOutputOp(NamedTuple):
-    """A ModelEvent's ids and its branch text if off-thread.
-
-    Both ids are needed: ``message_id`` anchors the output against the
-    reconstructed thread, while ``event_id`` is what a rendered branch entry
-    must carry, since that id surfaces as an event-typed ``Reference``.
-    """
-
-    event_id: str
-    message_id: str
-    branch_text: str
-
-
-class _RenderedOp(NamedTuple):
-    """A non-model event already rendered to its ``[E#]`` entry text."""
-
-    event_id: str
-    text: str
-
-
-_ReplayOp = _ModelOutputOp | _RenderedOp
-"""One recorded anchor-walk input, replayed once the thread is reconstructed."""
 
 
 async def stream_interleave_events(
@@ -688,57 +661,21 @@ async def stream_interleave_events(
             index += 1
         return
 
-    # Events-only: `skeleton` keeps compaction events plus the region-last
-    # ModelEvent (all span_messages reads); `ops` records the anchor walk's
-    # inputs for replay once the thread exists.
-    skeleton: list[Event] = []
-    ops: list[_ReplayOp] = []
-    grader_spans = await _stream_scorer_span_ids(handle)
-    async for event in handle.events(types=types):
-        if isinstance(event, ModelEvent):
-            # A grader model call still shapes the reconstructed thread, as in
-            # `interleave_events` -- it is only kept out of the anchor walk, so
-            # it cannot surface as a branch entry.
-            if event.span_id not in grader_spans:
-                mid = _model_output_id(event)
-                if mid is not None:
-                    ops.append(
-                        _ModelOutputOp(
-                            _event_id(event),
-                            mid,
-                            _off_thread_model_text(event) or "",
-                        )
-                    )
-            _skeleton_add(skeleton, event)
-        elif isinstance(event, CompactionEvent):
-            _skeleton_add(skeleton, event)
-        else:
-            rendered = _interleavable_text(event, events)
-            if rendered is not None:
-                ops.append(_RenderedOp(_event_id(event), rendered))
-
-    thread = span_messages(skeleton, compaction=compaction)
-    excluded_ids = _compaction_excluded_ids(
-        skeleton, (_message_id(m) for m in thread), compaction
+    raise EventsOnlyInterleaveUnsupported(
+        "stream_interleave_events needs a handle with messages; use "
+        "stream_timeline_messages for an events-only transcript"
     )
-
-    walk = _AnchorWalk(
-        [_message_id(m) for m in thread], events, excluded_ids=excluded_ids
-    )
-    for op in ops:
-        if isinstance(op, _ModelOutputOp):
-            consumed = walk.add_model_output(op.message_id)
-            if not consumed and op.message_id not in excluded_ids and op.branch_text:
-                walk.add_rendered(op.event_id, op.branch_text)
-        else:
-            walk.add_rendered(op.event_id, op.text)
-
-    for message in walk.spliced(thread):
-        yield message
 
 
 def _skeleton_add(skeleton: list[Event], event: Event) -> None:
-    """Append ``event``, replacing a trailing ModelEvent (region-last wins)."""
+    """Append ``event``, replacing a trailing ModelEvent (region-last wins).
+
+    Only sound for deriving compaction-pruned ids against an existing message
+    thread. It is NOT sound for reconstructing a thread: under ``trim``
+    compaction ``span_messages`` also reads the trimmed prefix, which this
+    discards -- that is why the events-only branch was removed rather than
+    fixed (see ``EventsOnlyInterleaveUnsupported``).
+    """
     if (
         isinstance(event, ModelEvent)
         and skeleton

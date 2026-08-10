@@ -422,17 +422,20 @@ async def transcript_messages(
             exist on the transcript.
     """
     if events is not None and not transcript.timelines and timeline is None:
-        from inspect_scout._transcript.interleave import (
-            has_interleavable_events,
-            interleave_events,
-        )
+        from inspect_scout._transcript.interleave import interleave_events
 
         # Flat transcript (top-level messages, no timelines): splice events
         # directly into the message thread and segment it like a plain
-        # message list. Events-only transcripts fall through to the
-        # timeline path below, which reconstructs per-span threads so
-        # parallel agents aren't collapsed into one.
-        if transcript.messages and has_interleavable_events(transcript, events):
+        # message list. Events-only transcripts fall through to the timeline
+        # path below, which reconstructs per-span threads so parallel agents
+        # aren't collapsed into one.
+        #
+        # The condition must stay exactly "messages present", matching the
+        # streaming router at `_llm_scanner.py:513-522`. A third condition
+        # here ("does anything render?") made the same scanner config yield
+        # different content depending only on whether `question` was callable,
+        # because splicing nothing is not a reason to discard the thread.
+        if transcript.messages:
             async for seg in segment_messages(
                 interleave_events(transcript, events, compaction=compaction),
                 messages_as_str=messages_as_str,

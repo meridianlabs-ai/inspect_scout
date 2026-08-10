@@ -38,6 +38,7 @@ from inspect_scout._scanner.util import _event_id
 from inspect_scout._transcript.handle import MaterializedTranscriptHandle
 from inspect_scout._transcript.interleave import (
     INTERLEAVE_DEPENDENCIES,
+    EventsOnlyInterleaveUnsupported,
     EventsSpec,
     _interleavable_text,
     _scorers_model_event_ids,
@@ -287,40 +288,6 @@ def test_idless_duplicate_text_fork_steals_anchor_known_limitation() -> None:
     ]
 
 
-def test_events_only_transcript_reconstructs_thread() -> None:
-    # An events-only load (e.g. content events="all", no messages) must
-    # reconstruct the conversation from model events and splice events into
-    # it — not emit floating event entries with no conversation.
-    out = ModelOutput.from_content(model="mockllm", content="4")
-    transcript = Transcript(
-        transcript_id="t",
-        messages=[],
-        events=[
-            _model_event("2+2?", out),
-            ScoreEvent(score=Score(value="C"), target="C", scorer="match"),
-        ],
-    )
-    result = interleave_events(transcript)
-    assert [m.text for m in result[:2]] == ["2+2?", "4"]
-    assert result[2].metadata is not None
-    assert result[2].metadata[EVENT_MARKER_KEY] is True
-    assert result[2].text.startswith("SCORE (match)")
-
-
-def test_events_only_no_model_events_renders_leading() -> None:
-    # No model events at all -> nothing to reconstruct; events still render
-    # (leading) rather than being silently dropped.
-    transcript = Transcript(
-        transcript_id="t",
-        messages=[],
-        events=[ScoreEvent(score=Score(value="C"), scorer="match")],
-    )
-    result = interleave_events(transcript)
-    assert len(result) == 1
-    assert result[0].metadata is not None
-    assert result[0].metadata[EVENT_MARKER_KEY] is True
-
-
 def _compaction_pruned_and_fork_transcript() -> Transcript:
     """Messages-present transcript with a compaction-pruned turn and a genuine fork.
 
@@ -502,31 +469,6 @@ async def test_stream_excludes_grader_model_event_like_materialized(
 
 
 @pytest.mark.anyio
-async def test_stream_events_only_scorers_ordering_matches_materialized() -> None:
-    """Events-only: grader calls shape the thread but never enter the walk.
-
-    Unlike the messages-present path the thread is reconstructed from model
-    events, so a grader's output legitimately lands in it (as it does in
-    `interleave_events`); what must not happen is a second appearance as a
-    branch entry, which also reordered the trailing SCORE entry.
-
-    Compared on (id, text): the branch entry's id used to differ between the
-    two drivers here, so this once compared text alone.
-    """
-    events_only = Transcript(
-        transcript_id="t", messages=[], events=_scorers_span_transcript().events
-    )
-    expected = interleave_events(events_only)
-    streamed = [m async for m in stream_interleave_events(_handle_for(events_only))]
-    # Absolute, so a regression in the materialized oracle cannot move both
-    # sides together and keep this green. Scoped to event entries: the grader's
-    # output legitimately appears in the reconstructed thread here, what must
-    # not happen is a second appearance as a branch entry.
-    assert "grader assessment" not in "\n".join(_event_texts(streamed))
-    assert [(m.id, m.text) for m in streamed] == [(m.id, m.text) for m in expected]
-
-
-@pytest.mark.anyio
 @pytest.mark.parametrize("events_spec", ["all", ["score"]])
 async def test_stream_interleave_matches_materialized(
     events_spec: EventsSpec,
@@ -626,54 +568,6 @@ async def test_stream_multi_agent_branch_entries_match_materialized() -> None:
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("compaction", ["all", "last"])
-async def test_stream_interleave_events_only_matches_materialized(
-    compaction: str,
-) -> None:
-    # Events-only transcript with two turns (second ModelEvent's input carries
-    # the running thread) and a mid-thread + final score. The streaming
-    # reconstruction must equal the materialized one under both compaction
-    # modes.
-    out1 = ModelOutput.from_content(model="mockllm", content="first")
-    out2 = ModelOutput.from_content(model="mockllm", content="second")
-    ev1 = _model_event("q1", out1)
-    ev2 = ModelEvent.model_construct(
-        event="model",
-        model="mockllm",
-        input=[
-            ChatMessageUser(content="q1"),
-            out1.choices[0].message,
-            ChatMessageUser(content="q2"),
-        ],
-        output=out2,
-        role="assistant",
-        config=GenerateConfig(),
-    )
-    transcript = Transcript(
-        transcript_id="t",
-        messages=[],
-        events=[
-            ev1,
-            ScoreEvent(score=Score(value=0.5), scorer="graded", intermediate=True),
-            ev2,
-            ScoreEvent(score=Score(value="C"), target="C", scorer="match"),
-        ],
-    )
-    expected = interleave_events(transcript, compaction=compaction)  # type: ignore[arg-type]
-    streamed = [
-        m
-        async for m in stream_interleave_events(
-            _handle_for(transcript),
-            compaction=compaction,  # type: ignore[arg-type]
-        )
-    ]
-    assert [(m.id, m.text) for m in streamed] == [(m.id, m.text) for m in expected]
-    # sanity: the reconstructed thread is present, and the final score last
-    assert any(m.text == "second" for m in streamed)
-    assert streamed[-1].text.startswith("SCORE (match)")
-
-
-@pytest.mark.anyio
 async def test_llm_scanner_events_only_scan_shows_thread_and_scores() -> None:
     # The transcript-tab shape: content events="all", no messages loaded.
     # The judge must see the ModelEvent-derived conversation AND the score.
@@ -739,40 +633,6 @@ def _two_agent_flat_events() -> list[Event]:
         SpanEndEvent(id="span-b", span_id="span-b"),
         ScoreEvent(scorer="match", score=Score(value="C")),
     ]
-
-
-@pytest.mark.anyio
-@pytest.mark.parametrize("driver", ["transcript", "handle"])
-async def test_events_only_multi_agent_renders_all_agents(driver: str) -> None:
-    """Both parallel agents survive an events-only multi-agent scan.
-
-    The flat reconstruction (`span_messages`) keeps only the region-last
-    ModelEvent, so with two parallel agents agent A would be silently
-    dropped. Both drivers must route through the timeline machinery
-    instead, which builds one segment per agent span. The handle leg also
-    proves the streaming branch's empty-`messages()` probe reroutes
-    without materializing (`_no_load_handle` raises on `load()`).
-    """
-    events = _two_agent_flat_events()
-    source = (
-        Transcript(transcript_id="t", messages=[], events=events)
-        if driver == "transcript"
-        else cast(Transcript, _no_load_handle(events))
-    )
-
-    captured: list[str] = []
-    scan = llm_scanner(
-        question="Right?",
-        answer="boolean",
-        model=_mock_model(captured),
-        events=["score"],
-    )
-    await scan(source)
-
-    combined = "\n".join(captured)
-    assert "agent-a-question" in combined
-    assert "agent-b-question" in combined
-    assert "SCORE" in combined
 
 
 def _spanless_two_agent_flat_events() -> list[Event]:
@@ -1674,42 +1534,6 @@ def test_structural_markers_gated_independently_of_renderer(
     assert _interleavable_text(event, [event_type]) is None
 
 
-@pytest.mark.anyio
-async def test_events_only_branch_entry_carries_event_id() -> None:
-    """A branch entry's id must be the event id on both drivers.
-
-    That id becomes `ChatMessage.id`, which `message_numbering` records in
-    `id_map["E#"]` and `_extract_references` emits as `Reference.id` with
-    `type="event"`. The events-only streaming replay carried the output
-    *message* id instead, so an `[E#]` citation on that path resolved to a
-    message id under an event-typed reference.
-    """
-    events_only = Transcript(
-        transcript_id="t", messages=[], events=_scorers_span_transcript().events
-    )
-    expected = interleave_events(events_only)
-    streamed = [m async for m in stream_interleave_events(_handle_for(events_only))]
-
-    def branch_entry_id(messages: list[ChatMessage]) -> str | None:
-        return next(
-            (
-                m.id
-                for m in messages
-                if m.metadata
-                and m.metadata.get(EVENT_MARKER_KEY)
-                and "MODEL (BRANCH)" in m.text
-            ),
-            None,
-        )
-
-    main_model = next(e for e in events_only.events if isinstance(e, ModelEvent))
-    # Absolute, not relative: comparing the two drivers alone passes vacuously
-    # when neither renders a branch entry, and stays green if both regress.
-    assert main_model.uuid is not None
-    assert branch_entry_id(expected) == main_model.uuid
-    assert branch_entry_id(streamed) == main_model.uuid
-
-
 def test_branch_span_events_are_not_collected_known_gap() -> None:
     """Pins the branch-subtree gap so a fix is a deliberate, visible change.
 
@@ -1824,3 +1648,29 @@ def test_selective_load_preserves_compaction_pruning() -> None:
     assert not any("first" in t for t in entries), (
         "compaction-pruned turn must stay hidden"
     )
+
+
+@pytest.mark.anyio
+async def test_events_only_transcripts_are_rejected_by_both_flat_drivers() -> None:
+    """Events-only reconstruction was removed, not fixed -- it must fail loudly.
+
+    Under `trim` compaction the streaming region-last skeleton dropped an
+    entire compaction region the materialized driver kept, and retaining the
+    trimmed prefix to fix it is materialization, which the streaming design
+    forbids. The two drivers could therefore never agree here.
+
+    `llm_scanner` already routed every messages-less handle to
+    `stream_timeline_messages`, so this raises only for direct library callers
+    -- who should do the same.
+    """
+    out = ModelOutput.from_content(model="mockllm", content="a1")
+    events_only = Transcript(
+        transcript_id="t", messages=[], events=[_model_event("q1", out)]
+    )
+
+    with pytest.raises(EventsOnlyInterleaveUnsupported):
+        interleave_events(events_only, "all")
+
+    with pytest.raises(EventsOnlyInterleaveUnsupported):
+        async for _ in stream_interleave_events(_handle_for(events_only), "all"):
+            pass

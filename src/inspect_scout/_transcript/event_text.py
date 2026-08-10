@@ -11,6 +11,7 @@ from inspect_ai.event import (
     Event,
     InfoEvent,
     InputEvent,
+    InterruptEvent,
     LoggerEvent,
     ModelEvent,
     SampleInitEvent,
@@ -21,6 +22,7 @@ from inspect_ai.event import (
     StoreEvent,
     ToolEvent,
 )
+from inspect_ai.event._score_edit import ScoreEditEvent
 
 logger = getLogger(__name__)
 
@@ -56,6 +58,10 @@ def event_as_str(event: Event) -> str | None:
             return _branch_event_as_str(event)
         case "sample_init":
             return _sample_init_event_as_str(event)
+        case "score_edit":
+            return _score_edit_event_as_str(event)
+        case "interrupt":
+            return _interrupt_event_as_str(event)
         case _:
             warn_once(
                 logger,
@@ -203,3 +209,27 @@ def _sample_init_event_as_str(event: Event) -> str | None:
     if not isinstance(event, SampleInitEvent):
         return None
     return "SAMPLE INIT\n"
+
+
+def _score_edit_event_as_str(event: Event) -> str | None:
+    if not isinstance(event, ScoreEditEvent):
+        return None
+    edit = event.edit
+    # "UNCHANGED" is the per-field sentinel for "not touched by this edit".
+    parts = [
+        f"{field}={value}"
+        for field, value in (
+            ("value", edit.value),
+            ("answer", edit.answer),
+            ("explanation", edit.explanation),
+        )
+        if value != "UNCHANGED"
+    ]
+    header = f"SCORE EDIT ({event.score_name})"
+    return f"{header}: {', '.join(parts)}\n" if parts else f"{header}\n"
+
+
+def _interrupt_event_as_str(event: Event) -> str | None:
+    if not isinstance(event, InterruptEvent):
+        return None
+    return f"INTERRUPT ({event.source}): during {event.interrupted}\n"

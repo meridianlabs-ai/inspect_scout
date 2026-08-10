@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 
+import click
 import pytest
 import zstandard
 from inspect_ai._util.path import chdir
@@ -158,3 +159,39 @@ async def test_bundle_view_end_to_end(tmp_path: Path) -> None:
 
     # scans section present (empty for this fixture project)
     assert manifest["scans"]["row_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_bundle_view_force_refuses_unrecognized_dir(tmp_path: Path) -> None:
+    """--force must not delete a non-empty dir that isn't a previous bundle."""
+    output_dir = tmp_path / "precious"
+    output_dir.mkdir()
+    (output_dir / "important.txt").write_text("keep me")
+
+    with pytest.raises(click.UsageError):
+        await bundle_view(
+            config=ViewConfig(transcripts_cli=str(LOGS_DIR)),
+            output_dir=output_dir,
+            force=True,
+        )
+    assert (output_dir / "important.txt").read_text() == "keep me"
+
+
+@pytest.mark.asyncio
+async def test_bundle_view_force_overwrites_previous_bundle(tmp_path: Path) -> None:
+    """--force replaces a directory that contains api/manifest.json."""
+    output_dir = tmp_path / "bundle"
+    (output_dir / "api").mkdir(parents=True)
+    (output_dir / "api" / "manifest.json").write_text("{}")
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+
+    with chdir(str(project_dir)):
+        await bundle_view(
+            config=ViewConfig(transcripts_cli=str(LOGS_DIR)),
+            output_dir=output_dir,
+            force=True,
+        )
+
+    manifest = json.loads((output_dir / "api" / "manifest.json").read_text())
+    assert manifest["format"] == BUNDLE_FORMAT

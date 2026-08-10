@@ -2,7 +2,6 @@
 
 from logging import getLogger
 from pathlib import Path
-from typing import Any
 
 import anyio
 import click
@@ -113,7 +112,7 @@ async def _run_bundle(
     shard_size: int,
     max_details: int | None,
     force: bool,
-) -> Any:
+) -> None:
     await bundle_view(
         config=config,
         output_dir=output_dir,

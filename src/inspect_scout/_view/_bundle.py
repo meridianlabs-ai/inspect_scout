@@ -12,6 +12,7 @@ import base64
 import json
 import shutil
 from datetime import datetime, timezone
+from logging import getLogger
 from pathlib import Path as PathlibPath
 from typing import TYPE_CHECKING, Any
 
@@ -21,15 +22,20 @@ from upath import UPath
 
 from .._display._display import display
 from .._project._project import read_project, read_project_config_with_etag
-from .._util.constants import DEFAULT_SCANS_DIR
-from ._api_v2_types import AppConfig, AppDir, ScannersResponse
+from ._api_v2_config import build_app_config, resolve_data_dirs
+from ._api_v2_scanners import build_scanners_response
+from ._api_v2_scans import encode_scan_row_json, strip_transcripts_data
 from .server import _resolve_dist_directory
 from .types import ViewConfig
 
 if TYPE_CHECKING:
+    from inspect_ai._util.zip_common import ZipCompressionMethod
+
     from .._recorder.recorder import ScanResultsArrow
     from .._transcript.database.database import TranscriptsView
     from .._transcript.types import TranscriptInfo
+
+logger = getLogger(__name__)
 
 BUNDLE_FORMAT = "scout-static-bundle"
 BUNDLE_VERSION = 1
@@ -72,6 +78,18 @@ async def bundle_view(
                 f"Output directory already exists: {output_dir} "
                 "(use --force to overwrite)"
             )
+        # Guard against `--force` recursively deleting an arbitrary
+        # directory: only remove targets that are empty or look like a
+        # previous bundle.
+        if (
+            any(output_dir.iterdir())
+            and not (output_dir / "api" / "manifest.json").exists()
+        ):
+            raise click_usage_error(
+                f"Refusing to overwrite {output_dir}: it is not empty and "
+                "does not look like a previous bundle (no api/manifest.json). "
+                "Remove it manually or choose a different output directory."
+            )
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True)
 
@@ -82,20 +100,16 @@ async def bundle_view(
 
     # Resolve target directories from the view config (mirrors view server).
     project = config.project or read_project()
-    transcripts_path = config.transcripts_cli or project.transcripts
-    scans_path = config.scans_cli or project.scans or DEFAULT_SCANS_DIR
+    transcripts_path, scans_path = resolve_data_dirs(config, project)
 
     # 1. Copy the frontend dist and inject the scout_context boot tag.
     dist_dir = _resolve_dist_directory()
     _copy_dist(dist_dir, output_dir)
     _inject_bundle_context(output_dir / "index.html")
 
-    # 2. Bake trivial endpoints.
-    _write_json(
-        api_dir / "config.json",
-        _build_app_config(config, transcripts_path, scans_path),
-    )
-    _write_json(api_dir / "scanners.json", _build_scanners_response())
+    # 2. Bake trivial endpoints (sharing the live endpoints' builders).
+    _write_json(api_dir / "config.json", build_app_config(config, project))
+    _write_json(api_dir / "scanners.json", build_scanners_response())
     _write_project_config(api_dir / "project-config.json")
 
     # 3. Bake catalogs + items.
@@ -318,73 +332,6 @@ def _inject_bundle_context(index_path: PathlibPath) -> None:
 # ---- trivial endpoints -----------------------------------------------------
 
 
-def _build_app_config(
-    view_config: ViewConfig,
-    transcripts_path: str | None,
-    scans_path: str,
-) -> AppConfig:
-    """Build the AppConfig payload that the live /app-config endpoint returns."""
-    project = view_config.project or read_project()
-    return AppConfig(
-        **project.model_dump(exclude={"transcripts", "scans", "results"}),
-        home_dir=UPath(PathlibPath.home()).resolve().as_uri(),
-        project_dir=UPath(PathlibPath.cwd()).resolve().as_uri(),
-        transcripts=AppDir(
-            dir=UPath(transcripts_path).resolve().as_uri(),
-            source="cli" if view_config.transcripts_cli else "project",
-        )
-        if transcripts_path is not None
-        else None,
-        scans=AppDir(
-            dir=UPath(scans_path).resolve().as_uri(),
-            source="cli" if view_config.scans_cli else "project",
-        ),
-    )
-
-
-def _build_scanners_response() -> ScannersResponse:
-    """Build the scanners listing the live /scanners endpoint returns.
-
-    Uses the same registry-based enumeration as the API handler.
-    """
-    import inspect
-    from typing import Callable, cast
-
-    from inspect_ai._util.registry import registry_find, registry_info
-    from inspect_ai.util import json_schema
-
-    from ._api_v2_types import ScannerInfo, ScannerParam
-
-    def param_schema(p: inspect.Parameter) -> dict[str, Any]:
-        if p.annotation == inspect.Parameter.empty:
-            return {"type": "any"}
-        return json_schema(p.annotation).model_dump(exclude_none=True)
-
-    scanner_objs = registry_find(lambda info: info.type == "scanner")
-    items = [
-        ScannerInfo(
-            name=registry_info(s).name,
-            version=registry_info(s).metadata.get("scanner_version", 0),
-            description=s.__doc__.split("\n")[0] if s.__doc__ else None,
-            params=[
-                ScannerParam(
-                    name=p.name,
-                    schema=param_schema(p),
-                    required=p.default == inspect.Parameter.empty,
-                    default=(
-                        p.default if p.default != inspect.Parameter.empty else None
-                    ),
-                )
-                for p in inspect.signature(
-                    cast(Callable[..., Any], s)
-                ).parameters.values()
-            ],
-        )
-        for s in scanner_objs
-    ]
-    return ScannersResponse(items=items)
-
-
 def _write_project_config(path: PathlibPath) -> None:
     """Bake the ProjectConfig; the static viewer supplies a frozen etag."""
     config, _etag = read_project_config_with_etag()
@@ -468,7 +415,9 @@ def _merge_info_into_payload(info_json: bytes, payload: bytes) -> bytes:
     return b'{"info":' + info_json + b"," + body[1:]
 
 
-def _decompress_payload(raw: bytes, compression: object) -> bytes:
+def _decompress_payload(
+    raw: bytes, compression: "ZipCompressionMethod | None"
+) -> bytes:
     """Decompress raw transcript bytes to plain UTF-8 JSON."""
     from inspect_ai._util.zip_common import ZipCompressionMethod
 
@@ -503,12 +452,18 @@ async def _bundle_scans(
     from .._query import Query
     from .._scanjobs import scan_jobs_view
 
+    # Resolve up front so item keys derive from the same absolute base
+    # regardless of how the scans dir was spelled — row locations are always
+    # absolute, so a relative scans_dir would never match below. Mirrors the
+    # resolution build_app_config applies.
+    scans_base = UPath(scans_dir).resolve()
+
     def catalog(rows: list[dict[str, Any]]) -> dict[str, Any]:
         return _write_catalog(
             rows,
             api_dir=api_dir,
             section="scans",
-            dir_uri=scans_dir,
+            dir_uri=str(scans_base),
             id_column="scan_id",
             order_column="timestamp",
             order_direction="DESC",
@@ -518,16 +473,21 @@ async def _bundle_scans(
     try:
         async with await scan_jobs_view(scans_dir) as view:
             rows = [row async for row in view.select(Query())]
-    except Exception:
-        # Scans dir missing or unreadable — emit an empty catalog.
+    except FileNotFoundError:
+        # Scans dir missing — emit an empty catalog.
         return catalog([])
 
-    scans_base = UPath(scans_dir)
     for row in rows:
         scan_path_abs = UPath(row.location)
         try:
             scan_rel = str(scan_path_abs.relative_to(scans_base))
         except ValueError:
+            # Last resort: location outside the scans dir. Basename keys can
+            # collide across scans — warn so a broken lookup is diagnosable.
+            logger.warning(
+                f"Scan location {row.location} is not under {scans_base}; "
+                "keying bundle item by basename"
+            )
             scan_rel = scan_path_abs.name
         await _write_scan_item(
             location=row.location,
@@ -549,11 +509,7 @@ async def _write_scan_item(
 
     # status.json — mirror the live GET /scans/{dir}/{scan} JSON shape.
     status = await scan_results_df_async(location, rows="transcripts")
-    if status.spec.transcripts:
-        status.spec.transcripts = status.spec.transcripts.model_copy(
-            update={"data": None}
-        )
-    _write_json(item_dir / "status.json", status)
+    _write_json(item_dir / "status.json", strip_transcripts_data(status))
 
     arrow = await scan_results_arrow_async(location)
     for scanner in arrow.scanners:
@@ -603,39 +559,31 @@ def _write_scanner_details(
     max_details: int | None,
 ) -> None:
     """Bake per-row detail blobs containing the columns the UI fetches."""
-    from .._transcript.eval_log import JSON_COLUMNS
-
     detail_columns = ["input", "input_type", "input_data", "scan_events"]
-    json_cols = frozenset(JSON_COLUMNS) | {"scan_events", "input_data"}
 
     with arrow.reader(scanner) as reader:
+        # The reader is opened without exclude_columns, so every detail
+        # column present in the file rides along in the batch — take values
+        # directly rather than doing a per-row get_fields() point lookup,
+        # which would rescan the whole file for every row. Columns missing
+        # from the schema (old files) are emitted as None, matching
+        # get_fields().
+        schema_names = set(reader.schema.names)
         written = 0
         for batch in reader:
             uuids = batch.column("uuid").to_pylist()
-            for uuid in uuids:
+            columns = {
+                col: batch.column(col).to_pylist()
+                if col in schema_names
+                else [None] * len(uuids)
+                for col in detail_columns
+            }
+            for i, uuid in enumerate(uuids):
                 if max_details is not None and written >= max_details:
                     return
-                fields = arrow.get_fields(scanner, "uuid", uuid, detail_columns)
+                fields = {col: columns[col][i] for col in detail_columns}
                 _write_bytes_zst(
                     out_dir / f"{uuid}.json.zst",
-                    _detail_blob(fields, json_cols),
+                    encode_scan_row_json(fields).encode(),
                 )
                 written += 1
-
-
-def _detail_blob(fields: dict[str, Any], json_cols: frozenset[str]) -> bytes:
-    """Encode a detail blob, preserving pre-serialized JSON columns verbatim.
-
-    Matches the live endpoint's encoding: columns in JSON_COLUMNS are already
-    JSON strings in parquet — embedded raw to avoid double-encoding.
-    """
-    parts: list[str] = []
-    for col, value in fields.items():
-        if value is None:
-            serialized = "null"
-        elif col in json_cols and isinstance(value, str) and value:
-            serialized = value
-        else:
-            serialized = json.dumps(value)
-        parts.append(json.dumps(col) + ":" + serialized)
-    return ("{" + ",".join(parts) + "}").encode()

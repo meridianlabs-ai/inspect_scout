@@ -171,55 +171,64 @@ class _ScorersSpanTracker:
     """Tracks whether a streamed event sits inside a top-level ``scorers`` span.
 
     Streaming counterpart to ``_scorers_model_event_ids``, which needs the
-    whole event tree in memory. Same single-top-level-``scorers``-span
-    assumption, decided incrementally from span boundaries instead.
+    whole event tree in memory.
+
+    Membership is decided by ``parent_id`` -- the same rule ``event_tree``
+    applies -- not by counting span boundaries. Occurrence counting only
+    agrees with the tree on a perfectly balanced, serially-nested stream: a
+    stray ``SpanEndEvent`` (which inspect_ai logs and recovers from) drove the
+    count negative and disabled detection for the rest of the transcript, an
+    unclosed earlier span suppressed it, and concurrently-open top-level spans
+    were misattributed. Checkpoint restore builds transcripts by slicing flat
+    event lists, so none of those are hypothetical.
+
+    Every top-level ``scorers`` span is tracked, matching
+    ``_scorers_model_event_ids``.
     """
 
     def __init__(self) -> None:
-        self._depth = 0
-        self._entered_at: int | None = None
+        self._scorer_span_ids: set[str] = set()
 
     def update(self, event: Event) -> None:
         if isinstance(event, SpanBeginEvent):
-            if self._depth == 0 and event.name == "scorers":
-                self._entered_at = self._depth
-            self._depth += 1
+            if (event.parent_id is None and event.name == "scorers") or (
+                event.parent_id in self._scorer_span_ids
+            ):
+                self._scorer_span_ids.add(event.id)
         elif isinstance(event, SpanEndEvent):
-            self._depth -= 1
-            if self._entered_at is not None and self._depth <= self._entered_at:
-                self._entered_at = None
+            self._scorer_span_ids.discard(event.id)
 
     def excludes(self, event: Event) -> bool:
         """Whether `event` is a grader model call the walk must not see."""
-        return self._entered_at is not None and isinstance(event, ModelEvent)
+        return isinstance(event, ModelEvent) and event.span_id in self._scorer_span_ids
 
 
 def _scorers_model_event_ids(events: list[Event]) -> frozenset[str]:
-    """Ids of ModelEvents nested under a top-level ``scorers`` span, if any.
+    """Ids of ModelEvents nested under any top-level ``scorers`` span.
 
     On the flat/events-only path a grader ``ModelEvent`` is just another
     item in the event list; without this exclusion it would render as a
     branch entry, breaking the invariant that scorer model calls never
     surface in scanned content. (Timeline paths handle this structurally.)
-    Mirrors ``_exclude_scorers`` (``messages.py``) in assuming a single
-    top-level ``scorers`` span. Empty if the list carries no span structure
-    or no ``scorers`` span is found.
+
+    Every top-level ``scorers`` span counts, matching ``_ScorersSpanTracker``:
+    taking only the first leaked later graders on re-scored and spliced
+    checkpoint-restore transcripts. Empty if the list carries no span
+    structure or no ``scorers`` span is found.
     """
     if not any(isinstance(e, (SpanBeginEvent, SpanEndEvent)) for e in events):
         return frozenset()
     tree = event_tree(events)
-    scorers_span = next(
-        (
-            item
-            for item in tree
-            if isinstance(item, EventTreeSpan) and item.name == "scorers"
-        ),
-        None,
-    )
-    if scorers_span is None:
-        return frozenset()
+    scorers_spans = [
+        item
+        for item in tree
+        if isinstance(item, EventTreeSpan) and item.name == "scorers"
+    ]
     return frozenset(
-        _event_id(e) for e in event_sequence(scorers_span) if isinstance(e, ModelEvent)
+        _event_id(e)
+        for span in scorers_spans
+        for e in event_sequence(span)
+        if isinstance(e, ModelEvent)
     )
 
 

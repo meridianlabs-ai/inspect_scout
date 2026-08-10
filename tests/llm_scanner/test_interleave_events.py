@@ -35,6 +35,7 @@ from inspect_scout._transcript.handle import MaterializedTranscriptHandle
 from inspect_scout._transcript.interleave import (
     INTERLEAVE_DEPENDENCIES,
     EventsSpec,
+    _ScorersSpanTracker,
     interleave_events,
     span_interleaved_messages,
     stream_interleave_events,
@@ -1355,3 +1356,150 @@ async def test_final_score_lands_in_last_chunk_when_split() -> None:
     assert len(captured) >= 2
     assert sum("[E1] SCORE" in c for c in captured) == 1
     assert "[E1] SCORE" in captured[-1]
+
+
+def _scorers_events(
+    *, preamble: list[Event] | None = None, close_scorers: bool = True
+) -> list[Event]:
+    """Grader model call in a top-level `scorers` span, with optional preamble."""
+    return [
+        *(preamble or []),
+        SpanBeginEvent(
+            id="span-scorers",
+            parent_id=None,
+            type="scorers",
+            name="scorers",
+            span_id="span-scorers",
+        ),
+        _span_model_event("grade this", "grader assessment", "span-scorers"),
+        ScoreEvent(span_id="span-scorers", scorer="match", score=Score(value="C")),
+        *(
+            [SpanEndEvent(id="span-scorers", span_id="span-scorers")]
+            if close_scorers
+            else []
+        ),
+    ]
+
+
+_UNCLOSED_SPAN = [
+    SpanBeginEvent(id="x", parent_id=None, type="agent", name="x", span_id="x")
+]
+_STRAY_END = [SpanEndEvent(id="ghost", span_id="ghost")]
+
+
+@pytest.mark.parametrize(
+    "events",
+    [
+        pytest.param(_scorers_events(), id="balanced"),
+        pytest.param(
+            _scorers_events(preamble=_UNCLOSED_SPAN), id="preceding-span-unclosed"
+        ),
+        pytest.param(_scorers_events(preamble=_STRAY_END), id="stray-span-end-first"),
+    ],
+)
+def test_scorers_tracker_excludes_grader_despite_unbalanced_spans(
+    events: list[Event],
+) -> None:
+    """Grader exclusion must not depend on span boundaries being balanced.
+
+    `event_tree` decides "top-level" from `parent_id`; counting span_begin /
+    span_end occurrences instead only agrees on a perfectly balanced stream.
+    inspect_ai logs and recovers from stray span ends, and checkpoint restore
+    builds transcripts by slicing flat event lists, so imbalance reaches this
+    code in practice.
+    """
+    tracker = _ScorersSpanTracker()
+    verdicts = []
+    for event in events:
+        tracker.update(event)
+        if isinstance(event, ModelEvent):
+            verdicts.append(tracker.excludes(event))
+    assert verdicts == [True]
+
+
+def test_scorers_tracker_releases_after_unclosed_scorers_span() -> None:
+    """A missing scorers span_end must not latch exclusion over later models."""
+    events = [
+        *_scorers_events(close_scorers=False),
+        _span_model_event("after", "AFTER MODEL", "span-later"),
+    ]
+    tracker = _ScorersSpanTracker()
+    verdicts = []
+    for event in events:
+        tracker.update(event)
+        if isinstance(event, ModelEvent):
+            verdicts.append(tracker.excludes(event))
+    assert verdicts == [True, False]
+
+
+def test_scorers_tracker_ignores_overlapping_top_level_span() -> None:
+    """A concurrently-open unrelated top-level span must not be excluded."""
+    events: list[Event] = [
+        SpanBeginEvent(
+            id="span-scorers",
+            parent_id=None,
+            type="scorers",
+            name="scorers",
+            span_id="span-scorers",
+        ),
+        SpanBeginEvent(
+            id="other", parent_id=None, type="agent", name="other", span_id="other"
+        ),
+        _span_model_event("main q", "MAIN ANSWER", "other"),
+        SpanEndEvent(id="other", span_id="other"),
+        SpanEndEvent(id="span-scorers", span_id="span-scorers"),
+    ]
+    tracker = _ScorersSpanTracker()
+    verdicts = []
+    for event in events:
+        tracker.update(event)
+        if isinstance(event, ModelEvent):
+            verdicts.append(tracker.excludes(event))
+    assert verdicts == [False]
+
+
+def test_all_top_level_scorers_spans_excluded_materialized() -> None:
+    """Every top-level `scorers` span is excluded, not just the first.
+
+    Re-scoring and spliced checkpoint-restore transcripts can carry more than
+    one. Taking only the first left the second grader's output rendering as a
+    branch entry -- the materialized driver leaking where streaming did not.
+    """
+
+    def scorers_span(suffix: str, output: str) -> list[Event]:
+        span_id = f"span-scorers-{suffix}"
+        return [
+            SpanBeginEvent(
+                id=span_id,
+                parent_id=None,
+                type="scorers",
+                name="scorers",
+                span_id=span_id,
+            ),
+            _span_model_event("grade", output, span_id),
+            ScoreEvent(span_id=span_id, scorer=suffix, score=Score(value="C")),
+            SpanEndEvent(id=span_id, span_id=span_id),
+        ]
+
+    out = ModelOutput.from_content(model="mockllm", content="4")
+    user = ChatMessageUser(content="2+2?")
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[user, out.choices[0].message],
+        events=[
+            SpanBeginEvent(
+                id="span-main",
+                parent_id=None,
+                type="agent",
+                name="main",
+                span_id="span-main",
+            ),
+            _span_model_event("2+2?", "4", "span-main"),
+            SpanEndEvent(id="span-main", span_id="span-main"),
+            *scorers_span("one", "GRADER SECRET 1"),
+            *scorers_span("two", "GRADER SECRET 2"),
+        ],
+    )
+    texts = "\n".join(_event_texts(interleave_events(transcript)))
+    assert "GRADER SECRET 1" not in texts
+    assert "GRADER SECRET 2" not in texts

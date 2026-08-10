@@ -12,6 +12,7 @@ after the attachments section, so they cannot be filtered during the parse.
 from __future__ import annotations
 
 import contextlib
+import io
 import json
 import re
 from dataclasses import dataclass, field
@@ -117,6 +118,35 @@ class _PoolSink:
         self._i += 1
 
 
+class _ChunkReader(io.RawIOBase):
+    """Read-only file over an iterator of byte chunks.
+
+    Tracks a cursor into the current chunk rather than re-slicing it: a
+    consumer reading a 1 MB chunk in small reads would otherwise recopy the
+    remainder on every one.
+    """
+
+    def __init__(self, chunks: Iterator[bytes]) -> None:
+        self._chunks = chunks
+        self._buffer = b""
+        self._pos = 0
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, buffer: Any) -> int:
+        while self._pos >= len(self._buffer):
+            try:
+                self._buffer = next(self._chunks)
+            except StopIteration:
+                return 0
+            self._pos = 0
+        count = min(len(buffer), len(self._buffer) - self._pos)
+        buffer[:count] = self._buffer[self._pos : self._pos + count]
+        self._pos += count
+        return count
+
+
 @dataclass
 class StreamParseResult:
     """Result of a single-pass spool-building parse."""
@@ -151,7 +181,15 @@ class StreamParseResult:
         """
         if not self.has_metadata:
             return {}
-        parsed: dict[str, Any] = json.loads(self.metadata_json.read())
+        # Parsed from the spool's chunks rather than from one contiguous
+        # `read()`: for a metadata-dominated transcript that buffer is itself
+        # gigabytes, and it would sit alongside the object graph being built
+        # from it. `use_float` matches stdlib `json` (ijson yields `Decimal`
+        # otherwise), so the objects -- and anything reserialized from them --
+        # are identical either way.
+        parsed: dict[str, Any] = next(
+            ijson.items(_ChunkReader(self.metadata_json.chunks()), "", use_float=True)
+        )
         return parsed
 
     def close(self) -> None:

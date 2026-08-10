@@ -21,6 +21,7 @@ from inspect_ai.event import (
     Timeline,
     TimelineEvent,
     TimelineSpan,
+    ToolEvent,
     event_sequence,
     event_tree,
     timeline_filter,
@@ -299,6 +300,8 @@ class _AnchorWalk:
         message_ids: list[str],
         events: EventsSpec,
         excluded_ids: frozenset[str] = frozenset(),
+        grader_spans: frozenset[str] = frozenset(),
+        compaction_spans: frozenset[str | None] = frozenset(),
     ) -> None:
         self._events = events
         occurrences: dict[str, list[int]] = defaultdict(list)
@@ -308,6 +311,8 @@ class _AnchorWalk:
         self._next_occurrence: dict[str, int] = defaultdict(int)
         self._last_anchor: int | None = None
         self._excluded_ids = excluded_ids
+        self._grader_spans = grader_spans
+        self._compaction_spans = compaction_spans
         self.leading: list[InterleavedEvent] = []
         self.anchored: dict[int, list[InterleavedEvent]] = defaultdict(list)
 
@@ -334,11 +339,31 @@ class _AnchorWalk:
             self.anchored[self._last_anchor].append(entry)
 
     def add(self, event: Event) -> None:
+        if isinstance(event, ToolEvent):
+            # A tool-spawned sub-agent's model events never appear at the top
+            # level of the event list, so without this its output is absent
+            # from the prompt entirely. Only ids and rendered text are
+            # retained, so this costs nothing on the streaming path.
+            for nested in event.events:
+                self.add(nested)
+            return
         if isinstance(event, ModelEvent):
+            # Grader calls are excluded by span, not by event id: a uuid-less
+            # grader and a real ScoreEvent can synthesize the same id and the
+            # score would disappear with it.
+            if event.span_id in self._grader_spans:
+                return
             mid = _model_output_id(event)
             consumed = mid is not None and self.add_model_output(mid)
             if not consumed:
-                if mid is not None and mid in self._excluded_ids:
+                # Only suppress against a span that actually compacted;
+                # exclusions derived across all spans hid another agent's
+                # genuine fork output.
+                if (
+                    mid is not None
+                    and mid in self._excluded_ids
+                    and event.span_id in self._compaction_spans
+                ):
                     return  # compaction-pruned: stays hidden, no branch entry
                 text = _off_thread_model_text(event)
                 if text is not None:
@@ -386,8 +411,18 @@ def span_interleaved_messages(
         span, (_message_id(m) for m in messages), compaction
     )
 
+    # excluded_ids is derived from this span alone, so every id in it belongs
+    # to a turn this span compacted -- the whole span is the compaction scope.
+    # `None` is a real span_id here (the repo's compaction fixtures build
+    # span-less events), so it must be a bucket rather than filtered out.
+    span_event_spans = frozenset(
+        item.event.span_id for item in span.content if isinstance(item, TimelineEvent)
+    )
     walk = _AnchorWalk(
-        [_message_id(m) for m in messages], events, excluded_ids=excluded_ids
+        [_message_id(m) for m in messages],
+        events,
+        excluded_ids=excluded_ids,
+        compaction_spans=span_event_spans,
     )
     for item in span.content:
         if isinstance(item, TimelineEvent):
@@ -578,13 +613,18 @@ def interleave_events(
             "for an events-only transcript"
         )
 
-    excluded = _scorers_model_event_ids(transcript.events)
     walk = _AnchorWalk(
-        [_message_id(m) for m in messages], events, excluded_ids=excluded_ids
+        [_message_id(m) for m in messages],
+        events,
+        excluded_ids=excluded_ids,
+        grader_spans=scorer_span_ids(
+            [e for e in transcript.events if isinstance(e, SpanBeginEvent)]
+        ),
+        compaction_spans=frozenset(
+            e.span_id for e in transcript.events if isinstance(e, CompactionEvent)
+        ),
     )
     for event in transcript.events:
-        if excluded and _event_id(event) in excluded:
-            continue
         walk.add(event)
 
     return list(walk.spliced(messages))
@@ -629,6 +669,7 @@ async def stream_interleave_events(
         excluded_ids: frozenset[str] = frozenset()
         compaction_skeleton: list[Event] = []
         begins: list[SpanBeginEvent] = []
+        compaction_spans: set[str | None] = set()
         saw_compaction = False
         # Span begins ride along rather than costing their own pass: a handle's
         # type filter applies after deserialization, so a "span_begin only"
@@ -637,18 +678,23 @@ async def stream_interleave_events(
             if isinstance(event, SpanBeginEvent):
                 begins.append(event)
                 continue  # must not reach compaction_skeleton -> span_messages
-            saw_compaction = saw_compaction or isinstance(event, CompactionEvent)
+            if isinstance(event, CompactionEvent):
+                saw_compaction = True
+                compaction_spans.add(event.span_id)
             _skeleton_add(compaction_skeleton, event)
         if saw_compaction:
             excluded_ids = _compaction_excluded_ids(
                 compaction_skeleton, message_ids, compaction="last"
             )
 
-        walk = _AnchorWalk(message_ids, events, excluded_ids=excluded_ids)
-        grader_spans = scorer_span_ids(begins)
+        walk = _AnchorWalk(
+            message_ids,
+            events,
+            excluded_ids=excluded_ids,
+            grader_spans=scorer_span_ids(begins),
+            compaction_spans=frozenset(compaction_spans),
+        )
         async for event in handle.events(types=types):
-            if isinstance(event, ModelEvent) and event.span_id in grader_spans:
-                continue
             walk.add(event)
 
         for event_id, text in walk.leading:

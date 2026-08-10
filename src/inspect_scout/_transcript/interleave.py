@@ -155,6 +155,33 @@ def scorers_collection_source(source: Timeline, include_scorers: bool) -> Timeli
     )
 
 
+class _ScorersSpanTracker:
+    """Tracks whether a streamed event sits inside a top-level ``scorers`` span.
+
+    Streaming counterpart to ``_scorers_model_event_ids``, which needs the
+    whole event tree in memory. Same single-top-level-``scorers``-span
+    assumption, decided incrementally from span boundaries instead.
+    """
+
+    def __init__(self) -> None:
+        self._depth = 0
+        self._entered_at: int | None = None
+
+    def update(self, event: Event) -> None:
+        if isinstance(event, SpanBeginEvent):
+            if self._depth == 0 and event.name == "scorers":
+                self._entered_at = self._depth
+            self._depth += 1
+        elif isinstance(event, SpanEndEvent):
+            self._depth -= 1
+            if self._entered_at is not None and self._depth <= self._entered_at:
+                self._entered_at = None
+
+    def excludes(self, event: Event) -> bool:
+        """Whether `event` is a grader model call the walk must not see."""
+        return self._entered_at is not None and isinstance(event, ModelEvent)
+
+
 def _scorers_model_event_ids(events: list[Event]) -> frozenset[str]:
     """Ids of ModelEvents nested under a top-level ``scorers`` span, if any.
 
@@ -542,7 +569,9 @@ async def stream_interleave_events(
     ``stream_timeline_messages`` instead.
     """
     message_ids = [_message_id(m) async for m in handle.messages()]
-    types = None if events == "all" else ["model", "compaction", *events]
+    # Span boundaries are needed to spot grader model calls; the rest of the
+    # dependency set is inert here but keeps the two filters in step.
+    types = None if events == "all" else [*sorted(INTERLEAVE_DEPENDENCIES), *events]
 
     if message_ids:
         # Region-last skeleton solely to derive compaction-pruned
@@ -560,7 +589,11 @@ async def stream_interleave_events(
             )
 
         walk = _AnchorWalk(message_ids, events, excluded_ids=excluded_ids)
+        scorers = _ScorersSpanTracker()
         async for event in handle.events(types=types):
+            scorers.update(event)
+            if scorers.excludes(event):
+                continue
             walk.add(event)
 
         for event_id, text in walk.leading:
@@ -578,11 +611,17 @@ async def stream_interleave_events(
     # inputs for replay once the thread exists.
     skeleton: list[Event] = []
     ops: list[_ReplayOp] = []
+    scorers = _ScorersSpanTracker()
     async for event in handle.events(types=types):
+        scorers.update(event)
         if isinstance(event, ModelEvent):
-            mid = _model_output_id(event)
-            if mid is not None:
-                ops.append(_ModelOutputOp(mid, _off_thread_model_text(event) or ""))
+            # A grader model call still shapes the reconstructed thread, as in
+            # `interleave_events` -- it is only kept out of the anchor walk, so
+            # it cannot surface as a branch entry.
+            if not scorers.excludes(event):
+                mid = _model_output_id(event)
+                if mid is not None:
+                    ops.append(_ModelOutputOp(mid, _off_thread_model_text(event) or ""))
             _skeleton_add(skeleton, event)
         elif isinstance(event, CompactionEvent):
             _skeleton_add(skeleton, event)

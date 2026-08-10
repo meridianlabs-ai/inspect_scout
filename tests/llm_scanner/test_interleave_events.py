@@ -1,5 +1,5 @@
 import re
-from typing import AsyncIterator, cast
+from typing import AsyncIterator, Iterable, cast
 
 import pytest
 from inspect_ai.event import (
@@ -371,17 +371,8 @@ async def test_stream_messages_present_hides_compaction_pruned_turn() -> None:
     assert [(m.id, m.text) for m in streamed] == [(m.id, m.text) for m in expected]
 
 
-def test_grader_model_event_in_scorers_span_excluded() -> None:
-    """A grader ModelEvent inside a top-level `scorers` span never renders.
-
-    Mirrors the timeline-path invariant
-    (`test_scorers_span_score_event_attaches_to_last_scannable_span` in
-    `test_timeline_interleave.py`) on the flat `interleave_events` driver:
-    grader model calls must never surface as branch entries even though,
-    unlike the per-span path, there is no structural span boundary to stop
-    the walk -- `_scorers_model_event_ids` must exclude them explicitly.
-    The scorer's own `ScoreEvent` is unaffected and still renders once.
-    """
+def _scorers_span_transcript() -> Transcript:
+    """Transcript whose grader model call sits in a top-level `scorers` span."""
     out = ModelOutput.from_content(model="mockllm", content="4")
     assistant = out.choices[0].message
     user = ChatMessageUser(content="2+2?")
@@ -434,13 +425,71 @@ def test_grader_model_event_in_scorers_span_excluded() -> None:
             SpanEndEvent(id="span-scorers", span_id="span-scorers"),
         ],
     )
-    result = interleave_events(transcript)
-    event_texts = [
-        m.text for m in result if m.metadata and m.metadata.get(EVENT_MARKER_KEY)
-    ]
+    return transcript
+
+
+def _event_texts(messages: Iterable[ChatMessage]) -> list[str]:
+    return [m.text for m in messages if m.metadata and m.metadata.get(EVENT_MARKER_KEY)]
+
+
+def test_grader_model_event_in_scorers_span_excluded() -> None:
+    """A grader ModelEvent inside a top-level `scorers` span never renders.
+
+    Mirrors the timeline-path invariant
+    (`test_scorers_span_score_event_attaches_to_last_scannable_span` in
+    `test_timeline_interleave.py`) on the flat `interleave_events` driver:
+    grader model calls must never surface as branch entries even though,
+    unlike the per-span path, there is no structural span boundary to stop
+    the walk -- `_scorers_model_event_ids` must exclude them explicitly.
+    The scorer's own `ScoreEvent` is unaffected and still renders once.
+    """
+    event_texts = _event_texts(interleave_events(_scorers_span_transcript()))
     assert sum("MODEL (BRANCH)" in t for t in event_texts) == 0
     assert "grader assessment" not in "\n".join(event_texts)
     assert sum(t.startswith("SCORE (match)") for t in event_texts) == 1
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("events_spec", ["all", ["score"]])
+async def test_stream_excludes_grader_model_event_like_materialized(
+    events_spec: EventsSpec,
+) -> None:
+    """Streaming must hide grader model calls exactly as materialized does.
+
+    The messages-present streaming path fed every ModelEvent to the walk,
+    so a grader's output surfaced as a `MODEL (BRANCH)` entry -- leaking the
+    answer into the judge prompt on the streaming path only.
+    """
+    transcript = _scorers_span_transcript()
+    expected = interleave_events(transcript, events=events_spec)
+    streamed = [
+        m
+        async for m in stream_interleave_events(
+            _handle_for(transcript), events=events_spec
+        )
+    ]
+    assert "grader assessment" not in "\n".join(_event_texts(streamed))
+    assert [(m.id, m.text) for m in streamed] == [(m.id, m.text) for m in expected]
+
+
+@pytest.mark.anyio
+async def test_stream_events_only_scorers_ordering_matches_materialized() -> None:
+    """Events-only: grader calls shape the thread but never enter the walk.
+
+    Unlike the messages-present path the thread is reconstructed from model
+    events, so a grader's output legitimately lands in it (as it does in
+    `interleave_events`); what must not happen is a second appearance as a
+    branch entry, which also reordered the trailing SCORE entry.
+
+    Compared on text: the branch entry's synthesized id differs between the
+    two drivers on this path, which predates this test.
+    """
+    events_only = Transcript(
+        transcript_id="t", messages=[], events=_scorers_span_transcript().events
+    )
+    expected = interleave_events(events_only)
+    streamed = [m async for m in stream_interleave_events(_handle_for(events_only))]
+    assert [m.text for m in streamed] == [m.text for m in expected]
 
 
 @pytest.mark.anyio

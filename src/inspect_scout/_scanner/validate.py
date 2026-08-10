@@ -107,8 +107,6 @@ def _spans_event_union(input_type: Any) -> bool:
 
 def _unmapped_event_types(input_type: Any) -> list[type[Any]]:
     """Concrete Event subclasses in `input_type` that have no filter mapping."""
-    if _spans_event_union(input_type):
-        return []
     candidates = get_args(input_type) if is_union_type(input_type) else [input_type]
     return [
         t
@@ -230,7 +228,6 @@ def infer_filters_from_type(
         return None, None, False
 
     # Return inferred filters
-    # Type: ignore because mypy can't understand that the lists contain the right string literals
     return (
         message_filters if message_filters else None,
         event_filters if event_filters else None,

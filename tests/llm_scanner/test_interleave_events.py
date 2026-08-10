@@ -50,6 +50,7 @@ from inspect_scout._transcript.interleave import (
 from inspect_scout._transcript.timeline import _walk_spans
 from inspect_scout._transcript.timeline_stream import _collect_pass2_model_events
 from inspect_scout._transcript.types import (
+    EventType,
     Transcript,
     TranscriptContent,
     TranscriptInfo,
@@ -1618,7 +1619,7 @@ def test_branch_events_render_despite_being_a_load_dependency() -> None:
 
 @pytest.mark.parametrize("event_type", ["anchor", "checkpoint"])
 def test_structural_markers_gated_independently_of_renderer(
-    event_type: str, monkeypatch: pytest.MonkeyPatch
+    event_type: EventType, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """`anchor`/`checkpoint` are filter-selectable but must never render.
 

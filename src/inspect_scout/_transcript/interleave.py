@@ -56,7 +56,7 @@ INTERLEAVE_DEPENDENCIES: Final[frozenset[EventType]] = frozenset(
 """Event types that must be LOADED for interleaving to be correct.
 
 These carry the structure the walk runs on -- model events anchor entries,
-compaction events drive pruning, span events delimit scorer spans, tool events
+compaction events drive pruning, span begins resolve scorer spans, tool events
 nest sub-agent models, and ``timeline_build`` needs a ``BranchEvent`` to form a
 branch span at all (without one it unrolls the branch into its parent, so the
 scanner reads the branch as the main thread). A caller that filters any of them
@@ -78,11 +78,14 @@ from it: the two answer different questions and neither contains the other.
 ``anchor``/``checkpoint`` render nothing yet need not be loaded.
 """
 
-EventsSpec = Literal["all"] | list[EventType | str]
+EventsSpec = Literal["all"] | list[EventType]
 """Which event types to interleave: ``"all"`` or an explicit list.
 
-``str`` is accepted alongside ``EventType`` (matching ``EventFilter``) for
-event types not yet in the literal, e.g. ``"score"``.
+Deliberately narrower than ``EventFilter``, which admits bare ``str``: an
+unrecognised name here renders nothing and reports nothing, so ``events=
+["scoer"]`` would silently produce a judge prompt with no ``[E#]`` entries.
+The ``| str`` this used to carry was justified as covering "event types not yet
+in the literal, e.g. score" -- the EventType widening put all of them in.
 """
 
 Compaction = Literal["all", "last"] | int
@@ -230,8 +233,8 @@ def _scorers_model_event_ids(events: list[Event]) -> frozenset[str]:
     branch entry, breaking the invariant that scorer model calls never
     surface in scanned content. (Timeline paths handle this structurally.)
 
-    Every top-level ``scorers`` span counts, matching ``_ScorersSpanTracker``:
-    taking only the first leaked later graders on re-scored and spliced
+    Every top-level ``scorers`` span counts, matching ``scorer_span_ids``;
+    taking only the first would leak later graders on re-scored and spliced
     checkpoint-restore transcripts. Empty if the list carries no span
     structure or no ``scorers`` span is found.
     """
@@ -610,19 +613,21 @@ async def stream_interleave_events(
     without holding messages and event payloads in memory at once.
 
     Messages-present transcripts take four passes over the handle: collect
-    message ids; derive compaction-pruned ``excluded_ids`` from a
-    region-last-``ModelEvent`` skeleton (cheap no-op when there is no
-    ``CompactionEvent``); the anchor walk (retaining just id + rendered
-    text per selected event); then re-stream messages splicing anchored
-    entries.
+    message ids; one pass that both derives compaction-pruned ``excluded_ids``
+    from a region-last-``ModelEvent`` skeleton (cheap no-op when there is no
+    ``CompactionEvent``) and collects span begins for grader-span resolution;
+    the anchor walk (retaining just id + rendered text per selected event);
+    then re-stream messages splicing anchored entries.
 
-    Events-only transcripts reconstruct the thread in a single events pass,
+    Events-only transcripts take two events passes -- one for span begins,
+    one to reconstruct the thread -- the latter
     retaining only the region-last ``ModelEvent`` (whose input carries the
     region's conversation) plus an op log of output-message ids and
     pre-rendered branch text, replayed against the reconstructed thread.
     That reconstruction carries ``interleave_events``' linear-conversation
-    limitation; ``llm_scanner`` routes multi-agent transcripts to
-    ``stream_timeline_messages`` instead.
+    limitation. ``llm_scanner`` never reaches it: it routes *every* handle
+    without messages to ``stream_timeline_messages``, so this branch serves
+    direct library callers only.
     """
     message_ids = [_message_id(m) async for m in handle.messages()]
     # Span boundaries are needed to spot grader model calls; the rest of the
@@ -635,8 +640,15 @@ async def stream_interleave_events(
         # the filtered scan.
         excluded_ids: frozenset[str] = frozenset()
         compaction_skeleton: list[Event] = []
+        begins: list[SpanBeginEvent] = []
         saw_compaction = False
-        async for event in handle.events(types=["model", "compaction"]):
+        # Span begins ride along rather than costing their own pass: a handle's
+        # type filter applies after deserialization, so a "span_begin only"
+        # pass still replays and validates every event in the transcript.
+        async for event in handle.events(types=["model", "compaction", "span_begin"]):
+            if isinstance(event, SpanBeginEvent):
+                begins.append(event)
+                continue  # must not reach compaction_skeleton -> span_messages
             saw_compaction = saw_compaction or isinstance(event, CompactionEvent)
             _skeleton_add(compaction_skeleton, event)
         if saw_compaction:
@@ -645,7 +657,7 @@ async def stream_interleave_events(
             )
 
         walk = _AnchorWalk(message_ids, events, excluded_ids=excluded_ids)
-        grader_spans = await _stream_scorer_span_ids(handle)
+        grader_spans = scorer_span_ids(begins)
         async for event in handle.events(types=types):
             if isinstance(event, ModelEvent) and event.span_id in grader_spans:
                 continue

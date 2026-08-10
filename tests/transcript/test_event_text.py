@@ -45,7 +45,8 @@ from inspect_scout._transcript.types import EventType
                 target="C",
                 scorer="match",
             ),
-            "SCORE (match): value=C target=C answer=Paris\n"
+            "SCORE (match): value=C target=C\n"
+            "  answer: Paris\n"
             "  explanation: Matched target.\n",
             id="score-full",
         ),
@@ -111,6 +112,14 @@ from inspect_scout._transcript.types import EventType
             id="store-singular",
         ),
         pytest.param(BranchEvent(), "BRANCH\n", id="branch"),
+        pytest.param(
+            ScoreEvent(
+                scorer="grader",
+                score=Score(value="C", answer="line one\nline two, with comma"),
+            ),
+            "SCORE (grader): value=C\n  answer: line one\nline two, with comma\n",
+            id="score-multiline-answer-not-inlined",
+        ),
         pytest.param(
             ScoreEditEvent(score_name="acc", edit=ScoreEdit(value="I")),
             "SCORE EDIT (acc): value=I\n",

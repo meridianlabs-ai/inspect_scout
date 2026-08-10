@@ -41,7 +41,11 @@ from inspect_ai.event import (
 )
 from inspect_ai.model import ChatMessageSystem, ChatMessageUser, ContentText, Model
 
-from inspect_scout._transcript.interleave import _off_thread_model_text
+from inspect_scout._transcript.interleave import (
+    _off_thread_model_text,
+    collect_span_external,
+    scorers_collection_source,
+)
 from inspect_scout._transcript.timeline import (
     TimelineMessages,
     _walk_spans,
@@ -537,11 +541,6 @@ async def stream_timeline_messages(
 
     span_external: SpanExternalEvents | None = None
     if events is not None:
-        from inspect_scout._transcript.interleave import (
-            collect_span_external,
-            scorers_collection_source,
-        )
-
         # Collect from the unpruned tree so a pruned scorers span's events
         # still surface; see scorers_collection_source().
         collection_source = scorers_collection_source(tree, include_scorers)

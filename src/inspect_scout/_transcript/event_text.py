@@ -17,13 +17,13 @@ from inspect_ai.event import (
     SampleInitEvent,
     SampleLimitEvent,
     SandboxEvent,
+    ScoreEditEvent,
     ScoreEvent,
     StateEvent,
     StoreEvent,
     ToolEvent,
 )
-from inspect_ai.event._score_edit import ScoreEditEvent
-from inspect_ai.scorer._metric import UNCHANGED
+from inspect_ai.scorer import UNCHANGED
 
 logger = getLogger(__name__)
 
@@ -156,9 +156,12 @@ def _score_event_as_str(event: Event) -> str | None:
         header.append(f"target={target}")
     if event.intermediate:
         header.append("intermediate")
-    if score.answer:
-        header.append(f"answer={score.answer}")
     result = f"SCORE ({event.scorer or 'unknown'}): {' '.join(header)}"
+    # answer and explanation are free text: a scorer's extracted answer can
+    # contain newlines, and in the space-joined header a continuation line is
+    # flush-left and indistinguishable from a new entry.
+    if score.answer:
+        result += f"\n  answer: {score.answer}"
     if score.explanation:
         result += f"\n  explanation: {score.explanation}"
     return result + "\n"
@@ -228,7 +231,7 @@ def _score_edit_event_as_str(event: Event) -> str | None:
     if header:
         result += f": {' '.join(header)}"
     # answer and explanation are free text -- own lines, as _score_event_as_str
-    # does, so their commas and newlines cannot be read as field separators.
+    # does, so their newlines cannot be read as the start of a new entry.
     # None clears the field, which is an edit in its own right and must show.
     for field, value in (("answer", edit.answer), ("explanation", edit.explanation)):
         if value != UNCHANGED:

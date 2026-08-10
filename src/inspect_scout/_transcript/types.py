@@ -54,11 +54,6 @@ EventType = Literal[
     "store",
     "logger",
     "error",
-    "input",
-    "sample_init",
-    "sample_limit",
-    "score",
-    "state",
     "span_begin",
     "span_end",
 ]

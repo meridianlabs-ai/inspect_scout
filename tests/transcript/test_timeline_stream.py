@@ -623,3 +623,43 @@ async def test_stream_raises_on_multi_shot_violation() -> None:
                 depth=None,
             )
         ]
+
+
+@pytest.mark.parametrize(
+    ("events_spec", "raises"),
+    [
+        pytest.param("all", True, id="interleaving-on-raises"),
+        pytest.param(None, False, id="interleaving-off-unaffected"),
+    ],
+)
+def test_uuidless_offthread_model_event_falls_back(
+    events_spec: str | None, raises: bool
+) -> None:
+    """A uuid-less off-thread ModelEvent must not silently vanish.
+
+    Pass 2 targets events by uuid, so one without a uuid can be neither
+    substituted nor rendered -- it stayed an empty stub and disappeared from
+    streaming output while `interleave_events` rendered it as a branch entry.
+    Raising hands the scan to the materialized fallback instead.
+
+    With interleaving off, off-thread outputs are never rendered, so dropping
+    the event is correct and must not force materialization.
+    """
+    from inspect_scout._transcript.timeline_stream import (
+        _collect_pass2_model_events,
+        _StubSkeletonUnsupported,
+    )
+
+    fork = _model_event(
+        label="fork",
+        system_prompt="sys",
+        output_text="FORK",
+        span_id=None,
+    ).model_copy(update={"uuid": None})
+    offthread: dict[str, ModelEvent] | None = {} if events_spec is not None else None
+
+    if raises:
+        with pytest.raises(_StubSkeletonUnsupported):
+            _collect_pass2_model_events(fork, frozenset(), {}, offthread)
+    else:
+        _collect_pass2_model_events(fork, frozenset(), {}, offthread)

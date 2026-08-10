@@ -385,6 +385,15 @@ def _collect_pass2_model_events(
                 full_by_uuid[event.uuid] = event
             elif offthread_by_uuid is not None:
                 offthread_by_uuid[event.uuid] = _output_only_model_event(event)
+        elif offthread_by_uuid is not None:
+            # Substitution is keyed by uuid, so this off-thread output can
+            # never reach its stub: it would silently vanish from streaming
+            # while `interleave_events` renders it as a branch entry. Hand
+            # the scan to the materialized fallback instead.
+            raise _StubSkeletonUnsupported(
+                "off-thread ModelEvent has no uuid; cannot substitute its "
+                "output for branch-entry rendering"
+            )
     elif isinstance(event, ToolEvent) and event.events:
         for nested in event.events:
             _collect_pass2_model_events(nested, needed, full_by_uuid, offthread_by_uuid)

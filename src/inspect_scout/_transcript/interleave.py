@@ -459,12 +459,22 @@ def collect_span_external(
     """Collect span-external interleavable events from the unpruned timeline.
 
     Companion to ``span_interleaved_messages()``, which splices a scannable
-    span's own direct events: this walks the whole tree depth-first to find
-    every event NOT owned by such a splice (utility spans, pure containers,
-    root level, ``scorers`` spans, spans beyond ``depth``) and attributes
-    each to the most recently reached scannable span (key ``""`` before the
-    first one). The result is passed as
+    span's own direct events: this walks the tree's ``content`` depth-first to
+    find every event NOT owned by such a splice (utility spans, pure
+    containers, root level, ``scorers`` spans, spans beyond ``depth``) and
+    attributes each to the most recently reached scannable span (key ``""``
+    before the first one). The result is passed as
     ``timeline_messages(..., span_external=...)``.
+
+    KNOWN GAP: ``TimelineSpan.branches`` is not walked, so events inside a
+    branch span are collected by neither driver -- ``_walk_spans`` does not
+    yield branch spans either. Loading ``BranchEvent`` (see
+    ``INTERLEAVE_DEPENDENCIES``) is what routes a branch into ``.branches``
+    rather than unrolling it into its parent's content, which is why those
+    events used to surface at all: misattributed to the parent thread. Not
+    rendering them is the safer of the two, but it is still a gap, and
+    ``timeline_stream._substitute_full_events`` *does* recurse into
+    ``.branches`` -- so the two walks disagree about the tree.
 
     ``ModelEvent``s collected this way always render as ``MODEL (BRANCH)``
     entries, except grader model calls under a ``scorers`` span, which never

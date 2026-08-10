@@ -41,6 +41,7 @@ from inspect_scout._transcript.interleave import (
     EventsSpec,
     _interleavable_text,
     _scorers_model_event_ids,
+    collect_span_external,
     interleave_events,
     scorer_span_ids,
     span_interleaved_messages,
@@ -1680,3 +1681,36 @@ async def test_events_only_branch_entry_carries_event_id() -> None:
     assert main_model.uuid is not None
     assert branch_entry_id(expected) == main_model.uuid
     assert branch_entry_id(streamed) == main_model.uuid
+
+
+def test_branch_span_events_are_not_collected_known_gap() -> None:
+    """Pins the branch-subtree gap so a fix is a deliberate, visible change.
+
+    Loading `BranchEvent` routes a branch into `TimelineSpan.branches` instead
+    of unrolling it into the parent's content. Neither `_walk_spans` nor
+    `collect_span_external` descends into `.branches`, so the branch's own
+    events render nowhere on the timeline path. Before `branch` was a load
+    dependency they did surface -- misattributed to the parent thread -- so
+    this is the safer behaviour, not the correct one.
+    """
+    events: list[Event] = [
+        SpanBeginEvent(
+            id="main", parent_id=None, type="agent", name="main", span_id="main"
+        ),
+        _span_model_event("main-q", "main-answer", "main"),
+        SpanBeginEvent(
+            id="b1", parent_id="main", type="branch", name="alt", span_id="b1"
+        ),
+        BranchEvent(span_id="b1"),
+        _span_model_event("alt-q", "ALT ANSWER", "b1"),
+        ScoreEvent(span_id="b1", scorer="s", score=Score(value="C")),
+        SpanEndEvent(id="b1", span_id="b1"),
+        SpanEndEvent(id="main", span_id="main"),
+    ]
+    tree = timeline_build(events)
+    scannable = list(_walk_spans(tree.root))
+
+    assert [s.id for s in scannable] == ["main"]
+    assert [(b.id, len(b.content)) for b in scannable[0].branches] == [("b1", 3)]
+    # The branch really does hold content, and it really is unreachable.
+    assert collect_span_external(tree, "all") == {}

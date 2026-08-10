@@ -23,7 +23,7 @@ from inspect_ai.event._pool import (
 from pydantic import JsonValue
 
 from ..._util._json import to_json_bytes_compact
-from ..types import TranscriptInfo
+from ..types import Transcript, TranscriptInfo
 from .reducer import ATTACHMENT_REF_BYTES, ATTACHMENT_REF_PATTERN
 from .spool import ByteSpool
 from .stream_parse import StreamParseResult
@@ -121,8 +121,15 @@ def pooled_passthrough(
         # `to_json_bytes_compact` is what the materialized path uses, so coercion
         # of those, of NaN/Infinity, and of anything unserializable matches it
         # exactly. Values here are small: the large one is spooled.
+        # Match the materialized path's field set exactly: it builds a
+        # `Transcript`, so subclass-only fields (a parquet index row carries
+        # `filename`) are dropped, and it serializes through `to_json_safe`,
+        # which passes exclude_none=True, so unset fields are omitted rather
+        # than emitted as null.
         emit("{")
         for key, value in info.model_dump(exclude={"metadata"}).items():
+            if value is None or key not in Transcript.model_fields:
+                continue
             emit(_dumps(key) + ":")
             emit_bytes(to_json_bytes_compact(value))
             emit(",")
@@ -178,9 +185,6 @@ def pooled_passthrough(
         for att_id in sorted(attachment_ids)
         if (content := result.blobs.get(att_id)) is not None
     }
-
-    if not (pool_entries["message_pool"] or pool_entries["call_pool"] or attachments):
-        return envelope_json, None
 
     input_data: dict[str, Any] = {
         "messages": pool_entries["message_pool"],

@@ -1555,9 +1555,14 @@ def test_all_top_level_scorers_spans_excluded_materialized() -> None:
             *scorers_span("two", "GRADER SECRET 2"),
         ],
     )
-    texts = "\n".join(_event_texts(interleave_events(transcript)))
+    entries = _event_texts(interleave_events(transcript))
+    texts = "\n".join(entries)
     assert "GRADER SECRET 1" not in texts
     assert "GRADER SECRET 2" not in texts
+    # Positive: both scores still render, so the assertions above cannot pass
+    # merely because nothing rendered at all.
+    assert sum(t.startswith("SCORE (one)") for t in entries) == 1
+    assert sum(t.startswith("SCORE (two)") for t in entries) == 1
 
 
 def test_selective_load_preserves_nested_tool_agent_models() -> None:
@@ -1591,6 +1596,25 @@ def test_selective_load_preserves_nested_tool_agent_models() -> None:
     assert [m.output.completion for m in found.values()] == ["SUB ANSWER"]
 
 
+def test_branch_events_render_despite_being_a_load_dependency() -> None:
+    """`branch` is in INTERLEAVE_DEPENDENCIES yet must still render.
+
+    This is the half of the dependency/non-rendered decoupling that the
+    structural-marker tests do not cover: re-deriving `_NON_INTERLEAVED` from
+    `INTERLEAVE_DEPENDENCIES` would silently suppress BRANCH entries, and
+    nothing else notices.
+    """
+    out = ModelOutput.from_content(model="mockllm", content="a1")
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[ChatMessageUser(content="q1"), out.choices[0].message],
+        events=[_model_event("q1", out), BranchEvent()],
+    )
+    assert any(
+        t.startswith("BRANCH") for t in _event_texts(interleave_events(transcript))
+    )
+
+
 @pytest.mark.parametrize("event_type", ["anchor", "checkpoint"])
 def test_structural_markers_gated_independently_of_renderer(
     event_type: str, monkeypatch: pytest.MonkeyPatch
@@ -1611,6 +1635,12 @@ def test_structural_markers_gated_independently_of_renderer(
     monkeypatch.setattr(
         "inspect_scout._transcript.interleave.event_as_str",
         lambda _event: "RENDERED\n",
+    )
+    # Positive control: if the patch ever stops taking effect (e.g. the lookup
+    # moves off interleave's module globals) this fails, instead of the
+    # assertions below passing for the wrong reason.
+    assert (
+        _interleavable_text(ScoreEvent(score=Score(value="C")), "all") == "RENDERED\n"
     )
     assert _interleavable_text(event, "all") is None
     assert _interleavable_text(event, [event_type]) is None
@@ -1644,4 +1674,9 @@ async def test_events_only_branch_entry_carries_event_id() -> None:
             None,
         )
 
-    assert branch_entry_id(streamed) == branch_entry_id(expected)
+    main_model = next(e for e in events_only.events if isinstance(e, ModelEvent))
+    # Absolute, not relative: comparing the two drivers alone passes vacuously
+    # when neither renders a branch entry, and stays green if both regress.
+    assert main_model.uuid is not None
+    assert branch_entry_id(expected) == main_model.uuid
+    assert branch_entry_id(streamed) == main_model.uuid

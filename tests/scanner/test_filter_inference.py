@@ -412,5 +412,13 @@ def test_full_event_union_still_rejected_by_loader(annotation: Any) -> None:
         return scan
 
     factory.__annotations__ = {"return": Scanner[annotation]}
+
+    # With an explicit events= filter, inference is bypassed entirely and the
+    # loader rejects the union either way -- that path cannot tell a working
+    # _spans_event_union from a broken one. Without a filter it can: declining
+    # inference yields the "requires at least one of" error, while the
+    # unmapped-type check would raise about StepEvent/SubtaskEvent instead.
+    with pytest.raises(ValueError, match="requires at least one of"):
+        scanner()(factory)()
     with pytest.raises(RuntimeError, match="must conform to ChatMessage or Event"):
         scanner(events="all")(factory)()

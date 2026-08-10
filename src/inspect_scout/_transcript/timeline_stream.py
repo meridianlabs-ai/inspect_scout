@@ -27,7 +27,7 @@ path depends on.
 from __future__ import annotations
 
 import dataclasses
-from typing import TYPE_CHECKING, AsyncIterator, Literal
+from typing import TYPE_CHECKING, AsyncIterator, Container, Literal
 
 from inspect_ai.event import (
     CompactionEvent,
@@ -41,6 +41,7 @@ from inspect_ai.event import (
 )
 from inspect_ai.model import ChatMessageSystem, ChatMessageUser, ContentText, Model
 
+from inspect_scout._transcript.interleave import _off_thread_model_text
 from inspect_scout._transcript.timeline import (
     TimelineMessages,
     _walk_spans,
@@ -365,7 +366,7 @@ def _output_only_model_event(event: ModelEvent) -> ModelEvent:
 
 def _collect_pass2_model_events(
     event: Event,
-    needed: set[str],
+    needed: Container[str],
     full_by_uuid: dict[str, ModelEvent],
     offthread_by_uuid: dict[str, ModelEvent] | None,
 ) -> None:
@@ -386,10 +387,6 @@ def _collect_pass2_model_events(
             elif offthread_by_uuid is not None:
                 offthread_by_uuid[event.uuid] = _output_only_model_event(event)
         elif offthread_by_uuid is not None:
-            # Deferred (and on the rare uuid-less path only) to avoid the
-            # interleave <-> timeline_stream import cycle.
-            from inspect_scout._transcript.interleave import _off_thread_model_text
-
             # Substitution is keyed by uuid, so this off-thread output can
             # never reach its stub: it would silently vanish from streaming
             # while `interleave_events` renders it as a branch entry. Hand

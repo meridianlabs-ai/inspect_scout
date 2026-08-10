@@ -1,7 +1,15 @@
 """Chronological interleaving of non-message events into the message list."""
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, AsyncIterator, Iterable, Iterator, Literal, NamedTuple
+from typing import (
+    TYPE_CHECKING,
+    AsyncIterator,
+    Final,
+    Iterable,
+    Iterator,
+    Literal,
+    NamedTuple,
+)
 
 from inspect_ai.event import (
     CompactionEvent,
@@ -42,7 +50,7 @@ SpanExternalEvents = dict[str, list[InterleavedEvent]]
 See ``collect_span_external()``'s docstring for the key/ordering contract.
 """
 
-INTERLEAVE_DEPENDENCIES: frozenset[EventType] = frozenset(
+INTERLEAVE_DEPENDENCIES: Final[frozenset[EventType]] = frozenset(
     {"model", "tool", "compaction", "span_begin", "span_end", "branch"}
 )
 """Event types that must be LOADED for interleaving to be correct.
@@ -56,7 +64,7 @@ out gets silent degradation rather than an error, so any content filter built
 for interleaving must be a superset of this.
 """
 
-_NON_INTERLEAVED: frozenset[EventType] = frozenset(
+_NON_INTERLEAVED: Final[frozenset[EventType]] = frozenset(
     {"model", "tool", "compaction", "span_begin", "span_end", "anchor", "checkpoint"}
 )
 """Event types never RENDERED as ``[E#]`` entries.

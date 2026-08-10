@@ -114,14 +114,24 @@ from inspect_scout._transcript.types import EventType
         pytest.param(
             ScoreEditEvent(score_name="acc", edit=ScoreEdit(value="I")),
             "SCORE EDIT (acc): value=I\n",
-            id="score-edit-value",
+            id="score-edit-value-only",
         ),
         pytest.param(
             ScoreEditEvent(
-                score_name="acc", edit=ScoreEdit(value="I", explanation="wrong")
+                score_name="acc",
+                edit=ScoreEdit(
+                    value="I", answer="42", metadata={"k": 1}, explanation="why, then"
+                ),
             ),
-            "SCORE EDIT (acc): value=I\n  explanation: wrong\n",
-            id="score-edit-explanation-on-own-line",
+            "SCORE EDIT (acc): value=I metadata edited\n"
+            "  answer: 42\n"
+            "  explanation: why, then\n",
+            id="score-edit-all-fields",
+        ),
+        pytest.param(
+            ScoreEditEvent(score_name="acc", edit=ScoreEdit()),
+            "SCORE EDIT (acc)\n",
+            id="score-edit-no-changed-fields",
         ),
         pytest.param(
             ScoreEditEvent(score_name="acc", edit=ScoreEdit(metadata={"k": 1})),
@@ -130,8 +140,20 @@ from inspect_scout._transcript.types import EventType
         ),
         pytest.param(
             ScoreEditEvent(score_name="acc", edit=ScoreEdit(answer=None)),
-            "SCORE EDIT (acc): answer=None\n",
+            "SCORE EDIT (acc)\n  answer: (cleared)\n",
             id="score-edit-clearing-answer-is-a-real-edit",
+        ),
+        pytest.param(
+            ScoreEditEvent(score_name="acc", edit=ScoreEdit(explanation=None)),
+            "SCORE EDIT (acc)\n  explanation: (cleared)\n",
+            id="score-edit-clearing-explanation-is-a-real-edit",
+        ),
+        pytest.param(
+            ScoreEditEvent(
+                score_name="acc", edit=ScoreEdit(explanation="line1\nline2")
+            ),
+            "SCORE EDIT (acc)\n  explanation: line1\nline2\n",
+            id="score-edit-multiline-explanation-not-inlined",
         ),
         pytest.param(
             InterruptEvent(source="limit", interrupted="generate"),

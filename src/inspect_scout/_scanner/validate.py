@@ -58,7 +58,7 @@ TYPE_TO_MESSAGE_FILTER: dict[type[Any], str] = {
     ChatMessageTool: "tool",
 }
 
-TYPE_TO_EVENT_FILTER: dict[type[Any], str] = {
+TYPE_TO_EVENT_FILTER: dict[type[Event], EventType] = {
     ModelEvent: "model",
     ToolEvent: "tool",
     SampleInitEvent: "sample_init",
@@ -82,7 +82,7 @@ TYPE_TO_EVENT_FILTER: dict[type[Any], str] = {
     InterruptEvent: "interrupt",
 }
 
-EVENT_FILTER_TO_TYPE: dict[str, type[Event]] = {
+EVENT_FILTER_TO_TYPE: dict[EventType, type[Event]] = {
     filter_name: event_type for event_type, filter_name in TYPE_TO_EVENT_FILTER.items()
 }
 
@@ -122,7 +122,7 @@ def _unmapped_event_types(input_type: Any) -> list[type[Any]]:
 def infer_filters_from_type(
     scanner_fn: Callable[..., Any],
     factory_globals: dict[str, Any],
-) -> tuple[list[str] | None, list[str] | None, bool]:
+) -> tuple[list[str] | None, list[EventType] | None, bool]:
     """
     Infer message, event, and timeline filters from scanner function type annotations.
 

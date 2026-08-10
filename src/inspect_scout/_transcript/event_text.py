@@ -219,20 +219,20 @@ def _score_edit_event_as_str(event: Event) -> str | None:
     # UNCHANGED is a plain string sentinel upstream, so a categorical score
     # whose real value is "UNCHANGED" is indistinguishable from an untouched
     # field and drops out here. Not fixable without an upstream change.
-    header = [
-        f"{field}={value}"
-        for field, value in (("value", edit.value), ("answer", edit.answer))
-        if value != UNCHANGED
-    ]
+    header: list[str] = []
+    if edit.value != UNCHANGED:
+        header.append(f"value={edit.value}")
     if edit.metadata != UNCHANGED:
         header.append("metadata edited")
     result = f"SCORE EDIT ({event.score_name})"
     if header:
         result += f": {' '.join(header)}"
-    # Free text on its own line, matching _score_event_as_str: an explanation
-    # routinely contains commas and newlines and would be unreadable inlined.
-    if edit.explanation != UNCHANGED and edit.explanation is not None:
-        result += f"\n  explanation: {edit.explanation}"
+    # answer and explanation are free text -- own lines, as _score_event_as_str
+    # does, so their commas and newlines cannot be read as field separators.
+    # None clears the field, which is an edit in its own right and must show.
+    for field, value in (("answer", edit.answer), ("explanation", edit.explanation)):
+        if value != UNCHANGED:
+            result += f"\n  {field}: {'(cleared)' if value is None else value}"
     return result + "\n"
 
 

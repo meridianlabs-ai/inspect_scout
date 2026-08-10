@@ -660,9 +660,9 @@ def test_uuidless_offthread_model_event_falls_back(
 
     if raises:
         with pytest.raises(_StubSkeletonUnsupported):
-            _collect_pass2_model_events(fork, set(), {}, offthread)
+            _collect_pass2_model_events(fork, frozenset(), {}, offthread)
     else:
-        _collect_pass2_model_events(fork, set(), {}, offthread)
+        _collect_pass2_model_events(fork, frozenset(), {}, offthread)
 
 
 def test_uuidless_offthread_empty_output_does_not_force_fallback() -> None:
@@ -682,5 +682,5 @@ def test_uuidless_offthread_empty_output_does_not_force_fallback() -> None:
         .model_copy(update={"output": ModelOutput(model="m", choices=[])})
     )
     offthread: dict[str, ModelEvent] = {}
-    _collect_pass2_model_events(empty, set(), {}, offthread)
+    _collect_pass2_model_events(empty, frozenset(), {}, offthread)
     assert offthread == {}

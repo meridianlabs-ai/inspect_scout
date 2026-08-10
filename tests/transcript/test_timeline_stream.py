@@ -11,7 +11,7 @@ from inspect_ai.event._timeline import (
     _get_system_prompt_for_event,
     _has_tool_calls,
 )
-from inspect_ai.model import ChatMessage, ChatMessageSystem, ContentText
+from inspect_ai.model import ChatMessage, ChatMessageSystem, ContentText, ModelOutput
 from inspect_scout._transcript.messages import span_messages
 from inspect_scout._transcript.timeline import TimelineSpan, _walk_spans
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
@@ -663,3 +663,24 @@ def test_uuidless_offthread_model_event_falls_back(
             _collect_pass2_model_events(fork, set(), {}, offthread)
     else:
         _collect_pass2_model_events(fork, set(), {}, offthread)
+
+
+def test_uuidless_offthread_empty_output_does_not_force_fallback() -> None:
+    """An unrenderable off-thread output must not trigger materialization.
+
+    The fallback exists so branch content is not silently lost. An output that
+    renders to nothing is lost either way, so falling back would materialize a
+    whole sample to produce byte-identical text.
+    """
+    from inspect_scout._transcript.timeline_stream import _collect_pass2_model_events
+
+    # No choices at all (e.g. a call that errored): renders to nothing, unlike
+    # an empty completion, which still renders a "MODEL (BRANCH):" header.
+    empty = (
+        _model_event(label="empty", system_prompt="sys", output_text="x", span_id=None)
+        .model_copy(update={"uuid": None})
+        .model_copy(update={"output": ModelOutput(model="m", choices=[])})
+    )
+    offthread: dict[str, ModelEvent] = {}
+    _collect_pass2_model_events(empty, set(), {}, offthread)
+    assert offthread == {}

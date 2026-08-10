@@ -547,8 +547,14 @@ def interleave_events(
 
 
 class _ModelOutputOp(NamedTuple):
-    """A ModelEvent's output-message id and its branch text if off-thread."""
+    """A ModelEvent's ids and its branch text if off-thread.
 
+    Both ids are needed: ``message_id`` anchors the output against the
+    reconstructed thread, while ``event_id`` is what a rendered branch entry
+    must carry, since that id surfaces as an event-typed ``Reference``.
+    """
+
+    event_id: str
     message_id: str
     branch_text: str
 
@@ -642,7 +648,13 @@ async def stream_interleave_events(
             if not scorers.excludes(event):
                 mid = _model_output_id(event)
                 if mid is not None:
-                    ops.append(_ModelOutputOp(mid, _off_thread_model_text(event) or ""))
+                    ops.append(
+                        _ModelOutputOp(
+                            _event_id(event),
+                            mid,
+                            _off_thread_model_text(event) or "",
+                        )
+                    )
             _skeleton_add(skeleton, event)
         elif isinstance(event, CompactionEvent):
             _skeleton_add(skeleton, event)
@@ -663,7 +675,7 @@ async def stream_interleave_events(
         if isinstance(op, _ModelOutputOp):
             consumed = walk.add_model_output(op.message_id)
             if not consumed and op.message_id not in excluded_ids and op.branch_text:
-                walk.add_rendered(op.message_id, op.branch_text)
+                walk.add_rendered(op.event_id, op.branch_text)
         else:
             walk.add_rendered(op.event_id, op.text)
 

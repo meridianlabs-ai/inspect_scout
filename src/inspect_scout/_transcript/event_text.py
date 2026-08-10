@@ -23,6 +23,7 @@ from inspect_ai.event import (
     ToolEvent,
 )
 from inspect_ai.event._score_edit import ScoreEditEvent
+from inspect_ai.scorer._metric import UNCHANGED
 
 logger = getLogger(__name__)
 
@@ -215,18 +216,24 @@ def _score_edit_event_as_str(event: Event) -> str | None:
     if not isinstance(event, ScoreEditEvent):
         return None
     edit = event.edit
-    # "UNCHANGED" is the per-field sentinel for "not touched by this edit".
-    parts = [
+    # UNCHANGED is a plain string sentinel upstream, so a categorical score
+    # whose real value is "UNCHANGED" is indistinguishable from an untouched
+    # field and drops out here. Not fixable without an upstream change.
+    header = [
         f"{field}={value}"
-        for field, value in (
-            ("value", edit.value),
-            ("answer", edit.answer),
-            ("explanation", edit.explanation),
-        )
-        if value != "UNCHANGED"
+        for field, value in (("value", edit.value), ("answer", edit.answer))
+        if value != UNCHANGED
     ]
-    header = f"SCORE EDIT ({event.score_name})"
-    return f"{header}: {', '.join(parts)}\n" if parts else f"{header}\n"
+    if edit.metadata != UNCHANGED:
+        header.append("metadata edited")
+    result = f"SCORE EDIT ({event.score_name})"
+    if header:
+        result += f": {' '.join(header)}"
+    # Free text on its own line, matching _score_event_as_str: an explanation
+    # routinely contains commas and newlines and would be unreadable inlined.
+    if edit.explanation != UNCHANGED and edit.explanation is not None:
+        result += f"\n  explanation: {edit.explanation}"
+    return result + "\n"
 
 
 def _interrupt_event_as_str(event: Event) -> str | None:

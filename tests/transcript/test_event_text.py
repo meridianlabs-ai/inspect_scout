@@ -120,13 +120,18 @@ from inspect_scout._transcript.types import EventType
             ScoreEditEvent(
                 score_name="acc", edit=ScoreEdit(value="I", explanation="wrong")
             ),
-            "SCORE EDIT (acc): value=I, explanation=wrong\n",
-            id="score-edit-multiple-fields",
+            "SCORE EDIT (acc): value=I\n  explanation: wrong\n",
+            id="score-edit-explanation-on-own-line",
         ),
         pytest.param(
-            ScoreEditEvent(score_name="acc", edit=ScoreEdit()),
-            "SCORE EDIT (acc)\n",
-            id="score-edit-no-changed-fields",
+            ScoreEditEvent(score_name="acc", edit=ScoreEdit(metadata={"k": 1})),
+            "SCORE EDIT (acc): metadata edited\n",
+            id="score-edit-metadata-only",
+        ),
+        pytest.param(
+            ScoreEditEvent(score_name="acc", edit=ScoreEdit(answer=None)),
+            "SCORE EDIT (acc): answer=None\n",
+            id="score-edit-clearing-answer-is-a-real-edit",
         ),
         pytest.param(
             InterruptEvent(source="limit", interrupted="generate"),

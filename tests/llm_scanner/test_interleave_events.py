@@ -506,8 +506,8 @@ async def test_stream_events_only_scorers_ordering_matches_materialized() -> Non
     `interleave_events`); what must not happen is a second appearance as a
     branch entry, which also reordered the trailing SCORE entry.
 
-    Compared on text: the branch entry's synthesized id differs between the
-    two drivers on this path, which predates this test.
+    Compared on (id, text): the branch entry's id used to differ between the
+    two drivers here, so this once compared text alone.
     """
     events_only = Transcript(
         transcript_id="t", messages=[], events=_scorers_span_transcript().events
@@ -519,7 +519,7 @@ async def test_stream_events_only_scorers_ordering_matches_materialized() -> Non
     # output legitimately appears in the reconstructed thread here, what must
     # not happen is a second appearance as a branch entry.
     assert "grader assessment" not in "\n".join(_event_texts(streamed))
-    assert [m.text for m in streamed] == [m.text for m in expected]
+    assert [(m.id, m.text) for m in streamed] == [(m.id, m.text) for m in expected]
 
 
 @pytest.mark.anyio
@@ -1569,3 +1569,34 @@ def test_structural_markers_gated_independently_of_renderer(
     )
     assert _interleavable_text(event, "all") is None
     assert _interleavable_text(event, [event_type]) is None
+
+
+@pytest.mark.anyio
+async def test_events_only_branch_entry_carries_event_id() -> None:
+    """A branch entry's id must be the event id on both drivers.
+
+    That id becomes `ChatMessage.id`, which `message_numbering` records in
+    `id_map["E#"]` and `_extract_references` emits as `Reference.id` with
+    `type="event"`. The events-only streaming replay carried the output
+    *message* id instead, so an `[E#]` citation on that path resolved to a
+    message id under an event-typed reference.
+    """
+    events_only = Transcript(
+        transcript_id="t", messages=[], events=_scorers_span_transcript().events
+    )
+    expected = interleave_events(events_only)
+    streamed = [m async for m in stream_interleave_events(_handle_for(events_only))]
+
+    def branch_entry_id(messages: list[ChatMessage]) -> str | None:
+        return next(
+            (
+                m.id
+                for m in messages
+                if m.metadata
+                and m.metadata.get(EVENT_MARKER_KEY)
+                and "MODEL (BRANCH)" in m.text
+            ),
+            None,
+        )
+
+    assert branch_entry_id(streamed) == branch_entry_id(expected)

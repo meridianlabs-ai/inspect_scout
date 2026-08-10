@@ -43,24 +43,32 @@ See ``collect_span_external()``'s docstring for the key/ordering contract.
 """
 
 INTERLEAVE_DEPENDENCIES: frozenset[EventType] = frozenset(
-    {"model", "tool", "compaction", "span_begin", "span_end"}
+    {"model", "tool", "compaction", "span_begin", "span_end", "branch"}
 )
-"""Event types interleaving needs loaded even though it never renders them.
+"""Event types that must be LOADED for interleaving to be correct.
 
 These carry the structure the walk runs on -- model events anchor entries,
 compaction events drive pruning, span events delimit scorer spans, tool events
-nest sub-agent models. A caller that filters them out gets silent degradation
-rather than an error, so any content filter built for interleaving must be a
-superset of this.
+nest sub-agent models, and ``timeline_build`` needs a ``BranchEvent`` to form a
+branch span at all (without one it unrolls the branch into its parent, so the
+scanner reads the branch as the main thread). A caller that filters any of them
+out gets silent degradation rather than an error, so any content filter built
+for interleaving must be a superset of this.
 """
 
-# Never rendered as [E#] entries: the structural dependencies above (already in
-# the message thread, or pure structure), plus replay/infrastructure markers
-# that carry nothing a judge could cite.
-_NON_INTERLEAVED: frozenset[EventType] = INTERLEAVE_DEPENDENCIES | {
-    "anchor",
-    "checkpoint",
-}
+_NON_INTERLEAVED: frozenset[EventType] = frozenset(
+    {"model", "tool", "compaction", "span_begin", "span_end", "anchor", "checkpoint"}
+)
+"""Event types never RENDERED as ``[E#]`` entries.
+
+Either already present in the message thread (model, tool) or pure structure,
+plus replay/infrastructure markers carrying nothing a judge could cite.
+
+Deliberately independent of ``INTERLEAVE_DEPENDENCIES`` rather than derived
+from it: the two answer different questions and neither contains the other.
+``branch`` is required for structure yet renders a useful ``BRANCH`` entry;
+``anchor``/``checkpoint`` render nothing yet need not be loaded.
+"""
 
 EventsSpec = Literal["all"] | list[EventType | str]
 """Which event types to interleave: ``"all"`` or an explicit list.

@@ -3,6 +3,7 @@ from typing import AsyncIterator, Iterable, cast
 
 import pytest
 from inspect_ai.event import (
+    BranchEvent,
     CompactionEvent,
     ErrorEvent,
     ModelEvent,
@@ -12,6 +13,7 @@ from inspect_ai.event import (
     Timeline,
     TimelineEvent,
     TimelineSpan,
+    timeline_build,
 )
 from inspect_ai.event._event import Event
 from inspect_ai.log import EvalError
@@ -34,8 +36,10 @@ from inspect_scout._transcript.interleave import (
     INTERLEAVE_DEPENDENCIES,
     EventsSpec,
     interleave_events,
+    span_interleaved_messages,
     stream_interleave_events,
 )
+from inspect_scout._transcript.timeline import _walk_spans
 from inspect_scout._transcript.types import (
     Transcript,
     TranscriptContent,
@@ -94,6 +98,21 @@ def _model_event(user_text: str, output: ModelOutput) -> ModelEvent:
         input=[ChatMessageUser(content=user_text)],
         output=output,
         role="assistant",
+        config=GenerateConfig(),
+    )
+
+
+def _span_model_event(question: str, answer: str, span_id: str) -> ModelEvent:
+    """A ModelEvent carrying a span_id, for span-structure fixtures."""
+    out = ModelOutput.from_content(model="mockllm", content=answer)
+    return ModelEvent(
+        span_id=span_id,
+        model="mockllm",
+        input=[ChatMessageUser(content=question)],
+        output=out,
+        role="assistant",
+        tools=[],
+        tool_choice="auto",
         config=GenerateConfig(),
     )
 
@@ -1121,16 +1140,41 @@ def test_events_param_extends_loaded_events(
     assert (loaded if loaded == "all" else set(loaded)) == expected
 
 
-def test_loaded_events_cover_interleave_dependencies() -> None:
-    """The load filter must be a superset of what the machinery re-requests.
+def test_selective_load_preserves_branch_structure() -> None:
+    """A selective ``events=`` load must not flatten branch spans into the thread.
 
-    `stream_interleave_events` asks the handle for compaction and span events
-    to derive compaction pruning and scorer exclusion; if the content filter
-    never loaded them the handle yields nothing and both silently degrade.
+    ``timeline_build`` only forms a ``TimelineSpan.branches`` entry when it
+    finds a ``BranchEvent`` among the span's children. Filter ``BranchEvent``
+    out and the branch's conversation is unrolled into its parent, so the
+    scanner reads the branch as the main thread and demotes the real answer
+    to a ``MODEL (BRANCH)`` entry.
+
+    Asserted through the real filter rather than against
+    ``INTERLEAVE_DEPENDENCIES``: comparing the constant to itself cannot
+    detect a type missing from that constant.
     """
+    events: list[Event] = [
+        SpanBeginEvent(
+            id="main", parent_id=None, type="agent", name="main", span_id="main"
+        ),
+        _span_model_event("main q", "MAIN ANSWER", "main"),
+        SpanBeginEvent(
+            id="br", parent_id="main", type="branch", name="br", span_id="br"
+        ),
+        BranchEvent(span_id="br"),
+        _span_model_event("branch q", "BRANCH ONLY", "br"),
+        SpanEndEvent(id="br", span_id="br"),
+        SpanEndEvent(id="main", span_id="main"),
+    ]
+
     scan = llm_scanner(question="q", answer="boolean", events=["score"])
     loaded = getattr(scan, SCANNER_CONTENT_ATTR).events
-    assert INTERLEAVE_DEPENDENCIES <= set(loaded)
+    survived = [e for e in events if e.event in loaded]
+
+    span = next(_walk_spans(timeline_build(survived).root))
+    thread = span_interleaved_messages(span, events=[], compaction="all")
+    assert [m.text for m in thread] == ["main q", "MAIN ANSWER"]
+    assert len(span.branches) == 1
 
 
 @pytest.mark.anyio

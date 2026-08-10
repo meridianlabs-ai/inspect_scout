@@ -167,40 +167,51 @@ def scorers_collection_source(source: Timeline, include_scorers: bool) -> Timeli
     )
 
 
-class _ScorersSpanTracker:
-    """Tracks whether a streamed event sits inside a top-level ``scorers`` span.
+def scorer_span_ids(begins: Iterable[SpanBeginEvent]) -> frozenset[str]:
+    """Ids of spans under a top-level ``scorers`` span, by ``event_tree``'s rule.
 
     Streaming counterpart to ``_scorers_model_event_ids``, which needs the
-    whole event tree in memory.
+    whole event tree in memory. This needs only the span begins.
 
-    Membership is decided by ``parent_id`` -- the same rule ``event_tree``
-    applies -- not by counting span boundaries. Occurrence counting only
-    agrees with the tree on a perfectly balanced, serially-nested stream: a
-    stray ``SpanEndEvent`` (which inspect_ai logs and recovers from) drove the
-    count negative and disabled detection for the rest of the transcript, an
-    unclosed earlier span suppressed it, and concurrently-open top-level spans
-    were misattributed. Checkpoint restore builds transcripts by slicing flat
-    event lists, so none of those are hypothetical.
+    ``event_tree`` indexes every span before resolving parents, and its
+    ``bucket()`` treats a span as a root when its parent id is falsy *or* names
+    a span it never saw. Resolving from the complete set of begins is what
+    makes this match the tree rather than approximate it: arrival order, span
+    ends, and boundary balance are all irrelevant to the tree, so they must be
+    irrelevant here too. Two previous incremental formulations -- counting
+    boundaries, then requiring ``parent_id is None`` -- each leaked grader
+    output on shapes the tree handles: sliced checkpoint-restore transcripts,
+    events preceding their own span begin, and the ``parent_id=""`` that this
+    repo's weave/langsmith/logfire converters emit for roots.
 
-    Every top-level ``scorers`` span is tracked, matching
-    ``_scorers_model_event_ids``.
+    A cyclic parent chain (possible with reused span ids) terminates here
+    rather than recursing, unlike ``event_tree``.
     """
+    by_id = {begin.id: begin for begin in begins}
 
-    def __init__(self) -> None:
-        self._scorer_span_ids: set[str] = set()
+    def under_scorers(span_id: str) -> bool:
+        seen: set[str] = set()
+        current: SpanBeginEvent | None = by_id.get(span_id)
+        while current is not None and current.id not in seen:
+            seen.add(current.id)
+            parent = by_id.get(current.parent_id) if current.parent_id else None
+            if parent is None:
+                return current.name == "scorers"
+            current = parent
+        return False
 
-    def update(self, event: Event) -> None:
-        if isinstance(event, SpanBeginEvent):
-            if (event.parent_id is None and event.name == "scorers") or (
-                event.parent_id in self._scorer_span_ids
-            ):
-                self._scorer_span_ids.add(event.id)
-        elif isinstance(event, SpanEndEvent):
-            self._scorer_span_ids.discard(event.id)
+    return frozenset(span_id for span_id in by_id if under_scorers(span_id))
 
-    def excludes(self, event: Event) -> bool:
-        """Whether `event` is a grader model call the walk must not see."""
-        return isinstance(event, ModelEvent) and event.span_id in self._scorer_span_ids
+
+async def _stream_scorer_span_ids(handle: "TranscriptHandle") -> frozenset[str]:
+    """Resolve grader spans up front from one cheap span-begin-only pass."""
+    return scorer_span_ids(
+        [
+            event
+            async for event in handle.events(types=["span_begin"])
+            if isinstance(event, SpanBeginEvent)
+        ]
+    )
 
 
 def _scorers_model_event_ids(events: list[Event]) -> frozenset[str]:
@@ -616,10 +627,9 @@ async def stream_interleave_events(
             )
 
         walk = _AnchorWalk(message_ids, events, excluded_ids=excluded_ids)
-        scorers = _ScorersSpanTracker()
+        grader_spans = await _stream_scorer_span_ids(handle)
         async for event in handle.events(types=types):
-            scorers.update(event)
-            if scorers.excludes(event):
+            if isinstance(event, ModelEvent) and event.span_id in grader_spans:
                 continue
             walk.add(event)
 
@@ -638,14 +648,13 @@ async def stream_interleave_events(
     # inputs for replay once the thread exists.
     skeleton: list[Event] = []
     ops: list[_ReplayOp] = []
-    scorers = _ScorersSpanTracker()
+    grader_spans = await _stream_scorer_span_ids(handle)
     async for event in handle.events(types=types):
-        scorers.update(event)
         if isinstance(event, ModelEvent):
             # A grader model call still shapes the reconstructed thread, as in
             # `interleave_events` -- it is only kept out of the anchor walk, so
             # it cannot surface as a branch entry.
-            if not scorers.excludes(event):
+            if event.span_id not in grader_spans:
                 mid = _model_output_id(event)
                 if mid is not None:
                     ops.append(

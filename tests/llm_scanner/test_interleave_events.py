@@ -34,13 +34,15 @@ from inspect_scout import llm_scanner
 from inspect_scout._scanner.extract import EVENT_MARKER_KEY
 from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import SCANNER_CONTENT_ATTR
+from inspect_scout._scanner.util import _event_id
 from inspect_scout._transcript.handle import MaterializedTranscriptHandle
 from inspect_scout._transcript.interleave import (
     INTERLEAVE_DEPENDENCIES,
     EventsSpec,
     _interleavable_text,
-    _ScorersSpanTracker,
+    _scorers_model_event_ids,
     interleave_events,
+    scorer_span_ids,
     span_interleaved_messages,
     stream_interleave_events,
 )
@@ -1391,81 +1393,124 @@ def _scorers_events(
     ]
 
 
-_UNCLOSED_SPAN: list[Event] = [
-    SpanBeginEvent(id="x", parent_id=None, type="agent", name="x", span_id="x")
-]
-_STRAY_END: list[Event] = [SpanEndEvent(id="ghost", span_id="ghost")]
+def _grader_events(
+    *, parent_id: str | None, extra: Sequence[Event] = ()
+) -> list[Event]:
+    """Grader model call in a `scorers` span rooted at `parent_id`."""
+    return [
+        *extra,
+        SpanBeginEvent(
+            id="sc", parent_id=parent_id, type="scorers", name="scorers", span_id="sc"
+        ),
+        _span_model_event("grade", "GRADER SECRET", "sc"),
+        SpanEndEvent(id="sc", span_id="sc"),
+    ]
 
 
 @pytest.mark.parametrize(
     "events",
     [
-        pytest.param(_scorers_events(), id="balanced"),
+        pytest.param(_grader_events(parent_id=None), id="root-parent-none"),
         pytest.param(
-            _scorers_events(preamble=_UNCLOSED_SPAN), id="preceding-span-unclosed"
+            _grader_events(parent_id=""),
+            id="root-parent-empty-string-weave-langsmith-logfire",
         ),
-        pytest.param(_scorers_events(preamble=_STRAY_END), id="stray-span-end-first"),
+        pytest.param(_grader_events(parent_id="sliced-away"), id="parent-not-present"),
+        pytest.param(
+            [
+                SpanBeginEvent(
+                    id="x", parent_id=None, type="agent", name="x", span_id="x"
+                ),
+                *_grader_events(parent_id=None),
+            ],
+            id="preceding-span-unclosed",
+        ),
+        pytest.param(
+            [
+                SpanEndEvent(id="ghost", span_id="ghost"),
+                *_grader_events(parent_id=None),
+            ],
+            id="stray-span-end-first",
+        ),
+        pytest.param(
+            [
+                _span_model_event("grade", "GRADER SECRET", "sc"),
+                SpanBeginEvent(
+                    id="sc",
+                    parent_id=None,
+                    type="scorers",
+                    name="scorers",
+                    span_id="sc",
+                ),
+                SpanEndEvent(id="sc", span_id="sc"),
+            ],
+            id="model-before-its-span-begin",
+        ),
+        pytest.param(
+            [
+                SpanBeginEvent(
+                    id="sc",
+                    parent_id=None,
+                    type="scorers",
+                    name="scorers",
+                    span_id="sc",
+                ),
+                SpanBeginEvent(
+                    id="in", parent_id="sc", type="agent", name="inner", span_id="in"
+                ),
+                _span_model_event("grade", "GRADER SECRET", "in"),
+                SpanEndEvent(id="in", span_id="in"),
+                SpanEndEvent(id="sc", span_id="sc"),
+            ],
+            id="grader-nested-one-level-deeper",
+        ),
     ],
 )
-def test_scorers_tracker_excludes_grader_despite_unbalanced_spans(
-    events: list[Event],
-) -> None:
-    """Grader exclusion must not depend on span boundaries being balanced.
+def test_scorer_span_ids_matches_event_tree(events: list[Event]) -> None:
+    """The streaming resolver must agree with `event_tree` on every shape.
 
-    `event_tree` decides "top-level" from `parent_id`; counting span_begin /
-    span_end occurrences instead only agrees on a perfectly balanced stream.
-    inspect_ai logs and recovers from stray span ends, and checkpoint restore
-    builds transcripts by slicing flat event lists, so imbalance reaches this
-    code in practice.
+    Comparing against `_scorers_model_event_ids` -- which *is* the tree -- is
+    the point. Two earlier formulations passed hand-written assertions while
+    diverging from the tree on sliced transcripts, out-of-order events and the
+    `parent_id=""` roots this repo's own source converters emit.
     """
-    tracker = _ScorersSpanTracker()
-    verdicts = []
-    for event in events:
-        tracker.update(event)
-        if isinstance(event, ModelEvent):
-            verdicts.append(tracker.excludes(event))
-    assert verdicts == [True]
+    from_tree = _scorers_model_event_ids(events)
+    begins = [e for e in events if isinstance(e, SpanBeginEvent)]
+    grader_spans = scorer_span_ids(begins)
+    from_stream = {
+        _event_id(e)
+        for e in events
+        if isinstance(e, ModelEvent) and e.span_id in grader_spans
+    }
+    assert from_stream == set(from_tree)
+    assert from_stream, "fixture must actually contain a grader to exclude"
 
 
-def test_scorers_tracker_releases_after_unclosed_scorers_span() -> None:
-    """A missing scorers span_end must not latch exclusion over later models."""
-    events = [
-        *_scorers_events(close_scorers=False),
-        _span_model_event("after", "AFTER MODEL", "span-later"),
-    ]
-    tracker = _ScorersSpanTracker()
-    verdicts = []
-    for event in events:
-        tracker.update(event)
-        if isinstance(event, ModelEvent):
-            verdicts.append(tracker.excludes(event))
-    assert verdicts == [True, False]
-
-
-def test_scorers_tracker_ignores_overlapping_top_level_span() -> None:
+def test_scorer_span_ids_leaves_unrelated_top_level_spans_alone() -> None:
     """A concurrently-open unrelated top-level span must not be excluded."""
     events: list[Event] = [
         SpanBeginEvent(
-            id="span-scorers",
-            parent_id=None,
-            type="scorers",
-            name="scorers",
-            span_id="span-scorers",
+            id="sc", parent_id=None, type="scorers", name="scorers", span_id="sc"
         ),
         SpanBeginEvent(
             id="other", parent_id=None, type="agent", name="other", span_id="other"
         ),
         _span_model_event("main q", "MAIN ANSWER", "other"),
         SpanEndEvent(id="other", span_id="other"),
-        SpanEndEvent(id="span-scorers", span_id="span-scorers"),
+        SpanEndEvent(id="sc", span_id="sc"),
     ]
-    tracker = _ScorersSpanTracker()
-    verdicts = []
-    for event in events:
-        tracker.update(event)
-        if isinstance(event, ModelEvent):
-            verdicts.append(tracker.excludes(event))
-    assert verdicts == [False]
+    assert "other" not in scorer_span_ids(
+        [e for e in events if isinstance(e, SpanBeginEvent)]
+    )
+
+
+def test_scorer_span_ids_terminates_on_cyclic_parents() -> None:
+    """Reused span ids can form a parent cycle; resolution must not recurse."""
+    begins = [
+        SpanBeginEvent(id="a", parent_id="b", type="agent", name="a", span_id="a"),
+        SpanBeginEvent(id="b", parent_id="a", type="agent", name="b", span_id="b"),
+    ]
+    assert scorer_span_ids(begins) == frozenset()
 
 
 def test_all_top_level_scorers_spans_excluded_materialized() -> None:

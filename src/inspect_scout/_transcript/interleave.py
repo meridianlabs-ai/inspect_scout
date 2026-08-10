@@ -198,20 +198,29 @@ def scorer_span_ids(begins: Iterable[SpanBeginEvent]) -> frozenset[str]:
     A cyclic parent chain (possible with reused span ids) terminates here
     rather than recursing, unlike ``event_tree``.
     """
-    by_id = {begin.id: begin for begin in begins}
+    spans_by_id: dict[str, list[SpanBeginEvent]] = defaultdict(list)
+    for begin in begins:
+        spans_by_id[begin.id].append(begin)
+    # Last begin wins for the name, as event_tree's node index does.
+    name_by_id = {begin.id: begin.name for begin in begins}
 
-    def under_scorers(span_id: str) -> bool:
-        seen: set[str] = set()
-        current: SpanBeginEvent | None = by_id.get(span_id)
-        while current is not None and current.id not in seen:
-            seen.add(current.id)
-            parent = by_id.get(current.parent_id) if current.parent_id else None
-            if parent is None:
-                return current.name == "scorers"
-            current = parent
-        return False
+    def rooted_at_scorers(begin: SpanBeginEvent, seen: frozenset[str]) -> bool:
+        if begin.id in seen:
+            return False
+        parents = spans_by_id.get(begin.parent_id) if begin.parent_id else None
+        if not parents:
+            return name_by_id[begin.id] == "scorers"
+        # A reused id is reachable from every begin that declared it, which is
+        # how event_tree sees it -- resolving only the last one loses a parent.
+        return any(rooted_at_scorers(p, seen | {begin.id}) for p in parents)
 
-    return frozenset(span_id for span_id in by_id if under_scorers(span_id))
+    return frozenset(
+        span_id
+        for span_id, spans in spans_by_id.items()
+        # A falsy span id is a root to event_tree's bucket() and can never be a
+        # scorers member; keeping "" would mark every span-less event a grader.
+        if span_id and any(rooted_at_scorers(b, frozenset()) for b in spans)
+    )
 
 
 async def _stream_scorer_span_ids(handle: "TranscriptHandle") -> frozenset[str]:

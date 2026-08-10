@@ -1451,6 +1451,33 @@ def _grader_events(
         pytest.param(
             [
                 SpanBeginEvent(
+                    id="", parent_id=None, type="scorers", name="scorers", span_id=""
+                ),
+                _span_model_event("q", "answer", ""),
+                SpanEndEvent(id="", span_id=""),
+                *_grader_events(parent_id=None),
+            ],
+            id="falsy-span-id-is-a-root-not-a-member",
+        ),
+        pytest.param(
+            [
+                SpanBeginEvent(
+                    id="g", parent_id=None, type="scorers", name="scorers", span_id="g"
+                ),
+                _span_model_event("grade", "GRADER SECRET", "g"),
+                SpanBeginEvent(
+                    id="a", parent_id=None, type="agent", name="agent", span_id="a"
+                ),
+                SpanBeginEvent(
+                    id="g", parent_id="a", type="agent", name="inner", span_id="g"
+                ),
+                SpanEndEvent(id="g", span_id="g"),
+            ],
+            id="reused-span-id-reachable-from-two-parents",
+        ),
+        pytest.param(
+            [
+                SpanBeginEvent(
                     id="sc",
                     parent_id=None,
                     type="scorers",
@@ -1485,7 +1512,6 @@ def test_scorer_span_ids_matches_event_tree(events: list[Event]) -> None:
         if isinstance(e, ModelEvent) and e.span_id in grader_spans
     }
     assert from_stream == set(from_tree)
-    assert from_stream, "fixture must actually contain a grader to exclude"
 
 
 def test_scorer_span_ids_leaves_unrelated_top_level_spans_alone() -> None:
@@ -1715,3 +1741,62 @@ def test_branch_span_events_are_not_collected_known_gap() -> None:
     assert [(b.id, len(b.content)) for b in scannable[0].branches] == [("b1", 3)]
     # The branch really does hold content, and it really is unreachable.
     assert collect_span_external(tree, "all") == {}
+
+
+def test_scorer_span_ids_matches_event_tree_under_fuzz() -> None:
+    """Differential property check over randomized span shapes.
+
+    Hand-picked cases have now missed a divergence four separate times -- each
+    formulation looked right and passed its own examples. Only comparing
+    against `_scorers_model_event_ids` (which is `event_tree`) over shapes
+    nobody chose has caught them. Fixed seed so failures are reproducible.
+    """
+    import logging
+    import random
+
+    ids = ["", "a", "b", "g"]
+    names = ["scorers", "agent", "solvers"]
+    parents = [None, "", "a", "b", "g", "absent"]
+    rng = random.Random(20260810)
+
+    logging.disable(logging.WARNING)  # orphan span ends warn by design
+    try:
+        for _ in range(2000):
+            events: list[Event] = []
+            for _ in range(rng.randint(1, 8)):
+                roll = rng.random()
+                if roll < 0.45:
+                    span = rng.choice(ids)
+                    events.append(
+                        SpanBeginEvent(
+                            id=span,
+                            parent_id=rng.choice(parents),
+                            type="span",
+                            name=rng.choice(names),
+                            span_id=span,
+                        )
+                    )
+                elif roll < 0.65:
+                    events.append(
+                        SpanEndEvent(id=rng.choice(ids), span_id=rng.choice(ids))
+                    )
+                else:
+                    events.append(_span_model_event("q", "a", rng.choice(ids)))
+            try:
+                from_tree = set(_scorers_model_event_ids(events))
+            except RecursionError:
+                continue  # upstream event_tree cycles on some reused-id shapes
+            grader_spans = scorer_span_ids(
+                [e for e in events if isinstance(e, SpanBeginEvent)]
+            )
+            from_stream = {
+                _event_id(e)
+                for e in events
+                if isinstance(e, ModelEvent) and e.span_id in grader_spans
+            }
+            assert from_stream == from_tree, [
+                (e.event, getattr(e, "id", None), getattr(e, "parent_id", None))
+                for e in events
+            ]
+    finally:
+        logging.disable(logging.NOTSET)

@@ -3,6 +3,7 @@ from typing import AsyncIterator, Iterable, Sequence, cast
 
 import pytest
 from inspect_ai.event import (
+    AnchorEvent,
     BranchEvent,
     CompactionEvent,
     ErrorEvent,
@@ -13,8 +14,10 @@ from inspect_ai.event import (
     Timeline,
     TimelineEvent,
     TimelineSpan,
+    ToolEvent,
     timeline_build,
 )
+from inspect_ai.event._checkpoint import CheckpointEvent
 from inspect_ai.event._event import Event
 from inspect_ai.log import EvalError
 from inspect_ai.model import (
@@ -35,12 +38,14 @@ from inspect_scout._transcript.handle import MaterializedTranscriptHandle
 from inspect_scout._transcript.interleave import (
     INTERLEAVE_DEPENDENCIES,
     EventsSpec,
+    _interleavable_text,
     _ScorersSpanTracker,
     interleave_events,
     span_interleaved_messages,
     stream_interleave_events,
 )
 from inspect_scout._transcript.timeline import _walk_spans
+from inspect_scout._transcript.timeline_stream import _collect_pass2_model_events
 from inspect_scout._transcript.types import (
     Transcript,
     TranscriptContent,
@@ -509,6 +514,11 @@ async def test_stream_events_only_scorers_ordering_matches_materialized() -> Non
     )
     expected = interleave_events(events_only)
     streamed = [m async for m in stream_interleave_events(_handle_for(events_only))]
+    # Absolute, so a regression in the materialized oracle cannot move both
+    # sides together and keep this green. Scoped to event entries: the grader's
+    # output legitimately appears in the reconstructed thread here, what must
+    # not happen is a second appearance as a branch entry.
+    assert "grader assessment" not in "\n".join(_event_texts(streamed))
     assert [m.text for m in streamed] == [m.text for m in expected]
 
 
@@ -1503,3 +1513,59 @@ def test_all_top_level_scorers_spans_excluded_materialized() -> None:
     texts = "\n".join(_event_texts(interleave_events(transcript)))
     assert "GRADER SECRET 1" not in texts
     assert "GRADER SECRET 2" not in texts
+
+
+def test_selective_load_preserves_nested_tool_agent_models() -> None:
+    """A sub-agent ModelEvent nested in a ToolEvent must survive the load filter.
+
+    `_collect_pass2_model_events` recurses into `ToolEvent.events` to find
+    models that never appear at the top level of a handle's flat stream. Drop
+    `tool` from the filter and the enclosing event is gone, so the nested model
+    is unreachable -- the reason `tool` is a dependency despite never
+    rendering.
+    """
+    nested = _span_model_event("sub q", "SUB ANSWER", "span-main")
+    tool_event = ToolEvent(
+        span_id="span-main",
+        id="call-1",
+        function="delegate",
+        arguments={},
+        result="done",
+        events=[nested],
+    )
+    scan = llm_scanner(question="q", answer="boolean", events=["score"])
+    loaded = getattr(scan, SCANNER_CONTENT_ATTR).events
+
+    survived = [e for e in [tool_event] if e.event in loaded]
+    assert survived, "tool events must survive so nested sub-agent models remain"
+
+    assert nested.uuid is not None
+    found: dict[str, ModelEvent] = {}
+    for event in survived:
+        _collect_pass2_model_events(event, {nested.uuid}, found, {})
+    assert [m.output.completion for m in found.values()] == ["SUB ANSWER"]
+
+
+@pytest.mark.parametrize("event_type", ["anchor", "checkpoint"])
+def test_structural_markers_gated_independently_of_renderer(
+    event_type: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`anchor`/`checkpoint` are filter-selectable but must never render.
+
+    `EventType` admits them, so `llm_scanner(events=["anchor"])` is spellable.
+    Asserting `_interleavable_text(...) is None` alone would prove nothing --
+    it is None anyway while no renderer exists. Stubbing `event_as_str` to
+    return text isolates the `_NON_INTERLEAVED` gate as the thing holding
+    them back, so adding a renderer later cannot silently leak them.
+    """
+    event = (
+        AnchorEvent(anchor_id="a1")
+        if event_type == "anchor"
+        else CheckpointEvent.model_construct(checkpoint_id="c1")
+    )
+    monkeypatch.setattr(
+        "inspect_scout._transcript.interleave.event_as_str",
+        lambda _event: "RENDERED\n",
+    )
+    assert _interleavable_text(event, "all") is None
+    assert _interleavable_text(event, [event_type]) is None

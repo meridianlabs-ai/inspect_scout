@@ -125,6 +125,8 @@ class StreamParseResult:
     events: ItemSpool
     blobs: BlobSpool
     metadata_json: ByteSpool
+    spool_dir: Path
+    """Where these spools live, so consumers can open their own alongside."""
     target: str | list[str] | None = None
     scores: dict[str, Any] = field(default_factory=dict)
     timelines: list[dict[str, Any]] = field(default_factory=list)
@@ -224,7 +226,9 @@ async def stream_parse_to_spool(
         unwind.callback(blobs.close)
         metadata_spool = ByteSpool(spool_dir)
         unwind.pop_all()
-    result = StreamParseResult(messages_spool, events_spool, blobs, metadata_spool)
+    result = StreamParseResult(
+        messages_spool, events_spool, blobs, metadata_spool, spool_dir
+    )
 
     messages_coro = (
         _item_coroutine(_SpoolSink(messages_spool), set(), messages_config)

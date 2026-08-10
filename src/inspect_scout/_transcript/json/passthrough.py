@@ -25,6 +25,7 @@ from pydantic import JsonValue
 from ..._util._json import to_json_bytes_compact
 from ..types import TranscriptInfo
 from .reducer import ATTACHMENT_REF_BYTES, ATTACHMENT_REF_PATTERN
+from .spool import ByteSpool
 from .stream_parse import StreamParseResult
 
 _POOLS = ("message_pool", "call_pool")
@@ -44,9 +45,11 @@ def pooled_passthrough(
     """Build `(input_json, input_data_json)` from a spooled parse.
 
     The envelope is emitted incrementally: each message and event is
-    serialized as the spool replays it and appended to a list of chunks, so
+    serialized as the spool replays it and written to a scratch spool, so
     the full set of items never exists as Python objects at once and no
-    ``json.dumps`` ever runs over the whole envelope.
+    ``json.dumps`` ever runs over the whole envelope. Only the finished
+    value is read back whole, because a parquet cell is a single value --
+    that read is the floor this cannot go below.
 
     Args:
         info: Transcript metadata for the envelope.
@@ -91,72 +94,77 @@ def pooled_passthrough(
     # scanned as it is emitted: an id cannot straddle two chunks because every
     # item is serialized whole, so this sees exactly what a scan of the
     # finished envelope would.
-    chunks: list[bytes | memoryview] = []
-    attachment_ids: set[str] = set()
+    # Chunks go to a spool rather than a list: the joined envelope has to exist
+    # contiguously (a parquet cell is one value), but the pieces do not, and
+    # holding both at once doubled the peak on a multi-GB transcript.
+    envelope = ByteSpool(result.spool_dir)
+    try:
+        attachment_ids: set[str] = set()
 
-    def emit_bytes(data: bytes | memoryview) -> None:
-        attachment_ids.update(
-            match.decode("ascii") for match in ATTACHMENT_REF_BYTES.findall(data)
-        )
-        chunks.append(data)
+        def emit_bytes(data: bytes | memoryview) -> None:
+            attachment_ids.update(
+                match.decode("ascii") for match in ATTACHMENT_REF_BYTES.findall(data)
+            )
+            envelope.write(data)
 
-    def emit(text: str) -> None:
-        emit_bytes(text.encode("utf-8"))
+        def emit(text: str) -> None:
+            emit_bytes(text.encode("utf-8"))
 
-    # Everything up to "messages", written key by key rather than dumped whole
-    # -- and sample metadata, which for a metadata-dominated transcript is most
-    # of the envelope, is copied straight from its spool without ever becoming
-    # objects or a `str`.
-    #
-    # These values (unlike the spooled items below) originate from index rows
-    # rather than from parsed transcript JSON, so they can hold types stdlib
-    # `json` refuses -- a parquet TIMESTAMP column arrives as a `datetime`.
-    # `to_json_bytes_compact` is what the materialized path uses, so coercion
-    # of those, of NaN/Infinity, and of anything unserializable matches it
-    # exactly. Values here are small: the large one is spooled.
-    emit("{")
-    for key, value in info.model_dump(exclude={"metadata"}).items():
-        emit(_dumps(key) + ":")
-        emit_bytes(to_json_bytes_compact(value))
-        emit(",")
-    emit('"metadata":{')
-    for index, (key, value) in enumerate(_merged_metadata(info, result).items()):
-        emit(("," if index else "") + _dumps(key) + ":")
-        if value is _SPOOLED_SAMPLE_METADATA:
-            # Scan with an overlap: unlike whole items, these chunks are
-            # arbitrary byte slices, so a ref can straddle two of them.
-            tail = b""
-            for chunk in result.metadata_json.chunks():
-                chunks.append(chunk)
-                attachment_ids.update(
-                    match.decode("ascii")
-                    for match in ATTACHMENT_REF_BYTES.findall(tail + chunk)
-                )
-                tail = chunk[-(_REF_OVERLAP):]
-        else:
+        # Everything up to "messages", written key by key rather than dumped whole
+        # -- and sample metadata, which for a metadata-dominated transcript is most
+        # of the envelope, is copied straight from its spool without ever becoming
+        # objects or a `str`.
+        #
+        # These values (unlike the spooled items below) originate from index rows
+        # rather than from parsed transcript JSON, so they can hold types stdlib
+        # `json` refuses -- a parquet TIMESTAMP column arrives as a `datetime`.
+        # `to_json_bytes_compact` is what the materialized path uses, so coercion
+        # of those, of NaN/Infinity, and of anything unserializable matches it
+        # exactly. Values here are small: the large one is spooled.
+        emit("{")
+        for key, value in info.model_dump(exclude={"metadata"}).items():
+            emit(_dumps(key) + ":")
             emit_bytes(to_json_bytes_compact(value))
-    emit('},"messages":[')
-    for index, message in enumerate(result.messages.items()):
-        if index:
             emit(",")
-        emit(_dumps(message))
-    emit('],"events":[')
-    for index, event in enumerate(result.events.items()):
-        if index:
-            emit(",")
-        emit(
-            _dumps(
-                remap_pool_refs(
-                    _drop_unmapped_refs(event, pos_maps) if dropped else event,
-                    pos_maps["message_pool"],
-                    pos_maps["call_pool"],
+        emit('"metadata":{')
+        for index, (key, value) in enumerate(_merged_metadata(info, result).items()):
+            emit(("," if index else "") + _dumps(key) + ":")
+            if value is _SPOOLED_SAMPLE_METADATA:
+                # Scan with an overlap: unlike whole items, these chunks are
+                # arbitrary byte slices, so a ref can straddle two of them.
+                tail = b""
+                for chunk in result.metadata_json.chunks():
+                    envelope.write(chunk)
+                    attachment_ids.update(
+                        match.decode("ascii")
+                        for match in ATTACHMENT_REF_BYTES.findall(tail + chunk)
+                    )
+                    tail = chunk[-(_REF_OVERLAP):]
+            else:
+                emit_bytes(to_json_bytes_compact(value))
+        emit('},"messages":[')
+        for index, message in enumerate(result.messages.items()):
+            if index:
+                emit(",")
+            emit(_dumps(message))
+        emit('],"events":[')
+        for index, event in enumerate(result.events.items()):
+            if index:
+                emit(",")
+            emit(
+                _dumps(
+                    remap_pool_refs(
+                        _drop_unmapped_refs(event, pos_maps) if dropped else event,
+                        pos_maps["message_pool"],
+                        pos_maps["call_pool"],
+                    )
                 )
             )
-        )
-    emit('],"timelines":[]}')
+        emit('],"timelines":[]}')
 
-    envelope_json = b"".join(chunks)
-    chunks.clear()
+        envelope_json = envelope.read()
+    finally:
+        envelope.close()
 
     pools_json = _dumps(
         {

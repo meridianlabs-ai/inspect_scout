@@ -12,6 +12,7 @@ from inspect_ai.event import (
     InputEvent,
     InterruptEvent,
     LoggerEvent,
+    LoggingMessage,
     SampleInitEvent,
     SampleLimitEvent,
     SandboxEvent,
@@ -20,7 +21,7 @@ from inspect_ai.event import (
     StoreEvent,
 )
 from inspect_ai.event._score_edit import ScoreEditEvent
-from inspect_ai.log import EvalError, LoggingMessage
+from inspect_ai.log import EvalError
 from inspect_ai.scorer import Score, ScoreEdit
 from inspect_ai.tool import ToolCall
 from inspect_scout._transcript.event_text import event_as_str

@@ -1,5 +1,5 @@
 import re
-from typing import AsyncIterator, Iterable, cast
+from typing import AsyncIterator, Iterable, Sequence, cast
 
 import pytest
 from inspect_ai.event import (
@@ -1359,7 +1359,7 @@ async def test_final_score_lands_in_last_chunk_when_split() -> None:
 
 
 def _scorers_events(
-    *, preamble: list[Event] | None = None, close_scorers: bool = True
+    *, preamble: Sequence[Event] | None = None, close_scorers: bool = True
 ) -> list[Event]:
     """Grader model call in a top-level `scorers` span, with optional preamble."""
     return [
@@ -1381,10 +1381,10 @@ def _scorers_events(
     ]
 
 
-_UNCLOSED_SPAN = [
+_UNCLOSED_SPAN: list[Event] = [
     SpanBeginEvent(id="x", parent_id=None, type="agent", name="x", span_id="x")
 ]
-_STRAY_END = [SpanEndEvent(id="ghost", span_id="ghost")]
+_STRAY_END: list[Event] = [SpanEndEvent(id="ghost", span_id="ghost")]
 
 
 @pytest.mark.parametrize(

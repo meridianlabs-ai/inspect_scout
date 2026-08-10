@@ -660,6 +660,6 @@ def test_uuidless_offthread_model_event_falls_back(
 
     if raises:
         with pytest.raises(_StubSkeletonUnsupported):
-            _collect_pass2_model_events(fork, frozenset(), {}, offthread)
+            _collect_pass2_model_events(fork, set(), {}, offthread)
     else:
-        _collect_pass2_model_events(fork, frozenset(), {}, offthread)
+        _collect_pass2_model_events(fork, set(), {}, offthread)

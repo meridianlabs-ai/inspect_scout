@@ -78,26 +78,17 @@ async def test_run_import_completion_message(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("source_name", "expected_message"),
-    [
-        pytest.param("codex", "resumed turn", id="codex_refreshes"),
-        pytest.param("test-source", "initial turn", id="other_source_deduplicates"),
-    ],
-)
-async def test_run_import_existing_transcript_policy(
-    source_name: str,
-    expected_message: str,
+async def test_run_import_does_not_reimport_existing_transcripts(
     tmp_path: Path,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Codex refreshes resumed threads without changing other importers."""
+    """Repeated imports are additive: existing transcript IDs are not rewritten."""
     transcripts_dir = str(tmp_path / "transcripts")
     initial = _sample_transcript_with_message("thread-001", "initial turn")
     resumed = _sample_transcript_with_message("thread-001", "resumed turn")
 
-    await _run_import(_source_with([initial]), source_name, {}, transcripts_dir)
-    await _run_import(_source_with([resumed]), source_name, {}, transcripts_dir)
+    await _run_import(_source_with([initial]), "test-source", {}, transcripts_dir)
+    await _run_import(_source_with([resumed]), "test-source", {}, transcripts_dir)
 
     caplog.clear()
     async with transcripts_db(transcripts_dir) as db:
@@ -107,40 +98,6 @@ async def test_run_import_existing_transcript_policy(
             infos[0], TranscriptContent(messages="all", events="all")
         )
 
-    assert transcript.messages[0].text == expected_message
+    assert transcript.messages[0].text == "initial turn"
     assert len(list(Path(transcripts_dir).glob("*.parquet"))) == 1
-    assert "Index is stale" not in caplog.text
-
-
-@pytest.mark.asyncio
-async def test_run_import_codex_refresh_preserves_shared_parquet_file(
-    tmp_path: Path,
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """Refreshing one thread retains a batch file used by another thread."""
-    transcripts_dir = str(tmp_path / "transcripts")
-    initial = _sample_transcript_with_message("thread-001", "initial turn")
-    untouched = _sample_transcript_with_message("thread-002", "untouched turn")
-    resumed = _sample_transcript_with_message("thread-001", "resumed turn")
-
-    await _run_import(_source_with([initial, untouched]), "codex", {}, transcripts_dir)
-    await _run_import(_source_with([resumed]), "codex", {}, transcripts_dir)
-
-    caplog.clear()
-    async with transcripts_db(transcripts_dir) as db:
-        infos = [info async for info in db.select(Query())]
-        transcripts = [
-            await db.read(info, TranscriptContent(messages="all", events="all"))
-            for info in infos
-        ]
-
-    messages_by_id = {
-        transcript.transcript_id: transcript.messages[0].text
-        for transcript in transcripts
-    }
-    assert messages_by_id == {
-        "thread-001": "resumed turn",
-        "thread-002": "untouched turn",
-    }
-    assert len(list(Path(transcripts_dir).glob("*.parquet"))) == 2
     assert "Index is stale" not in caplog.text

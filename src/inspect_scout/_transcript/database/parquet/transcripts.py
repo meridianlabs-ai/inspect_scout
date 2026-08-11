@@ -287,7 +287,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self._transcript_columns: set[str] = set()
         self._index_columns: set[str] = set()
         self._allowed_parquet_paths: set[str] = set()
-        self._pending_replacement_files: set[str] = set()
 
     @override
     async def connect(self) -> None:
@@ -367,7 +366,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
         | pa.RecordBatchReader,
         session_id: str | None = None,
         commit: bool = True,
-        replace_existing: bool = False,
     ) -> None:
         """Insert transcripts, writing one Parquet file per batch.
 
@@ -383,8 +381,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
             commit: If True (default), commit after insert (compact + refresh view).
                 If False, defer commit for batch operations. Call commit()
                 explicitly when ready to finalize.
-            replace_existing: Replace transcripts whose IDs already exist. Only
-                supported for transcript iterables; defaults to False.
         """
         assert self._conn is not None
         assert self._index_storage is not None
@@ -405,17 +401,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         # two insert codepaths, one for arrow batch, one for transcripts
         if isinstance(transcripts, pa.RecordBatchReader):
-            if replace_existing:
-                raise ValueError(
-                    "replace_existing is not supported for RecordBatchReader inserts"
-                )
             await self._insert_from_record_batch_reader(transcripts, session_id)
         else:
-            await self._insert_from_transcripts(
-                transcripts,
-                session_id,
-                replace_existing=replace_existing,
-            )
+            await self._insert_from_transcripts(transcripts, session_id)
 
         # Commit if requested (default behavior)
         if commit:
@@ -456,11 +444,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
         # Refresh the view AFTER compaction to reflect the final state.
         # Skip coverage check — transient staleness from parallel writers is expected.
         await self._create_transcripts_table(check_coverage=False)
-
-        # Replacement writes are append-only until the refreshed index confirms
-        # that a superseded file has no remaining live rows. This removes the
-        # common one-transcript orphan without deleting multi-transcript files.
-        await self._cleanup_superseded_replacement_files()
 
     @override
     async def select(self, query: Query | None = None) -> AsyncIterator[TranscriptInfo]:
@@ -936,18 +919,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self,
         transcripts: Iterable[Transcript] | AsyncIterable[Transcript] | Transcripts,
         session_id: str | None = None,
-        *,
-        replace_existing: bool = False,
     ) -> None:
         batch: list[dict[str, Any]] = []
         current_batch_size = 0
         target_size_bytes = self._target_file_size_mb * 1024 * 1024
 
         with display().text_progress("Transcript", True) as progress:
-            async for transcript in self._as_async_iterator(
-                transcripts,
-                replace_existing=replace_existing,
-            ):
+            async for transcript in self._as_async_iterator(transcripts):
                 progress.update(text=transcript.transcript_id)
 
                 # Serialize once for both size calculation and writing
@@ -2026,50 +2004,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
         else:
             Path(path).unlink(missing_ok=True)
 
-    async def _cleanup_superseded_replacement_files(self) -> None:
-        """Delete replacement orphans after confirming they are unreferenced.
-
-        Replacement inserts write a new parquet row and move the index entry to
-        it. The old parquet can only be removed when the refreshed, committed
-        index no longer references that file at all. This deliberately preserves
-        batch files containing any transcript that was not replaced.
-        """
-        assert self._conn is not None
-
-        if not self._pending_replacement_files:
-            return
-
-        candidates = self._pending_replacement_files
-        self._pending_replacement_files = set()
-
-        # A snapshot or pre-filtered database has only a partial index view and
-        # therefore cannot prove that a candidate is globally unreferenced.
-        if self._snapshot or (
-            self._query
-            and (self._query.where or self._query.shuffle or self._query.limit)
-        ):
-            return
-
-        referenced_files = {
-            str(row[0])
-            for row in self._conn.execute(
-                "SELECT DISTINCT filename FROM transcript_index "
-                "WHERE filename IS NOT NULL"
-            ).fetchall()
-        }
-
-        for filename in candidates - referenced_files:
-            full_path = self._full_parquet_path(filename)
-            try:
-                self._delete_file(full_path)
-                self._file_columns_cache.pop(full_path, None)
-            except Exception as e:
-                # The refreshed index no longer references this file, so a failed
-                # cleanup leaves harmless orphaned data rather than inconsistency.
-                logger.warning(
-                    f"Failed to delete superseded transcript file {full_path}: {e}"
-                )
-
     async def _compact_session(self, session_id: str) -> None:
         """Compact all parquet files from a session.
 
@@ -2189,46 +2123,23 @@ class ParquetTranscriptsDB(TranscriptsDB):
     def _as_async_iterator(
         self,
         transcripts: Iterable[Transcript] | AsyncIterable[Transcript] | Transcripts,
-        *,
-        replace_existing: bool = False,
     ) -> AsyncIterator[Transcript]:
         """Convert various transcript sources to async iterator.
 
         Args:
             transcripts: Transcripts from various sources (iterable, async iterable,
                 Transcripts object).
-            replace_existing: Yield IDs that existed before this insert, allowing
-                their newest values to replace the indexed database entry.
 
         Returns:
             AsyncIterator over transcripts, filtered to exclude already-present transcripts.
         """
-        seen_ids: set[str] = set()
-
-        def should_yield(transcript_id: str) -> bool:
-            if transcript_id in seen_ids:
-                return False
-            seen_ids.add(transcript_id)
-            if replace_existing:
-                assert self._conn is not None
-                replacement_files = self._conn.execute(
-                    "SELECT DISTINCT filename FROM transcript_index "
-                    "WHERE transcript_id = ? AND filename IS NOT NULL",
-                    [transcript_id],
-                ).fetchall()
-                self._pending_replacement_files.update(
-                    str(row[0]) for row in replacement_files
-                )
-                return True
-            return not self._have_transcript(transcript_id)
-
         # Transcripts - read them fully using reader
         if isinstance(transcripts, Transcripts):
 
             async def _iter() -> AsyncIterator[Transcript]:
                 async with transcripts.reader() as tr:
                     async for t in tr.index():
-                        if should_yield(t.transcript_id):
+                        if not self._have_transcript(t.transcript_id):
                             yield await tr.read(
                                 t,
                                 content=TranscriptContent(messages="all", events="all"),
@@ -2241,7 +2152,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             async def _iter() -> AsyncIterator[Transcript]:
                 async for transcript in transcripts:
-                    if should_yield(transcript.transcript_id):
+                    if not self._have_transcript(transcript.transcript_id):
                         yield transcript
 
             return _iter()
@@ -2251,7 +2162,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             async def _iter() -> AsyncIterator[Transcript]:
                 for transcript in transcripts:
-                    if should_yield(transcript.transcript_id):
+                    if not self._have_transcript(transcript.transcript_id):
                         yield transcript
 
             return _iter()

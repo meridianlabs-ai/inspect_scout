@@ -324,6 +324,8 @@ Codex transcripts are mapped to the database schema as follows:
 | `task_id` | Thread name (from `session_index.jsonl`), else thread ID |
 | `agent` | `"codex-cli"` |
 
+Note that imports are additive: a transcript ID that already exists in the database is not re-imported. Because resuming a Codex session appends to the same rollout file (the thread ID is unchanged), turns added after an import will not appear until you re-create the database (e.g. choose **Overwrite** when running `scout db import` interactively).
+
 
 ## Harbor
 

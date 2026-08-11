@@ -245,6 +245,125 @@ def test_spans_inside_branches_are_never_walked() -> None:
     assert any(isinstance(e, ModelEvent) for e in branch_events)
 
 
+def test_tier2_latest_not_first_with_three_siblings() -> None:
+    """Regression: tier 2 must pick the LATEST preceding walked span.
+
+    Two siblings can't distinguish "latest" from "first" (both coincide
+    whenever the tier-2 event falls after the only walked span seen so
+    far); three siblings with the event after the second one can.
+    """
+    out_a = ModelOutput.from_content(model="mockllm", content="a")
+    out_b = ModelOutput.from_content(model="mockllm", content="b")
+    out_c = ModelOutput.from_content(model="mockllm", content="c")
+    span_a = _span(
+        "a", "agent-a", [_model_event([ChatMessageUser(content="qa")], out_a)]
+    )
+    span_b = _span(
+        "b", "agent-b", [_model_event([ChatMessageUser(content="qb")], out_b)]
+    )
+    span_c = _span(
+        "c", "agent-c", [_model_event([ChatMessageUser(content="qc")], out_c)]
+    )
+    limit = _limit()
+    root = _span_of("root", "root", [span_a, span_b, limit, span_c], span_type=None)
+
+    owned = _owned(root)
+    assert [o.span.id for o in owned] == ["a", "b", "c"]
+    by_id = {o.span.id: o for o in owned}
+    assert any(i.event is limit and not i.own for i in by_id["b"].items)
+    assert not any(i.event is limit for i in by_id["a"].items)
+    assert not any(i.event is limit for i in by_id["c"].items)
+
+
+def test_branch_on_nonwalked_carrier_owner_captured_at_span_start() -> None:
+    """A non-walked carrier's branch rides the owner AT THE CARRIER'S START.
+
+    Design §1, "Spans are owned too": a span's owner is the owner an event
+    at its start position would get. The carrier here is unwalked but
+    contains both a nested walked descendant AND a branch; the branch must
+    ride the tier-2 owner as of entering the carrier (main1, the latest
+    walked span at that point) -- not the nested descendant that only
+    becomes `latest` once the carrier's own content is processed, and not
+    main2, which comes later still.
+    """
+    out_m1 = ModelOutput.from_content(model="mockllm", content="m1")
+    main1 = _span(
+        "m1", "main1", [_model_event([ChatMessageUser(content="q1")], out_m1)]
+    )
+
+    out_nested = ModelOutput.from_content(model="mockllm", content="nested")
+    nested = _span(
+        "nested",
+        "nested-agent",
+        [_model_event([ChatMessageUser(content="qn")], out_nested)],
+    )
+
+    out_alt = ModelOutput.from_content(model="mockllm", content="ALT")
+    branch = _span_of(
+        "br",
+        "branch",
+        [_model_event([ChatMessageUser(content="bq")], out_alt)],
+        span_type="agent",
+    )
+    carrier = _span_of("carrier", "carrier", [nested], span_type="agent")
+    carrier = carrier.model_copy(update={"branches": [branch]})
+
+    out_m2 = ModelOutput.from_content(model="mockllm", content="m2")
+    main2 = _span(
+        "m2", "main2", [_model_event([ChatMessageUser(content="q2")], out_m2)]
+    )
+
+    root = _span_of("root", "root", [main1, carrier, main2], span_type=None)
+
+    owned = _owned(root)
+    assert [o.span.id for o in owned] == ["m1", "nested", "m2"]
+    by_id = {o.span.id: o for o in owned}
+    assert len(by_id["m1"].branches) == 1
+    assert by_id["nested"].branches == []
+    assert by_id["m2"].branches == []
+
+
+def test_nested_branches_flatten_onto_owners_branch_list() -> None:
+    """A branch's own ``.branches`` (branch-of-a-branch) flattens onto the same.
+
+    owner's branch list, b1 then b2, each independently replay-cut
+    (design §4 flattening loop over ``nested_branches``).
+    """
+    out_replay1 = ModelOutput.from_content(model="mockllm", content="replay1")
+    replay1 = _model_event([ChatMessageUser(content="bq1")], out_replay1)
+    out_alt1 = ModelOutput.from_content(model="mockllm", content="alt1")
+    alt1 = _model_event([ChatMessageUser(content="bq1")], out_alt1)
+    cut1 = BranchEvent(from_anchor="anchor-1")
+
+    out_replay2 = ModelOutput.from_content(model="mockllm", content="replay2")
+    replay2 = _model_event([ChatMessageUser(content="bq2")], out_replay2)
+    out_alt2 = ModelOutput.from_content(model="mockllm", content="alt2")
+    alt2 = _model_event([ChatMessageUser(content="bq2")], out_alt2)
+    cut2 = BranchEvent(from_anchor="anchor-2")
+
+    b2 = _span_of("b2", "branch2", [replay2, cut2, alt2], span_type="agent")
+    b2 = b2.model_copy(update={"branched_from": "anchor-2"})
+
+    b1 = _span_of("b1", "branch1", [replay1, cut1, alt1], span_type="agent")
+    b1 = b1.model_copy(update={"branched_from": "anchor-1", "branches": [b2]})
+
+    out = ModelOutput.from_content(model="mockllm", content="own")
+    owner = _span("o", "main", [_model_event([ChatMessageUser(content="q")], out)])
+    owner = owner.model_copy(update={"branches": [b1]})
+
+    [owned] = _owned(owner)
+    assert len(owned.branches) == 2
+    ob1, ob2 = owned.branches
+    assert ob1.branched_from == "anchor-1"
+    assert ob2.branched_from == "anchor-2"
+    events1 = [i.event for i in ob1.items]
+    events2 = [i.event for i in ob2.items]
+    assert replay1 not in events1 and cut1 in events1 and alt1 in events1
+    assert replay2 not in events2 and cut2 in events2 and alt2 in events2
+    assert all(not i.own for i in ob1.items)
+    assert all(not i.own for i in ob2.items)
+
+
 def test_oracle3_differential_against_brute_force() -> None:
     """Design Oracle 3: ownership fuzz vs the deliberately-slow reference."""
     for seed in CORPUS_SEEDS:

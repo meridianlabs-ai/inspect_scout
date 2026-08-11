@@ -135,10 +135,17 @@ def generate(seed: int) -> GeneratedTranscript:
             if rng.random() < 0.3:
                 nested: list[Event] = []
                 sub_thread: list[ChatMessage] = [ChatMessageUser(content="nq")]
-                nested.append(_model_event(ids, sub_thread, f"{label}-nested{i}", span_id=None))
+                nested.append(
+                    _model_event(ids, sub_thread, f"{label}-nested{i}", span_id=None)
+                )
                 if rng.random() < 0.5:  # doubly-nested tool-in-tool
                     inner: list[Event] = [
-                        _model_event(ids, [ChatMessageUser(content="iq")], f"{label}-inner{i}", span_id=None)
+                        _model_event(
+                            ids,
+                            [ChatMessageUser(content="iq")],
+                            f"{label}-inner{i}",
+                            span_id=None,
+                        )
                     ]
                     nested.append(_tool(ids, None, inner, message_id=None))
                 # agent-unset ToolEvent: stays a leaf in the tree
@@ -155,7 +162,9 @@ def generate(seed: int) -> GeneratedTranscript:
         sid = begin(f"branch-{label}", "branch", parent_sid)
         events.append(
             BranchEvent.model_construct(
-                event="branch", uuid=ids.next("u"), span_id=sid,
+                event="branch",
+                uuid=ids.next("u"),
+                span_id=sid,
                 from_anchor=anchor or "",
             )
         )
@@ -181,7 +190,9 @@ def generate(seed: int) -> GeneratedTranscript:
         events.append(_info(ids, "helper-info", util_sid))
         events.append(_score(ids, util_sid))
         end(util_sid, main_sid)
-        events.append(_model_event(ids, main_thread, "main-after-util", span_id=main_sid))
+        events.append(
+            _model_event(ids, main_thread, "main-after-util", span_id=main_sid)
+        )
     elif shape < 0.6:
         # branch: anchored to the last main output, or "" (no anchor)
         anchor = main_thread[-1].id if rng.random() < 0.7 else None
@@ -195,8 +206,12 @@ def generate(seed: int) -> GeneratedTranscript:
         events.append(_score(ids, root_sid))
         events.append(
             SampleLimitEvent.model_construct(
-                event="sample_limit", uuid=ids.next("u"), span_id=root_sid,
-                type="message", limit=10, message="limit"
+                event="sample_limit",
+                uuid=ids.next("u"),
+                span_id=root_sid,
+                type="message",
+                limit=10,
+                message="limit",
             )
         )
     end(root_sid, None)
@@ -221,7 +236,9 @@ def generate(seed: int) -> GeneratedTranscript:
         if rng.random() < 0.5:
             grader_sid = begin("grader", "agent", sc_sid)
             gthread: list[ChatMessage] = [ChatMessageUser(content="grade this")]
-            events.append(_model_event(ids, gthread, "grader assessment", span_id=grader_sid))
+            events.append(
+                _model_event(ids, gthread, "grader assessment", span_id=grader_sid)
+            )
             events.append(_info(ids, "GRADER-INFO", grader_sid))
             end(grader_sid, sc_sid)
         else:
@@ -262,8 +279,11 @@ def _walked_pre_order(
     for item in span.content:
         if isinstance(item, TimelineSpan):
             yield from _walked_pre_order(
-                item, depth=depth, include_scorers=include_scorers,
-                _in_scorers=in_scorers, _scannable_depth=next_depth,
+                item,
+                depth=depth,
+                include_scorers=include_scorers,
+                _in_scorers=in_scorers,
+                _scannable_depth=next_depth,
             )
 
 
@@ -283,15 +303,19 @@ def _document_events(
     turns from tool-spawned sub-agent output.
 
     Recurses into the ToolEvent.events closure (decision 6) and .branches.
-    Skips scorers subtrees entirely when include_scorers=False.
+    Inside a scorers subtree with include_scorers=False, ModelEvents are
+    suppressed by non-existence (design §2); every other event in the
+    subtree still renders into the orphan/owner segment (design §3's orphan
+    table, Decision 2's pruned-ScoreEvent rationale) -- the scorers rule is
+    model-events-only suppression, not whole-subtree exclusion.
     """
     in_scorers = _in_scorers or span.span_type == "scorers"
-    if in_scorers and not include_scorers:
-        return
+    suppress_models = in_scorers and not include_scorers
     chain = _chain + (span.id,)
 
     def flat(event: Event, *, direct: bool = True) -> Iterator[tuple[Event, bool]]:
-        yield event, direct
+        if not (suppress_models and isinstance(event, ModelEvent)):
+            yield event, direct
         if isinstance(event, ToolEvent):
             for nested in event.events:
                 yield from flat(nested, direct=False)
@@ -302,8 +326,10 @@ def _document_events(
                 yield e, chain, False, is_direct
         else:
             yield from _document_events(
-                item, include_scorers=include_scorers,
-                _in_scorers=in_scorers, _chain=chain,
+                item,
+                include_scorers=include_scorers,
+                _in_scorers=in_scorers,
+                _chain=chain,
             )
     for b in span.branches:
         # Same replay-cut CONTRACT as walk_owned_spans (design §4), different
@@ -325,9 +351,7 @@ def _document_events(
             yield e, c, True, is_direct
 
 
-def all_event_uuids(
-    root: TimelineSpan, *, include_scorers: bool
-) -> list[str]:
+def all_event_uuids(root: TimelineSpan, *, include_scorers: bool) -> list[str]:
     return [
         e.uuid
         for e, _, _, _ in _document_events(root, include_scorers=include_scorers)
@@ -347,9 +371,7 @@ def expected_owners(
     root: TimelineSpan, *, depth: int | None, include_scorers: bool
 ) -> dict[str, str]:
     """Uuid -> owner span id; "" = orphan. Slow and obviously correct."""
-    walked = list(
-        _walked_pre_order(root, depth=depth, include_scorers=include_scorers)
-    )
+    walked = list(_walked_pre_order(root, depth=depth, include_scorers=include_scorers))
     walked_ids = [s.id for s in walked]
     owners: dict[str, str] = {}
     latest = ""  # tier 3 until the first walked span starts
@@ -372,9 +394,7 @@ def expected_owners(
             owners[event.uuid] = owner
     # Tier-3 orphans preceding the first walked span lead it (design §1/§3).
     if walked_ids:
-        owners = {
-            u: (walked_ids[0] if o == "" else o) for u, o in owners.items()
-        }
+        owners = {u: (walked_ids[0] if o == "" else o) for u, o in owners.items()}
     return owners
 
 
@@ -415,7 +435,9 @@ def expected_anchor_message_ids(
         if is_branch or event.uuid is None:
             continue
         owner = owners.get(event.uuid)
-        anchors[event.uuid] = last_model_output.get(owner) if owner is not None else None
+        anchors[event.uuid] = (
+            last_model_output.get(owner) if owner is not None else None
+        )
         if is_direct and owner is not None and isinstance(event, ModelEvent):
             mid = _model_output_id(event)
             if mid is not None:

@@ -76,45 +76,46 @@ def _is_subsequence(needle: list[str], haystack: list[str]) -> bool:
 @pytest.mark.anyio
 @pytest.mark.parametrize("include_scorers", [False, True])
 @pytest.mark.parametrize("depth", [None, 1])
-async def test_oracle1_document_order(
-    include_scorers: bool, depth: int | None
-) -> None:
+async def test_oracle1_document_order(include_scorers: bool, depth: int | None) -> None:
     # All four parametrize combinations are red on HEAD, via leg (d) below
     # (empirically confirmed with `--runxfail`; every combination fails at
     # seed 0 with the identical signature: `u0-13 anchored after m0-16,
     # expected m0-8` -- the "helper" utility-span shape in `generate()`
     # always produces trailing-attributed external content between two of
     # "main"'s own turns, regardless of `depth`/`include_scorers`). Legs
-    # (a)-(c) alone are only red at (depth=None, include_scorers=True); the
-    # real mechanism (interleave.py:446-493): `_collect_span_external`'s
-    # recursive call unconditionally overwrites the caller's `last_scannable`
-    # with whatever the callee returns (:483-492), so walking into an earlier
-    # *scannable* sibling/descendant sets `last_scannable` to it, and that
-    # value leaks back to the caller even after the callee returns -- a later
-    # non-scannable sibling's own external content then keys off the stale
-    # descendant instead of the correct enclosing/preceding walked span. (A
-    # scorers-type span is never itself scannable -- `structurally_scannable
-    # = not span_in_scorers and span_is_scannable(span)`, :447 -- so there is
-    # no "nested grader collapsed by depth" step; the bug is generic to any
+    # (a)-(c) alone are ALSO red for both `include_scorers` values at
+    # (depth=None) -- the real mechanism (interleave.py:446-493):
+    # `_collect_span_external`'s recursive call unconditionally overwrites
+    # the caller's `last_scannable` with whatever the callee returns
+    # (:483-492), so walking into an earlier *scannable* sibling/descendant
+    # sets `last_scannable` to it, and that value leaks back to the caller
+    # even after the callee returns -- a later non-scannable sibling's own
+    # external content then keys off the stale descendant instead of the
+    # correct enclosing/preceding walked span. (A scorers-type span is never
+    # itself scannable -- `structurally_scannable = not span_in_scorers and
+    # span_is_scannable(span)`, :447 -- so there is no "nested grader
+    # collapsed by depth" step; the bug is generic to any
     # scannable-then-non-scannable sibling sequence.) `depth=1` is immune to
     # legs (a)-(c) because a nested span can then never satisfy
     # `is_scannable`, so `last_scannable` never moves off the root.
-    # `include_scorers=False` stays green on legs (a)/(c) alone only because
-    # this oracle's own reference (`all_event_uuids`/`expected_owners`)
-    # excludes the whole scorers subtree from consideration for that
-    # parameter -- matching the final post-filter tree shape, not what
-    # `_collect_span_external` (which runs against the *unfiltered* source
-    # per `scorers_collection_source`) actually walks. Production reproduces
-    # the identical misattribution at include_scorers=False too; this is a
-    # real, separate gap in the oracle's own reference, called out here but
-    # out of scope to fix. See task-3-report.md for the full red-check
-    # evidence (with and without leg (d)).
+    # `include_scorers=False` shows the IDENTICAL leg-(c) failure at the same
+    # seed (seed 1: `u1-25 owned by s1-3 rendered in s1-8`) once the oracle's
+    # own reference matches the design's scorers contract (design §2/§3):
+    # include_scorers=False suppresses grader ModelEvents by non-existence,
+    # it does not exclude the whole scorers subtree. An earlier round of this
+    # reference wrongly excluded the whole subtree, which is what made legs
+    # (a)/(c) alone artificially green for this parameter (fixed in
+    # `_document_events`; see task-3-report.md for the wrong-vs-corrected
+    # contract and the full red-check evidence, with and without leg (d),
+    # before and after that fix).
     for seed in CORPUS_SEEDS:
         g = generate(seed)
         tree = timeline_build(g.events)
         results = await run_materialized(
-            g.events, events_spec="all",
-            include_scorers=include_scorers, depth=depth,
+            g.events,
+            events_spec="all",
+            include_scorers=include_scorers,
+            depth=depth,
         )
         markers = rendered_markers(results)
         rendered_ids = [eid for _, eid in markers]
@@ -126,9 +127,7 @@ async def test_oracle1_document_order(
         # Filter to ids the tree can identify: events without uuids render
         # under minted ids that document order cannot rank.
         known = set(doc_order)
-        non_branch = [
-            e for e in rendered_ids if e not in branch_ids and e in known
-        ]
+        non_branch = [e for e in rendered_ids if e not in branch_ids and e in known]
         assert _is_subsequence(non_branch, doc_order), (
             f"seed {seed}: rendered order violates document order: {non_branch}"
         )
@@ -160,7 +159,8 @@ async def test_oracle1_document_order(
                 if entry_id not in anchors or entry_id in branch_ids:
                     continue
                 preceding = [
-                    _message_id(p) for p in msgs[:i]
+                    _message_id(p)
+                    for p in msgs[:i]
                     if not (p.metadata or {}).get(EVENT_MARKER_KEY)
                 ]
                 expected = anchors[entry_id]
@@ -212,32 +212,48 @@ async def test_oracle1_red_check_double_render_include_scorers() -> None:
 
     def model_event(text: str) -> ModelEvent:
         return ModelEvent.model_construct(
-            event="model", uuid=f"u-{text}", model="mockllm",
+            event="model",
+            uuid=f"u-{text}",
+            model="mockllm",
             input=[ChatMessageUser(content="q")],
             output=ModelOutput.from_content(model="mockllm", content=text),
-            role="assistant", config=GenerateConfig(),
+            role="assistant",
+            config=GenerateConfig(),
         )
 
     def ev(e: Event) -> TimelineEvent:
         return TimelineEvent.model_construct(type="event", event=e)
 
     grader = TimelineSpan(
-        id="g", name="grader", span_type="agent",
+        id="g",
+        name="grader",
+        span_type="agent",
         content=[
             ev(model_event("grader assessment")),
-            ev(InfoEvent.model_construct(
-                event="info", uuid="u-info", source=None, data="GRADER-INFO")),
+            ev(
+                InfoEvent.model_construct(
+                    event="info", uuid="u-info", source=None, data="GRADER-INFO"
+                )
+            ),
         ],
     )
     scorers = TimelineSpan(
-        id="sc", name="scorers", span_type="scorers", content=[grader],
+        id="sc",
+        name="scorers",
+        span_type="scorers",
+        content=[grader],
     )
     main = TimelineSpan(
-        id="m", name="main", span_type="agent",
+        id="m",
+        name="main",
+        span_type="agent",
         content=[ev(model_event("answer"))],
     )
     root = TimelineSpan(
-        id="root", name="root", span_type=None, content=[main, scorers],
+        id="root",
+        name="root",
+        span_type=None,
+        content=[main, scorers],
     )
     transcript = Transcript(
         transcript_id="t-dr",
@@ -246,9 +262,12 @@ async def test_oracle1_red_check_double_render_include_scorers() -> None:
     msgs_as_str, _ = message_numbering()
     results: list[TimelineMessages] = []
     async for seg in transcript_messages(
-        transcript, messages_as_str=msgs_as_str,
-        model=get_model("mockllm/model"), context_window=100_000,
-        events="all", include_scorers=True,
+        transcript,
+        messages_as_str=msgs_as_str,
+        model=get_model("mockllm/model"),
+        context_window=100_000,
+        events="all",
+        include_scorers=True,
     ):
         assert isinstance(seg, TimelineMessages)
         results.append(seg)

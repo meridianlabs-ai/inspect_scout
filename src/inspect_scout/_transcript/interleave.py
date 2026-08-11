@@ -32,7 +32,13 @@ from .._scanner.extract import EVENT_MARKER_KEY, message_as_str
 from .._scanner.util import _event_id, _message_id
 from .event_text import event_as_str
 from .messages import span_messages
-from .timeline import _span_has_direct_model_event, span_is_scannable
+from .timeline import (
+    OwnedBranch,
+    OwnedItem,
+    OwnedSpan,
+    _span_has_direct_model_event,
+    span_is_scannable,
+)
 from .types import EventType, Transcript
 
 if TYPE_CHECKING:
@@ -374,6 +380,45 @@ class _AnchorWalk:
         if text is not None:
             self.add_rendered(_event_id(event), text)
 
+    def add_owned(self, item: OwnedItem) -> None:
+        """Timeline-path entry point (design §2).
+
+        No ``ToolEvent.events`` recursion — the ownership traversal already
+        flattened nested events into their own items (decision 6). Foreign
+        items never call ``add_model_output``, so they cannot consume an
+        owner turn's occurrence (hazard 2, both doors). Foreign
+        ``ModelEvent``s render unconditionally as ``MODEL (BRANCH)``;
+        foreign non-model events obey the ``events`` filter, as own ones do.
+        No grader handling here: with ``include_scorers=False`` the
+        traversal never emits grader events (suppression by non-existence,
+        hazard 4).
+        """
+        event = item.event
+        if isinstance(event, ToolEvent):
+            return  # nested events arrive as their own flattened items
+        if isinstance(event, ModelEvent):
+            if item.own:
+                mid = _model_output_id(event)
+                consumed = mid is not None and self.add_model_output(mid)
+                if not consumed:
+                    if (
+                        mid is not None
+                        and mid in self._excluded_ids
+                        and event.span_id in self._compaction_spans
+                    ):
+                        return  # compaction-pruned: stays hidden
+                    text = _off_thread_model_text(event)
+                    if text is not None:
+                        self.add_rendered(_event_id(event), text)
+            else:
+                text = _off_thread_model_text(event)
+                if text is not None:
+                    self.add_rendered(_event_id(event), text)
+            return
+        text = _interleavable_text(event, self._events)
+        if text is not None:
+            self.add_rendered(_event_id(event), text)
+
     def spliced(self, messages: Iterable[ChatMessage]) -> Iterator[ChatMessage]:
         """Yield ``messages`` with the walk's entries spliced in.
 
@@ -430,6 +475,132 @@ def span_interleaved_messages(
             walk.add(item.event)
 
     return list(walk.spliced(messages))
+
+
+def _render_branch_block(branch: OwnedBranch, events: EventsSpec) -> list[ChatMessage]:
+    """Render a branch's items as a flat block of [E#] marker messages.
+
+    Foreign rules apply: ModelEvents render unconditionally as MODEL
+    (BRANCH); everything else obeys the ``events`` filter. Branch items
+    never anchor (design §4).
+    """
+    block: list[ChatMessage] = []
+    for item in branch.items:
+        event = item.event
+        if isinstance(event, ToolEvent):
+            continue  # nested events are their own flattened items
+        if isinstance(event, ModelEvent):
+            text = _off_thread_model_text(event)
+        else:
+            text = _interleavable_text(event, events)
+        if text is not None:
+            block.append(_event_message(_event_id(event), text))
+    return block
+
+
+def _splice_branches(
+    spliced: list[ChatMessage], owned: OwnedSpan, events: EventsSpec
+) -> list[ChatMessage]:
+    """Insert branch blocks at their branched_from positions (design §4).
+
+    Mirrors the viewer's insertBranchCards/findEventByMessageId
+    (ts-mono inspect-components contentItems.ts): branches sharing a
+    branched_from are grouped and spliced consecutively at the single
+    resolved index; unmatched branches — including ``""``, exactly as the
+    viewer's inline positioning treats it — append at the end. Resolution
+    is event-level against the owner's OWN items, output message ids and
+    ToolEvent.message_id only: the streaming stub strips input message
+    ids, so the viewer's input-id tier would break streamed==materialized.
+    KNOWN DIVERGENCES (deliberate): splice.py reads ``""`` as "no shared
+    prefix"; the swimlane geometry (markers.ts resolveForkTimestamp) draws
+    a ``""`` branch from the parent's start. Inline card order is what a
+    debugging human compares against, and this matches it.
+
+    Injection is INDEX INSERTION, never add_model_output — consuming an
+    occurrence would re-open hazard 2 through the branch door.
+    """
+    if not owned.branches:
+        return spliced
+
+    groups: dict[str, list[ChatMessage]] = {}
+    order: list[str] = []
+    for branch in owned.branches:
+        block = _render_branch_block(branch, events)
+        if not block:
+            continue
+        if branch.branched_from not in groups:
+            groups[branch.branched_from] = []
+            order.append(branch.branched_from)
+        groups[branch.branched_from].extend(block)
+    if not groups:
+        return spliced
+
+    resolvable: set[str] = set()
+    for item in owned.items:
+        if not item.own:
+            continue
+        if isinstance(item.event, ModelEvent):
+            mid = _model_output_id(item.event)
+            if mid is not None:
+                resolvable.add(mid)
+        elif isinstance(item.event, ToolEvent) and item.event.message_id:
+            resolvable.add(item.event.message_id)
+
+    def insertion_index(key: str) -> int | None:
+        if key not in resolvable:
+            return None  # includes "": unmatched, appends at the end
+        for i, message in enumerate(spliced):
+            if _message_id(message) == key:
+                # After the message and its anchored [E#] entries.
+                j = i + 1
+                while j < len(spliced) and (
+                    (spliced[j].metadata or {}).get(EVENT_MARKER_KEY)
+                ):
+                    j += 1
+                return j
+        return None
+
+    resolved = [(key, insertion_index(key)) for key in order]
+    matched: list[tuple[str, int]] = [
+        (key, idx) for key, idx in resolved if idx is not None
+    ]
+    # Back-to-front so earlier insertions don't shift later indexes.
+    for key, idx in sorted(matched, key=lambda pair: pair[1], reverse=True):
+        spliced[idx:idx] = groups[key]
+    for unmatched_key, unmatched_idx in resolved:
+        if unmatched_idx is None:
+            spliced.extend(groups[unmatched_key])
+    return spliced
+
+
+def span_owned_messages(
+    owned: OwnedSpan, *, events: EventsSpec, compaction: Compaction
+) -> list[ChatMessage]:
+    """Splice an owned span's items and branches into its message thread.
+
+    Successor to ``span_interleaved_messages`` under the ownership model
+    (design §2): the thread comes from the span's DIRECT content only
+    (``span_messages`` — hazard 1: foreign items never reach it), items
+    are consumed by ``_AnchorWalk.add_owned`` in document order, and
+    branch blocks are inserted at their resolved positions afterwards.
+    ``compaction_spans`` derives from OWN items only (hazard 3).
+    """
+    span = owned.span
+    messages = span_messages(span, compaction=compaction)
+    excluded_ids = _compaction_excluded_ids(
+        span, (_message_id(m) for m in messages), compaction
+    )
+    own_event_spans = frozenset(item.event.span_id for item in owned.items if item.own)
+    walk = _AnchorWalk(
+        [_message_id(m) for m in messages],
+        events,
+        excluded_ids=excluded_ids,
+        compaction_spans=own_event_spans,
+    )
+    for item in owned.items:
+        walk.add_owned(item)
+    spliced = list(walk.spliced(messages))
+    return _splice_branches(spliced, owned, events)
 
 
 def _collect_span_external(

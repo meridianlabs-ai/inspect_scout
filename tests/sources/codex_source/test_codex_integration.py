@@ -158,6 +158,131 @@ async def test_compaction_session(fixtures_dir: Path) -> None:
     assert t.total_tokens == 40100 + 1000
 
 
+@pytest.mark.asyncio
+async def test_compaction_keeps_post_compaction_messages(tmp_path: Path) -> None:
+    """A changed system prompt after compaction remains in the root thread."""
+    thread_id = "0199aaaa-0000-7000-8000-00000000000b"
+    payloads: list[tuple[str, dict[str, Any]]] = [
+        (
+            "session_meta",
+            {
+                "id": thread_id,
+                "timestamp": "2026-08-01T10:00:00Z",
+                "cwd": "/home/user/testproj",
+                "originator": "codex_cli_rs",
+                "cli_version": "0.147.0",
+                "source": "cli",
+            },
+        ),
+        ("turn_context", {"cwd": "/home/user/testproj", "model": "gpt-5.6"}),
+        (
+            "response_item",
+            {
+                "type": "message",
+                "role": "developer",
+                "content": [{"type": "input_text", "text": "Original prompt"}],
+            },
+        ),
+        (
+            "response_item",
+            {
+                "type": "message",
+                "role": "user",
+                "content": [{"type": "input_text", "text": "Run a command"}],
+            },
+        ),
+        (
+            "response_item",
+            {
+                "type": "function_call",
+                "name": "shell",
+                "arguments": '{"command": ["true"]}',
+                "call_id": "call_1",
+            },
+        ),
+        (
+            "response_item",
+            {
+                "type": "function_call_output",
+                "call_id": "call_1",
+                "output": "Command completed",
+            },
+        ),
+        (
+            "response_item",
+            {
+                "type": "message",
+                "role": "assistant",
+                "content": [{"type": "output_text", "text": "Pre-compaction"}],
+                "phase": "final_answer",
+            },
+        ),
+        (
+            "compacted",
+            {
+                "message": "",
+                "replacement_history": [
+                    {
+                        "type": "message",
+                        "role": "user",
+                        "content": [{"type": "input_text", "text": "Run a command"}],
+                    },
+                    {
+                        "type": "compaction",
+                        "id": "cmp_1",
+                        "encrypted_content": "opaque",
+                    },
+                ],
+            },
+        ),
+        (
+            "response_item",
+            {
+                "type": "message",
+                "role": "developer",
+                "content": [{"type": "input_text", "text": "Refreshed prompt"}],
+            },
+        ),
+        (
+            "response_item",
+            {
+                "type": "message",
+                "role": "user",
+                "content": [{"type": "input_text", "text": "After compaction"}],
+            },
+        ),
+        (
+            "response_item",
+            {
+                "type": "message",
+                "role": "assistant",
+                "content": [{"type": "output_text", "text": "Post-compaction"}],
+                "phase": "final_answer",
+            },
+        ),
+    ]
+    lines = [
+        json.dumps(
+            {
+                "timestamp": f"2026-08-01T10:00:{index:02d}Z",
+                "type": type_,
+                "payload": payload,
+            }
+        )
+        for index, (type_, payload) in enumerate(payloads)
+    ]
+    rollout = tmp_path / f"rollout-2026-08-01T10-00-00-{thread_id}.jsonl"
+    rollout.write_text("\n".join(lines) + "\n")
+
+    transcript = await _import_one(tmp_path, thread_id)
+
+    assert [
+        message.text
+        for message in transcript.messages
+        if message.text in {"After compaction", "Post-compaction"}
+    ] == ["After compaction", "Post-compaction"]
+
+
 # ── sub-agents ───────────────────────────────────────────────────────────
 
 

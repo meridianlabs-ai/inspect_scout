@@ -226,10 +226,15 @@ async def _create_transcript(
     if not scout_events:
         return None
 
-    # Extract messages via timeline (excludes sub-agent messages, handles
-    # compaction)
+    # Build the timeline for timing, but derive messages from explicitly
+    # root-scoped events. timeline_build() may classify a post-compaction
+    # Codex model call as a utility agent when its refreshed system prompt
+    # differs from the first tool-calling prompt. That inferred span is not a
+    # real thread boundary. Spawned child events, in contrast, are assigned an
+    # explicit span_id by the rollout processor and remain excluded here.
     timeline = timeline_build(scout_events)
-    messages: list[ChatMessage] = span_messages(timeline.root, compaction="all")
+    root_events = [event for event in scout_events if event.span_id is None]
+    messages: list[ChatMessage] = span_messages(root_events, compaction="all")
 
     # Skip transcripts with no messages (e.g. context-only threads)
     if not messages:

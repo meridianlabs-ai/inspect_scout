@@ -361,3 +361,49 @@ async def test_oracle2_flat_vs_timeline() -> None:
             f"seed {seed}: flat_pairs={flat_pairs} timeline_pairs={timeline_pairs}"
         )
     assert applicable >= 25, f"oracle 2 nearly vacuous: {applicable} applicable"
+
+
+@XFAIL_RED
+@pytest.mark.anyio
+@pytest.mark.parametrize("include_scorers", [False, True])
+async def test_oracle4_streamed_equals_materialized(include_scorers: bool) -> None:
+    """Cross-path differential (design Oracle 4) — the record's most productive tool.
+
+    Compares (span.id, messages_str) segment-for-segment; message paths
+    only, never result aggregation (design §3 'Flag, do not fix').
+    """
+    from inspect_scout._transcript.handle import MaterializedTranscriptHandle
+    from inspect_scout._transcript.timeline_stream import stream_timeline_messages
+    from inspect_scout._transcript.types import TranscriptInfo
+
+    for seed in CORPUS_SEEDS:
+        g = generate(seed)
+        transcript = Transcript(transcript_id=f"t{seed}", events=g.events)
+
+        async def load(transcript: Transcript = transcript) -> Transcript:
+            return transcript
+
+        handle = MaterializedTranscriptHandle(
+            load, TranscriptInfo(transcript_id=f"t{seed}")
+        )
+        msgs_as_str, _ = message_numbering()
+        streamed = [
+            (seg.span.id, seg.messages_str)
+            async for seg in stream_timeline_messages(
+                handle,
+                messages_as_str=msgs_as_str,
+                model=get_model("mockllm/model"),
+                context_window=100_000,
+                events="all",
+                include_scorers=include_scorers,
+            )
+        ]
+        results = await run_materialized(
+            g.events,
+            events_spec="all",
+            include_scorers=include_scorers,
+            depth=None,
+        )
+        # message_numbering is stateful; re-number the materialized pass fresh
+        materialized = [(seg.span.id, seg.messages_str) for seg in results]
+        assert streamed == materialized, f"seed {seed}"

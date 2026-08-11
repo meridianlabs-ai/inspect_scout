@@ -1267,6 +1267,61 @@ async def test_insert_record_batch_reader_duplicate_filtering(
 
 
 @pytest.mark.asyncio
+async def test_replace_cleans_all_precompaction_files_for_id(
+    test_location: Path,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Replacement cleans every unreferenced file indexed for the same ID."""
+    filenames = iter(
+        [
+            "transcripts_20250101T000000_initial.parquet",
+            "transcripts_20250101T000001_intermediate.parquet",
+            "transcripts_20250101T000002_final.parquet",
+        ]
+    )
+
+    def generate_filename(
+        _db: ParquetTranscriptsDB, _session_id: str | None = None
+    ) -> str:
+        return next(filenames)
+
+    monkeypatch.setattr(
+        ParquetTranscriptsDB, "_generate_parquet_filename", generate_filename
+    )
+    initial = create_sample_transcript(
+        id="thread-001", messages=[ChatMessageUser(content="initial turn")]
+    )
+    intermediate = create_sample_transcript(
+        id="thread-001", messages=[ChatMessageUser(content="middle turn")]
+    )
+    final = create_sample_transcript(
+        id="thread-001", messages=[ChatMessageUser(content="final turn")]
+    )
+
+    async with transcripts_db(str(test_location)) as db:
+        await db.insert([initial])
+        await db.insert([intermediate], replace_existing=True, commit=False)
+
+    # Reopening before commit exposes both index entries for the ID. The final
+    # replacement must retain both filenames as cleanup candidates.
+    async with transcripts_db(str(test_location)) as db:
+        await db.insert([final], replace_existing=True)
+
+    caplog.clear()
+    async with transcripts_db(str(test_location)) as db:
+        infos = [info async for info in db.select(Query())]
+        assert len(infos) == 1
+        transcript = await db.read(
+            infos[0], TranscriptContent(messages="all", events="all")
+        )
+
+    assert transcript.messages[0].text == "final turn"
+    assert len(list(test_location.glob("*.parquet"))) == 1
+    assert "Index is stale" not in caplog.text
+
+
+@pytest.mark.asyncio
 async def test_insert_record_batch_reader_batch_size_splitting(
     test_location: Path,
 ) -> None:

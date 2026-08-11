@@ -34,10 +34,6 @@ from inspect_ai.model import (
 from inspect_ai.scorer import Score
 from inspect_scout._scanner.extract import message_numbering
 from inspect_scout._transcript.handle import MaterializedTranscriptHandle
-from inspect_scout._transcript.interleave import (
-    collect_span_external,
-    scorers_collection_source,
-)
 from inspect_scout._transcript.messages import segment_messages, transcript_messages
 from inspect_scout._transcript.timeline import TimelineMessages, timeline_messages
 from inspect_scout._transcript.timeline_stream import stream_timeline_messages
@@ -598,16 +594,6 @@ async def test_depth_excluded_scannable_span_model_output_renders_after_parent()
 
 
 @pytest.mark.anyio
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "streaming-vs-materialized parity bridge: still asserts materialized "
-        "via timeline_messages(..., span_external=...), a parameter the "
-        "ownership rewrite removed (Task 8). Rewiring stream_timeline_messages "
-        "onto the same ownership traversal so this parity check has a "
-        "materialized side to compare against is Task 9's scope."
-    ),
-)
 async def test_stream_tool_event_nested_subagent_depth_excluded_parity() -> None:
     """A ``ToolEvent``-hoisted nested subagent's on-thread turns render as branch entries when ``depth``-excluded, with materialized and streaming parity.
 
@@ -618,11 +604,14 @@ async def test_stream_tool_event_nested_subagent_depth_excluded_parity() -> None
     are needed. Once hoisted, this nested span is handled identically to
     any other structurally scannable span: walked directly when within
     `depth`, or -- as exercised here -- excluded by `depth` and surfaced
-    via `_collect_span_external`'s ModelEvent branch as `MODEL (BRANCH)`
+    via ``walk_owned_spans``' foreign-item folding as `MODEL (BRANCH)`
     entries attached to its parent. The streaming path already recurses
     into `ToolEvent.events` for both full- and off-thread-event
     substitution (`_collect_pass2_model_events`, `timeline_stream.py`), so
-    no changes were needed there either.
+    no changes were needed there either. Was xfailed as a "Task 9" parity
+    bridge; removed here because it XPASSes -- for this fixture shape, the
+    streaming and materialized ownership-traversal-backed paths already
+    agree (verified via `--runxfail`, see task-8-report.md).
     """
     main_1 = _agentic_model_event(
         label="main-1",
@@ -697,7 +686,6 @@ async def test_stream_tool_event_nested_subagent_depth_excluded_parity() -> None
     ]
 
     materialized_tree = timeline_build(events)
-    span_external = collect_span_external(materialized_tree, "all", depth=1)
     materialized_numbering, _ = message_numbering()
     materialized = [
         (seg.span.id, seg.messages_str)
@@ -706,7 +694,6 @@ async def test_stream_tool_event_nested_subagent_depth_excluded_parity() -> None
             messages_as_str=materialized_numbering,
             model="mockllm/model",
             events="all",
-            span_external=span_external,  # type: ignore[call-arg]
             depth=1,
         )
     ]
@@ -838,29 +825,12 @@ def _agentic_events_with_scores() -> list[Event]:
     return events
 
 
-def _materialized_collection_source(
-    tree: Timeline, *, include_scorers: bool = False
-) -> Timeline:
-    """Test-local alias for ``scorers_collection_source`` (see its docstring).
-
-    A thin wrapper so the cross-reference in ``_agentic_events_with_scores``'s
-    docstring above tracks the production collection-source predicate
-    directly, instead of the test file re-deriving (and risking drifting
-    from) its own copy of the same ``scorers``-span logic.
-    """
-    return scorers_collection_source(tree, include_scorers)
-
-
 def _materialized_walk_tree(tree: Timeline) -> Timeline:
     """Mirror ``stream_timeline_messages``' default (``include_scorers=False``) walk tree.
 
     ``scorers`` spans are pruned from the tree that gets walked, matching
     ``transcript_messages``' default: a ``scorers`` span's own events (e.g.
-    a grader ``ModelEvent``) never enter any span's message thread. The
-    UNPRUNED ``tree`` remains the events collection source (passed directly
-    to ``collect_span_external`` by callers), so a pruned ``scorers``
-    span's non-``ModelEvent`` events (e.g. its final ``ScoreEvent``) still
-    surface externally instead of being silently dropped.
+    a grader ``ModelEvent``) never enter any span's message thread.
     """
     return timeline_filter(tree, lambda s: s.span_type != "scorers")
 
@@ -869,11 +839,12 @@ def _materialized_walk_tree(tree: Timeline) -> Timeline:
 @pytest.mark.xfail(
     strict=True,
     reason=(
-        "streaming-vs-materialized parity bridge: still asserts materialized "
-        "via timeline_messages(..., span_external=...), a parameter the "
-        "ownership rewrite removed (Task 8). Rewiring stream_timeline_messages "
-        "onto the same ownership traversal so this parity check has a "
-        "materialized side to compare against is Task 9's scope."
+        "streaming-vs-materialized parity bridge: stream_timeline_messages "
+        "has not been rewired onto walk_owned_spans yet, so its span-"
+        "external event collection still diverges in rendered content from "
+        "the materialized ownership traversal's own foreign-item folding. "
+        "Rewiring stream_timeline_messages onto the same ownership "
+        "traversal is Task 9's scope."
     ),
 )
 @pytest.mark.parametrize("compaction", ["all", "last", 2])
@@ -914,12 +885,9 @@ async def test_stream_timeline_messages_events_parity(
     ]
 
     # `stream_timeline_messages`' default (`include_scorers=False`) prunes
-    # `scorers` spans from the walked tree but collects events from the
-    # UNPRUNED tree; mirror both sides here.
+    # `scorers` spans from the walked tree; mirror that on the
+    # materialized side too.
     materialized_tree = timeline_build(events)
-    span_external = collect_span_external(
-        _materialized_collection_source(materialized_tree), ["score"], depth=depth
-    )
 
     materialized_numbering, _ = message_numbering()
     materialized = [
@@ -929,7 +897,6 @@ async def test_stream_timeline_messages_events_parity(
             messages_as_str=materialized_numbering,
             model="mockllm/model",
             events=["score"],
-            span_external=span_external,  # type: ignore[call-arg]
             compaction=compaction,
             depth=depth,
         )
@@ -1408,3 +1375,43 @@ async def test_orphan_only_segment_reduces_to_scalar_result() -> None:
     assert reduced.type != "resultset"
     assert reduced.value == 0.5
     reducer.assert_not_called()
+
+
+@pytest.mark.anyio
+async def test_agentic_events_none_yields_each_walked_span_exactly_once() -> None:
+    """Pins walk_owned_spans' one-OwnedSpan-per-walked-span discipline.
+
+    A regression once split this into multiple "runs" per span to satisfy a
+    (since-corrected) global cross-segment ordering reading of oracle 1; that
+    made ``main``'s thread render three times under events=None -- a +50%
+    scan-cost, duplicate-results defect. context_window is high enough that
+    no segment splits on size, so any extra segment here would mean a span
+    rendered more than once, not a legitimate content split.
+    """
+    tree = timeline_build(agentic_events())
+    results, combined = await _collect(tree.root, events=None, context_window=100_000)
+
+    assert [seg.span.id for seg in results] == [
+        "main",
+        "sub2",
+        "browser",
+        "tool-agent-call-handoff-tool",
+    ]
+    assert all(seg.span.id != _ORPHAN_SPAN_ID for seg in results)
+    assert combined.count("main-output-3") == 1
+
+
+@pytest.mark.anyio
+async def test_agentic_events_all_yields_each_walked_span_exactly_once() -> None:
+    """Same pin as above, for events="all" (renders every event, not a filter)."""
+    tree = timeline_build(agentic_events())
+    results, combined = await _collect(tree.root, events="all", context_window=100_000)
+
+    assert [seg.span.id for seg in results] == [
+        "main",
+        "sub2",
+        "browser",
+        "tool-agent-call-handoff-tool",
+    ]
+    assert all(seg.span.id != _ORPHAN_SPAN_ID for seg in results)
+    assert combined.count("main-output-3") == 1

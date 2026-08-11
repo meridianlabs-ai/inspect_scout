@@ -376,32 +376,13 @@ def _orphan_span() -> TimelineSpan:
     return TimelineSpan(id=_ORPHAN_SPAN_ID, name="orphans")
 
 
-class _OwnerSlot:
-    """Mutable pointer to the live run for one walked span.
-
-    Shared by reference down every non-walked descendant between a walked
-    span and its nested walked descendants (see ``walk_owned_spans``). A
-    nested walked span closes the slot's ``run`` to ``None`` in place; the
-    next item routed here — by any frame still holding this same slot —
-    lazily opens a fresh run for the same span, appended to ``owners``
-    right where it's needed (after the nested descendant), instead of into
-    a run already positioned earlier.
-    """
-
-    __slots__ = ("span", "run")
-
-    def __init__(self, span: TimelineSpan, run: OwnedSpan | None) -> None:
-        self.span = span
-        self.run = run
-
-
 def walk_owned_spans(
     root: TimelineSpan,
     *,
     depth: int | None = None,
     include_scorers: bool = False,
 ) -> Iterator[OwnedSpan]:
-    """Yield each walked span's owned content, split into document-ordered runs.
+    """Yield each walked span with every event and branch it owns.
 
     The single ownership traversal (design §1): the walked-ness predicate,
     the depth counter, and the scorers rule exist exactly once, here.
@@ -415,17 +396,10 @@ def walk_owned_spans(
     replay prefix (content before the branch's first direct
     ``BranchEvent``) cut, positioned later by ``branched_from`` (§4).
 
-    A walked span's ownership (tier 1, and tier 2 reaching in from outside)
-    can be interrupted by a nested walked descendant and resume afterward.
-    To keep the yielded sequence in true document order, a span's content
-    is split into "runs": it may be yielded more than once, each time
-    carrying the slice of items and branches that fall between two nested
-    walked descendants (or between the span's start/end and the nearest
-    one). A run stays open, and un-yielded, until something closes it — a
-    nested walked descendant beginning inside it, or the traversal ending —
-    then it is yielded exactly where it closed, pre-order; a fresh run for
-    the same span opens lazily, right where next needed, after the
-    descendant that closed the previous one.
+    Each ``OwnedSpan`` is yielded complete, in pre-order: the traversal
+    buffers because tier 1 keeps accruing items to a walked ancestor while
+    nested walked spans come and go, and tier 2 depends on later document
+    positions.
 
     ``depth <= 0`` yields nothing (orphan homing suppressed too).
     """
@@ -436,26 +410,14 @@ def walk_owned_spans(
     orphan_items: list[OwnedItem] = []
     orphan_branches: list[OwnedBranch] = []
     latest: OwnedSpan | None = None  # tier 2: latest-starting walked span
-    walked_entries = 0  # bumped once per span that becomes walked
-
-    def open_run(slot: _OwnerSlot) -> OwnedSpan:
-        # Lazy: a slot with no live run (fresh, or just closed by a nested
-        # walked descendant) opens one on first use, so a run that ends up
-        # empty is never appended/yielded.
-        if slot.run is None:
-            slot.run = OwnedSpan(slot.span, [], [])
-            owners.append(slot.run)
-        return slot.run
 
     def sink(
-        ancestor: _OwnerSlot | None,
+        walked_ancestor: OwnedSpan | None,
     ) -> tuple[list[OwnedItem], list[OwnedBranch]]:
-        if ancestor is not None:
-            run = open_run(ancestor)  # tier 1
-            return run.items, run.branches
-        if latest is not None:
-            return latest.items, latest.branches  # tier 2
-        return orphan_items, orphan_branches  # tier 3
+        owner = walked_ancestor if walked_ancestor is not None else latest
+        if owner is None:
+            return orphan_items, orphan_branches  # tier 3
+        return owner.items, owner.branches
 
     def add_flattened(
         event: Event,
@@ -520,11 +482,11 @@ def walk_owned_spans(
     def visit(
         span: TimelineSpan,
         *,
-        ancestor: _OwnerSlot | None,
+        walked_ancestor: OwnedSpan | None,
         in_scorers: bool,
         scannable_depth: int,
     ) -> None:
-        nonlocal latest, walked_entries
+        nonlocal latest
         in_scorers = in_scorers or span.span_type == "scorers"
         suppressed = in_scorers and not include_scorers
         scannable = not suppressed and span_is_scannable(span)
@@ -537,18 +499,15 @@ def walk_owned_spans(
             next_depth = scannable_depth
             walked = False
 
+        owned: OwnedSpan | None = None
         if walked:
-            walked_entries += 1
-            slot = _OwnerSlot(span, None)
-            latest = open_run(slot)
-            my_slot: _OwnerSlot | None = slot
-        else:
-            my_slot = ancestor
+            owned = OwnedSpan(span, [], [])
+            owners.append(owned)
+            latest = owned
 
         # A span's owner is the owner an event at its start position would
-        # get (design §1, "Spans are owned too") — captured at entry, into
-        # whichever run is currently open for that owner.
-        branch_sink = sink(my_slot)[1]
+        # get (design §1, "Spans are owned too") — captured at entry.
+        branch_sink = owned.branches if owned is not None else sink(walked_ancestor)[1]
         for branch in span.branches:
             # add_branch suppresses grader MODEL events internally via
             # in_scorers; non-model scorers content still splices (§4).
@@ -556,24 +515,20 @@ def walk_owned_spans(
 
         for item in span.content:
             if isinstance(item, TimelineEvent):
-                items, _ = sink(my_slot)
-                add_flattened(item.event, items, own=walked, drop_models=suppressed)
+                if owned is not None:
+                    add_flattened(item.event, owned.items, own=True)
+                else:
+                    items, _ = sink(walked_ancestor)
+                    add_flattened(item.event, items, own=False, drop_models=suppressed)
             else:
-                before = walked_entries
                 visit(
                     item,
-                    ancestor=my_slot,
+                    walked_ancestor=owned if owned is not None else walked_ancestor,
                     in_scorers=in_scorers,
                     scannable_depth=next_depth,
                 )
-                # A nested walked descendant closes my_slot's current run:
-                # anything reaching this owner from now on must open a
-                # fresh one, positioned after the descendant instead of
-                # into the run that already precedes it.
-                if my_slot is not None and walked_entries != before:
-                    my_slot.run = None
 
-    visit(root, ancestor=None, in_scorers=False, scannable_depth=0)
+    visit(root, walked_ancestor=None, in_scorers=False, scannable_depth=0)
 
     if owners:
         if orphan_items or orphan_branches:

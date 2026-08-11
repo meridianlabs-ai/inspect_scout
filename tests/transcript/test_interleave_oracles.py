@@ -121,15 +121,31 @@ async def test_oracle1_document_order(include_scorers: bool, depth: int | None) 
         doc_order = all_event_uuids(tree.root, include_scorers=include_scorers)
         branch_ids = branch_event_uuids(tree.root)
 
-        # (a) non-branch entries follow document order (branch entries splice
-        # at branched_from positions by design — exempt, see design §4).
-        # Filter to ids the tree can identify: events without uuids render
-        # under minted ids that document order cannot rank.
+        # (a) PER-SEGMENT: within each segment, non-branch entries follow
+        # document order (branch entries splice at branched_from positions
+        # by design — exempt, see design §4). Filter to ids the tree can
+        # identify: events without uuids render under minted ids that
+        # document order cannot rank. Deliberately per-segment, not a
+        # single global subsequence across all segments' concatenated
+        # output: a nested walked span claims its own segment while its
+        # parent's thread stays whole, so the parent's post-nesting entries
+        # render in a segment that precedes the nested span's — cross-
+        # segment chronology is not promised and cannot be under this
+        # architecture (design doc, Oracle 1, corrected). Cross-segment
+        # misattribution stays covered by the global owner-segment
+        # invariant, leg (c) below.
         known = set(doc_order)
-        non_branch = [e for e in rendered_ids if e not in branch_ids and e in known]
-        assert _is_subsequence(non_branch, doc_order), (
-            f"seed {seed}: rendered order violates document order: {non_branch}"
-        )
+        for seg in results:
+            seg_ids: list[str] = []
+            for m in seg.messages:
+                if (m.metadata or {}).get(EVENT_MARKER_KEY):
+                    assert m.id is not None
+                    seg_ids.append(m.id)
+            seg_non_branch = [e for e in seg_ids if e not in branch_ids and e in known]
+            assert _is_subsequence(seg_non_branch, doc_order), (
+                f"seed {seed}: segment {seg.span.id} rendered order violates "
+                f"document order: {seg_non_branch}"
+            )
         # (b) GLOBAL: no id renders twice.
         assert len(rendered_ids) == len(set(rendered_ids)), (
             f"seed {seed}: duplicate [E#] ids: {rendered_ids}"
@@ -179,12 +195,19 @@ async def test_oracle1_red_check_agentic_number6() -> None:
         events, events_spec="all", include_scorers=False, depth=None
     )
     markers = rendered_markers(results)
-    rendered_ids = [eid for _, eid in markers]
     doc_order = all_event_uuids(tree.root, include_scorers=False)
     branch_ids = branch_event_uuids(tree.root)
     known = set(doc_order)
-    non_branch = [e for e in rendered_ids if e not in branch_ids and e in known]
-    assert _is_subsequence(non_branch, doc_order)
+    # PER-SEGMENT (design doc, Oracle 1, corrected) — see the longer note on
+    # test_oracle1_document_order's leg (a) above.
+    for seg in results:
+        seg_ids: list[str] = []
+        for m in seg.messages:
+            if (m.metadata or {}).get(EVENT_MARKER_KEY):
+                assert m.id is not None
+                seg_ids.append(m.id)
+        seg_non_branch = [e for e in seg_ids if e not in branch_ids and e in known]
+        assert _is_subsequence(seg_non_branch, doc_order)
     owners = expected_owners(tree.root, depth=None, include_scorers=False)
     for seg_span_id, eid in markers:
         if eid in owners:

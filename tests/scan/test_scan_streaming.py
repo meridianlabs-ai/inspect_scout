@@ -208,7 +208,7 @@ def test_scan_e2e_events_through_streaming_seam(
             scans=tmpdir,
             max_processes=1,  # in-process so the monkeypatched spies apply
             model="mockllm/model",
-            model_args={"custom_outputs": _mock_responses(6)},
+            model_args={"custom_outputs": _mock_responses(4)},
             display="none",
         )
         assert status.complete
@@ -233,7 +233,7 @@ def test_scan_e2e_events_through_streaming_seam(
             scans=tmpdir,
             max_processes=1,
             model="mockllm/model",
-            model_args={"custom_outputs": _mock_responses(6)},
+            model_args={"custom_outputs": _mock_responses(4)},
             display="none",
         )
         assert control_status.complete

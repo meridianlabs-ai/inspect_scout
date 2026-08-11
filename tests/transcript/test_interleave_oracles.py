@@ -11,6 +11,7 @@ import pytest
 from inspect_ai.event import Event, timeline_build
 from inspect_ai.model import get_model
 from inspect_scout._scanner.extract import EVENT_MARKER_KEY, message_numbering
+from inspect_scout._scanner.util import _message_id
 from inspect_scout._transcript.interleave import EventsSpec
 from inspect_scout._transcript.messages import transcript_messages
 from inspect_scout._transcript.timeline import TimelineMessages
@@ -21,6 +22,7 @@ from tests.transcript.tree_gen import (
     CORPUS_SEEDS,
     all_event_uuids,
     branch_event_uuids,
+    expected_anchor_message_ids,
     expected_owners,
     generate,
 )
@@ -70,21 +72,43 @@ def _is_subsequence(needle: list[str], haystack: list[str]) -> bool:
     return all(x in it for x in needle)
 
 
+@XFAIL_RED
 @pytest.mark.anyio
 @pytest.mark.parametrize("include_scorers", [False, True])
 @pytest.mark.parametrize("depth", [None, 1])
 async def test_oracle1_document_order(
-    request: pytest.FixtureRequest, include_scorers: bool, depth: int | None
+    include_scorers: bool, depth: int | None
 ) -> None:
-    # Only (depth=None, include_scorers=True) is red on HEAD: depth=1 collapses
-    # the nested scorers/grader span into a single walked span before the #5/#6
-    # misattribution can surface, and include_scorers=False never enters the
-    # scorers subtree at all. Marking xfail(strict) per-combination (rather than
-    # on the whole parametrized function) keeps the pin accurate to what was
-    # actually observed red on HEAD instead of asserting redness that isn't
-    # there — see task-3-report.md for the full red-check evidence.
-    if depth is None and include_scorers:
-        request.node.add_marker(XFAIL_RED)
+    # All four parametrize combinations are red on HEAD, via leg (d) below
+    # (empirically confirmed with `--runxfail`; every combination fails at
+    # seed 0 with the identical signature: `u0-13 anchored after m0-16,
+    # expected m0-8` -- the "helper" utility-span shape in `generate()`
+    # always produces trailing-attributed external content between two of
+    # "main"'s own turns, regardless of `depth`/`include_scorers`). Legs
+    # (a)-(c) alone are only red at (depth=None, include_scorers=True); the
+    # real mechanism (interleave.py:446-493): `_collect_span_external`'s
+    # recursive call unconditionally overwrites the caller's `last_scannable`
+    # with whatever the callee returns (:483-492), so walking into an earlier
+    # *scannable* sibling/descendant sets `last_scannable` to it, and that
+    # value leaks back to the caller even after the callee returns -- a later
+    # non-scannable sibling's own external content then keys off the stale
+    # descendant instead of the correct enclosing/preceding walked span. (A
+    # scorers-type span is never itself scannable -- `structurally_scannable
+    # = not span_in_scorers and span_is_scannable(span)`, :447 -- so there is
+    # no "nested grader collapsed by depth" step; the bug is generic to any
+    # scannable-then-non-scannable sibling sequence.) `depth=1` is immune to
+    # legs (a)-(c) because a nested span can then never satisfy
+    # `is_scannable`, so `last_scannable` never moves off the root.
+    # `include_scorers=False` stays green on legs (a)/(c) alone only because
+    # this oracle's own reference (`all_event_uuids`/`expected_owners`)
+    # excludes the whole scorers subtree from consideration for that
+    # parameter -- matching the final post-filter tree shape, not what
+    # `_collect_span_external` (which runs against the *unfiltered* source
+    # per `scorers_collection_source`) actually walks. Production reproduces
+    # the identical misattribution at include_scorers=False too; this is a
+    # real, separate gap in the oracle's own reference, called out here but
+    # out of scope to fix. See task-3-report.md for the full red-check
+    # evidence (with and without leg (d)).
     for seed in CORPUS_SEEDS:
         g = generate(seed)
         tree = timeline_build(g.events)
@@ -121,6 +145,29 @@ async def test_oracle1_document_order(
                 assert owners[eid] == seg_span_id, (
                     f"seed {seed}: {eid} owned by {owners[eid]} rendered in "
                     f"{seg_span_id}"
+                )
+        # (d) anchoring: each entry renders after its expected anchor turn's
+        # message and before the next own turn's (design, Oracle 1).
+        anchors = expected_anchor_message_ids(
+            tree.root, depth=depth, include_scorers=include_scorers
+        )
+        for seg in results:
+            msgs = seg.messages
+            for i, m in enumerate(msgs):
+                if not (m.metadata or {}).get(EVENT_MARKER_KEY):
+                    continue
+                entry_id = m.id
+                if entry_id not in anchors or entry_id in branch_ids:
+                    continue
+                preceding = [
+                    _message_id(p) for p in msgs[:i]
+                    if not (p.metadata or {}).get(EVENT_MARKER_KEY)
+                ]
+                expected = anchors[entry_id]
+                actual = preceding[-1] if preceding else None
+                assert actual == expected, (
+                    f"seed {seed}: {entry_id} anchored after {actual}, expected "
+                    f"{expected}"
                 )
 
 

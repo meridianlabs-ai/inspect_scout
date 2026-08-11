@@ -273,8 +273,14 @@ def _document_events(
     include_scorers: bool,
     _in_scorers: bool = False,
     _chain: tuple[str, ...] = (),
-) -> Iterator[tuple[Event, tuple[str, ...], bool]]:
-    """(event, ancestor-span-id-chain innermost-last, is_branch) in doc order.
+) -> Iterator[tuple[Event, tuple[str, ...], bool, bool]]:
+    """(event, ancestor-chain innermost-last, is_branch, is_direct) in doc order.
+
+    ``is_direct`` is True for an event that is itself a direct
+    ``TimelineEvent`` child of ``span.content`` -- as opposed to nested
+    inside a ``ToolEvent``'s ``.events`` closure (decision 6) -- used by
+    ``expected_anchor_message_ids`` to tell a span's own on-thread model
+    turns from tool-spawned sub-agent output.
 
     Recurses into the ToolEvent.events closure (decision 6) and .branches.
     Skips scorers subtrees entirely when include_scorers=False.
@@ -284,16 +290,16 @@ def _document_events(
         return
     chain = _chain + (span.id,)
 
-    def flat(event: Event) -> Iterator[Event]:
-        yield event
+    def flat(event: Event, *, direct: bool = True) -> Iterator[tuple[Event, bool]]:
+        yield event, direct
         if isinstance(event, ToolEvent):
             for nested in event.events:
-                yield from flat(nested)
+                yield from flat(nested, direct=False)
 
     for item in span.content:
         if isinstance(item, TimelineEvent):
-            for e in flat(item.event):
-                yield e, chain, False
+            for e, is_direct in flat(item.event):
+                yield e, chain, False, is_direct
         else:
             yield from _document_events(
                 item, include_scorers=include_scorers,
@@ -313,10 +319,10 @@ def _document_events(
             None,
         )
         live = b if cut is None else b.model_copy(update={"content": b.content[cut:]})
-        for e, c, _ in _document_events(
+        for e, c, _, is_direct in _document_events(
             live, include_scorers=include_scorers, _in_scorers=in_scorers, _chain=chain
         ):
-            yield e, c, True
+            yield e, c, True, is_direct
 
 
 def all_event_uuids(
@@ -324,7 +330,7 @@ def all_event_uuids(
 ) -> list[str]:
     return [
         e.uuid
-        for e, _, _ in _document_events(root, include_scorers=include_scorers)
+        for e, _, _, _ in _document_events(root, include_scorers=include_scorers)
         if e.uuid is not None
     ]
 
@@ -332,7 +338,7 @@ def all_event_uuids(
 def branch_event_uuids(root: TimelineSpan) -> set[str]:
     return {
         e.uuid
-        for e, _, is_branch in _document_events(root, include_scorers=True)
+        for e, _, is_branch, _ in _document_events(root, include_scorers=True)
         if is_branch and e.uuid is not None
     }
 
@@ -347,7 +353,7 @@ def expected_owners(
     walked_ids = [s.id for s in walked]
     owners: dict[str, str] = {}
     latest = ""  # tier 3 until the first walked span starts
-    for event, chain, _is_branch in _document_events(
+    for event, chain, _is_branch, _is_direct in _document_events(
         root, include_scorers=include_scorers
     ):
         # Tier 1: nearest enclosing walked ancestor (innermost wins). For a
@@ -370,3 +376,48 @@ def expected_owners(
             u: (walked_ids[0] if o == "" else o) for u, o in owners.items()
         }
     return owners
+
+
+def _model_output_id(event: ModelEvent) -> str | None:
+    """Independent of ``interleave``'s output-id lookup.
+
+    Kept a separate, obviously-correct read so the reference never imports
+    the code under test. Every generated ModelEvent has exactly one choice
+    with an explicit ``.id`` (see ``_model_event``), so no text-hash
+    fallback is needed here.
+    """
+    if event.output.choices and event.output.choices[0].message is not None:
+        return event.output.choices[0].message.id
+    return None
+
+
+def expected_anchor_message_ids(
+    root: TimelineSpan, *, depth: int | None, include_scorers: bool
+) -> dict[str, str | None]:
+    """Map each rendered event to its expected anchor message id.
+
+    Rendered-event uuid -> output message id of the last preceding OWN
+    (direct-content) ModelEvent of its owner in document order, or None when
+    the event leads the owner's thread. Branch-subtree events are absent
+    (they position by branched_from, not by anchor). Only sound for
+    compaction-free trees (the generated corpus).
+    """
+    owners = expected_owners(root, depth=depth, include_scorers=include_scorers)
+    walked_ids = {
+        s.id
+        for s in _walked_pre_order(root, depth=depth, include_scorers=include_scorers)
+    }
+    last_model_output: dict[str, str | None] = {sid: None for sid in walked_ids}
+    anchors: dict[str, str | None] = {}
+    for event, _chain, is_branch, is_direct in _document_events(
+        root, include_scorers=include_scorers
+    ):
+        if is_branch or event.uuid is None:
+            continue
+        owner = owners.get(event.uuid)
+        anchors[event.uuid] = last_model_output.get(owner) if owner is not None else None
+        if is_direct and owner is not None and isinstance(event, ModelEvent):
+            mid = _model_output_id(event)
+            if mid is not None:
+                last_model_output[owner] = mid
+    return anchors

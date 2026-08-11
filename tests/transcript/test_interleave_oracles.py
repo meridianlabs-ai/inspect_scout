@@ -311,24 +311,28 @@ async def test_oracle2_flat_vs_timeline() -> None:
     guards against a vacuously green oracle (review record: 'validate the
     harness'). Corpus floor: >= 25 applicable (pinned in test_tree_gen).
 
-    Strengthened per controller amendment to task-4-brief.md: the brief's
-    id-SEQUENCE comparison alone is blind to anchoring differences -- both
-    drivers can render the same ids in the same relative order while
-    attaching them after different turns. Comparing (event_id,
-    anchor_message_id) pairs catches that; anchoring is the heart of #6.
+    Per controller amendment to task-4-brief.md, the brief's id-SEQUENCE
+    comparison is REPLACED (not supplemented) by comparing (event_id,
+    anchor_message_id) pairs: id-sequence alone is blind to anchoring
+    differences -- both drivers can render the same ids in the same
+    relative order while attaching them after different preceding turns
+    (anchoring is the heart of #6) -- and pair equality strictly implies
+    id-sequence equality, so keeping both assertions would make which one
+    governs the oracle's red status an accident of seed order, invisible
+    under strict-xfail.
 
     Empirically (decorator off, `-p no:cacheprovider`, all 200 seeds, task-4
-    red-check): 47 seeds are flat-comparable. The brief's own id-sequence
-    assertion alone is red on only 21/47 -- for the other 26 it is
-    VACUOUSLY GREEN, because both drivers render the same ids in the same
-    order while anchoring them after different preceding turns (the "helper"
+    red-check): 47 seeds are flat-comparable. The now-removed id-sequence
+    assertion was red on only 21/47 -- for the other 26 it was VACUOUSLY
+    GREEN, because both drivers render the same ids in the same order while
+    anchoring them after different preceding turns (the "helper"
     utility-span shape: the flat driver anchors the helper's foreign info
     event in document position, right after main's turn that precedes the
     helper span, while the timeline driver anchors it after the whole
     "main" segment's last own turn instead -- exactly the #6 divergence
-    the amendment exists to catch). The pair assertion below is red on
-    47/47 applicable seeds -- e.g. seed 0: flat_pairs has
-    `('u0-13', 'm0-8')`, timeline_pairs has `('u0-13', 'm0-16')`.
+    the amendment exists to catch). The pair assertion below is red on all
+    47/47 applicable seeds -- e.g. seed 0: flat has `('u0-13', 'm0-8')`,
+    timeline has `('u0-13', 'm0-16')`.
     """
     from inspect_scout._transcript.interleave import interleave_events
 
@@ -342,18 +346,14 @@ async def test_oracle2_flat_vs_timeline() -> None:
             transcript_id="t", messages=g.messages, events=g.events
         )
         flat = interleave_events(flat_transcript, "all")
-        flat_ids = [m.id for m in flat if (m.metadata or {}).get(EVENT_MARKER_KEY)]
         results = await run_materialized(
             g.events, events_spec="all", include_scorers=False, depth=None
-        )
-        timeline_ids = [eid for _, eid in rendered_markers(results)]
-        assert flat_ids == timeline_ids, (
-            f"seed {seed}: flat={flat_ids} timeline={timeline_ids}"
         )
 
         # (event_id, anchor_message_id) pairs: same walk over the flat
         # driver's single list and over the timeline driver's segments
-        # concatenated in emission order.
+        # concatenated in emission order. Sole assertion (amendment
+        # replaces, not supplements, the brief's id-sequence comparison).
         flat_pairs = marker_anchor_pairs(flat)
         timeline_messages = [m for seg in results for m in seg.messages]
         timeline_pairs = marker_anchor_pairs(timeline_messages)

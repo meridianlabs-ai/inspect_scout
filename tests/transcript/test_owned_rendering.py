@@ -258,17 +258,17 @@ def test_grouped_branches_splice_consecutively_and_empty_key_appends() -> None:
 
 
 def test_branch_insertion_skips_leading_foreign_marker_sharing_anchor_id() -> None:
-    """Second EventId->MessageId laundering site (``insertion_index``'s scan).
+    """Second EventId->MessageId laundering site (the rendered-list scan).
 
     A foreign event's ``uuid`` is laundered into its rendered marker's
     ``ChatMessage.id`` (see ``EventId``'s docstring, ``_scanner/util.py``).
-    When that uuid collides with a real thread message's id, the scan must
-    still resolve to the real message, not the marker. Here the foreign
+    When that uuid collides with a real thread message's id, resolution
+    must still land on the real turn, not the marker. Here the foreign
     event arrives *before* the owner's sole turn, so its marker renders
-    leading (before the whole thread) -- the marker would match first at
-    index 0 if the scan didn't skip markers, splicing the branch right
-    after it (between the marker and the real thread) instead of in
-    thread position, after "a".
+    leading (before the whole thread): a scan over the rendered list would
+    match it first at index 0 and splice the branch between the marker and
+    the real thread. Occurrence-mapped resolution never looks at rendered
+    entries at all, so the collision is unreachable by construction.
     """
     out = ModelOutput.from_content(model="mockllm", content="a")
     ev = _model_event([ChatMessageUser(content="q")], out)
@@ -311,11 +311,11 @@ def test_branch_insertion_skips_trailing_foreign_marker_sharing_anchor_id() -> N
     """Same collision, mirrored document order (companion to the leading case).
 
     The foreign event now arrives *after* the owner's sole turn, so its
-    marker renders trailing "a" rather than leading. The real message is
-    scanned and matched before the trailing marker is ever reached, so this
-    shape resolves correctly even without the marker-skip fix -- it pins
-    that the existing "skip trailing markers after a match" loop still
-    works when the trailing marker itself is the colliding one.
+    marker renders trailing "a" rather than leading. This shape resolved
+    correctly even under the old rendered-list scan (the real message came
+    first); it pins that the branch still lands after the turn AND its
+    anchored entries -- the job ``spliced_position_after`` now does by
+    counting them rather than by skipping over them.
     """
     out = ModelOutput.from_content(model="mockllm", content="a")
     ev = _model_event([ChatMessageUser(content="q")], out)
@@ -352,15 +352,57 @@ def test_branch_insertion_skips_trailing_foreign_marker_sharing_anchor_id() -> N
     assert alt_pos == len(texts) - 1  # after "a" AND its trailing marker
 
 
+def test_branch_positions_after_output_turn_when_input_shares_its_id() -> None:
+    """Cross-role duplicate: an INPUT message carrying the OUTPUT's id.
+
+    The owner's user message and its assistant output both carry id ``X``.
+    Resolution is event-level over the owner's OWN items and the design's
+    id tier narrowing admits output ids and ``ToolEvent.message_id`` only
+    (§4), so ``branched_from="X"`` names the model EVENT and the block must
+    splice after that event's turn -- after ``a``, never between ``q`` and
+    ``a``. Viewer parity: ``findEventByMessageId``'s first pass matches the
+    output event (contentItems.ts:145), and only its third (input-id) pass
+    could reach ``q`` -- the tier this design deliberately does not use.
+    """
+    out = ModelOutput.from_content(model="mockllm", content="a")
+    q = ChatMessageUser(content="q")
+    q.id = "X"
+    out.choices[0].message.id = "X"
+    owner = _span("o", "main", [_model_event([q], out)])
+
+    alt_out = ModelOutput.from_content(model="mockllm", content="ALT")
+    branch = _span_of(
+        "b",
+        "branch",
+        [
+            BranchEvent(from_anchor="X"),
+            _model_event([ChatMessageUser(content="bq")], alt_out),
+        ],
+    )
+    branch = branch.model_copy(update={"branched_from": "X"})
+    owner_wrapped = owner.model_copy(update={"branches": [branch]})
+
+    [rendered] = _render(owner_wrapped)
+    texts = _texts(rendered)
+    assert texts[0] == "q" and texts[1] == "a"  # thread intact, in order
+    a_pos = texts.index("a")
+    # The WHOLE block lands after the output turn: its BranchEvent marker
+    # and its MODEL (BRANCH) entry alike.
+    branch_pos = next(i for i, t in enumerate(texts) if t.startswith("BRANCH"))
+    alt_pos = next(i for i, t in enumerate(texts) if "ALT" in t)
+    assert a_pos < branch_pos < alt_pos
+
+
 def test_branch_insertion_resolves_duplicate_real_message_id_to_first_occurrence() -> (
     None
 ):
-    """Viewer parity: a duplicate id shared by two REAL thread messages.
+    """Viewer parity: a duplicate id shared by two REAL output turns.
 
-    No markers involved -- the marker-skip fix (see the two tests above)
-    must not perturb this pre-existing, unrelated behavior: resolution is a
-    plain forward scan, so a ``branched_from`` id shared by two genuine
-    thread messages must deterministically resolve to the first occurrence.
+    No markers involved. Both occurrences are genuine model outputs, and
+    each turn's own ``ModelEvent`` consumes one in document order, so the
+    branch resolves to the FIRST consumed occurrence -- the same first-wins
+    answer the earlier rendered-list scan gave, and the one the viewer
+    gives (``findEventByMessageId`` returns its first match).
     """
     out1 = ModelOutput.from_content(model="mockllm", content="a1")
     q1 = ChatMessageUser(content="task")

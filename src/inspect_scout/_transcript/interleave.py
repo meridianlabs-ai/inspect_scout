@@ -244,6 +244,7 @@ class _AnchorWalk:
         excluded_ids: frozenset[MessageId] = frozenset(),
         grader_spans: frozenset[SpanId] = frozenset(),
         compaction_spans: frozenset[SpanId | None] = frozenset(),
+        output_positions: frozenset[int] | None = None,
     ) -> None:
         self._events = events
         occurrences: dict[MessageId, list[int]] = defaultdict(list)
@@ -255,6 +256,12 @@ class _AnchorWalk:
         self._excluded_ids = excluded_ids
         self._grader_spans = grader_spans
         self._compaction_spans = compaction_spans
+        # Thread positions holding a model OUTPUT (assistant) message, when
+        # the caller can supply them. Read only when recording consumed
+        # positions for branch resolution (see _consumed_positions); the
+        # flat drivers stream ids without roles and never splice branches.
+        self._output_positions = output_positions
+        self._consumed_positions: dict[MessageId, int] = {}
         self.leading: list[InterleavedEvent] = []
         self.anchored: dict[int, list[InterleavedEvent]] = defaultdict(list)
 
@@ -270,8 +277,33 @@ class _AnchorWalk:
         if position < len(self._occurrences.get(message_id, [])):
             self._last_anchor = self._occurrences[message_id][position]
             self._next_occurrence[message_id] = position + 1
+            # First-wins: the viewer resolves a branch to the FIRST output
+            # event carrying the id, so later consumptions of a duplicated
+            # id never displace it.
+            self._consumed_positions.setdefault(
+                message_id, self._turn_position(message_id, self._last_anchor)
+            )
             return True
         return False
+
+    def _turn_position(self, message_id: MessageId, consumed: int) -> int:
+        """Thread position of the turn a consumption renders as.
+
+        Normally the consumed occurrence itself. When an INPUT message
+        shares the id (a cross-role duplicate), the occurrence walk -- which
+        knows ids, not roles -- consumes that earlier occurrence, but a
+        branch keyed on the id names the model event's OUTPUT turn (design
+        §4's id tier narrowing; contentItems.ts:145 matches the output
+        event), so snap forward to the id's first output occurrence.
+        Anchoring is deliberately left on the consumed occurrence: this
+        correction is scoped to branch positioning.
+        """
+        if self._output_positions is None or consumed in self._output_positions:
+            return consumed
+        for index in self._occurrences[message_id]:
+            if index in self._output_positions:
+                return index
+        return consumed
 
     def add_rendered(self, event_id: EventId, text: str) -> None:
         entry = InterleavedEvent(event_id, text)
@@ -370,6 +402,19 @@ class _AnchorWalk:
             for event_id, text in self.anchored.get(index, []):
                 yield _event_message(event_id, text)
 
+    def spliced_position_after(self, index: int) -> int:
+        """Index in ``spliced()``'s output just past thread message ``index``.
+
+        Translates a thread position into an insertion point in the
+        rendered sequence, mirroring ``spliced()``'s interleaving exactly:
+        the leading entries, then each message followed by the entries
+        anchored to it. The returned point is after the message AND its
+        anchored ``[E#]`` entries.
+        """
+        return len(self.leading) + sum(
+            1 + len(self.anchored.get(position, [])) for position in range(index + 1)
+        )
+
 
 def _render_branch_block(branch: OwnedBranch, events: EventsSpec) -> list[ChatMessage]:
     """Render a branch's items as a flat block of [E#] marker messages.
@@ -392,8 +437,46 @@ def _render_branch_block(branch: OwnedBranch, events: EventsSpec) -> list[ChatMe
     return block
 
 
+def _branch_thread_index(
+    key: MessageId,
+    owned: OwnedSpan,
+    walk: _AnchorWalk,
+    message_ids: list[MessageId],
+) -> int | None:
+    """Thread position a branch keyed ``key`` splices after, or None.
+
+    Event-level resolution over the owner's OWN items in document order,
+    first match wins (design §4). A matching ``ModelEvent`` positions at
+    the occurrence the anchor walk actually consumed for it -- one whose
+    output never landed on the thread is off-thread and cannot position a
+    branch at all. A matching ``ToolEvent`` has no occurrence bookkeeping,
+    so it positions at the first thread message carrying the id.
+
+    Residual, out of scope: that ToolEvent lookup is still a plain id
+    match, so a cross-role duplicate of a tool message id would resolve to
+    whichever thread message comes first.
+    """
+    for item in owned.items:
+        if not item.own:
+            continue
+        event = item.event
+        if isinstance(event, ModelEvent):
+            if _model_output_id(event) == key:
+                return walk._consumed_positions.get(key)
+        elif isinstance(event, ToolEvent) and event.message_id == key:
+            return next(
+                (index for index, mid in enumerate(message_ids) if mid == key), None
+            )
+    return None
+
+
 def _splice_branches(
-    spliced: list[ChatMessage], owned: OwnedSpan, events: EventsSpec
+    spliced: list[ChatMessage],
+    owned: OwnedSpan,
+    events: EventsSpec,
+    *,
+    walk: _AnchorWalk,
+    message_ids: list[MessageId],
 ) -> list[ChatMessage]:
     """Insert branch blocks at their branched_from positions (design §4).
 
@@ -409,6 +492,14 @@ def _splice_branches(
     prefix"; the swimlane geometry (markers.ts resolveForkTimestamp) draws
     a ``""`` branch from the parent's start. Inline card order is what a
     debugging human compares against, and this matches it.
+
+    A matched key resolves through the anchor walk's CONSUMED OCCURRENCES,
+    translated into the rendered sequence by ``spliced_position_after``.
+    It is never a message-id scan over that sequence: a scan laundered two
+    distinct bugs into the position — a foreign event's uuid, written into
+    its marker's ``ChatMessage.id``, could match before the real thread
+    message; and an input message sharing an output's id could match
+    before the output turn the key actually names.
 
     Injection is INDEX INSERTION, never add_model_output — consuming an
     occurrence would re-open hazard 2 through the branch door.
@@ -429,37 +520,10 @@ def _splice_branches(
     if not groups:
         return spliced
 
-    resolvable: set[MessageId] = set()
-    for item in owned.items:
-        if not item.own:
-            continue
-        if isinstance(item.event, ModelEvent):
-            mid = _model_output_id(item.event)
-            if mid is not None:
-                resolvable.add(mid)
-        elif isinstance(item.event, ToolEvent) and item.event.message_id:
-            resolvable.add(MessageId(item.event.message_id))
-
     def insertion_index(key: str) -> int | None:
-        if key not in resolvable:
-            return None  # includes "": unmatched, appends at the end
-        for i, message in enumerate(spliced):
-            if (message.metadata or {}).get(EVENT_MARKER_KEY):
-                # A marker's id is an EventId laundered into ChatMessage.id
-                # (see EventId's docstring, _scanner/util.py) -- a foreign
-                # event's uuid can collide with a real thread message's id.
-                # Only real thread messages participate in id resolution;
-                # skip trailing markers below still applies once one matches.
-                continue
-            if _message_id(message) == key:
-                # After the message and its anchored [E#] entries.
-                j = i + 1
-                while j < len(spliced) and (
-                    (spliced[j].metadata or {}).get(EVENT_MARKER_KEY)
-                ):
-                    j += 1
-                return j
-        return None
+        # "" matches no own item and falls out here: unmatched, appended.
+        index = _branch_thread_index(MessageId(key), owned, walk, message_ids)
+        return None if index is None else walk.spliced_position_after(index)
 
     resolved = [(key, insertion_index(key)) for key in order]
     matched: list[tuple[str, int]] = [
@@ -488,24 +552,26 @@ def span_owned_messages(
     """
     span = owned.span
     messages = span_messages(span, compaction=compaction)
-    excluded_ids = _compaction_excluded_ids(
-        span, (_message_id(m) for m in messages), compaction
-    )
+    message_ids = [_message_id(m) for m in messages]
+    excluded_ids = _compaction_excluded_ids(span, message_ids, compaction)
     own_event_spans = frozenset(
         None if item.event.span_id is None else SpanId(item.event.span_id)
         for item in owned.items
         if item.own
     )
     walk = _AnchorWalk(
-        [_message_id(m) for m in messages],
+        message_ids,
         events,
         excluded_ids=excluded_ids,
         compaction_spans=own_event_spans,
+        output_positions=frozenset(
+            index for index, m in enumerate(messages) if m.role == "assistant"
+        ),
     )
     for item in owned.items:
         walk.add_owned(item)
     spliced = list(walk.spliced(messages))
-    return _splice_branches(spliced, owned, events)
+    return _splice_branches(spliced, owned, events, walk=walk, message_ids=message_ids)
 
 
 def interleave_events(

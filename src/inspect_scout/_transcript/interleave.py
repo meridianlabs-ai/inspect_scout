@@ -23,7 +23,7 @@ from inspect_ai.event import (
 from inspect_ai.model import ChatMessage, ChatMessageUser
 
 from .._scanner.extract import EVENT_MARKER_KEY, message_as_str
-from .._scanner.util import _event_id, _message_id
+from .._scanner.util import EventId, MessageId, SpanId, _event_id, _message_id
 from .event_text import event_as_str
 from .messages import span_messages
 from .timeline import OwnedBranch, OwnedItem, OwnedSpan
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 class InterleavedEvent(NamedTuple):
     """An interleavable event's id paired with its rendered ``[E#]`` text."""
 
-    event_id: str
+    event_id: EventId
     text: str
 
 
@@ -119,7 +119,7 @@ def _event_message(event_id: str, text: str) -> ChatMessage:
     )
 
 
-def _model_output_id(event: ModelEvent) -> str | None:
+def _model_output_id(event: ModelEvent) -> MessageId | None:
     out = event.output
     if out and out.choices and out.choices[0].message is not None:
         return _message_id(out.choices[0].message)
@@ -149,9 +149,9 @@ def _off_thread_model_text(event: ModelEvent) -> str | None:
 
 def _compaction_excluded_ids(
     source: Timeline | TimelineSpan | list[Event],
-    current_message_ids: Iterable[str],
+    current_message_ids: Iterable[MessageId],
     compaction: Compaction,
-) -> frozenset[str]:
+) -> frozenset[MessageId]:
     """Ids in the untruncated ``compaction="all"`` thread absent from the current thread.
 
     Feeds ``_AnchorWalk``'s ``excluded_ids``: these turns were deliberately
@@ -169,7 +169,7 @@ def _compaction_excluded_ids(
     )
 
 
-def scorer_span_ids(begins: Iterable[SpanBeginEvent]) -> frozenset[str]:
+def scorer_span_ids(begins: Iterable[SpanBeginEvent]) -> frozenset[SpanId]:
     """Ids of spans under a top-level ``scorers`` span, by ``event_tree``'s rule.
 
     Streaming counterpart to the flat-oracle helper that needs the whole
@@ -207,7 +207,7 @@ def scorer_span_ids(begins: Iterable[SpanBeginEvent]) -> frozenset[str]:
         return any(rooted_at_scorers(p, seen | {begin.id}) for p in parents)
 
     return frozenset(
-        span_id
+        SpanId(span_id)
         for span_id, spans in spans_by_id.items()
         # A falsy span id is a root to event_tree's bucket() and can never be a
         # scorers member; keeping "" would mark every span-less event a grader.
@@ -239,18 +239,18 @@ class _AnchorWalk:
 
     def __init__(
         self,
-        message_ids: list[str],
+        message_ids: list[MessageId],
         events: EventsSpec,
-        excluded_ids: frozenset[str] = frozenset(),
-        grader_spans: frozenset[str] = frozenset(),
-        compaction_spans: frozenset[str | None] = frozenset(),
+        excluded_ids: frozenset[MessageId] = frozenset(),
+        grader_spans: frozenset[SpanId] = frozenset(),
+        compaction_spans: frozenset[SpanId | None] = frozenset(),
     ) -> None:
         self._events = events
-        occurrences: dict[str, list[int]] = defaultdict(list)
+        occurrences: dict[MessageId, list[int]] = defaultdict(list)
         for index, message_id in enumerate(message_ids):
             occurrences[message_id].append(index)
         self._occurrences = occurrences
-        self._next_occurrence: dict[str, int] = defaultdict(int)
+        self._next_occurrence: dict[MessageId, int] = defaultdict(int)
         self._last_anchor: int | None = None
         self._excluded_ids = excluded_ids
         self._grader_spans = grader_spans
@@ -258,7 +258,7 @@ class _AnchorWalk:
         self.leading: list[InterleavedEvent] = []
         self.anchored: dict[int, list[InterleavedEvent]] = defaultdict(list)
 
-    def add_model_output(self, message_id: str) -> bool:
+    def add_model_output(self, message_id: MessageId) -> bool:
         """Consume the next occurrence of `message_id` as the current anchor.
 
         Returns:
@@ -273,7 +273,7 @@ class _AnchorWalk:
             return True
         return False
 
-    def add_rendered(self, event_id: str, text: str) -> None:
+    def add_rendered(self, event_id: EventId, text: str) -> None:
         entry = InterleavedEvent(event_id, text)
         if self._last_anchor is None:
             self.leading.append(entry)
@@ -426,7 +426,7 @@ def _splice_branches(
     if not groups:
         return spliced
 
-    resolvable: set[str] = set()
+    resolvable: set[MessageId] = set()
     for item in owned.items:
         if not item.own:
             continue
@@ -435,7 +435,7 @@ def _splice_branches(
             if mid is not None:
                 resolvable.add(mid)
         elif isinstance(item.event, ToolEvent) and item.event.message_id:
-            resolvable.add(item.event.message_id)
+            resolvable.add(MessageId(item.event.message_id))
 
     def insertion_index(key: str) -> int | None:
         if key not in resolvable:
@@ -481,7 +481,11 @@ def span_owned_messages(
     excluded_ids = _compaction_excluded_ids(
         span, (_message_id(m) for m in messages), compaction
     )
-    own_event_spans = frozenset(item.event.span_id for item in owned.items if item.own)
+    own_event_spans = frozenset(
+        None if item.event.span_id is None else SpanId(item.event.span_id)
+        for item in owned.items
+        if item.own
+    )
     walk = _AnchorWalk(
         [_message_id(m) for m in messages],
         events,
@@ -527,7 +531,7 @@ def interleave_events(
     messages = list(transcript.messages)
     if not transcript.events:
         return messages
-    excluded_ids: frozenset[str] = frozenset()
+    excluded_ids: frozenset[MessageId] = frozenset()
     if messages:
         # `messages` is the transcript's own live thread, already shaped by
         # the original run's compaction (the `compaction` argument only
@@ -553,7 +557,9 @@ def interleave_events(
             [e for e in transcript.events if isinstance(e, SpanBeginEvent)]
         ),
         compaction_spans=frozenset(
-            e.span_id for e in transcript.events if isinstance(e, CompactionEvent)
+            None if e.span_id is None else SpanId(e.span_id)
+            for e in transcript.events
+            if isinstance(e, CompactionEvent)
         ),
     )
     for event in transcript.events:
@@ -598,10 +604,10 @@ async def stream_interleave_events(
         # Region-last skeleton solely to derive compaction-pruned
         # `excluded_ids`. Without a CompactionEvent this pass costs only
         # the filtered scan.
-        excluded_ids: frozenset[str] = frozenset()
+        excluded_ids: frozenset[MessageId] = frozenset()
         compaction_skeleton: list[Event] = []
         begins: list[SpanBeginEvent] = []
-        compaction_spans: set[str | None] = set()
+        compaction_spans: set[SpanId | None] = set()
         saw_compaction = False
         # Span begins ride along rather than costing their own pass: a handle's
         # type filter applies after deserialization, so a "span_begin only"
@@ -612,7 +618,9 @@ async def stream_interleave_events(
                 continue  # must not reach compaction_skeleton -> span_messages
             if isinstance(event, CompactionEvent):
                 saw_compaction = True
-                compaction_spans.add(event.span_id)
+                compaction_spans.add(
+                    None if event.span_id is None else SpanId(event.span_id)
+                )
             _skeleton_add(compaction_skeleton, event)
         if saw_compaction:
             excluded_ids = _compaction_excluded_ids(

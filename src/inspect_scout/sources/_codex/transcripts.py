@@ -35,6 +35,7 @@ from inspect_swe._codex_cli._events.rollout_models import (
 
 from .client import (
     CODEX_SOURCE_TYPE,
+    codex_home_for,
     discover_rollout_files,
     find_rollout_by_thread_id,
     get_source_uri,
@@ -91,7 +92,13 @@ async def codex(
         logger.info("No Codex rollout files found")
         return
 
-    thread_names = load_thread_names()
+    # Thread names live in session_index.jsonl next to the sessions tree being
+    # imported; only fall back to $CODEX_HOME when scanning it by default.
+    if path is None:
+        thread_names = load_thread_names()
+    else:
+        home = codex_home_for(rollout_files[0])
+        thread_names = load_thread_names(home) if home else {}
     count = 0
 
     for rollout_file in rollout_files:

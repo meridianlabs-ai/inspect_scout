@@ -522,6 +522,16 @@ async def test_codex_home_discovery_and_thread_names(
     transcripts = [t async for t in codex(include_archived=True)]
     assert {t.transcript_id for t in transcripts} == {TID1, TID2}
 
+    # path-based imports resolve names from the sessions tree being imported
+    transcripts = [t async for t in codex(path=codex_home / "sessions")]
+    assert transcripts[0].task_id == "quick-arithmetic"
+
+    # a bare directory has no session_index.jsonl; the ambient $CODEX_HOME
+    # (which names TID1) must not bleed into it
+    bare_dir = _copy_fixtures(tmp_path / "bare-dir", [TID1])
+    transcripts = [t async for t in codex(path=bare_dir)]
+    assert transcripts[0].task_id == TID1
+
 
 @pytest.mark.asyncio
 async def test_reimport_produces_identical_ids(fixtures_dir: Path) -> None:

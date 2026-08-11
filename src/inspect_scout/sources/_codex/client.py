@@ -154,6 +154,19 @@ def sessions_root_for(rollout_file: Path) -> Path:
     return rollout_file.parent
 
 
+def codex_home_for(rollout_file: Path) -> Path | None:
+    """The codex home containing a rollout file, if it lives in a sessions tree.
+
+    Returns None for rollout files outside a ``sessions`` /
+    ``archived_sessions`` directory (e.g. a bare directory of copied files),
+    where no ``session_index.jsonl`` can be located.
+    """
+    root = sessions_root_for(rollout_file)
+    if root.name in (SESSIONS_SUBDIR, ARCHIVED_SESSIONS_SUBDIR):
+        return root.parent
+    return None
+
+
 def _open_rollout_text(path: Path) -> TextIO:
     """Open a rollout file for text reading, decompressing .zst transparently."""
     if path.name.endswith(".zst"):

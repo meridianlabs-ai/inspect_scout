@@ -246,6 +246,23 @@ def test_read_zst_rollout(tmp_path: Path) -> None:
     assert find_rollout_by_thread_id(THREAD_ID, [tmp_path]) == compressed
 
 
+def test_read_corrupt_zst_rollout_is_skipped(tmp_path: Path) -> None:
+    """A corrupt or non-UTF-8 rollout yields no lines rather than raising."""
+    corrupt = tmp_path / (ROLLOUT_NAME + ".zst")
+    corrupt.write_bytes(b"\x00\x01\x02 not a zstd frame")
+    assert read_rollout_lines(corrupt) == []
+    assert peek_session_meta(corrupt) is None
+
+    import zstandard
+
+    binary = tmp_path / (
+        "rollout-2026-08-01T10-00-01-0199cccc-0000-7000-8000-000000000001.jsonl.zst"
+    )
+    binary.write_bytes(zstandard.ZstdCompressor().compress(b"\xff\xfe\x00\x80"))
+    assert read_rollout_lines(binary) == []
+    assert peek_session_meta(binary) is None
+
+
 def test_read_rollout_skips_malformed_lines(tmp_path: Path) -> None:
     f = tmp_path / ROLLOUT_NAME
     f.write_text(

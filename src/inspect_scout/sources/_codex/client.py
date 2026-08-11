@@ -170,6 +170,18 @@ def _open_rollout_text(path: Path) -> TextIO:
     return path.open("r", encoding="utf-8")
 
 
+def _rollout_read_errors() -> tuple[type[Exception], ...]:
+    """Errors reading a rollout file can raise.
+
+    Covers filesystem failures, corrupt zstd frames, and non-UTF-8 content.
+    """
+    if sys.version_info >= (3, 14):
+        from compression.zstd import ZstdError
+    else:
+        from zstandard import ZstdError
+    return (OSError, ZstdError, UnicodeDecodeError)
+
+
 def read_rollout_lines(path: Path) -> list[dict[str, Any]]:
     """Read all lines from a rollout file, skipping malformed ones."""
     lines: list[dict[str, Any]] = []
@@ -186,7 +198,7 @@ def read_rollout_lines(path: Path) -> list[dict[str, Any]]:
                     continue
                 if isinstance(parsed, dict):
                     lines.append(parsed)
-    except OSError as e:
+    except _rollout_read_errors() as e:
         logger.warning(f"Failed to read rollout file {path}: {e}")
     return lines
 
@@ -215,8 +227,8 @@ def peek_session_meta(path: Path) -> dict[str, Any] | None:
                 ):
                     return parsed
                 return None
-    except OSError:
-        logger.warning(f"Could not read rollout file: {path}")
+    except _rollout_read_errors() as e:
+        logger.warning(f"Could not read rollout file {path}: {e}")
     return None
 
 
@@ -247,8 +259,8 @@ def load_thread_names(codex_home: Path | None = None) -> dict[str, str]:
                     thread_name = entry.get("thread_name")
                     if isinstance(thread_id, str) and isinstance(thread_name, str):
                         names[thread_id] = thread_name
-    except OSError:
-        logger.warning(f"Could not read session index: {index_file}")
+    except (OSError, UnicodeDecodeError) as e:
+        logger.warning(f"Could not read session index {index_file}: {e}")
     return names
 
 

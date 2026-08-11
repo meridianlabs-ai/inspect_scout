@@ -12,11 +12,13 @@ from inspect_ai.event import (
     ToolEvent,
     timeline_build,
 )
+from inspect_ai.model import ChatMessageUser, GenerateConfig, ModelOutput
 
 from tests.transcript.tree_gen import (
     CORPUS_SEEDS,
     GeneratedTranscript,
     all_event_uuids,
+    expected_anchor_message_ids,
     expected_owners,
     generate,
 )
@@ -126,3 +128,57 @@ def test_scorers_model_suppression_not_subtree_exclusion() -> None:
         return
 
     raise AssertionError("no corpus seed had both a scorers ModelEvent and ScoreEvent")
+
+
+def test_expected_anchor_ignores_foreign_tier1_model_event() -> None:
+    """A foreign tier-1 ModelEvent must never advance the owner's anchor.
+
+    Own vs. foreign (Finding 5): a tier-1-attributed ModelEvent of a
+    non-walked descendant span is FOREIGN to its walked ancestor -- only a
+    direct ModelEvent of the walked span itself (chain[-1] == owner) is OWN.
+    Reachable in the corpus via generate()'s shape<0.25
+    nested-"sub"-between-"main"-turns branch at depth=1 (where "sub" is
+    scannable but too deep to be walked); built directly here for
+    determinism instead of seed-hunting.
+    """
+
+    def ev(e: Event) -> TimelineEvent:
+        return TimelineEvent.model_construct(type="event", event=e)
+
+    def model_event(uuid: str, message_id: str, span_id: str) -> ModelEvent:
+        out = ModelOutput.from_content(model="mockllm", content=uuid)
+        out.choices[0].message.id = message_id
+        return ModelEvent.model_construct(
+            event="model",
+            uuid=uuid,
+            span_id=span_id,
+            model="mockllm",
+            input=[ChatMessageUser(content="q")],
+            output=out,
+            role="assistant",
+            config=GenerateConfig(),
+        )
+
+    main_first = model_event("u-main1", "m-main1", "main")
+    sub_event = model_event("u-sub1", "m-sub1", "sub")
+    main_late = model_event("u-main2", "m-main2", "main")
+
+    sub = TimelineSpan(id="sub", name="sub", span_type="agent", content=[ev(sub_event)])
+    main = TimelineSpan(
+        id="main",
+        name="main",
+        span_type="agent",
+        content=[ev(main_first), sub, ev(main_late)],
+    )
+    root = TimelineSpan(id="root", name="root", span_type=None, content=[main])
+
+    anchors = expected_anchor_message_ids(root, depth=1, include_scorers=False)
+
+    # "sub" is scannable (own direct ModelEvent) but too deep to be walked at
+    # depth=1, so its event is tier-1-attributed to "main" -- it renders in
+    # main's segment, anchored after main's own last turn so far.
+    assert anchors["u-sub1"] == "m-main1"
+    # Critically, that foreign attribution must NOT advance main's anchor:
+    # the main-owned event after the sub subtree still anchors to main's
+    # real last own output ("m-main1"), never to sub's ("m-sub1").
+    assert anchors["u-main2"] == "m-main1"

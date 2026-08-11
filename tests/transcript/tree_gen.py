@@ -417,10 +417,13 @@ def expected_anchor_message_ids(
     """Map each rendered event to its expected anchor message id.
 
     Rendered-event uuid -> output message id of the last preceding OWN
-    (direct-content) ModelEvent of its owner in document order, or None when
-    the event leads the owner's thread. Branch-subtree events are absent
-    (they position by branched_from, not by anchor). Only sound for
-    compaction-free trees (the generated corpus).
+    ModelEvent of its owner in document order, or None when the event leads
+    the owner's thread. "Own" means the ModelEvent is a direct TimelineEvent
+    of the owner span itself (chain[-1] == owner) -- a tier-1-attributed
+    ModelEvent of a non-walked descendant span is foreign and never advances
+    the owner's anchor. Branch-subtree events are absent (they position by
+    branched_from, not by anchor). Only sound for compaction-free trees (the
+    generated corpus).
     """
     owners = expected_owners(root, depth=depth, include_scorers=include_scorers)
     walked_ids = {
@@ -429,7 +432,7 @@ def expected_anchor_message_ids(
     }
     last_model_output: dict[str, str | None] = {sid: None for sid in walked_ids}
     anchors: dict[str, str | None] = {}
-    for event, _chain, is_branch, is_direct in _document_events(
+    for event, chain, is_branch, is_direct in _document_events(
         root, include_scorers=include_scorers
     ):
         if is_branch or event.uuid is None:
@@ -438,7 +441,19 @@ def expected_anchor_message_ids(
         anchors[event.uuid] = (
             last_model_output.get(owner) if owner is not None else None
         )
-        if is_direct and owner is not None and isinstance(event, ModelEvent):
+        # Own vs. foreign (design's own/foreign rule): a direct ModelEvent
+        # only advances its OWNER's anchor when the span it is directly in
+        # (chain[-1]) IS that owner. A tier-1-attributed ModelEvent of a
+        # non-walked descendant span (e.g. a nested "sub" span collapsed
+        # into "main" at depth=1) is foreign -- its output id can never be
+        # on the owner's own thread, so it must not advance last_model_output.
+        if (
+            is_direct
+            and owner is not None
+            and chain
+            and chain[-1] == owner
+            and isinstance(event, ModelEvent)
+        ):
             mid = _model_output_id(event)
             if mid is not None:
                 last_model_output[owner] = mid

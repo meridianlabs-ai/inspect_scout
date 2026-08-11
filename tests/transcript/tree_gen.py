@@ -201,8 +201,14 @@ def generate(seed: int) -> GeneratedTranscript:
             branch(main_sid, anchor, "b2")
     end(main_sid, root_sid)
 
-    if rng.random() < 0.5:
-        # root-level events between/after walked spans
+    # Independent of `shape`: root-level events appended after main's span
+    # ends but before root's does. timeline_build homes these as orphans
+    # and prepends them ahead of everything else (tier 3), while the flat
+    # driver sees them in raw chronological order, after main's last
+    # message -- the two drivers disagree on placement whenever this
+    # fires, so it also has to gate `flat_comparable` below.
+    has_root_level_trailing = rng.random() < 0.5
+    if has_root_level_trailing:
         events.append(_score(ids, root_sid))
         events.append(
             SampleLimitEvent.model_construct(
@@ -248,8 +254,9 @@ def generate(seed: int) -> GeneratedTranscript:
 
     # Flat-comparable (oracle 2's precondition): main's single linear thread
     # is the only non-grader conversation — no nested walked span (shape <
-    # 0.25 has one), no branches (0.45 <= shape < 0.6 has them).
-    flat_comparable = 0.25 <= shape < 0.45
+    # 0.25 has one), no branches (0.45 <= shape < 0.6 has them) — and no
+    # root-level trailing events (the two drivers place those differently).
+    flat_comparable = 0.25 <= shape < 0.45 and not has_root_level_trailing
     messages: list[ChatMessage] = list(main_thread) if flat_comparable else []
     return GeneratedTranscript(events, messages, flat_comparable, seed)
 

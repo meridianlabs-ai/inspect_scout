@@ -7,6 +7,7 @@ from typing import Literal
 
 import pytest
 from inspect_ai.event import (
+    BranchEvent,
     CompactionEvent,
     ErrorEvent,
     Event,
@@ -34,8 +35,6 @@ from inspect_ai.scorer import Score
 from inspect_scout._scanner.extract import message_numbering
 from inspect_scout._transcript.handle import MaterializedTranscriptHandle
 from inspect_scout._transcript.interleave import (
-    InterleavedEvent,
-    SpanExternalEvents,
     collect_span_external,
     scorers_collection_source,
 )
@@ -133,8 +132,7 @@ async def _collect(
     root: TimelineSpan,
     *,
     events: list[str] | str | None,
-    compaction: str = "all",
-    span_external: SpanExternalEvents | None = None,
+    compaction: Literal["all", "last"] | int = "all",
     context_window: int = 10_000,
 ) -> tuple[list[TimelineMessages], str]:
     """Collect segments plus a combined messages_str for convenience assertions."""
@@ -146,9 +144,8 @@ async def _collect(
         messages_as_str=msgs_as_str,
         model=model,
         context_window=context_window,
-        compaction=compaction,  # type: ignore[arg-type]
+        compaction=compaction,
         events=events,  # type: ignore[arg-type]
-        span_external=span_external,
     ):
         results.append(seg)
     combined = "\n".join(r.messages_str for r in results)
@@ -434,43 +431,6 @@ async def test_off_thread_model_event_with_reasoning_only_content_renders() -> N
     )
 
 
-@pytest.mark.anyio
-async def test_span_external_prepend_and_append() -> None:
-    """span_external: "" prepends to the first span; span id appends to that span."""
-    out_a = ModelOutput.from_content(model="mockllm", content="answer-a")
-    span_a = _span(
-        "span-a", "agent-a", [_model_event([ChatMessageUser(content="qa")], out_a)]
-    )
-    out_b = ModelOutput.from_content(model="mockllm", content="answer-b")
-    span_b = _span(
-        "span-b", "agent-b", [_model_event([ChatMessageUser(content="qb")], out_b)]
-    )
-    root = TimelineSpan(
-        id="root", name="root", span_type=None, content=[span_a, span_b]
-    )
-
-    results, _ = await _collect(
-        root,
-        events=[],
-        span_external={
-            "": [InterleavedEvent("lead-1", "LEADING TEXT")],
-            "span-b": [InterleavedEvent("trail-1", "TRAILING TEXT")],
-        },
-    )
-
-    assert len(results) == 2
-    span_a_text = results[0].messages_str
-    span_b_text = results[1].messages_str
-
-    # Leading entry is the very first thing rendered for the first span.
-    assert re.match(r"\[E1\] LEADING TEXT", span_a_text)
-    assert "TRAILING TEXT" not in span_a_text
-
-    # Trailing entry lands after span-b's own messages.
-    assert re.search(r"\[M\d+\].*\[E2\] TRAILING TEXT", span_b_text, re.DOTALL)
-    assert "LEADING TEXT" not in span_b_text
-
-
 # ---------------------------------------------------------------------------
 # collect_span_external() via transcript_messages() (Task 3)
 # ---------------------------------------------------------------------------
@@ -638,6 +598,16 @@ async def test_depth_excluded_scannable_span_model_output_renders_after_parent()
 
 
 @pytest.mark.anyio
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "streaming-vs-materialized parity bridge: still asserts materialized "
+        "via timeline_messages(..., span_external=...), a parameter the "
+        "ownership rewrite removed (Task 8). Rewiring stream_timeline_messages "
+        "onto the same ownership traversal so this parity check has a "
+        "materialized side to compare against is Task 9's scope."
+    ),
+)
 async def test_stream_tool_event_nested_subagent_depth_excluded_parity() -> None:
     """A ``ToolEvent``-hoisted nested subagent's on-thread turns render as branch entries when ``depth``-excluded, with materialized and streaming parity.
 
@@ -736,7 +706,7 @@ async def test_stream_tool_event_nested_subagent_depth_excluded_parity() -> None
             messages_as_str=materialized_numbering,
             model="mockllm/model",
             events="all",
-            span_external=span_external,
+            span_external=span_external,  # type: ignore[call-arg]
             depth=1,
         )
     ]
@@ -896,6 +866,16 @@ def _materialized_walk_tree(tree: Timeline) -> Timeline:
 
 
 @pytest.mark.anyio
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "streaming-vs-materialized parity bridge: still asserts materialized "
+        "via timeline_messages(..., span_external=...), a parameter the "
+        "ownership rewrite removed (Task 8). Rewiring stream_timeline_messages "
+        "onto the same ownership traversal so this parity check has a "
+        "materialized side to compare against is Task 9's scope."
+    ),
+)
 @pytest.mark.parametrize("compaction", ["all", "last", 2])
 @pytest.mark.parametrize("depth", [None, 1])
 async def test_stream_timeline_messages_events_parity(
@@ -949,7 +929,7 @@ async def test_stream_timeline_messages_events_parity(
             messages_as_str=materialized_numbering,
             model="mockllm/model",
             events=["score"],
-            span_external=span_external,
+            span_external=span_external,  # type: ignore[call-arg]
             compaction=compaction,
             depth=depth,
         )
@@ -1190,3 +1170,241 @@ async def test_stream_timeline_messages_events_uuidless_raises() -> None:
                 compaction="last",
             )
         ]
+
+
+# ---------------------------------------------------------------------------
+# collect_span_owned directed tests (design: Verification, "New tests")
+# ---------------------------------------------------------------------------
+
+from inspect_scout._transcript.timeline import _ORPHAN_SPAN_ID  # noqa: E402
+
+
+@pytest.mark.anyio
+async def test_number6_instance1_utility_events_render_in_document_position() -> None:
+    """agentic_events: the 'sub' utility span's outputs render in document order.
+
+    They render before main-output-3, not appended after the whole thread.
+    """
+    tree = timeline_build(agentic_events())
+    results, combined = await _collect_transcript(tree.root, events="all")
+    assert combined.index("sub-output-1") < combined.index("main-output-3")
+
+
+@pytest.mark.anyio
+async def test_number6_instance2_helper_renders_in_owner_segment() -> None:
+    """agentic_events: the utility span at main.content[11] renders in document order.
+
+    It renders in MAIN's segment, not in a later judge call's.
+    """
+    tree = timeline_build(agentic_events())
+    results, _ = await _collect_transcript(tree.root, events="all")
+    by_span: dict[str, str] = {r.span.id: "" for r in results}
+    for r in results:
+        by_span[r.span.id] += r.messages_str
+    main_id = next(sid for sid in by_span if "main" in sid or sid == "main")
+    assert "helper-output-1" in by_span[main_id]
+    assert all(
+        "helper-output-1" not in text for sid, text in by_span.items() if sid != main_id
+    )
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "shape",
+    ["score_only", "all_utility", "scorers_only", "container_with_branch"],
+)
+async def test_number5_zero_walked_shapes_yield_orphan_segment(shape: str) -> None:
+    root: TimelineSpan
+    if shape == "score_only":
+        root = _span_of(
+            "root",
+            "root",
+            [ScoreEvent(score=Score(value=1.0), scorer="s")],
+            span_type=None,
+        )
+    elif shape == "all_utility":
+        out = ModelOutput.from_content(model="mockllm", content="u")
+        util = _span("u1", "helper", [_model_event([_u1], out)])
+        util = util.model_copy(update={"utility": True})
+        root = _span_of("root", "root", [util], span_type=None)
+    elif shape == "scorers_only":
+        out = ModelOutput.from_content(model="mockllm", content="grader assessment")
+        grader = _span(
+            "g",
+            "grader",
+            [
+                _model_event([_u1], out),
+                ScoreEvent(score=Score(value=1.0), scorer="s"),
+            ],
+        )
+        root = _span_of(
+            "root",
+            "root",
+            [_span_of("sc", "scorers", [grader], span_type="scorers")],
+            span_type=None,
+        )
+    else:  # container_with_branch
+        alt_out = ModelOutput.from_content(model="mockllm", content="BRANCH-ALT")
+        branch = _span_of("b", "branch", [BranchEvent(), _model_event([_u1], alt_out)])
+        parent = _span_of(
+            "p",
+            "parent",
+            [ScoreEvent(score=Score(value=1.0), scorer="s")],
+            span_type=None,
+        )
+        parent = parent.model_copy(update={"branches": [branch]})
+        root = _span_of("root", "root", [parent], span_type=None)
+
+    results, combined = await _collect_transcript(root, events="all")
+    assert len(results) >= 1
+    assert all(r.span.id == _ORPHAN_SPAN_ID for r in results)
+    assert "[E" in combined  # entries actually rendered
+    if shape == "scorers_only":
+        assert "grader assessment" not in combined  # ModelEvents still suppressed
+    if shape == "container_with_branch":
+        assert "BRANCH-ALT" in combined  # branch appended after items
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("depth", [0, -1])
+async def test_depth_nonpositive_suppresses_orphan_homing(depth: int) -> None:
+    root = _span_of(
+        "root",
+        "root",
+        [ScoreEvent(score=Score(value=1.0), scorer="s")],
+        span_type=None,
+    )
+    results, _ = await _collect_transcript(root, events="all", depth=depth)
+    assert results == []
+
+
+@pytest.mark.anyio
+async def test_include_scorers_true_renders_grader_events_exactly_once() -> None:
+    """The double-render fix (design 'The problem', 4th consequence)."""
+    out_m = ModelOutput.from_content(model="mockllm", content="answer")
+    main = _span("m", "main", [_model_event([_u1], out_m)])
+    out_g = ModelOutput.from_content(model="mockllm", content="grader assessment")
+    grader = _span(
+        "g",
+        "grader",
+        [
+            _model_event([ChatMessageUser(content="grade")], out_g),
+            ScoreEvent(score=Score(value=1.0), scorer="s"),
+        ],
+    )
+    scorers = _span_of("sc", "scorers", [grader], span_type="scorers")
+    root = _span_of("root", "root", [main, scorers], span_type=None)
+
+    results, combined = await _collect_transcript(
+        root, events="all", include_scorers=True
+    )
+    assert combined.count("SCORE") == 1
+
+
+@pytest.mark.anyio
+async def test_extract_references_resolves_event_in_orphan_segment() -> None:
+    """[E#] resolvable in a segment with zero [M#] (design 'New tests')."""
+    root = _span_of(
+        "root",
+        "root",
+        [ScoreEvent(score=Score(value=1.0), scorer="s")],
+        span_type=None,
+    )
+    transcript = Transcript(
+        transcript_id="t1",
+        timelines=[Timeline(name="Default", description="", root=root)],
+    )
+    msgs_as_str, extract_refs = message_numbering()
+    model = get_model("mockllm/model")
+    segs = [
+        seg
+        async for seg in transcript_messages(
+            transcript,
+            messages_as_str=msgs_as_str,
+            model=model,
+            context_window=10_000,
+            events="all",
+        )
+    ]
+    assert segs and "[E1]" in segs[0].messages_str
+    refs = extract_refs("the evidence is [E1]")
+    assert refs and refs[0].type == "event"
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("compaction", ["last", 1])
+async def test_number6_position_holds_under_noncumulative_compaction(
+    compaction: Literal["last"] | int,
+) -> None:
+    """The design's untested corner: compaction='last' and int against #6.
+
+    Under 'last' the foreign event's anchoring turn is compacted away, so it
+    anchors to the previous surviving turn or leads the span -- either way it
+    must still RENDER, in-segment, before the surviving turn's successor
+    content (never appended after the whole thread).
+    """
+    ev1, ev2 = _two_turn_events()
+    for ev in (ev1, ev2):
+        ev.span_id = "span-a"
+    util = _span_of(
+        "util",
+        "helper",
+        [
+            SampleLimitEvent.model_construct(
+                event="sample_limit", type="message", limit=1, message="mid-limit"
+            )
+        ],
+    )
+    util = util.model_copy(update={"utility": True})
+    owner = _span_of("span-a", "agent-a", [ev1, util, ev2])
+    root = _span_of("root", "root", [owner], span_type=None)
+
+    results, combined = await _collect(root, events="all", compaction=compaction)
+    assert "LIMIT" in combined
+    assert combined.index("LIMIT") < combined.index("second")
+
+
+@pytest.mark.anyio
+async def test_segment_messages_emits_for_all_marker_list() -> None:
+    """Pins the behavior #5's fix depends on (design, Evidence base)."""
+    from inspect_scout._transcript.interleave import _event_message
+
+    msgs = [_event_message("e1", "SCORE: 1.0"), _event_message("e2", "LIMIT: hit")]
+    msgs_as_str, _ = message_numbering()
+    segs = [
+        s
+        async for s in segment_messages(
+            msgs,
+            messages_as_str=msgs_as_str,
+            model=get_model("mockllm/model"),
+            context_window=10_000,
+        )
+    ]
+    assert len(segs) == 1
+    assert "[E1]" in segs[0].messages_str and "[E2]" in segs[0].messages_str
+
+
+@pytest.mark.anyio
+async def test_orphan_only_segment_reduces_to_scalar_result() -> None:
+    """Design §3: an orphan segment can never flip a scalar Result into a resultset.
+
+    This pins reduce_timeline_results' single-key fast path. The brief's guessed import path/call shape (inspect_scout._scanner._reducer,
+    inspect_scout.types.Result, sync call) does not match the actual code:
+    reduce_timeline_results lives in inspect_scout._llm_scanner._reducer, is
+    async, and takes a required ``reducer`` callable; Result lives in
+    inspect_scout._scanner.result. Corrected per the two production call
+    sites (_llm_scanner.py's scan_materialized/stream_via_timeline) and the
+    closest existing fixture (test_reducer.py::TestAggregateResults).
+    """
+    from unittest.mock import AsyncMock
+
+    from inspect_scout._llm_scanner._reducer import reduce_timeline_results
+    from inspect_scout._scanner.result import Result
+
+    reducer = AsyncMock()
+    reduced = await reduce_timeline_results(
+        [(_ORPHAN_SPAN_ID, Result(value=0.5))], reducer
+    )
+    assert reduced.type != "resultset"
+    assert reduced.value == 0.5
+    reducer.assert_not_called()

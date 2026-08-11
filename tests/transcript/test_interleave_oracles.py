@@ -72,7 +72,6 @@ def _is_subsequence(needle: list[str], haystack: list[str]) -> bool:
     return all(x in it for x in needle)
 
 
-@XFAIL_RED
 @pytest.mark.anyio
 @pytest.mark.parametrize("include_scorers", [False, True])
 @pytest.mark.parametrize("depth", [None, 1])
@@ -171,7 +170,6 @@ async def test_oracle1_document_order(include_scorers: bool, depth: int | None) 
                 )
 
 
-@XFAIL_RED
 @pytest.mark.anyio
 async def test_oracle1_red_check_agentic_number6() -> None:
     """#6 both instances on the repo's own fixture (design, Evidence base)."""
@@ -193,7 +191,6 @@ async def test_oracle1_red_check_agentic_number6() -> None:
             assert owners[eid] == seg_span_id
 
 
-@XFAIL_RED
 @pytest.mark.anyio
 async def test_oracle1_red_check_double_render_include_scorers() -> None:
     """include_scorers=True double-render (design 'The problem', 4th consequence).
@@ -302,7 +299,6 @@ def marker_anchor_pairs(
     return pairs
 
 
-@XFAIL_RED
 @pytest.mark.anyio
 async def test_oracle2_flat_vs_timeline() -> None:
     """The flat driver already gets document order right (design, Oracle 2).

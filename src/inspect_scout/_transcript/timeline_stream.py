@@ -41,11 +41,7 @@ from inspect_ai.event import (
 )
 from inspect_ai.model import ChatMessageSystem, ChatMessageUser, ContentText, Model
 
-from inspect_scout._transcript.interleave import (
-    _off_thread_model_text,
-    collect_span_external,
-    scorers_collection_source,
-)
+from inspect_scout._transcript.interleave import _off_thread_model_text
 from inspect_scout._transcript.timeline import (
     TimelineMessages,
     _walk_spans,
@@ -55,7 +51,7 @@ from inspect_scout._transcript.timeline import (
 if TYPE_CHECKING:
     from inspect_scout._scanner.extract import MessagesAsStr
     from inspect_scout._transcript.handle import TranscriptHandle
-    from inspect_scout._transcript.interleave import EventsSpec, SpanExternalEvents
+    from inspect_scout._transcript.interleave import EventsSpec
 
 
 class _StubSkeletonUnsupported(Exception):
@@ -539,13 +535,12 @@ async def stream_timeline_messages(
     if offthread_by_uuid:
         _substitute_full_events(walk_tree.root, offthread_by_uuid)
 
-    span_external: SpanExternalEvents | None = None
-    if events is not None:
-        # Collect from the unpruned tree so a pruned scorers span's events
-        # still surface; see scorers_collection_source().
-        collection_source = scorers_collection_source(tree, include_scorers)
-        span_external = collect_span_external(collection_source, events, depth=depth)
-
+    # NOTE: this still hands `walk_tree` (pass-1/pass-2 stub-skeleton
+    # reconstruction) to `timeline_messages`, unchanged from before this
+    # task -- `timeline_messages` no longer takes `span_external` (dropped
+    # in favor of `walk_owned_spans`), so this call is updated only enough
+    # to match its new signature. Full parity with the ownership walk
+    # (oracle 4) is Task 9's rewire; it stays xfailed until then.
     async for seg in timeline_messages(
         walk_tree,
         messages_as_str=messages_as_str,
@@ -555,6 +550,6 @@ async def stream_timeline_messages(
         depth=depth,
         prompt_reserve=prompt_reserve,
         events=events,
-        span_external=span_external,
+        include_scorers=include_scorers,
     ):
         yield seg

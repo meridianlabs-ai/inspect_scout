@@ -10,12 +10,11 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass
-from logging import getLogger
 from typing import TYPE_CHECKING, Final, Literal, NamedTuple
 
 if TYPE_CHECKING:
     from inspect_scout._scanner.extract import MessagesAsStr
-    from inspect_scout._transcript.interleave import EventsSpec, SpanExternalEvents
+    from inspect_scout._transcript.interleave import EventsSpec
 
 from inspect_ai.event import (
     BranchEvent,
@@ -38,8 +37,6 @@ from inspect_ai.event._timeline import (
     _timeline_content_discriminator,
 )
 from inspect_ai.model import ChatMessage, Model
-
-logger = getLogger(__name__)
 
 # Re-export everything that moved to inspect_ai.event
 __all__ = [
@@ -166,7 +163,11 @@ class TimelineMessages:
         messages: The original ChatMessage objects in this segment.
         messages_str: Pre-rendered string from messages_as_str.
         segment: 0-based segment index, globally unique across yields.
-        span: The TimelineSpan this segment was extracted from.
+        span: The TimelineSpan this segment was extracted from. For a
+            transcript where no span was walked (score-only, all-utility,
+            scorers-only shapes) this is a reserved synthetic span with
+            ``id == _ORPHAN_SPAN_ID`` — isinstance checks still see a
+            ``TimelineSpan``, but it is not a span of the source timeline.
     """
 
     messages: list[ChatMessage]
@@ -185,7 +186,7 @@ async def timeline_messages(
     depth: int | None = None,
     prompt_reserve: int | float = 0.2,
     events: EventsSpec | None = None,
-    span_external: SpanExternalEvents | None = None,
+    include_scorers: bool = False,
 ) -> AsyncIterator[TimelineMessages]:
     """Yield pre-rendered message segments from timeline spans.
 
@@ -218,7 +219,7 @@ async def timeline_messages(
             level. ``1`` processes only the outermost scannable span on
             each branch (typically top-level agents/solvers); ``N``
             allows up to N nested scannable layers. ``None`` (default)
-            recurses without limit. ``0`` yields nothing.
+            recurses without limit. ``<= 0`` yields nothing.
         prompt_reserve: Context-window allowance for prompt scaffolding
             wrapped around the rendered messages (e.g. a scanner
             template). A ``float`` reserves that fraction of the window;
@@ -229,13 +230,11 @@ async def timeline_messages(
             span's message thread as marked entries (``"all"``, a list
             of event types, or ``None`` (default) to disable
             interleaving). When set, each span's thread is built via
-            ``span_interleaved_messages()`` before segmentation.
-        span_external: Optional mapping of span id to ``(event_id,
-            rendered_text)`` entries to append after that span's own
-            messages, before segmentation (so they count toward the
-            token budget). The reserved key ``""`` prepends its entries
-            to the first scannable span. Ignored when ``events`` is
-            ``None``.
+            ``span_owned_messages()`` before segmentation.
+        include_scorers: When ``False`` (default), grader ``ModelEvent``s
+            under scorers spans are suppressed (their ``ScoreEvent``s
+            still render). When ``True``, the grader's own message
+            thread renders once, in the scorers span's segment.
 
     Yields:
         TimelineMessages for each segment. Empty spans are skipped.
@@ -244,36 +243,22 @@ async def timeline_messages(
 
     root = timeline.root if isinstance(timeline, Timeline) else timeline
 
-    if events is not None:
-        from inspect_scout._transcript.interleave import (
-            _event_message,
-            span_interleaved_messages,
-        )
-
-    span_external = span_external or {}
     counter = 0
-    is_first_span = True
-    for span in _walk_spans(root, depth=depth):
+    for owned in walk_owned_spans(root, depth=depth, include_scorers=include_scorers):
         source: TimelineSpan | list[ChatMessage]
         if events is None:
-            source = span
+            if owned.span.id == _ORPHAN_SPAN_ID:
+                # The orphan segment carries only event entries; without
+                # interleaving there is nothing to render (#5 is an
+                # events-only fix — design §3, "Flag, do not fix").
+                continue
+            source = owned.span
         else:
-            # Splice interleavable events (which resolves compaction) and
-            # attach span-external entries: leading ones to the first
-            # scannable span, trailing ones after their own span.
-            source = span_interleaved_messages(
-                span, events=events, compaction=compaction
-            )
-            if is_first_span:
-                leading = span_external.get("", [])
-                if leading:
-                    source = [
-                        _event_message(eid, text) for eid, text in leading
-                    ] + source
-            trailing = span_external.get(span.id, [])
-            if trailing:
-                source = source + [_event_message(eid, text) for eid, text in trailing]
-        is_first_span = False
+            from inspect_scout._transcript.interleave import span_owned_messages
+
+            source = span_owned_messages(owned, events=events, compaction=compaction)
+            if not source:
+                continue
 
         async for seg in segment_messages(
             source,
@@ -287,17 +272,9 @@ async def timeline_messages(
                 messages=seg.messages,
                 messages_str=seg.messages_str,
                 segment=counter,
-                span=span,
+                span=owned.span,
             )
             counter += 1
-
-    if is_first_span and span_external:
-        dropped = sum(len(entries) for entries in span_external.values())
-        logger.debug(
-            "timeline_messages: no scannable span was walked; dropping "
-            "%d span-external event(s)",
-            dropped,
-        )
 
 
 def _walk_spans(
@@ -399,13 +376,32 @@ def _orphan_span() -> TimelineSpan:
     return TimelineSpan(id=_ORPHAN_SPAN_ID, name="orphans")
 
 
+class _OwnerSlot:
+    """Mutable pointer to the live run for one walked span.
+
+    Shared by reference down every non-walked descendant between a walked
+    span and its nested walked descendants (see ``walk_owned_spans``). A
+    nested walked span closes the slot's ``run`` to ``None`` in place; the
+    next item routed here — by any frame still holding this same slot —
+    lazily opens a fresh run for the same span, appended to ``owners``
+    right where it's needed (after the nested descendant), instead of into
+    a run already positioned earlier.
+    """
+
+    __slots__ = ("span", "run")
+
+    def __init__(self, span: TimelineSpan, run: OwnedSpan | None) -> None:
+        self.span = span
+        self.run = run
+
+
 def walk_owned_spans(
     root: TimelineSpan,
     *,
     depth: int | None = None,
     include_scorers: bool = False,
 ) -> Iterator[OwnedSpan]:
-    """Yield each walked span with every event and branch it owns.
+    """Yield each walked span's owned content, split into document-ordered runs.
 
     The single ownership traversal (design §1): the walked-ness predicate,
     the depth counter, and the scorers rule exist exactly once, here.
@@ -419,10 +415,17 @@ def walk_owned_spans(
     replay prefix (content before the branch's first direct
     ``BranchEvent``) cut, positioned later by ``branched_from`` (§4).
 
-    Each ``OwnedSpan`` is yielded complete, in pre-order: the traversal
-    buffers because tier 1 keeps accruing items to a walked ancestor while
-    nested walked spans come and go, and tier 2 depends on later document
-    positions.
+    A walked span's ownership (tier 1, and tier 2 reaching in from outside)
+    can be interrupted by a nested walked descendant and resume afterward.
+    To keep the yielded sequence in true document order, a span's content
+    is split into "runs": it may be yielded more than once, each time
+    carrying the slice of items and branches that fall between two nested
+    walked descendants (or between the span's start/end and the nearest
+    one). A run stays open, and un-yielded, until something closes it — a
+    nested walked descendant beginning inside it, or the traversal ending —
+    then it is yielded exactly where it closed, pre-order; a fresh run for
+    the same span opens lazily, right where next needed, after the
+    descendant that closed the previous one.
 
     ``depth <= 0`` yields nothing (orphan homing suppressed too).
     """
@@ -433,14 +436,26 @@ def walk_owned_spans(
     orphan_items: list[OwnedItem] = []
     orphan_branches: list[OwnedBranch] = []
     latest: OwnedSpan | None = None  # tier 2: latest-starting walked span
+    walked_entries = 0  # bumped once per span that becomes walked
+
+    def open_run(slot: _OwnerSlot) -> OwnedSpan:
+        # Lazy: a slot with no live run (fresh, or just closed by a nested
+        # walked descendant) opens one on first use, so a run that ends up
+        # empty is never appended/yielded.
+        if slot.run is None:
+            slot.run = OwnedSpan(slot.span, [], [])
+            owners.append(slot.run)
+        return slot.run
 
     def sink(
-        walked_ancestor: OwnedSpan | None,
+        ancestor: _OwnerSlot | None,
     ) -> tuple[list[OwnedItem], list[OwnedBranch]]:
-        owner = walked_ancestor if walked_ancestor is not None else latest
-        if owner is None:
-            return orphan_items, orphan_branches  # tier 3
-        return owner.items, owner.branches
+        if ancestor is not None:
+            run = open_run(ancestor)  # tier 1
+            return run.items, run.branches
+        if latest is not None:
+            return latest.items, latest.branches  # tier 2
+        return orphan_items, orphan_branches  # tier 3
 
     def add_flattened(
         event: Event,
@@ -505,11 +520,11 @@ def walk_owned_spans(
     def visit(
         span: TimelineSpan,
         *,
-        walked_ancestor: OwnedSpan | None,
+        ancestor: _OwnerSlot | None,
         in_scorers: bool,
         scannable_depth: int,
     ) -> None:
-        nonlocal latest
+        nonlocal latest, walked_entries
         in_scorers = in_scorers or span.span_type == "scorers"
         suppressed = in_scorers and not include_scorers
         scannable = not suppressed and span_is_scannable(span)
@@ -522,15 +537,18 @@ def walk_owned_spans(
             next_depth = scannable_depth
             walked = False
 
-        owned: OwnedSpan | None = None
         if walked:
-            owned = OwnedSpan(span, [], [])
-            owners.append(owned)
-            latest = owned
+            walked_entries += 1
+            slot = _OwnerSlot(span, None)
+            latest = open_run(slot)
+            my_slot: _OwnerSlot | None = slot
+        else:
+            my_slot = ancestor
 
         # A span's owner is the owner an event at its start position would
-        # get (design §1, "Spans are owned too") — captured at entry.
-        branch_sink = owned.branches if owned is not None else sink(walked_ancestor)[1]
+        # get (design §1, "Spans are owned too") — captured at entry, into
+        # whichever run is currently open for that owner.
+        branch_sink = sink(my_slot)[1]
         for branch in span.branches:
             # add_branch suppresses grader MODEL events internally via
             # in_scorers; non-model scorers content still splices (§4).
@@ -538,20 +556,24 @@ def walk_owned_spans(
 
         for item in span.content:
             if isinstance(item, TimelineEvent):
-                if owned is not None:
-                    add_flattened(item.event, owned.items, own=True)
-                else:
-                    items, _ = sink(walked_ancestor)
-                    add_flattened(item.event, items, own=False, drop_models=suppressed)
+                items, _ = sink(my_slot)
+                add_flattened(item.event, items, own=walked, drop_models=suppressed)
             else:
+                before = walked_entries
                 visit(
                     item,
-                    walked_ancestor=owned if owned is not None else walked_ancestor,
+                    ancestor=my_slot,
                     in_scorers=in_scorers,
                     scannable_depth=next_depth,
                 )
+                # A nested walked descendant closes my_slot's current run:
+                # anything reaching this owner from now on must open a
+                # fresh one, positioned after the descendant instead of
+                # into the run that already precedes it.
+                if my_slot is not None and walked_entries != before:
+                    my_slot.run = None
 
-    visit(root, walked_ancestor=None, in_scorers=False, scannable_depth=0)
+    visit(root, ancestor=None, in_scorers=False, scannable_depth=0)
 
     if owners:
         if orphan_items or orphan_branches:

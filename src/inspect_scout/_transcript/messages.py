@@ -27,7 +27,7 @@ from inspect_ai.tool import ToolInfo
 from inspect_scout._scanner.extract import MessagesAsStr
 
 if TYPE_CHECKING:
-    from inspect_scout._transcript.interleave import EventsSpec, SpanExternalEvents
+    from inspect_scout._transcript.interleave import EventsSpec
     from inspect_scout._transcript.types import Transcript
 
 DEFAULT_CONTEXT_WINDOW = 128_000
@@ -447,7 +447,7 @@ async def transcript_messages(
             return
 
     if transcript.timelines or transcript.events:
-        from inspect_ai.event import timeline_build, timeline_filter
+        from inspect_ai.event import timeline_build
 
         from inspect_scout._transcript.timeline import timeline_messages
 
@@ -469,23 +469,6 @@ async def transcript_messages(
         else:
             selected = timelines[0]
 
-        span_external: SpanExternalEvents | None = None
-        if events is not None:
-            from inspect_scout._transcript.interleave import (
-                collect_span_external,
-                scorers_collection_source,
-            )
-
-            # Collect before the scorers prune below; see
-            # scorers_collection_source() for the include_scorers handling.
-            collection_source = scorers_collection_source(selected, include_scorers)
-            span_external = collect_span_external(
-                collection_source, events, depth=depth
-            )
-
-        if not include_scorers:
-            selected = timeline_filter(selected, lambda s: s.span_type != "scorers")
-
         async for timeline_seg in timeline_messages(
             selected,
             messages_as_str=messages_as_str,
@@ -495,7 +478,7 @@ async def transcript_messages(
             depth=depth,
             prompt_reserve=prompt_reserve,
             events=events,
-            span_external=span_external,
+            include_scorers=include_scorers,
         ):
             yield timeline_seg  # type: ignore[misc]
     else:

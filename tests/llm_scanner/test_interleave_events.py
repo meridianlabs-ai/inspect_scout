@@ -1576,7 +1576,7 @@ def test_branch_span_events_now_render_via_ownership() -> None:
 
     The fixture's branch content is [BranchEvent, ModelEvent, ScoreEvent]:
     the BranchEvent leads, so the replay cut keeps everything, and its
-    from_anchor defaults to "" -> the block appends at the segment end
+    branched_from defaults to "" -> the block appends at the segment end
     (decision 5).
     """
     events: list[Event] = [

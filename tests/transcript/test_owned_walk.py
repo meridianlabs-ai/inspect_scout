@@ -334,12 +334,8 @@ def test_branch_on_nonwalked_carrier_owner_captured_at_span_start() -> None:
     )
 
     out_alt = ModelOutput.from_content(model="mockllm", content="ALT")
-    branch = _span_of(
-        "br",
-        "branch",
-        [_model_event([ChatMessageUser(content="bq")], out_alt)],
-        span_type="agent",
-    )
+    branch_event = _model_event([ChatMessageUser(content="bq")], out_alt)
+    branch = _span_of("br", "branch", [branch_event], span_type="agent")
     carrier = _span_of("carrier", "carrier", [nested], span_type="agent")
     carrier = carrier.model_copy(update={"branches": [branch]})
 
@@ -356,6 +352,16 @@ def test_branch_on_nonwalked_carrier_owner_captured_at_span_start() -> None:
     assert len(by_id["m1"].branches) == 1
     assert by_id["nested"].branches == []
     assert by_id["m2"].branches == []
+
+    # The brute-force reference must agree: the branch's own ModelEvent is
+    # owned by "m1", not "nested" (tree_gen.py's `_document_events` used to
+    # attribute a carrier's branches using `latest` as it stood AFTER the
+    # carrier's content was walked, since it yielded content before
+    # branches; fixed to yield branches first, snapshotting the owner at
+    # the carrier's entry, matching `walk_owned_spans`).
+    assert branch_event.uuid is not None
+    reference = expected_owners(root, depth=None, include_scorers=False)
+    assert reference[branch_event.uuid] == "m1"
 
 
 def test_nested_branches_flatten_onto_owners_branch_list() -> None:

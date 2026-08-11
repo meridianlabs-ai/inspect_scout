@@ -327,17 +327,14 @@ def _document_events(
             for nested in event.events:
                 yield from flat(nested, direct=False)
 
-    for item in span.content:
-        if isinstance(item, TimelineEvent):
-            for e, is_direct in flat(item.event):
-                yield e, chain, False, is_direct
-        else:
-            yield from _document_events(
-                item,
-                include_scorers=include_scorers,
-                _in_scorers=in_scorers,
-                _chain=chain,
-            )
+    # Branches are yielded BEFORE content, mirroring walk_owned_spans' visit()
+    # (timeline.py): branch_sink is captured from the tier-2 `latest` in
+    # force at span ENTRY, before the content loop below can recurse into a
+    # nested walked descendant and advance it. Yielding content first would
+    # let a carrier's own branch events pick up a `latest` that only became
+    # true partway through the carrier's content -- wrong, since a span's
+    # (and its branches') owner is "the owner an event at its start position
+    # would get" (design §1, "Spans are owned too").
     for b in span.branches:
         # Same replay-cut CONTRACT as walk_owned_spans (design §4), different
         # mechanism: splice from the first direct BranchEvent onward; a
@@ -356,6 +353,17 @@ def _document_events(
             live, include_scorers=include_scorers, _in_scorers=in_scorers, _chain=chain
         ):
             yield e, c, True, is_direct
+    for item in span.content:
+        if isinstance(item, TimelineEvent):
+            for e, is_direct in flat(item.event):
+                yield e, chain, False, is_direct
+        else:
+            yield from _document_events(
+                item,
+                include_scorers=include_scorers,
+                _in_scorers=in_scorers,
+                _chain=chain,
+            )
 
 
 def all_event_uuids(root: TimelineSpan, *, include_scorers: bool) -> list[str]:

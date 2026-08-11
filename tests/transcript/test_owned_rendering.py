@@ -255,3 +255,139 @@ def test_grouped_branches_splice_consecutively_and_empty_key_appends() -> None:
     assert all(is_marker[i] for i in range(p1, p2 + 1))
     # "" resolves unmatched and appends at the very end (decision 5).
     assert p3 > texts.index("a2")
+
+
+def test_branch_insertion_skips_leading_foreign_marker_sharing_anchor_id() -> None:
+    """Second EventId->MessageId laundering site (``insertion_index``'s scan).
+
+    A foreign event's ``uuid`` is laundered into its rendered marker's
+    ``ChatMessage.id`` (see ``EventId``'s docstring, ``_scanner/util.py``).
+    When that uuid collides with a real thread message's id, the scan must
+    still resolve to the real message, not the marker. Here the foreign
+    event arrives *before* the owner's sole turn, so its marker renders
+    leading (before the whole thread) -- the marker would match first at
+    index 0 if the scan didn't skip markers, splicing the branch right
+    after it (between the marker and the real thread) instead of in
+    thread position, after "a".
+    """
+    out = ModelOutput.from_content(model="mockllm", content="a")
+    ev = _model_event([ChatMessageUser(content="q")], out)
+    owner = _span("o", "main", [ev])
+    anchor_id = out.choices[0].message.id
+    assert anchor_id is not None
+
+    foreign = SampleLimitEvent.model_construct(
+        event="sample_limit", type="message", limit=1, message="lim"
+    )
+    foreign.uuid = anchor_id  # collide with the owner's own output message id
+    sub = _span_of("sub", "helper", [foreign])
+    sub = sub.model_copy(update={"utility": True})
+    owner.content.insert(0, sub)  # foreign marker renders leading (before "q")
+
+    alt_out = ModelOutput.from_content(model="mockllm", content="ALT")
+    branch = _span_of(
+        "b",
+        "branch",
+        [
+            BranchEvent(from_anchor=anchor_id),
+            _model_event([ChatMessageUser(content="bq")], alt_out),
+        ],
+    )
+    branch = branch.model_copy(update={"branched_from": anchor_id})
+    owner_wrapped = owner.model_copy(update={"branches": [branch]})
+
+    [rendered] = _render(owner_wrapped)
+    texts = _texts(rendered)
+    is_marker = [bool((m.metadata or {}).get(EVENT_MARKER_KEY)) for m in rendered]
+    assert is_marker[0]  # the colliding foreign marker renders leading
+    assert texts[1] == "q" and texts[2] == "a"  # real thread intact, in order
+    alt_pos = next(i for i, t in enumerate(texts) if "ALT" in t)
+    # Thread position: appended after "a" (no thread message follows it in
+    # this single-turn owner), never wedged between the leading marker and "q".
+    assert alt_pos == len(texts) - 1
+
+
+def test_branch_insertion_skips_trailing_foreign_marker_sharing_anchor_id() -> None:
+    """Same collision, mirrored document order (companion to the leading case).
+
+    The foreign event now arrives *after* the owner's sole turn, so its
+    marker renders trailing "a" rather than leading. The real message is
+    scanned and matched before the trailing marker is ever reached, so this
+    shape resolves correctly even without the marker-skip fix -- it pins
+    that the existing "skip trailing markers after a match" loop still
+    works when the trailing marker itself is the colliding one.
+    """
+    out = ModelOutput.from_content(model="mockllm", content="a")
+    ev = _model_event([ChatMessageUser(content="q")], out)
+    owner = _span("o", "main", [ev])
+    anchor_id = out.choices[0].message.id
+    assert anchor_id is not None
+
+    foreign = SampleLimitEvent.model_construct(
+        event="sample_limit", type="message", limit=1, message="lim"
+    )
+    foreign.uuid = anchor_id  # collide with the owner's own output message id
+    sub = _span_of("sub", "helper", [foreign])
+    sub = sub.model_copy(update={"utility": True})
+    owner.content.append(sub)  # foreign marker renders trailing (after "a")
+
+    alt_out = ModelOutput.from_content(model="mockllm", content="ALT")
+    branch = _span_of(
+        "b",
+        "branch",
+        [
+            BranchEvent(from_anchor=anchor_id),
+            _model_event([ChatMessageUser(content="bq")], alt_out),
+        ],
+    )
+    branch = branch.model_copy(update={"branched_from": anchor_id})
+    owner_wrapped = owner.model_copy(update={"branches": [branch]})
+
+    [rendered] = _render(owner_wrapped)
+    texts = _texts(rendered)
+    is_marker = [bool((m.metadata or {}).get(EVENT_MARKER_KEY)) for m in rendered]
+    assert texts[0] == "q" and texts[1] == "a"  # real thread intact, in order
+    assert is_marker[2]  # the colliding foreign marker trails "a"
+    alt_pos = next(i for i, t in enumerate(texts) if "ALT" in t)
+    assert alt_pos == len(texts) - 1  # after "a" AND its trailing marker
+
+
+def test_branch_insertion_resolves_duplicate_real_message_id_to_first_occurrence() -> (
+    None
+):
+    """Viewer parity: a duplicate id shared by two REAL thread messages.
+
+    No markers involved -- the marker-skip fix (see the two tests above)
+    must not perturb this pre-existing, unrelated behavior: resolution is a
+    plain forward scan, so a ``branched_from`` id shared by two genuine
+    thread messages must deterministically resolve to the first occurrence.
+    """
+    out1 = ModelOutput.from_content(model="mockllm", content="a1")
+    q1 = ChatMessageUser(content="task")
+    ev1 = _model_event([q1], out1)
+    dup_id = out1.choices[0].message.id
+    assert dup_id is not None
+
+    q2 = ChatMessageUser(content="next")
+    out2 = ModelOutput.from_content(model="mockllm", content="a2")
+    out2.choices[0].message.id = dup_id  # duplicate real output id
+    ev2 = _model_event([q1, out1.choices[0].message, q2], out2)
+    owner = _span("o", "main", [ev1, ev2])
+
+    alt_out = ModelOutput.from_content(model="mockllm", content="ALT")
+    branch = _span_of(
+        "b",
+        "branch",
+        [
+            BranchEvent(from_anchor=dup_id),
+            _model_event([ChatMessageUser(content="bq")], alt_out),
+        ],
+    )
+    branch = branch.model_copy(update={"branched_from": dup_id})
+    owner_wrapped = owner.model_copy(update={"branches": [branch]})
+
+    [rendered] = _render(owner_wrapped)
+    texts = _texts(rendered)
+    alt_pos = next(i for i, t in enumerate(texts) if "ALT" in t)
+    # Resolves to the FIRST occurrence (a1's), not the second (a2's).
+    assert texts.index("a1") < alt_pos < texts.index("a2")

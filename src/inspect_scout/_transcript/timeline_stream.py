@@ -506,10 +506,14 @@ async def stream_timeline_messages(
 
     Raises:
         _StubSkeletonUnsupported: If pass 1 selects a `ModelEvent` lacking a
-            uuid (see `needed_model_event_uuids`), or if pass 2's stream
-            does not contain a full event for every uuid pass 1 selected
-            (a multi-shot contract violation: `handle.events()` returned
-            different content across the two calls).
+            uuid (see `needed_model_event_uuids`), if pass 2's stream does
+            not contain a full event for every uuid pass 1 selected (a
+            multi-shot contract violation: `handle.events()` returned
+            different content across the two calls), or if pass 2 encounters
+            a renderable off-thread `ModelEvent` (one not selected by pass 1,
+            whose output would still render as a `MODEL (BRANCH)` entry)
+            that lacks a uuid -- substitution is keyed by uuid, so it could
+            never reach its stub (see `_collect_pass2_model_events`).
     """
     interner = _PromptInterner()
     stubs: list[Event] = [stub_event(ev, interner) async for ev in handle.events()]

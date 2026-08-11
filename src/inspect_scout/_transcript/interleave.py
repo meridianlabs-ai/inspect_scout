@@ -444,6 +444,13 @@ def _splice_branches(
         if key not in resolvable:
             return None  # includes "": unmatched, appends at the end
         for i, message in enumerate(spliced):
+            if (message.metadata or {}).get(EVENT_MARKER_KEY):
+                # A marker's id is an EventId laundered into ChatMessage.id
+                # (see EventId's docstring, _scanner/util.py) -- a foreign
+                # event's uuid can collide with a real thread message's id.
+                # Only real thread messages participate in id resolution;
+                # skip trailing markers below still applies once one matches.
+                continue
             if _message_id(message) == key:
                 # After the message and its anchored [E#] entries.
                 j = i + 1

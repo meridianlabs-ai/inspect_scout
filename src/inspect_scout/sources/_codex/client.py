@@ -14,13 +14,19 @@ import json
 import os
 import re
 import sys
+from collections.abc import Iterator
 from datetime import datetime
 from logging import getLogger
 from os import PathLike
 from pathlib import Path
 from typing import Any, TextIO
 
-from .._util import filter_and_sort_by_mtime
+from .._util import filter_and_sort_by_mtime, iter_jsonl_values
+
+if sys.version_info >= (3, 14):
+    from compression.zstd import ZstdError
+else:
+    from zstandard import ZstdError
 
 logger = getLogger(__name__)
 
@@ -33,6 +39,10 @@ _ROLLOUT_FILE_RE = re.compile(
     r"^rollout-.*-([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}"
     r"-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\.jsonl(\.zst)?$"
 )
+
+# Errors reading a rollout file can raise: filesystem failures, corrupt zstd
+# frames, and non-UTF-8 content.
+_ROLLOUT_READ_ERRORS = (OSError, ZstdError, UnicodeDecodeError)
 
 
 def default_codex_home() -> Path:
@@ -47,13 +57,6 @@ def rollout_thread_id(rollout_file: Path) -> str | None:
     """Extract the thread id (UUID) from a rollout filename."""
     match = _ROLLOUT_FILE_RE.match(rollout_file.name)
     return match.group(1) if match else None
-
-
-def is_rollout_filename(name: str) -> bool:
-    """Whether a filename looks like a codex rollout file."""
-    return name.startswith("rollout-") and (
-        name.endswith(".jsonl") or name.endswith(".jsonl.zst")
-    )
 
 
 def discover_rollout_files(
@@ -103,11 +106,7 @@ def discover_rollout_files(
             rollout_files.extend(_find_rollouts_in_directory(search_path))
 
     if session_id:
-        rollout_files = [
-            f
-            for f in rollout_files
-            if rollout_thread_id(f) == session_id or session_id in f.name
-        ]
+        rollout_files = [f for f in rollout_files if rollout_thread_id(f) == session_id]
 
     return filter_and_sort_by_mtime(rollout_files, from_time, to_time)
 
@@ -117,29 +116,43 @@ def _find_rollouts_in_directory(directory: Path) -> list[Path]:
     return [
         f
         for f in directory.rglob("rollout-*.jsonl*")
-        if f.is_file() and is_rollout_filename(f.name)
+        if f.is_file() and rollout_thread_id(f) is not None
     ]
 
 
-def find_rollout_by_thread_id(thread_id: str, search_roots: list[Path]) -> Path | None:
-    """Locate the rollout file for a thread id.
+class RolloutFinder:
+    """Locates rollout files by thread id.
 
-    Searches each root recursively (child threads may live in a different
-    date partition than their parent). Prefers the uncompressed file when
+    Child threads may live in a different date partition than their parent,
+    so each search root is scanned recursively — once, on first lookup — and
+    subsequent lookups are dict hits. Prefers the uncompressed file when
     both forms exist.
     """
-    for root in search_roots:
-        if not root.is_dir():
-            continue
-        matches = [
-            f
-            for f in root.rglob(f"rollout-*{thread_id}.jsonl*")
-            if f.is_file() and rollout_thread_id(f) == thread_id
-        ]
-        if matches:
-            matches.sort(key=lambda f: f.name.endswith(".zst"))
-            return matches[0]
-    return None
+
+    def __init__(self, search_roots: list[Path]) -> None:
+        self._search_roots = search_roots
+        self._index: dict[str, Path] | None = None
+
+    def find(self, thread_id: str) -> Path | None:
+        if self._index is None:
+            self._index = {}
+            for root in self._search_roots:
+                if not root.is_dir():
+                    continue
+                for f in _find_rollouts_in_directory(root):
+                    tid = rollout_thread_id(f)
+                    assert tid is not None  # guaranteed by _find_rollouts_in_directory
+                    existing = self._index.get(tid)
+                    if existing is None or (
+                        existing.name.endswith(".zst") and not f.name.endswith(".zst")
+                    ):
+                        self._index[tid] = f
+        return self._index.get(thread_id)
+
+
+def find_rollout_by_thread_id(thread_id: str, search_roots: list[Path]) -> Path | None:
+    """Locate the rollout file for a thread id (single-use RolloutFinder)."""
+    return RolloutFinder(search_roots).find(thread_id)
 
 
 def sessions_root_for(rollout_file: Path) -> Path:
@@ -183,37 +196,20 @@ def _open_rollout_text(path: Path) -> TextIO:
     return path.open("r", encoding="utf-8")
 
 
-def _rollout_read_errors() -> tuple[type[Exception], ...]:
-    """Errors reading a rollout file can raise.
-
-    Covers filesystem failures, corrupt zstd frames, and non-UTF-8 content.
-    """
-    if sys.version_info >= (3, 14):
-        from compression.zstd import ZstdError
-    else:
-        from zstandard import ZstdError
-    return (OSError, ZstdError, UnicodeDecodeError)
+def iter_rollout_lines(path: Path) -> Iterator[dict[str, Any]]:
+    """Lazily read parsed lines from a rollout file, skipping malformed ones."""
+    try:
+        with _open_rollout_text(path) as f:
+            for parsed in iter_jsonl_values(f, path):
+                if isinstance(parsed, dict):
+                    yield parsed
+    except _ROLLOUT_READ_ERRORS as e:
+        logger.warning(f"Failed to read rollout file {path}: {e}")
 
 
 def read_rollout_lines(path: Path) -> list[dict[str, Any]]:
     """Read all lines from a rollout file, skipping malformed ones."""
-    lines: list[dict[str, Any]] = []
-    try:
-        with _open_rollout_text(path) as f:
-            for line_num, line in enumerate(f, 1):
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    parsed = json.loads(line)
-                except json.JSONDecodeError as e:
-                    logger.warning(f"Invalid JSON at {path}:{line_num}: {e}")
-                    continue
-                if isinstance(parsed, dict):
-                    lines.append(parsed)
-    except _rollout_read_errors() as e:
-        logger.warning(f"Failed to read rollout file {path}: {e}")
-    return lines
+    return list(iter_rollout_lines(path))
 
 
 def peek_session_meta(path: Path) -> dict[str, Any] | None:
@@ -240,7 +236,7 @@ def peek_session_meta(path: Path) -> dict[str, Any] | None:
                 ):
                     return parsed
                 return None
-    except _rollout_read_errors() as e:
+    except _ROLLOUT_READ_ERRORS as e:
         logger.warning(f"Could not read rollout file {path}: {e}")
     return None
 
@@ -259,14 +255,7 @@ def load_thread_names(codex_home: Path | None = None) -> dict[str, str]:
         return names
     try:
         with index_file.open("r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    entry = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
+            for entry in iter_jsonl_values(f, index_file):
                 if isinstance(entry, dict):
                     thread_id = entry.get("id")
                     thread_name = entry.get("thread_name")
@@ -275,11 +264,3 @@ def load_thread_names(codex_home: Path | None = None) -> dict[str, str]:
     except (OSError, UnicodeDecodeError) as e:
         logger.warning(f"Could not read session index {index_file}: {e}")
     return names
-
-
-def get_source_uri(rollout_file: Path, transcript_id: str | None = None) -> str:
-    """Generate a source URI for a rollout file."""
-    uri = f"file://{rollout_file}"
-    if transcript_id:
-        uri += f"#{transcript_id}"
-    return uri

@@ -19,8 +19,8 @@ from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, AsyncIterator
 
-from inspect_ai.event import Event, ModelEvent
-from inspect_ai.model import ChatMessage, stable_message_ids
+from inspect_ai.event import Event
+from inspect_ai.model import ChatMessage
 
 if TYPE_CHECKING:
     from inspect_scout import Transcript
@@ -30,15 +30,17 @@ from inspect_swe._codex_cli._events.rollout_models import (
     RolloutEvent,
     SessionMetaEvent,
     TurnContextEvent,
+    parse_rollout_event,
     parse_rollout_events,
 )
 
+from .._util import apply_stable_message_ids, get_source_uri, total_active_time
 from .client import (
     CODEX_SOURCE_TYPE,
+    RolloutFinder,
     codex_home_for,
     discover_rollout_files,
-    find_rollout_by_thread_id,
-    get_source_uri,
+    iter_rollout_lines,
     load_thread_names,
     peek_session_meta,
     read_rollout_lines,
@@ -101,6 +103,10 @@ async def codex(
         thread_names = load_thread_names(home) if home else {}
     count = 0
 
+    # One finder per sessions tree, shared across its rollouts so the tree is
+    # scanned at most once per import for child-thread / history lookups.
+    finders: dict[Path, RolloutFinder] = {}
+
     for rollout_file in rollout_files:
         if limit is not None and count >= limit:
             return
@@ -116,7 +122,11 @@ async def codex(
         if _skip_for_source(meta, rollout_file):
             continue
 
-        transcript = await _process_rollout_file(rollout_file, meta, thread_names)
+        root = sessions_root_for(rollout_file)
+        finder = finders.setdefault(root, RolloutFinder([root]))
+        transcript = await _process_rollout_file(
+            rollout_file, meta, thread_names, finder
+        )
         if transcript is not None:
             yield transcript
             count += 1
@@ -124,8 +134,6 @@ async def codex(
 
 def _peek_meta_event(rollout_file: Path) -> SessionMetaEvent | None:
     """Parse the session_meta line of a rollout file."""
-    from inspect_swe._codex_cli._events.rollout_models import parse_rollout_event
-
     raw = peek_session_meta(rollout_file)
     if raw is None:
         return None
@@ -162,13 +170,12 @@ async def _process_rollout_file(
     rollout_file: Path,
     meta: SessionMetaEvent,
     thread_names: dict[str, str],
+    finder: RolloutFinder,
 ) -> "Transcript" | None:
     """Process a single rollout file into a transcript."""
     raw_lines = read_rollout_lines(rollout_file)
     if not raw_lines:
         return None
-
-    search_roots = [sessions_root_for(rollout_file)]
 
     # Resolve a referenced parent-history prefix (paginated forks) so the
     # transcript is complete. Copied forks inline the prefix and need nothing.
@@ -176,7 +183,7 @@ async def _process_rollout_file(
         prefix = _resolve_history_base(
             meta.history_base.thread_id,
             meta.history_base.end_ordinal_exclusive,
-            search_roots,
+            finder,
         )
         raw_lines = prefix + raw_lines
 
@@ -184,23 +191,21 @@ async def _process_rollout_file(
     if not events:
         return None
 
-    return await _create_transcript(
-        events, rollout_file, meta, thread_names, search_roots
-    )
+    return await _create_transcript(events, rollout_file, meta, thread_names, finder)
 
 
 def _resolve_history_base(
     parent_thread_id: str,
     end_ordinal_exclusive: int,
-    search_roots: list[Path],
+    finder: RolloutFinder,
 ) -> list[dict[str, Any]]:
     """Load the inherited prefix of a parent rollout (by ordinal)."""
-    parent_file = find_rollout_by_thread_id(parent_thread_id, search_roots)
+    parent_file = finder.find(parent_thread_id)
     if parent_file is None:
         logger.warning(f"Parent rollout for history_base not found: {parent_thread_id}")
         return []
     prefix: list[dict[str, Any]] = []
-    for line in read_rollout_lines(parent_file):
+    for line in iter_rollout_lines(parent_file):
         if line.get("type") == "session_meta":
             continue
         ordinal = line.get("ordinal")
@@ -215,7 +220,7 @@ async def _create_transcript(
     rollout_file: Path,
     meta: SessionMetaEvent,
     thread_names: dict[str, str],
-    search_roots: list[Path],
+    finder: RolloutFinder,
 ) -> "Transcript" | None:
     """Create a Transcript from parsed rollout events."""
     from inspect_ai.event import timeline_build
@@ -228,7 +233,7 @@ async def _create_transcript(
         thread_id = rollout_file.name.removesuffix(".zst").removesuffix(".jsonl")
 
     scout_events: list[Event] = []
-    async for event in process_rollout_events(events, search_roots):
+    async for event in process_rollout_events(events, finder):
         scout_events.append(event)
     if not scout_events:
         return None
@@ -247,19 +252,12 @@ async def _create_transcript(
     if not messages:
         return None
 
-    # Apply stable message IDs
-    apply_ids = stable_message_ids()
-    for event in scout_events:
-        if isinstance(event, ModelEvent):
-            apply_ids(event)
-    apply_ids(messages)
+    apply_stable_message_ids(scout_events, messages)
 
     model_name = _extract_model_name(events)
     total_tokens = sum_scout_tokens(scout_events)
-    root = timeline.root
-    wall_clock = (root.end_time() - root.start_time()).total_seconds()
-    total_time = wall_clock - root.idle_time()
-    first_timestamp = meta.timestamp or (events[0].timestamp if events else None)
+    total_time = total_active_time(timeline.root)
+    first_timestamp = meta.timestamp or events[0].timestamp
 
     return Transcript(
         transcript_id=thread_id,

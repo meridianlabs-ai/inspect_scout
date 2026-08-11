@@ -8,7 +8,6 @@ from typing import Any
 from inspect_scout.sources._codex.client import (
     discover_rollout_files,
     find_rollout_by_thread_id,
-    is_rollout_filename,
     load_thread_names,
     peek_session_meta,
     read_rollout_lines,
@@ -126,9 +125,7 @@ def test_rollout_thread_id() -> None:
     assert rollout_thread_id(Path(ROLLOUT_NAME)) == THREAD_ID
     assert rollout_thread_id(Path(ROLLOUT_NAME + ".zst")) == THREAD_ID
     assert rollout_thread_id(Path("other.jsonl")) is None
-    assert is_rollout_filename(ROLLOUT_NAME)
-    assert is_rollout_filename(ROLLOUT_NAME + ".zst")
-    assert not is_rollout_filename("agent-abc.jsonl")
+    assert rollout_thread_id(Path("agent-abc.jsonl")) is None
 
 
 def _write_rollout(path: Path, thread_id: str) -> Path:

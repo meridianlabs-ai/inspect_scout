@@ -19,9 +19,9 @@ You can populate a transcript database in a variety of ways depending on where y
 
 6. [Transcript API](#transcript-api): Python API for creating and inserting transcripts.
 
-6. [Arrow Import](#arrow-import): Efficient direct insertion using `RecordBatchReader`.
+7. [Arrow Import](#arrow-import): Efficient direct insertion using `RecordBatchReader`.
 
-7. [Parquet Data Lake](#parquet-data-lake): Use an existing data lake not created using Inspect Scout.
+8. [Parquet Data Lake](#parquet-data-lake): Use an existing data lake not created using Inspect Scout.
 
 
 We'll cover each of these in turn below. Before proceeding though you should be sure to familiarize yourself with the [Database Schema](db_schema.qmd) and make a plan for how you want to map your data into it.

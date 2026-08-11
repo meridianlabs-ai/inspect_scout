@@ -6,7 +6,9 @@ from typing import Any, AsyncIterator, Callable
 import pytest
 from inspect_ai.model._chat_message import ChatMessageUser
 from inspect_scout._cli.import_command import _run_import
-from inspect_scout._transcript.types import Transcript
+from inspect_scout._query import Query
+from inspect_scout._transcript.database.factory import transcripts_db
+from inspect_scout._transcript.types import Transcript, TranscriptContent
 
 
 def _sample_transcript(id: str) -> Transcript:
@@ -18,6 +20,12 @@ def _sample_transcript(id: str) -> Transcript:
         metadata={},
         messages=[ChatMessageUser(content="Test message")],
         events=[],
+    )
+
+
+def _sample_transcript_with_message(id: str, message: str) -> Transcript:
+    return _sample_transcript(id).model_copy(
+        update={"messages": [ChatMessageUser(content=message)]}
     )
 
 
@@ -67,3 +75,34 @@ async def test_run_import_completion_message(
         assert fragment in output
     for fragment in not_expected:
         assert fragment not in output
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("source_name", "expected_message"),
+    [
+        pytest.param("codex", "resumed turn", id="codex_refreshes"),
+        pytest.param("test-source", "initial turn", id="other_source_deduplicates"),
+    ],
+)
+async def test_run_import_existing_transcript_policy(
+    source_name: str,
+    expected_message: str,
+    tmp_path: Path,
+) -> None:
+    """Codex refreshes resumed threads without changing other importers."""
+    transcripts_dir = str(tmp_path / "transcripts")
+    initial = _sample_transcript_with_message("thread-001", "initial turn")
+    resumed = _sample_transcript_with_message("thread-001", "resumed turn")
+
+    await _run_import(_source_with([initial]), source_name, {}, transcripts_dir)
+    await _run_import(_source_with([resumed]), source_name, {}, transcripts_dir)
+
+    async with transcripts_db(transcripts_dir) as db:
+        infos = [info async for info in db.select(Query())]
+        assert len(infos) == 1
+        transcript = await db.read(
+            infos[0], TranscriptContent(messages="all", events="all")
+        )
+
+    assert transcript.messages[0].text == expected_message

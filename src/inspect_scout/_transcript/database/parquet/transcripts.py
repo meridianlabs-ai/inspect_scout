@@ -366,6 +366,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         | pa.RecordBatchReader,
         session_id: str | None = None,
         commit: bool = True,
+        replace_existing: bool = False,
     ) -> None:
         """Insert transcripts, writing one Parquet file per batch.
 
@@ -381,6 +382,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
             commit: If True (default), commit after insert (compact + refresh view).
                 If False, defer commit for batch operations. Call commit()
                 explicitly when ready to finalize.
+            replace_existing: Replace transcripts whose IDs already exist. Only
+                supported for transcript iterables; defaults to False.
         """
         assert self._conn is not None
         assert self._index_storage is not None
@@ -401,9 +404,15 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         # two insert codepaths, one for arrow batch, one for transcripts
         if isinstance(transcripts, pa.RecordBatchReader):
+            if replace_existing:
+                raise ValueError(
+                    "replace_existing is not supported for RecordBatchReader inserts"
+                )
             await self._insert_from_record_batch_reader(transcripts, session_id)
         else:
-            await self._insert_from_transcripts(transcripts, session_id)
+            await self._insert_from_transcripts(
+                transcripts, session_id, replace_existing=replace_existing
+            )
 
         # Commit if requested (default behavior)
         if commit:
@@ -919,13 +928,17 @@ class ParquetTranscriptsDB(TranscriptsDB):
         self,
         transcripts: Iterable[Transcript] | AsyncIterable[Transcript] | Transcripts,
         session_id: str | None = None,
+        *,
+        replace_existing: bool = False,
     ) -> None:
         batch: list[dict[str, Any]] = []
         current_batch_size = 0
         target_size_bytes = self._target_file_size_mb * 1024 * 1024
 
         with display().text_progress("Transcript", True) as progress:
-            async for transcript in self._as_async_iterator(transcripts):
+            async for transcript in self._as_async_iterator(
+                transcripts, replace_existing=replace_existing
+            ):
                 progress.update(text=transcript.transcript_id)
 
                 # Serialize once for both size calculation and writing
@@ -2123,23 +2136,35 @@ class ParquetTranscriptsDB(TranscriptsDB):
     def _as_async_iterator(
         self,
         transcripts: Iterable[Transcript] | AsyncIterable[Transcript] | Transcripts,
+        *,
+        replace_existing: bool = False,
     ) -> AsyncIterator[Transcript]:
         """Convert various transcript sources to async iterator.
 
         Args:
             transcripts: Transcripts from various sources (iterable, async iterable,
                 Transcripts object).
+            replace_existing: Yield IDs that existed before this insert, allowing
+                their newest values to replace the indexed database entry.
 
         Returns:
             AsyncIterator over transcripts, filtered to exclude already-present transcripts.
         """
+        seen_ids: set[str] = set()
+
+        def should_yield(transcript_id: str) -> bool:
+            if transcript_id in seen_ids:
+                return False
+            seen_ids.add(transcript_id)
+            return replace_existing or not self._have_transcript(transcript_id)
+
         # Transcripts - read them fully using reader
         if isinstance(transcripts, Transcripts):
 
             async def _iter() -> AsyncIterator[Transcript]:
                 async with transcripts.reader() as tr:
                     async for t in tr.index():
-                        if not self._have_transcript(t.transcript_id):
+                        if should_yield(t.transcript_id):
                             yield await tr.read(
                                 t,
                                 content=TranscriptContent(messages="all", events="all"),
@@ -2152,7 +2177,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             async def _iter() -> AsyncIterator[Transcript]:
                 async for transcript in transcripts:
-                    if not self._have_transcript(transcript.transcript_id):
+                    if should_yield(transcript.transcript_id):
                         yield transcript
 
             return _iter()
@@ -2162,7 +2187,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             async def _iter() -> AsyncIterator[Transcript]:
                 for transcript in transcripts:
-                    if not self._have_transcript(transcript.transcript_id):
+                    if should_yield(transcript.transcript_id):
                         yield transcript
 
             return _iter()

@@ -148,6 +148,7 @@ class TranscriptsDB(TranscriptsView):
         | pa.RecordBatchReader,
         session_id: str | None = None,
         commit: bool = True,
+        replace_existing: bool = False,
     ) -> None:
         """Insert transcripts into database.
 
@@ -158,6 +159,8 @@ class TranscriptsDB(TranscriptsView):
             commit: If True (default), commit after insert (compact + index).
                 If False, defer commit for batch operations. Call commit()
                 explicitly when ready to finalize.
+            replace_existing: Replace transcripts whose IDs already exist. Defaults
+                to False so repeated inserts remain additive and idempotent.
         """
         ...
 

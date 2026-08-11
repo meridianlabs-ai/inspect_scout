@@ -253,10 +253,9 @@ async def _run_import(
     d = display()
     d.print(f"\nImporting from [bold]{source_name}[/bold]...\n", markup=True)
 
-    # Count transcripts as they stream through to the database.
-    # Note that the DB does not overwrite existing items, so this count
-    # represents the number of items we processed, not necessarily the number
-    # actually written.
+    # Count transcripts as they stream through to the database. This represents
+    # the number of items processed, not necessarily the number written, because
+    # most sources retain the database's duplicate-ID filtering behavior.
     count = 0
 
     async def counted() -> AsyncIterator[Transcript]:
@@ -266,7 +265,9 @@ async def _run_import(
             yield transcript
 
     async with transcripts_db(transcripts_dir) as db:
-        await db.insert(counted())
+        # Codex resumes append to the original rollout while preserving its thread
+        # ID. Refresh that transcript so subsequent imports expose the new turns.
+        await db.insert(counted(), replace_existing=source_name == "codex")
 
     if count == 0:
         d.print("\nNo transcripts were imported (the source produced none).\n")
@@ -420,9 +421,14 @@ def import_command(
             else:
                 from rich.prompt import Prompt
 
+                add_description = (
+                    "Add transcripts (resumed Codex sessions will be refreshed)"
+                    if source == "codex"
+                    else "Add transcripts (existing transcripts won't be re-imported)"
+                )
                 choice = Prompt.ask(
                     f"\nTranscripts directory '{transcripts}' already exists\n"
-                    "  [bold]1[/bold]) Add transcripts (existing transcripts won't be re-imported)\n"
+                    f"  [bold]1[/bold]) {add_description}\n"
                     "  [bold]2[/bold]) Overwrite (delete existing transcripts first)\n"
                     "  [bold]3[/bold]) Cancel\n",
                     choices=["1", "2", "3"],

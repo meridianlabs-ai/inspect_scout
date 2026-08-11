@@ -1,7 +1,7 @@
 """Unit tests for codex rollout parsing and file discovery."""
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -182,6 +182,13 @@ def test_discover_rollout_files(tmp_path: Path) -> None:
     found = discover_rollout_files(sessions, from_time=datetime(2026, 7, 15))
     assert found == [f2]
     found = discover_rollout_files(sessions, to_time=datetime(2026, 7, 15))
+    assert found == [f1]
+
+    # timezone-aware bounds are also supported (e.g. `--from 2026-07-15T00:00:00Z`)
+    aware = datetime(2026, 7, 15, tzinfo=timezone.utc)
+    found = discover_rollout_files(sessions, from_time=aware)
+    assert found == [f2]
+    found = discover_rollout_files(sessions, to_time=aware)
     assert found == [f1]
 
     # newest first

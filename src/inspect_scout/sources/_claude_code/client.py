@@ -12,6 +12,8 @@ from os import PathLike
 from pathlib import Path
 from typing import Any
 
+from .._util import filter_and_sort_by_mtime
+
 logger = getLogger(__name__)
 
 # Claude Code source type constant
@@ -198,22 +200,8 @@ def discover_session_files(
     if session_id:
         session_files = [f for f in session_files if f.stem == session_id]
 
-    # Filter by time range
-    if from_time or to_time:
-        filtered = []
-        for f in session_files:
-            mtime = datetime.fromtimestamp(f.stat().st_mtime)
-            if from_time and mtime < from_time:
-                continue
-            if to_time and mtime >= to_time:
-                continue
-            filtered.append(f)
-        session_files = filtered
-
-    # Sort by modification time (newest first)
-    session_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
-
-    return session_files
+    # Filter by time range and sort by modification time (newest first)
+    return filter_and_sort_by_mtime(session_files, from_time, to_time)
 
 
 def _find_sessions_in_directory(

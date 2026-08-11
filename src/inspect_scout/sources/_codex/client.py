@@ -20,6 +20,8 @@ from os import PathLike
 from pathlib import Path
 from typing import Any, TextIO
 
+from .._util import filter_and_sort_by_mtime
+
 logger = getLogger(__name__)
 
 CODEX_SOURCE_TYPE = "codex_cli"
@@ -107,19 +109,7 @@ def discover_rollout_files(
             if rollout_thread_id(f) == session_id or session_id in f.name
         ]
 
-    if from_time or to_time:
-        filtered = []
-        for f in rollout_files:
-            mtime = datetime.fromtimestamp(f.stat().st_mtime)
-            if from_time and mtime < from_time:
-                continue
-            if to_time and mtime >= to_time:
-                continue
-            filtered.append(f)
-        rollout_files = filtered
-
-    rollout_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
-    return rollout_files
+    return filter_and_sort_by_mtime(rollout_files, from_time, to_time)
 
 
 def _find_rollouts_in_directory(directory: Path) -> list[Path]:

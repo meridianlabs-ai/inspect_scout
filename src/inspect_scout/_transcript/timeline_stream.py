@@ -20,7 +20,7 @@ ModelEvents/ToolEvents per span).
 Accepted display-only fidelity loss: ``_extract_agent_results``' bridge flow
 reads the *next* ModelEvent's ``input``, which our stub reduces to system
 messages, so ``TimelineSpan.agent_result`` may not populate. It is not read
-by ``_walk_spans`` or ``span_messages`` -- the two functions the scanning
+by ``walk_owned_spans`` or ``span_messages`` -- the two functions the scanning
 path depends on.
 """
 
@@ -37,15 +37,14 @@ from inspect_ai.event import (
     TimelineSpan,
     ToolEvent,
     timeline_build,
-    timeline_filter,
 )
 from inspect_ai.model import ChatMessageSystem, ChatMessageUser, ContentText, Model
 
 from inspect_scout._transcript.interleave import _off_thread_model_text
 from inspect_scout._transcript.timeline import (
     TimelineMessages,
-    _walk_spans,
     timeline_messages,
+    walk_owned_spans,
 )
 
 if TYPE_CHECKING:
@@ -315,18 +314,27 @@ def needed_model_event_uuids(
     *,
     compaction: Literal["all", "last"] | int,
     depth: int | None,
+    include_scorers: bool,
 ) -> set[str]:
     """Select every ModelEvent whose content the scanning path reads.
 
-    Walks scannable spans like ``timeline_messages`` and, per span, mirrors
-    ``span_messages``' kept-region logic over the span's direct events. The
-    union across spans is the set of events whose full content pass 2 must
-    substitute back into the stub skeleton.
+    Walks owned spans (``walk_owned_spans``, the same traversal the
+    materialized path uses) and, per span, mirrors ``span_messages``' kept-
+    region logic over the span's direct events. The union across spans is
+    the set of events whose full content pass 2 must substitute back into
+    the stub skeleton.
+
+    With ``include_scorers=False`` no owned span is a scorers span (the
+    traversal never walks one), so this never selects a grader
+    ``ModelEvent`` -- the memory guarantee is provided by the traversal
+    itself, not by any separate prune.
 
     Args:
         root: Root ``TimelineSpan`` of the built (stub) timeline.
         compaction: Compaction strategy (``"all"``, ``"last"``, or an int N).
         depth: Scannable-span nesting limit (``None`` = unlimited).
+        include_scorers: Whether scorer spans are walked, mirroring
+            ``walk_owned_spans``' parameter of the same name.
 
     Returns:
         The set of selected ModelEvent uuids across all scannable spans.
@@ -335,9 +343,9 @@ def needed_model_event_uuids(
         _StubSkeletonUnsupported: If any selected ModelEvent lacks a uuid.
     """
     needed: set[str] = set()
-    for span in _walk_spans(root, depth=depth):
+    for owned in walk_owned_spans(root, depth=depth, include_scorers=include_scorers):
         span_events = [
-            item.event for item in span.content if isinstance(item, TimelineEvent)
+            item.event for item in owned.span.content if isinstance(item, TimelineEvent)
         ]
         needed |= _needed_uuids_for_span(span_events, compaction=compaction)
     return needed
@@ -405,6 +413,21 @@ def _collect_pass2_model_events(
             _collect_pass2_model_events(nested, needed, full_by_uuid, offthread_by_uuid)
 
 
+def _substitute_in_tool_event(
+    tool: ToolEvent, full_by_uuid: dict[str, ModelEvent]
+) -> None:
+    """In-place: replace stub `ModelEvent`s nested in `tool.events` with full ones.
+
+    Recurses into further-nested `ToolEvent`s so tool-spawned-agent
+    `ModelEvent`s at any depth are reached, mirroring `_substitute_full_events`.
+    """
+    for i, nested in enumerate(tool.events):
+        if isinstance(nested, ModelEvent) and nested.uuid in full_by_uuid:
+            tool.events[i] = full_by_uuid[nested.uuid]
+        elif isinstance(nested, ToolEvent):
+            _substitute_in_tool_event(nested, full_by_uuid)
+
+
 def _substitute_full_events(
     span: TimelineSpan, full_by_uuid: dict[str, ModelEvent]
 ) -> None:
@@ -412,8 +435,9 @@ def _substitute_full_events(
 
     Walks `span.content` (recursing into nested `TimelineSpan`s) and
     `span.branches`, replacing every `TimelineEvent` wrapping a `ModelEvent`
-    whose uuid is in `full_by_uuid`. Reaches nested tool-spawned-agent events
-    too, since the tree builder expands such `ToolEvent`s into nested spans.
+    whose uuid is in `full_by_uuid`, and recursing into `ToolEvent.events` so
+    tool-spawned-agent `ModelEvent`s nested inside a flat `ToolEvent` (not
+    expanded into a nested `TimelineSpan`) are substituted too.
 
     Args:
         span: A (sub)tree of the stub skeleton to mutate in place.
@@ -424,6 +448,8 @@ def _substitute_full_events(
             event = item.event
             if isinstance(event, ModelEvent) and event.uuid in full_by_uuid:
                 item.event = full_by_uuid[event.uuid]
+            elif isinstance(event, ToolEvent):
+                _substitute_in_tool_event(event, full_by_uuid)
         else:
             _substitute_full_events(item, full_by_uuid)
     for branch in span.branches:
@@ -466,10 +492,12 @@ async def stream_timeline_messages(
             see the inline notes at the `needed` computation.
         include_scorers: Whether to include scorer spans in message
             extraction, mirroring `transcript_messages`' parameter.
-            Defaults to `False`: `scorers` spans are pruned from the tree
-            used for pass 1 selection and the final walk, so grader
-            `ModelEvent`s never appear in any thread, while their other
-            events still surface as span-external entries.
+            Defaults to `False`: `walk_owned_spans` (used by both
+            `needed_model_event_uuids` and `timeline_messages`) never walks
+            a `scorers` span in that case, so grader `ModelEvent`s never
+            appear in any thread, while their other events (e.g.
+            `ScoreEvent`) still surface, folded into their ownership-
+            fallback owner in document position.
 
     Yields:
         `TimelineMessages` segments, identical to calling `timeline_messages`
@@ -487,17 +515,8 @@ async def stream_timeline_messages(
     stubs: list[Event] = [stub_event(ev, interner) async for ev in handle.events()]
     tree = timeline_build(stubs)
 
-    # Prune `scorers` spans from the walked tree (grader ModelEvents never
-    # enter a thread). Pass 1 sees the same pruned tree, so a scorers
-    # span's ModelEvents are never retained in full only to go unread.
-    walk_tree = (
-        tree
-        if include_scorers
-        else timeline_filter(tree, lambda s: s.span_type != "scorers")
-    )
-
     needed = needed_model_event_uuids(
-        walk_tree.root, compaction=compaction, depth=depth
+        tree.root, compaction=compaction, depth=depth, include_scorers=include_scorers
     )
     if events is not None and compaction != "all":
         # The compaction-pruned/fork discriminator reconstructs the
@@ -506,7 +525,10 @@ async def stream_timeline_messages(
         # they'd be substituted output-only and pruned turns would
         # misrender as forks.
         needed |= needed_model_event_uuids(
-            walk_tree.root, compaction="all", depth=depth
+            tree.root,
+            compaction="all",
+            depth=depth,
+            include_scorers=include_scorers,
         )
 
     full_by_uuid: dict[str, ModelEvent] = {}
@@ -526,23 +548,12 @@ async def stream_timeline_messages(
             "calls, violating the TranscriptHandle multi-shot contract"
         )
 
-    # `timeline_filter` copies span nodes but shares `TimelineEvent` leaf
-    # references, so substituting into `walk_tree` also updates the events
-    # reachable from the unpruned `tree` (the collection source below).
-    # Events inside a pruned scorers span stay stubbed -- fine, since they
-    # are never walked into a thread.
-    _substitute_full_events(walk_tree.root, full_by_uuid)
+    _substitute_full_events(tree.root, full_by_uuid)
     if offthread_by_uuid:
-        _substitute_full_events(walk_tree.root, offthread_by_uuid)
+        _substitute_full_events(tree.root, offthread_by_uuid)
 
-    # NOTE: this still hands `walk_tree` (pass-1/pass-2 stub-skeleton
-    # reconstruction) to `timeline_messages`, unchanged from before this
-    # task -- `timeline_messages` no longer takes `span_external` (dropped
-    # in favor of `walk_owned_spans`), so this call is updated only enough
-    # to match its new signature. Full parity with the ownership walk
-    # (oracle 4) is Task 9's rewire; it stays xfailed until then.
     async for seg in timeline_messages(
-        walk_tree,
+        tree,
         messages_as_str=messages_as_str,
         model=model,
         context_window=context_window,

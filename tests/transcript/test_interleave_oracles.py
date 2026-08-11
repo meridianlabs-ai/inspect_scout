@@ -382,7 +382,6 @@ async def test_oracle2_flat_vs_timeline() -> None:
     assert applicable >= 25, f"oracle 2 nearly vacuous: {applicable} applicable"
 
 
-@XFAIL_RED
 @pytest.mark.anyio
 @pytest.mark.parametrize("include_scorers", [False, True])
 async def test_oracle4_streamed_equals_materialized(include_scorers: bool) -> None:

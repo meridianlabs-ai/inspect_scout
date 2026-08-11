@@ -805,20 +805,6 @@ def _timeline_scorers_flat_events() -> list[Event]:
 
 
 @pytest.mark.anyio
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "streaming-path fallout from the materialized-path ownership "
-        "rewire (Task 8): stream_timeline_messages no longer collects "
-        "span_external from the unpruned tree (the parameter was removed "
-        "from timeline_messages), so a pruned scorers span's own ScoreEvent "
-        "no longer surfaces on the handle/streaming path -- SCORE (match) "
-        "count is 0, not 1, for the 'handle' side only. The materialized "
-        "('transcript') side is unaffected and still passes. See the NOTE "
-        "in stream_timeline_messages (timeline_stream.py): full parity via "
-        "walk_owned_spans is Task 9's rewire; this stays xfailed until then."
-    ),
-)
 async def test_stream_timeline_scorers_span_excluded_matches_materialized() -> None:
     """A scorers span's grader thread must be excluded on BOTH scan paths.
 

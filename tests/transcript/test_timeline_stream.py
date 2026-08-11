@@ -6,14 +6,40 @@ from pathlib import Path
 from typing import Any, AsyncIterator, Literal
 
 import pytest
-from inspect_ai.event import Event, ModelEvent, TimelineEvent, ToolEvent, timeline_build
+from inspect_ai.event import (
+    BranchEvent,
+    Event,
+    ModelEvent,
+    ScoreEvent,
+    SpanBeginEvent,
+    SpanEndEvent,
+    TimelineEvent,
+    ToolEvent,
+    timeline_build,
+)
 from inspect_ai.event._timeline import (
     _get_system_prompt_for_event,
     _has_tool_calls,
 )
-from inspect_ai.model import ChatMessage, ChatMessageSystem, ContentText, ModelOutput
-from inspect_scout._transcript.messages import span_messages
-from inspect_scout._transcript.timeline import TimelineSpan, _walk_spans
+from inspect_ai.model import (
+    ChatMessage,
+    ChatMessageSystem,
+    ChatMessageUser,
+    ContentText,
+    GenerateConfig,
+    ModelOutput,
+)
+from inspect_ai.scorer import Score
+from inspect_scout._scanner.extract import message_numbering
+from inspect_scout._transcript.handle import MaterializedTranscriptHandle
+from inspect_scout._transcript.messages import span_messages, transcript_messages
+from inspect_scout._transcript.timeline import (
+    _ORPHAN_SPAN_ID,
+    TimelineMessages,
+    TimelineSpan,
+    _walk_spans,
+)
+from inspect_scout._transcript.timeline_stream import stream_timeline_messages
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
 
 from tests.transcript.fixtures_agentic import (
@@ -275,7 +301,9 @@ def test_selection_covers_span_messages_reads(
 
     events = agentic_events()
     tree = timeline_build(events)
-    needed = needed_model_event_uuids(tree.root, compaction=compaction, depth=None)
+    needed = needed_model_event_uuids(
+        tree.root, compaction=compaction, depth=None, include_scorers=False
+    )
 
     blanked = _blank_events_except(events, needed)
     blanked_tree = timeline_build(blanked)
@@ -332,7 +360,9 @@ def test_selection_is_minimal_all() -> None:
 
     events = agentic_events()
     tree = timeline_build(events)
-    needed = needed_model_event_uuids(tree.root, compaction="all", depth=None)
+    needed = needed_model_event_uuids(
+        tree.root, compaction="all", depth=None, include_scorers=False
+    )
     assert needed  # sanity
 
     baseline = [
@@ -367,7 +397,9 @@ def test_selection_uuidless_raises() -> None:
     events = [e.model_copy(update={"uuid": None}) if e is target else e for e in events]
     tree = timeline_build(events)
     with pytest.raises(_StubSkeletonUnsupported):
-        needed_model_event_uuids(tree.root, compaction="last", depth=None)
+        needed_model_event_uuids(
+            tree.root, compaction="last", depth=None, include_scorers=False
+        )
 
 
 @pytest.mark.parametrize("content_kind", ["str", "list"])
@@ -509,12 +541,9 @@ async def test_stream_equals_materialized_segments_eval_logs(
     log: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Fidelity over real `.eval` fixtures, forced through the spooled path."""
-    from inspect_ai.event import timeline_filter
-    from inspect_scout._scanner.extract import message_numbering
     from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
     from inspect_scout._transcript.handle import SpooledTranscriptHandle
     from inspect_scout._transcript.timeline import timeline_build, timeline_messages
-    from inspect_scout._transcript.timeline_stream import stream_timeline_messages
     from inspect_scout._transcript.types import TranscriptContent
     from inspect_scout._util import constants as constants_mod
 
@@ -544,14 +573,7 @@ async def test_stream_equals_materialized_segments_eval_logs(
                     depth=None,
                 )
             ]
-        # `stream_timeline_messages`' default `include_scorers=False` prunes
-        # `scorers` spans before walking (mirroring `transcript_messages`'
-        # default); prune the materialized comparison tree the same way so
-        # this fidelity check compares like with like.
-        materialized_tree = timeline_filter(
-            timeline_build(materialized.events),
-            lambda s: s.span_type != "scorers",
-        )
+        materialized_tree = timeline_build(materialized.events)
         materialized_segments = [
             (seg.span.id, seg.messages_str)
             async for seg in timeline_messages(
@@ -684,3 +706,168 @@ def test_uuidless_offthread_empty_output_does_not_force_fallback() -> None:
     offthread: dict[str, ModelEvent] = {}
     _collect_pass2_model_events(empty, frozenset(), {}, offthread)
     assert offthread == {}
+
+
+# --- collect_span_owned streaming parity (design §2, streaming 1-3; §4) ----
+# All names this section needs (BranchEvent, ModelEvent, ScoreEvent,
+# SpanBeginEvent, SpanEndEvent, ToolEvent, ChatMessageUser, GenerateConfig,
+# ModelOutput, Score, message_numbering, MaterializedTranscriptHandle,
+# transcript_messages, _ORPHAN_SPAN_ID, stream_timeline_messages, Transcript,
+# TranscriptInfo) are already imported at the top of this file.
+
+
+async def _both_paths(
+    events_list: list[Event], *, include_scorers: bool = False
+) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+    """(span.id, messages_str) segments from the streaming and materialized paths.
+
+    Each side gets its own fresh message numbering.
+    """
+    from inspect_ai.model import get_model
+
+    async def _load() -> Transcript:
+        return Transcript(transcript_id="t-both", events=list(events_list))
+
+    handle = MaterializedTranscriptHandle(_load, TranscriptInfo(transcript_id="t-both"))
+    msgs_as_str, _ = message_numbering()
+    streamed = [
+        (seg.span.id, seg.messages_str)
+        async for seg in stream_timeline_messages(
+            handle,
+            messages_as_str=msgs_as_str,
+            model=get_model("mockllm/model"),
+            context_window=100_000,
+            events="all",
+            include_scorers=include_scorers,
+        )
+    ]
+    msgs_as_str2, _ = message_numbering()
+    materialized: list[tuple[str, str]] = []
+    async for seg in transcript_messages(
+        Transcript(transcript_id="t-both-m", events=list(events_list)),
+        messages_as_str=msgs_as_str2,
+        model=get_model("mockllm/model"),
+        context_window=100_000,
+        events="all",
+        include_scorers=include_scorers,
+    ):
+        assert isinstance(seg, TimelineMessages)
+        materialized.append((seg.span.id, seg.messages_str))
+    return streamed, materialized
+
+
+@pytest.mark.anyio
+async def test_nested_nonagent_tool_model_event_renders_same_text_both_paths() -> None:
+    """Streaming requirement 3 (design §2): _substitute_full_events must recurse.
+
+    Must recurse into ToolEvent.events, or streamed renders empty MODEL (BRANCH).
+    """
+    from tests.transcript.tree_gen import CORPUS_SEEDS, generate
+
+    seed = next(
+        s
+        for s in CORPUS_SEEDS
+        if any(isinstance(e, ToolEvent) and e.events for e in generate(s).events)
+    )
+    streamed, materialized = await _both_paths(generate(seed).events)
+    # The nested model text must genuinely render (not equal-empty on both).
+    assert any("-nested" in text for _, text in streamed)
+    assert streamed == materialized
+
+
+def _input_anchor_branch_events() -> list[Event]:
+    """Owner thread [q(id='IN'), a1]; branch anchored to the INPUT id."""
+    q = ChatMessageUser(content="task")
+    q.id = "IN"
+    out = ModelOutput.from_content(model="mockllm", content="a1")
+    out.choices[0].message.id = "OUT"
+    alt = ModelOutput.from_content(model="mockllm", content="BRANCH-ALT")
+    return [
+        SpanBeginEvent.model_construct(
+            event="span_begin",
+            uuid="u-b1",
+            id="main",
+            span_id=None,
+            parent_id=None,
+            type="agent",
+            name="main",
+        ),
+        ModelEvent.model_construct(
+            event="model",
+            uuid="u-main",
+            span_id="main",
+            model="mockllm",
+            input=[q],
+            output=out,
+            role="assistant",
+            config=GenerateConfig(),
+        ),
+        SpanBeginEvent.model_construct(
+            event="span_begin",
+            uuid="u-b2",
+            id="br",
+            span_id="main",
+            parent_id="main",
+            type="branch",
+            name="fork",
+        ),
+        BranchEvent.model_construct(
+            event="branch",
+            uuid="u-be",
+            span_id="br",
+            from_anchor="IN",
+        ),
+        ModelEvent.model_construct(
+            event="model",
+            uuid="u-alt",
+            span_id="br",
+            model="mockllm",
+            input=[ChatMessageUser(content="bq")],
+            output=alt,
+            role="assistant",
+            config=GenerateConfig(),
+        ),
+        SpanEndEvent.model_construct(
+            event="span_end",
+            uuid="u-e2",
+            id="br",
+            span_id="main",
+        ),
+        SpanEndEvent.model_construct(
+            event="span_end",
+            uuid="u-e1",
+            id="main",
+            span_id=None,
+        ),
+    ]
+
+
+@pytest.mark.anyio
+async def test_branch_resolution_never_uses_input_ids() -> None:
+    """The id-tier narrowing (design §4): branched_from matching only an INPUT id.
+
+    Resolves unmatched -> appends, identically on both paths (the stub
+    strips input ids; the viewer's input tier is a path streaming cannot
+    reach, so neither path may use it).
+    """
+    streamed, materialized = await _both_paths(_input_anchor_branch_events())
+    assert streamed == materialized
+    _, text = streamed[0]
+    assert "BRANCH-ALT" in text
+    assert text.index("BRANCH-ALT") > text.index("a1")  # appended, not spliced
+
+
+@pytest.mark.anyio
+async def test_orphan_sentinel_id_is_stable_across_paths() -> None:
+    score_only: list[Event] = [
+        ScoreEvent.model_construct(
+            event="score",
+            uuid="u-s1",
+            span_id=None,
+            score=Score(value=1.0),
+            scorer="s",
+        )
+    ]
+    streamed, materialized = await _both_paths(score_only)
+    assert streamed == materialized
+    assert [sid for sid, _ in streamed] == [_ORPHAN_SPAN_ID]

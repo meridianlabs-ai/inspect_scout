@@ -19,7 +19,6 @@ from inspect_ai.event import (
     TimelineEvent,
     TimelineSpan,
     timeline_build,
-    timeline_filter,
 )
 from inspect_ai.log import EvalError
 from inspect_ai.model import (
@@ -825,28 +824,7 @@ def _agentic_events_with_scores() -> list[Event]:
     return events
 
 
-def _materialized_walk_tree(tree: Timeline) -> Timeline:
-    """Mirror ``stream_timeline_messages``' default (``include_scorers=False``) walk tree.
-
-    ``scorers`` spans are pruned from the tree that gets walked, matching
-    ``transcript_messages``' default: a ``scorers`` span's own events (e.g.
-    a grader ``ModelEvent``) never enter any span's message thread.
-    """
-    return timeline_filter(tree, lambda s: s.span_type != "scorers")
-
-
 @pytest.mark.anyio
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "streaming-vs-materialized parity bridge: stream_timeline_messages "
-        "has not been rewired onto walk_owned_spans yet, so its span-"
-        "external event collection still diverges in rendered content from "
-        "the materialized ownership traversal's own foreign-item folding. "
-        "Rewiring stream_timeline_messages onto the same ownership "
-        "traversal is Task 9's scope."
-    ),
-)
 @pytest.mark.parametrize("compaction", ["all", "last", 2])
 @pytest.mark.parametrize("depth", [None, 1])
 async def test_stream_timeline_messages_events_parity(
@@ -884,16 +862,13 @@ async def test_stream_timeline_messages_events_parity(
         )
     ]
 
-    # `stream_timeline_messages`' default (`include_scorers=False`) prunes
-    # `scorers` spans from the walked tree; mirror that on the
-    # materialized side too.
     materialized_tree = timeline_build(events)
 
     materialized_numbering, _ = message_numbering()
     materialized = [
         (seg.span.id, seg.messages_str)
         async for seg in timeline_messages(
-            _materialized_walk_tree(materialized_tree).root,
+            materialized_tree.root,
             messages_as_str=materialized_numbering,
             model="mockllm/model",
             events=["score"],
@@ -1055,14 +1030,15 @@ async def test_stream_timeline_messages_cumulative_compaction_discriminator_pari
 
 @pytest.mark.anyio
 async def test_stream_timeline_messages_events_none_unchanged() -> None:
-    """``events=None`` on the streaming path prunes `scorers` spans like the materialized path.
+    """``events=None`` on the streaming path suppresses `scorers` spans like the materialized path.
 
     Regression guard: adding the ``events`` parameter must not perturb the
     default (``events=None``) streaming behavior already covered by
     ``test_stream_equals_materialized_segments`` in
     ``test_timeline_stream.py``, and the ``include_scorers=False`` default
     (unconditional, regardless of ``events``) must still match
-    ``transcript_messages``' pruning of ``scorers`` spans.
+    ``transcript_messages``' suppression of ``scorers`` spans' grader
+    ``ModelEvent``s via ``walk_owned_spans``.
     """
     events = _agentic_events_with_scores()
     transcript = agentic_transcript(events=events)
@@ -1087,7 +1063,7 @@ async def test_stream_timeline_messages_events_none_unchanged() -> None:
     materialized = [
         (seg.span.id, seg.messages_str)
         async for seg in timeline_messages(
-            _materialized_walk_tree(materialized_tree).root,
+            materialized_tree.root,
             messages_as_str=numbering2,
             model="mockllm/model",
         )
@@ -1096,7 +1072,7 @@ async def test_stream_timeline_messages_events_none_unchanged() -> None:
     assert streamed == materialized
     # Sanity: the score events truly are not interleaved when events=None.
     assert not any("SCORE" in text for _, text in streamed)
-    # The scorers span (and its grader ModelEvent) is pruned by default.
+    # The scorers span's grader ModelEvent is suppressed by default.
     combined = "\n".join(text for _, text in streamed)
     assert "grader-output" not in combined
 

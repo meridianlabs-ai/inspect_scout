@@ -166,7 +166,8 @@ class TimelineMessages:
         span: The TimelineSpan this segment was extracted from. For a
             transcript where no span was walked (score-only, all-utility,
             scorers-only shapes) this is a reserved synthetic span with
-            ``id == _ORPHAN_SPAN_ID`` — isinstance checks still see a
+            ``id == _ORPHAN_SPAN_ID`` (the literal string
+            ``"scout-orphans-9f0c6c2f"``) — isinstance checks still see a
             ``TimelineSpan``, but it is not a span of the source timeline.
     """
 
@@ -193,10 +194,11 @@ async def timeline_messages(
     Walks the span tree, passes each non-utility span with direct
     ``ModelEvent`` content to ``segment_messages()`` for message
     extraction and context window segmentation. Each yielded item
-    includes the span context alongside the pre-rendered text.
-
-    To filter which spans are processed, use ``filter_timeline()``
-    before calling this function.
+    includes the span context alongside the pre-rendered text. When no
+    span in the tree is walked at all, a synthetic orphan segment (see
+    ``TimelineMessages.span``) carries the leftover content instead --
+    but only when ``events`` is set, since without interleaving there is
+    nothing to render for it.
 
     Args:
         timeline: The timeline (or a specific span subtree) to extract
@@ -277,55 +279,6 @@ async def timeline_messages(
             counter += 1
 
 
-def _walk_spans(
-    span: TimelineSpan,
-    *,
-    depth: int | None = None,
-    _scannable_depth: int = 0,
-) -> Iterator[TimelineSpan]:
-    """Walk the span tree depth-first, yielding scannable spans.
-
-    A span is "scannable" when it is not a utility span and contains at
-    least one direct ``ModelEvent``. Non-scannable spans (utility spans
-    and pure container spans, including the synthetic root from
-    ``timeline_build``) are transparent: traversed so their scannable
-    descendants are reached, but they do not consume a level of
-    ``depth``.
-
-    ``depth`` therefore counts levels of *scannable* spans:
-
-    - ``1`` = outermost scannable span on each branch
-    - ``N`` = up to N nested scannable layers
-    - ``None`` = unlimited
-    - ``<= 0`` = nothing
-
-    Args:
-        span: The root span to walk.
-        depth: Maximum nesting level of scannable spans (see above).
-        _scannable_depth: Internal counter tracking how many scannable
-            ancestors are above the current node (0 means none yet).
-
-    Yields:
-        Scannable TimelineSpan nodes in depth-first order.
-    """
-    if depth is not None and depth <= 0:
-        return
-
-    is_scannable = span_is_scannable(span)
-
-    if is_scannable:
-        next_depth = _scannable_depth + 1
-        if depth is not None and next_depth > depth:
-            return
-        yield span
-    else:
-        next_depth = _scannable_depth
-
-    for item in span.content:
-        if isinstance(item, TimelineSpan):
-            yield from _walk_spans(item, depth=depth, _scannable_depth=next_depth)
-
-
 def _span_has_direct_model_event(span: TimelineSpan) -> bool:
     return any(
         isinstance(item, TimelineEvent) and isinstance(item.event, ModelEvent)
@@ -337,7 +290,7 @@ def span_is_scannable(span: TimelineSpan) -> bool:
     """True if ``span`` is scannable: not a utility span, with a direct ModelEvent.
 
     The single walked-ness predicate for the ownership traversal
-    (``walk_owned_spans``) and ``_walk_spans``.
+    (``walk_owned_spans``).
     """
     return not span.utility and _span_has_direct_model_event(span)
 
@@ -399,7 +352,10 @@ def walk_owned_spans(
     Each ``OwnedSpan`` is yielded complete, in pre-order: the traversal
     buffers because tier 1 keeps accruing items to a walked ancestor while
     nested walked spans come and go, and tier 2 depends on later document
-    positions.
+    positions. This eagerness is deliberate, not an implementation
+    convenience: every owner is fully accumulated (items hold references,
+    not copies) before anything is yielded, because tier-1/2 ownership can
+    only be resolved by later document positions. Do not make this lazy.
 
     ``depth <= 0`` yields nothing (orphan homing suppressed too).
     """
@@ -495,7 +451,7 @@ def walk_owned_spans(
             walked = depth is None or next_depth <= depth
         else:
             # A scannable-but-too-deep span still consumed a level above;
-            # non-scannable spans are transparent (mirrors _walk_spans).
+            # non-scannable spans are transparent (see span_is_scannable).
             next_depth = scannable_depth
             walked = False
 

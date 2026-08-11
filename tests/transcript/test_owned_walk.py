@@ -275,6 +275,41 @@ def test_tier2_latest_not_first_with_three_siblings() -> None:
     assert not any(i.event is limit for i in by_id["c"].items)
 
 
+def test_tier2_latest_started_not_latest_touched_with_nested_walked_span() -> None:
+    """Regression for I3: tier 2 wants the latest-STARTING walked span.
+
+    ``sub`` nests inside ``main`` and starts strictly after ``main``. Once
+    control returns to ``main`` for ``mB``, that event is still tier-1-owned
+    by ``main`` itself -- but it must NOT make ``main`` "latest" again for
+    tier 2: the trailing root-level ``limit`` (no walked ancestor) belongs
+    to whichever walked span started most recently in document order, which
+    is the deeper ``sub``, not ``main``. A buggy reference that overwrites
+    "latest" on every tier-1 attribution instead of on first touch gets this
+    wrong (returns ``main``); both ``walk_owned_spans`` and the brute-force
+    ``expected_owners`` must agree on ``sub``.
+    """
+    out_a = ModelOutput.from_content(model="mockllm", content="mA")
+    out_s = ModelOutput.from_content(model="mockllm", content="mS")
+    out_b = ModelOutput.from_content(model="mockllm", content="mB")
+    m_a = _model_event([ChatMessageUser(content="qa")], out_a)
+    m_s = _model_event([ChatMessageUser(content="qs")], out_s)
+    m_b = _model_event([ChatMessageUser(content="qb")], out_b)
+    sub = _span("sub", "sub-agent", [m_s])
+    main = _span_of("main", "main-agent", [m_a, sub, m_b])
+    limit = _limit()
+    root = _span_of("root", "root", [main, limit], span_type=None)
+
+    owned = _owned(root)
+    assert [o.span.id for o in owned] == ["main", "sub"]
+    by_id = {o.span.id: o for o in owned}
+    assert any(i.event is limit and not i.own for i in by_id["sub"].items)
+    assert not any(i.event is limit for i in by_id["main"].items)
+
+    assert limit.uuid is not None
+    reference = expected_owners(root, depth=None, include_scorers=False)
+    assert reference[limit.uuid] == "sub"
+
+
 def test_branch_on_nonwalked_carrier_owner_captured_at_span_start() -> None:
     """A non-walked carrier's branch rides the owner AT THE CARRIER'S START.
 

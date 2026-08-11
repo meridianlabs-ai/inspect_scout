@@ -280,6 +280,34 @@ class _AnchorWalk:
         else:
             self.anchored[self._last_anchor].append(entry)
 
+    def _consume_own_model_event(self, event: ModelEvent) -> None:
+        """Consume or off-thread-render an own ``ModelEvent``.
+
+        Shared by ``add`` and ``add_owned`` (design's own-``ModelEvent``
+        handling): tries to advance the anchor to the event's output
+        occurrence; if that fails, renders it as a ``MODEL (BRANCH)``
+        entry unless the turn was compaction-pruned for its own span (in
+        which case it stays hidden). Not used for foreign items -- those
+        skip occurrence-consumption and the compaction check entirely
+        (hazard 2) -- and callers remain responsible for any grader-span
+        exclusion, which is not part of this shared behavior.
+        """
+        mid = _model_output_id(event)
+        consumed = mid is not None and self.add_model_output(mid)
+        if consumed:
+            return
+        # Only suppress against a span that actually compacted; exclusions
+        # derived across all spans hid another agent's genuine fork output.
+        if (
+            mid is not None
+            and mid in self._excluded_ids
+            and event.span_id in self._compaction_spans
+        ):
+            return  # compaction-pruned: stays hidden, no branch entry
+        text = _off_thread_model_text(event)
+        if text is not None:
+            self.add_rendered(_event_id(event), text)
+
     def add(self, event: Event) -> None:
         if isinstance(event, ToolEvent):
             # A tool-spawned sub-agent's model events never appear at the top
@@ -295,21 +323,7 @@ class _AnchorWalk:
             # score would disappear with it.
             if event.span_id in self._grader_spans:
                 return
-            mid = _model_output_id(event)
-            consumed = mid is not None and self.add_model_output(mid)
-            if not consumed:
-                # Only suppress against a span that actually compacted;
-                # exclusions derived across all spans hid another agent's
-                # genuine fork output.
-                if (
-                    mid is not None
-                    and mid in self._excluded_ids
-                    and event.span_id in self._compaction_spans
-                ):
-                    return  # compaction-pruned: stays hidden, no branch entry
-                text = _off_thread_model_text(event)
-                if text is not None:
-                    self.add_rendered(_event_id(event), text)
+            self._consume_own_model_event(event)
             return
         text = _interleavable_text(event, self._events)
         if text is not None:
@@ -333,18 +347,7 @@ class _AnchorWalk:
             return  # nested events arrive as their own flattened items
         if isinstance(event, ModelEvent):
             if item.own:
-                mid = _model_output_id(event)
-                consumed = mid is not None and self.add_model_output(mid)
-                if not consumed:
-                    if (
-                        mid is not None
-                        and mid in self._excluded_ids
-                        and event.span_id in self._compaction_spans
-                    ):
-                        return  # compaction-pruned: stays hidden
-                    text = _off_thread_model_text(event)
-                    if text is not None:
-                        self.add_rendered(_event_id(event), text)
+                self._consume_own_model_event(event)
             else:
                 text = _off_thread_model_text(event)
                 if text is not None:

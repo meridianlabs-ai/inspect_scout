@@ -381,22 +381,29 @@ def expected_owners(
     walked = list(_walked_pre_order(root, depth=depth, include_scorers=include_scorers))
     walked_ids = [s.id for s in walked]
     owners: dict[str, str] = {}
-    latest = ""  # tier 3 until the first walked span starts
+    latest = ""  # tier 2: latest-STARTING walked span; "" until one starts
+    started: set[str] = set()
     for event, chain, _is_branch, _is_direct in _document_events(
         root, include_scorers=include_scorers
     ):
         # Tier 1: nearest enclosing walked ancestor (innermost wins). For a
         # branch event the chain passes through the span CARRYING .branches,
-        # so this also implements §4's carriage rule. Because
-        # _document_events is first-touch document order, a walked span's
-        # first appearance in any chain marks its start, keeping `latest`
-        # equal to "latest-starting walked span preceding the event" (tier 2).
+        # so this also implements §4's carriage rule.
         enclosing = [sid for sid in chain if sid in walked_ids]
-        if enclosing:
-            owner = enclosing[-1]
-            latest = owner
-        else:
-            owner = latest  # tier 2 (or "" = tier 3)
+        owner = enclosing[-1] if enclosing else latest  # tier 2 (or "" = tier 3)
+        # `latest` tracks the latest-STARTING walked span, not "the most
+        # recent tier-1 owner" -- those diverge once a walked span nests
+        # inside another walked span and control returns to the outer one:
+        # the outer span's later events are still tier-1-owned by itself,
+        # but the nested span started more recently and must stay `latest`
+        # for the next tier-2 (no-ancestor) event. So this only updates on
+        # first touch (chain order is outermost-first, so a simultaneous
+        # first touch of nested spans leaves the deepest one `latest`), never
+        # on a later tier-1 attribution to an already-started span.
+        for sid in chain:
+            if sid in walked_ids and sid not in started:
+                started.add(sid)
+                latest = sid
         if event.uuid is not None:
             owners[event.uuid] = owner
     # Tier-3 orphans preceding the first walked span lead it (design §1/§3).

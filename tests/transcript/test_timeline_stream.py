@@ -37,7 +37,7 @@ from inspect_scout._transcript.timeline import (
     _ORPHAN_SPAN_ID,
     TimelineMessages,
     TimelineSpan,
-    _walk_spans,
+    walk_owned_spans,
 )
 from inspect_scout._transcript.timeline_stream import stream_timeline_messages
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
@@ -72,10 +72,19 @@ def _collect_utility(span: TimelineSpan) -> list[TimelineSpan]:
     return utility
 
 
+def _spans(root: TimelineSpan, *, depth: int | None) -> list[TimelineSpan]:
+    """Port of the deleted `_walk_spans`: walked spans only, no orphan sentinel."""
+    return [
+        owned.span
+        for owned in walk_owned_spans(root, depth=depth)
+        if owned.span.id != _ORPHAN_SPAN_ID
+    ]
+
+
 def test_agentic_fixture_classification() -> None:
     """The fixture must exercise the classification paths the spec names."""
     tree = timeline_build(agentic_events())
-    spans = list(_walk_spans(tree.root, depth=None))
+    spans = _spans(tree.root, depth=None)
     names = [s.name for s in spans]
     # main agent, sub2 (non-utility nested agent), the span-based tool-spawned
     # agent ("browser"), and the flat-ToolEvent tool-spawned agent
@@ -146,8 +155,8 @@ def test_stub_tree_matches_full_tree_structure() -> None:
     full_tree = timeline_build(events)
     stub_tree = timeline_build(stubbed_events)
 
-    full_spans = list(_walk_spans(full_tree.root, depth=None))
-    stub_spans = list(_walk_spans(stub_tree.root, depth=None))
+    full_spans = _spans(full_tree.root, depth=None)
+    stub_spans = _spans(stub_tree.root, depth=None)
 
     full_names = [s.name for s in full_spans]
     stub_names = [s.name for s in stub_spans]
@@ -308,8 +317,8 @@ def test_selection_covers_span_messages_reads(
     blanked = _blank_events_except(events, needed)
     blanked_tree = timeline_build(blanked)
     for span, blanked_span in zip(
-        _walk_spans(tree.root, depth=None),
-        _walk_spans(blanked_tree.root, depth=None),
+        _spans(tree.root, depth=None),
+        _spans(blanked_tree.root, depth=None),
         strict=True,
     ):
         assert _dump(span_messages(span, compaction=compaction)) == _dump(
@@ -367,7 +376,7 @@ def test_selection_is_minimal_all() -> None:
 
     baseline = [
         _dump(span_messages(span, compaction="all"))
-        for span in _walk_spans(tree.root, depth=None)
+        for span in _spans(tree.root, depth=None)
     ]
 
     all_uuids = _all_model_uuids(events)
@@ -378,7 +387,7 @@ def test_selection_is_minimal_all() -> None:
         blanked_tree = timeline_build(blanked)
         blanked_dump = [
             _dump(span_messages(span, compaction="all"))
-            for span in _walk_spans(blanked_tree.root, depth=None)
+            for span in _spans(blanked_tree.root, depth=None)
         ]
         assert blanked_dump != baseline, (
             f"blanking selected event {target!r} did not change output; "

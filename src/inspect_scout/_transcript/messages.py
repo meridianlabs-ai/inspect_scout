@@ -375,9 +375,11 @@ async def transcript_messages(
     - If only messages are present, delegates to ``segment_messages()``
       for context window segmentation only
 
-    By default, scorer events are excluded from extraction. This
-    applies to both the timeline path (the scorers span is pruned)
-    and the events path (the scorers section is removed).
+    By default, grader ``ModelEvent``s under scorers spans are
+    suppressed (their ``ScoreEvent``s still render): on the timeline
+    path this is gated by ``include_scorers``; the flat (events-only)
+    path suppresses grader model calls unconditionally, by span name,
+    and does not consult ``include_scorers`` at all.
 
     Since ``TimelineMessages`` is structurally compatible with
     ``MessagesSegment``, callers get a uniform interface. Those needing

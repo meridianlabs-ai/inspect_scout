@@ -427,17 +427,18 @@ async def test_off_thread_model_event_with_reasoning_only_content_renders() -> N
 
 
 # ---------------------------------------------------------------------------
-# Scorer-span pruning and branch/depth attribution via transcript_messages()
-# (Task 3)
+# Scorer-span model suppression and branch/depth attribution via
+# transcript_messages() (Task 3)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.anyio
 async def test_scorers_span_score_event_attaches_to_last_scannable_span() -> None:
-    """A pruned `scorers` span's ScoreEvent surfaces after the last real span.
+    """The scorers span's ScoreEvent is owned by the last walked span.
 
-    The scorers span also contains a grader ModelEvent, which must not
-    become its own thread (the span is pruned, by default).
+    The scorers span also contains a grader ModelEvent, which by default
+    is suppressed (model-only) rather than walked, so it never becomes
+    its own thread; the ScoreEvent is unaffected and still renders.
     """
     out_a = ModelOutput.from_content(model="mockllm", content="answer-a")
     span_a = _span_of(
@@ -518,7 +519,7 @@ async def test_include_scorers_true_renders_grader_thread_and_score_once() -> No
         root, events=["score"], include_scorers=True
     )
 
-    # Both the agent span and the scorers span (now unpruned) render.
+    # Both the agent span and the scorers span (now walked) render.
     assert len(results) == 2
     assert results[1].span.id == "span-scorers"
     # The grader's model call now renders as its own thread.
@@ -731,8 +732,9 @@ def _agentic_events_with_scores() -> list[Event]:
     - ``ScoreEvent(span_id="sub2")``: inside a nested scannable span --
       owned by its own splice at ``depth=None``, external (attributed to
       "main") at ``depth=1``.
-    - A "scorers" span with grader ``ModelEvent`` + ``ScoreEvent``: pruned
-      by default, grader never renders, score surfaces externally.
+    - A "scorers" span with grader ``ModelEvent`` + ``ScoreEvent``: the
+      grader call is suppressed (model-only) by default and never walked,
+      so the score surfaces attributed to whichever span owns it.
     - A genuine off-thread fork ``ModelEvent`` ("fork-1") in "main",
       rendering as a ``[E#] MODEL (BRANCH):`` entry.
     - (From plain ``agentic_events()``) the "sub" utility span's
@@ -894,9 +896,10 @@ async def test_stream_timeline_messages_events_parity(
     main_text = next(text for span_id, text in streamed if span_id == "main")
     assert "sub-output-1" in main_text
     assert "sub-output-2" in main_text
-    # The scorers span's grader ModelEvent is pruned from the walk (default
-    # include_scorers=False); its own ScoreEvent still surfaces exactly
-    # once via external collection.
+    # The scorers span's grader ModelEvent is suppressed (model-only) by
+    # default (include_scorers=False); its own ScoreEvent still surfaces
+    # exactly once, owned by whichever walked span precedes it in
+    # document order.
     assert "grader-output" not in combined
     assert combined.count("SCORE (graded)") == 1
 

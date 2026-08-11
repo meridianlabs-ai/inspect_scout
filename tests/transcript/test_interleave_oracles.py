@@ -1,8 +1,10 @@
 """Property oracles for event interleaving (design doc, Verification).
 
-Every oracle here was RED on HEAD 8a3fde2df before the collect_span_owned
-implementation landed (xfail strict pins that), per the design's
-harness-validation deliverable.
+Every oracle here was verified RED on HEAD 8a3fde2df, before the
+collect_span_owned implementation landed, per the design's
+harness-validation deliverable. To re-verify, copy this file plus
+`tree_gen.py` into a detached worktree at that revision and run with
+`-p no:cacheprovider`.
 """
 
 from __future__ import annotations
@@ -25,10 +27,6 @@ from tests.transcript.tree_gen import (
     expected_anchor_message_ids,
     expected_owners,
     generate,
-)
-
-XFAIL_RED = pytest.mark.xfail(
-    strict=True, reason="red until collect_span_owned lands (#5/#6)"
 )
 
 
@@ -341,18 +339,21 @@ async def test_oracle2_flat_vs_timeline() -> None:
     governs the oracle's red status an accident of seed order, invisible
     under strict-xfail.
 
-    Empirically (decorator off, `-p no:cacheprovider`, all 200 seeds, task-4
-    red-check): 47 seeds are flat-comparable. The now-removed id-sequence
-    assertion was red on only 21/47 -- for the other 26 it was VACUOUSLY
-    GREEN, because both drivers render the same ids in the same order while
-    anchoring them after different preceding turns (the "helper"
+    Measured now (decorator off, `-p no:cacheprovider`, all 200 seeds, at
+    77705cb88): 26 seeds are flat-comparable in the shipped corpus --
+    re-measure rather than trust this number, since `tree_gen.py`'s
+    generator has changed the flat-comparable count before and can again.
+    A pure id-sequence comparison would be vacuously green on some of
+    those 26: both drivers can render the same ids in the same order
+    while anchoring them after different preceding turns (the "helper"
     utility-span shape: the flat driver anchors the helper's foreign info
     event in document position, right after main's turn that precedes the
     helper span, while the timeline driver anchors it after the whole
     "main" segment's last own turn instead -- exactly the #6 divergence
-    the amendment exists to catch). The pair assertion below is red on all
-    47/47 applicable seeds -- e.g. seed 0: flat has `('u0-13', 'm0-8')`,
-    timeline has `('u0-13', 'm0-16')`.
+    the amendment exists to catch). That's why the pair assertion below
+    replaces rather than supplements the id-sequence check; it was red on
+    every applicable seed against the pre-fix baseline (see this module's
+    docstring for the revision).
     """
     from inspect_scout._transcript.interleave import interleave_events
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 from inspect_ai.event import Event, timeline_build
-from inspect_ai.model import get_model
+from inspect_ai.model import ChatMessage, get_model
 from inspect_scout._scanner.extract import EVENT_MARKER_KEY, message_numbering
 from inspect_scout._scanner.util import _message_id
 from inspect_scout._transcript.interleave import EventsSpec
@@ -275,3 +275,89 @@ async def test_oracle1_red_check_double_render_include_scorers() -> None:
     assert len(rendered_ids) == len(set(rendered_ids)), (
         f"duplicate [E#] ids on HEAD: {rendered_ids}"
     )
+
+
+def marker_anchor_pairs(
+    messages: list[ChatMessage],
+) -> list[tuple[str, str | None]]:
+    """(marker.id, last preceding non-marker message id or None), in order.
+
+    Driver-agnostic: works over the flat driver's single rendered-message
+    list and equally over a concatenation of the timeline driver's
+    per-segment ``.messages`` (segments in emission order) -- both are just
+    "a list of ChatMessage, some of which are [E#] markers" (amendment to
+    task-4-brief.md, strengthening oracle 2 beyond the id-sequence-only
+    comparison: two drivers can render identical ids in identical relative
+    order while anchoring them after different preceding turns, which is
+    exactly what #6 (foreign-child anchoring) does).
+    """
+    pairs: list[tuple[str, str | None]] = []
+    last_non_marker: str | None = None
+    for m in messages:
+        if (m.metadata or {}).get(EVENT_MARKER_KEY):
+            assert m.id is not None
+            pairs.append((m.id, last_non_marker))
+        else:
+            last_non_marker = _message_id(m)
+    return pairs
+
+
+@XFAIL_RED
+@pytest.mark.anyio
+async def test_oracle2_flat_vs_timeline() -> None:
+    """The flat driver already gets document order right (design, Oracle 2).
+
+    Applies only to flat-comparable transcripts; the applicability floor
+    guards against a vacuously green oracle (review record: 'validate the
+    harness'). Corpus floor: >= 25 applicable (pinned in test_tree_gen).
+
+    Strengthened per controller amendment to task-4-brief.md: the brief's
+    id-SEQUENCE comparison alone is blind to anchoring differences -- both
+    drivers can render the same ids in the same relative order while
+    attaching them after different turns. Comparing (event_id,
+    anchor_message_id) pairs catches that; anchoring is the heart of #6.
+
+    Empirically (decorator off, `-p no:cacheprovider`, all 200 seeds, task-4
+    red-check): 47 seeds are flat-comparable. The brief's own id-sequence
+    assertion alone is red on only 21/47 -- for the other 26 it is
+    VACUOUSLY GREEN, because both drivers render the same ids in the same
+    order while anchoring them after different preceding turns (the "helper"
+    utility-span shape: the flat driver anchors the helper's foreign info
+    event in document position, right after main's turn that precedes the
+    helper span, while the timeline driver anchors it after the whole
+    "main" segment's last own turn instead -- exactly the #6 divergence
+    the amendment exists to catch). The pair assertion below is red on
+    47/47 applicable seeds -- e.g. seed 0: flat_pairs has
+    `('u0-13', 'm0-8')`, timeline_pairs has `('u0-13', 'm0-16')`.
+    """
+    from inspect_scout._transcript.interleave import interleave_events
+
+    applicable = 0
+    for seed in CORPUS_SEEDS:
+        g = generate(seed)
+        if not g.flat_comparable:
+            continue
+        applicable += 1
+        flat_transcript = Transcript(
+            transcript_id="t", messages=g.messages, events=g.events
+        )
+        flat = interleave_events(flat_transcript, "all")
+        flat_ids = [m.id for m in flat if (m.metadata or {}).get(EVENT_MARKER_KEY)]
+        results = await run_materialized(
+            g.events, events_spec="all", include_scorers=False, depth=None
+        )
+        timeline_ids = [eid for _, eid in rendered_markers(results)]
+        assert flat_ids == timeline_ids, (
+            f"seed {seed}: flat={flat_ids} timeline={timeline_ids}"
+        )
+
+        # (event_id, anchor_message_id) pairs: same walk over the flat
+        # driver's single list and over the timeline driver's segments
+        # concatenated in emission order.
+        flat_pairs = marker_anchor_pairs(flat)
+        timeline_messages = [m for seg in results for m in seg.messages]
+        timeline_pairs = marker_anchor_pairs(timeline_messages)
+        assert flat_pairs == timeline_pairs, (
+            f"seed {seed}: flat_pairs={flat_pairs} timeline_pairs={timeline_pairs}"
+        )
+    assert applicable >= 25, f"oracle 2 nearly vacuous: {applicable} applicable"

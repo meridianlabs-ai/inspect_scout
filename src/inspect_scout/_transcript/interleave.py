@@ -32,6 +32,7 @@ from .._scanner.extract import EVENT_MARKER_KEY, message_as_str
 from .._scanner.util import _event_id, _message_id
 from .event_text import event_as_str
 from .messages import span_messages
+from .timeline import _span_has_direct_model_event, span_is_scannable
 from .types import EventType, Transcript
 
 if TYPE_CHECKING:
@@ -429,23 +430,6 @@ def span_interleaved_messages(
             walk.add(item.event)
 
     return list(walk.spliced(messages))
-
-
-def _span_has_direct_model_event(span: TimelineSpan) -> bool:
-    return any(
-        isinstance(item, TimelineEvent) and isinstance(item.event, ModelEvent)
-        for item in span.content
-    )
-
-
-def span_is_scannable(span: TimelineSpan) -> bool:
-    """Return True if ``span`` is scannable: not a utility span, with a direct ModelEvent.
-
-    Shared by ``_walk_spans`` (``timeline.py``) and
-    ``_collect_span_external`` so both agree on which spans own their
-    events.
-    """
-    return not span.utility and _span_has_direct_model_event(span)
 
 
 def _collect_span_external(

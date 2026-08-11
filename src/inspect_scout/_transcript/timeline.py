@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from inspect_scout._transcript.interleave import EventsSpec, SpanExternalEvents
 
 from inspect_ai.event import (
+    ModelEvent,
     Timeline,
     TimelineEvent,
     TimelineSpan,
@@ -55,6 +56,7 @@ __all__ = [
     # Scout-specific
     "TimelineMessages",
     "filter_timeline_events",
+    "span_is_scannable",
     "timeline_messages",
     # Private helpers (used by other scout modules)
     "_timeline_content_discriminator",
@@ -322,8 +324,6 @@ def _walk_spans(
     Yields:
         Scannable TimelineSpan nodes in depth-first order.
     """
-    from inspect_scout._transcript.interleave import span_is_scannable
-
     if depth is not None and depth <= 0:
         return
 
@@ -340,3 +340,19 @@ def _walk_spans(
     for item in span.content:
         if isinstance(item, TimelineSpan):
             yield from _walk_spans(item, depth=depth, _scannable_depth=next_depth)
+
+
+def _span_has_direct_model_event(span: TimelineSpan) -> bool:
+    return any(
+        isinstance(item, TimelineEvent) and isinstance(item.event, ModelEvent)
+        for item in span.content
+    )
+
+
+def span_is_scannable(span: TimelineSpan) -> bool:
+    """True if ``span`` is scannable: not a utility span, with a direct ModelEvent.
+
+    The single walked-ness predicate for the ownership traversal
+    (``walk_owned_spans``) and ``_walk_spans``.
+    """
+    return not span.utility and _span_has_direct_model_event(span)

@@ -83,20 +83,21 @@ async def test_oracle1_document_order(include_scorers: bool, depth: int | None) 
     # always produces trailing-attributed external content between two of
     # "main"'s own turns, regardless of `depth`/`include_scorers`). Legs
     # (a)-(c) alone are ALSO red for both `include_scorers` values at
-    # (depth=None) -- the real mechanism (interleave.py:446-493):
-    # `_collect_span_external`'s recursive call unconditionally overwrites
-    # the caller's `last_scannable` with whatever the callee returns
-    # (:483-492), so walking into an earlier *scannable* sibling/descendant
-    # sets `last_scannable` to it, and that value leaks back to the caller
-    # even after the callee returns -- a later non-scannable sibling's own
-    # external content then keys off the stale descendant instead of the
-    # correct enclosing/preceding walked span. (A scorers-type span is never
-    # itself scannable -- `structurally_scannable = not span_in_scorers and
-    # span_is_scannable(span)`, :447 -- so there is no "nested grader
-    # collapsed by depth" step; the bug is generic to any
-    # scannable-then-non-scannable sibling sequence.) `depth=1` is immune to
-    # legs (a)-(c) because a nested span can then never satisfy
-    # `is_scannable`, so `last_scannable` never moves off the root.
+    # (depth=None) -- the real mechanism was (former interleave.py:446-493,
+    # deleted in Task 10): `_collect_span_external`'s recursive call
+    # unconditionally overwrote the caller's `last_scannable` with whatever
+    # the callee returned (:483-492), so walking into an earlier *scannable*
+    # sibling/descendant set `last_scannable` to it, and that value leaked
+    # back to the caller even after the callee returned -- a later
+    # non-scannable sibling's own external content then keyed off the stale
+    # descendant instead of the correct enclosing/preceding walked span. (A
+    # scorers-type span was never itself scannable --
+    # `structurally_scannable = not span_in_scorers and
+    # span_is_scannable(span)`, :447 -- so there was no "nested grader
+    # collapsed by depth" step; the bug was generic to any
+    # scannable-then-non-scannable sibling sequence.) `depth=1` was immune
+    # to legs (a)-(c) because a nested span could then never satisfy
+    # `is_scannable`, so `last_scannable` never moved off the root.
     # `include_scorers=False` shows the IDENTICAL leg-(c) failure at the same
     # seed (seed 1: `u1-25 owned by s1-3 rendered in s1-8`) once the oracle's
     # own reference matches the design's scorers contract (design §2/§3):

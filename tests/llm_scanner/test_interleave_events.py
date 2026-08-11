@@ -7,6 +7,7 @@ from inspect_ai.event import (
     BranchEvent,
     CompactionEvent,
     ErrorEvent,
+    EventTreeSpan,
     ModelEvent,
     ScoreEvent,
     SpanBeginEvent,
@@ -15,6 +16,8 @@ from inspect_ai.event import (
     TimelineEvent,
     TimelineSpan,
     ToolEvent,
+    event_sequence,
+    event_tree,
     timeline_build,
 )
 from inspect_ai.event._checkpoint import CheckpointEvent
@@ -41,14 +44,12 @@ from inspect_scout._transcript.interleave import (
     EventsOnlyInterleaveUnsupported,
     EventsSpec,
     _interleavable_text,
-    _scorers_model_event_ids,
-    collect_span_external,
     interleave_events,
     scorer_span_ids,
-    span_interleaved_messages,
+    span_owned_messages,
     stream_interleave_events,
 )
-from inspect_scout._transcript.timeline import _walk_spans
+from inspect_scout._transcript.timeline import walk_owned_spans
 from inspect_scout._transcript.timeline_stream import _collect_pass2_model_events
 from inspect_scout._transcript.types import (
     EventType,
@@ -436,7 +437,7 @@ def test_grader_model_event_in_scorers_span_excluded() -> None:
     `test_timeline_interleave.py`) on the flat `interleave_events` driver:
     grader model calls must never surface as branch entries even though,
     unlike the per-span path, there is no structural span boundary to stop
-    the walk -- `_scorers_model_event_ids` must exclude them explicitly.
+    the walk -- `scorer_span_ids` must exclude them explicitly.
     The scorer's own `ScoreEvent` is unaffected and still renders once.
     """
     event_texts = _event_texts(interleave_events(_scorers_span_transcript()))
@@ -595,8 +596,8 @@ def _two_agent_flat_events() -> list[Event]:
     """Events-only, multi-agent flat event list (the Hawk "transcript tab" shape).
 
     Two parallel agent spans, each with a single distinctive ModelEvent, plus
-    a root-level (span-external) score. Used by both the materialized and
-    streaming multi-agent regression tests below.
+    a root-level score with no span of its own. Used by both the
+    materialized and streaming multi-agent regression tests below.
     """
     out_a = ModelOutput.from_content(model="mockllm", content="agent-a-answer")
     out_b = ModelOutput.from_content(model="mockllm", content="agent-b-answer")
@@ -1026,7 +1027,10 @@ def test_selective_load_preserves_branch_structure() -> None:
 
     Asserted through the real filter rather than against
     ``INTERLEAVE_DEPENDENCIES``: comparing the constant to itself cannot
-    detect a type missing from that constant.
+    detect a type missing from that constant. With the branch correctly
+    recognized, its own turn still renders -- spliced in as its own
+    ``MODEL (BRANCH)`` block -- but main's own turn stays intact and
+    undemoted.
     """
     events: list[Event] = [
         SpanBeginEvent(
@@ -1046,10 +1050,14 @@ def test_selective_load_preserves_branch_structure() -> None:
     loaded = getattr(scan, SCANNER_CONTENT_ATTR).events
     survived = [e for e in events if e.event in loaded]
 
-    span = next(_walk_spans(timeline_build(survived).root))
-    thread = span_interleaved_messages(span, events=[], compaction="all")
-    assert [m.text for m in thread] == ["main q", "MAIN ANSWER"]
-    assert len(span.branches) == 1
+    owned = next(walk_owned_spans(timeline_build(survived).root))
+    thread = span_owned_messages(owned, events=[], compaction="all")
+    assert [m.text for m in thread] == [
+        "main q",
+        "MAIN ANSWER",
+        "MODEL (BRANCH):\nBRANCH ONLY\n",
+    ]
+    assert len(owned.branches) == 1
 
 
 @pytest.mark.anyio
@@ -1146,10 +1154,10 @@ async def test_llm_scanner_handle_events_content_interleaves_without_load() -> N
 @pytest.mark.anyio
 async def test_interleave_with_timeline_depth_limit_attaches_to_parent() -> None:
     # A nested scannable child span beyond `depth` is not walked as its own
-    # segment; its events are span-external, attached to the last span that
-    # IS within the depth limit (its parent), and render exactly once each.
+    # segment; its events are attributed to the last span that IS within
+    # the depth limit (its parent), and render exactly once each.
     # The child's ModelEvent has no thread of its own to be "on" (the span
-    # is never walked, so `span_interleaved_messages` never splices it) --
+    # is never walked, so `span_owned_messages` never splices it) --
     # it renders as a `MODEL (BRANCH)` entry, ahead of the child's
     # ScoreEvent, matching document order.
     out_parent = ModelOutput.from_content(model="mockllm", content="parent-ans")
@@ -1267,6 +1275,35 @@ def _grader_events(
         _span_model_event("grade", "GRADER SECRET", "sc"),
         SpanEndEvent(id="sc", span_id="sc"),
     ]
+
+
+def _scorers_model_event_ids(events: list[Event]) -> frozenset[str]:
+    """Ids of ModelEvents nested under any top-level ``scorers`` span.
+
+    On the flat/events-only path a grader ``ModelEvent`` is just another
+    item in the event list; without this exclusion it would render as a
+    branch entry, breaking the invariant that scorer model calls never
+    surface in scanned content. (Timeline paths handle this structurally.)
+
+    Every top-level ``scorers`` span counts, matching ``scorer_span_ids``;
+    taking only the first would leak later graders on re-scored and spliced
+    checkpoint-restore transcripts. Empty if the list carries no span
+    structure or no ``scorers`` span is found.
+    """
+    if not any(isinstance(e, (SpanBeginEvent, SpanEndEvent)) for e in events):
+        return frozenset()
+    tree = event_tree(events)
+    scorers_spans = [
+        item
+        for item in tree
+        if isinstance(item, EventTreeSpan) and item.name == "scorers"
+    ]
+    return frozenset(
+        _event_id(e)
+        for span in scorers_spans
+        for e in event_sequence(span)
+        if isinstance(e, ModelEvent)
+    )
 
 
 @pytest.mark.parametrize(
@@ -1534,15 +1571,13 @@ def test_structural_markers_gated_independently_of_renderer(
     assert _interleavable_text(event, [event_type]) is None
 
 
-def test_branch_span_events_are_not_collected_known_gap() -> None:
-    """Pins the branch-subtree gap so a fix is a deliberate, visible change.
+def test_branch_span_events_now_render_via_ownership() -> None:
+    """Inverts the retired known-gap pin: branch subtree content renders.
 
-    Loading `BranchEvent` routes a branch into `TimelineSpan.branches` instead
-    of unrolling it into the parent's content. Neither `_walk_spans` nor
-    `collect_span_external` descends into `.branches`, so the branch's own
-    events render nowhere on the timeline path. Before `branch` was a load
-    dependency they did surface -- misattributed to the parent thread -- so
-    this is the safer behaviour, not the correct one.
+    The fixture's branch content is [BranchEvent, ModelEvent, ScoreEvent]:
+    the BranchEvent leads, so the replay cut keeps everything, and its
+    from_anchor defaults to "" -> the block appends at the segment end
+    (decision 5).
     """
     events: list[Event] = [
         SpanBeginEvent(
@@ -1559,12 +1594,11 @@ def test_branch_span_events_are_not_collected_known_gap() -> None:
         SpanEndEvent(id="main", span_id="main"),
     ]
     tree = timeline_build(events)
-    scannable = list(_walk_spans(tree.root))
 
-    assert [s.id for s in scannable] == ["main"]
-    assert [(b.id, len(b.content)) for b in scannable[0].branches] == [("b1", 3)]
-    # The branch really does hold content, and it really is unreachable.
-    assert collect_span_external(tree, "all") == {}
+    [owned] = list(walk_owned_spans(tree.root))
+    assert len(owned.branches) == 1
+    assert owned.branches[0].branched_from == ""
+    assert len(owned.branches[0].items) == 3
 
 
 def test_scorer_span_ids_matches_event_tree_under_fuzz() -> None:

@@ -14,17 +14,11 @@ from typing import (
 from inspect_ai.event import (
     CompactionEvent,
     Event,
-    EventTreeSpan,
     ModelEvent,
     SpanBeginEvent,
-    SpanEndEvent,
     Timeline,
-    TimelineEvent,
     TimelineSpan,
     ToolEvent,
-    event_sequence,
-    event_tree,
-    timeline_filter,
 )
 from inspect_ai.model import ChatMessage, ChatMessageUser
 
@@ -32,13 +26,7 @@ from .._scanner.extract import EVENT_MARKER_KEY, message_as_str
 from .._scanner.util import _event_id, _message_id
 from .event_text import event_as_str
 from .messages import span_messages
-from .timeline import (
-    OwnedBranch,
-    OwnedItem,
-    OwnedSpan,
-    _span_has_direct_model_event,
-    span_is_scannable,
-)
+from .timeline import OwnedBranch, OwnedItem, OwnedSpan
 from .types import EventType, Transcript
 
 if TYPE_CHECKING:
@@ -51,12 +39,6 @@ class InterleavedEvent(NamedTuple):
     event_id: str
     text: str
 
-
-SpanExternalEvents = dict[str, list[InterleavedEvent]]
-"""Mapping of scannable span id (or ``""``) to its span-external entries.
-
-See ``collect_span_external()``'s docstring for the key/ordering contract.
-"""
 
 INTERLEAVE_DEPENDENCIES: Final[frozenset[EventType]] = frozenset(
     {"model", "tool", "compaction", "span_begin", "span_end", "branch"}
@@ -187,30 +169,12 @@ def _compaction_excluded_ids(
     )
 
 
-def scorers_collection_source(source: Timeline, include_scorers: bool) -> Timeline:
-    """Compute the timeline ``collect_span_external()`` should walk.
-
-    With ``include_scorers=False`` (default) the ``scorers`` span is pruned
-    from the walked tree, so its events must be collected from the unpruned
-    ``source`` -- returned unchanged. With ``include_scorers=True``, a
-    ``scorers`` span with a direct ``ModelEvent`` is walked normally and
-    splices its own events, so it is filtered out here to avoid
-    double-rendering; one without a direct ``ModelEvent`` is never walked
-    and must remain.
-    """
-    if not include_scorers:
-        return source
-    return timeline_filter(
-        source,
-        lambda s: not (s.span_type == "scorers" and _span_has_direct_model_event(s)),
-    )
-
-
 def scorer_span_ids(begins: Iterable[SpanBeginEvent]) -> frozenset[str]:
     """Ids of spans under a top-level ``scorers`` span, by ``event_tree``'s rule.
 
-    Streaming counterpart to ``_scorers_model_event_ids``, which needs the
-    whole event tree in memory. This needs only the span begins.
+    Streaming counterpart to the flat-oracle helper that needs the whole
+    event tree in memory (``tests/llm_scanner/test_interleave_events.py``).
+    This needs only the span begins.
 
     ``event_tree`` indexes every span before resolving parents, and its
     ``bucket()`` treats a span as a root when its parent id is falsy *or* names
@@ -248,35 +212,6 @@ def scorer_span_ids(begins: Iterable[SpanBeginEvent]) -> frozenset[str]:
         # A falsy span id is a root to event_tree's bucket() and can never be a
         # scorers member; keeping "" would mark every span-less event a grader.
         if span_id and any(rooted_at_scorers(b, frozenset()) for b in spans)
-    )
-
-
-def _scorers_model_event_ids(events: list[Event]) -> frozenset[str]:
-    """Ids of ModelEvents nested under any top-level ``scorers`` span.
-
-    On the flat/events-only path a grader ``ModelEvent`` is just another
-    item in the event list; without this exclusion it would render as a
-    branch entry, breaking the invariant that scorer model calls never
-    surface in scanned content. (Timeline paths handle this structurally.)
-
-    Every top-level ``scorers`` span counts, matching ``scorer_span_ids``;
-    taking only the first would leak later graders on re-scored and spliced
-    checkpoint-restore transcripts. Empty if the list carries no span
-    structure or no ``scorers`` span is found.
-    """
-    if not any(isinstance(e, (SpanBeginEvent, SpanEndEvent)) for e in events):
-        return frozenset()
-    tree = event_tree(events)
-    scorers_spans = [
-        item
-        for item in tree
-        if isinstance(item, EventTreeSpan) and item.name == "scorers"
-    ]
-    return frozenset(
-        _event_id(e)
-        for span in scorers_spans
-        for e in event_sequence(span)
-        if isinstance(e, ModelEvent)
     )
 
 
@@ -433,50 +368,6 @@ class _AnchorWalk:
                 yield _event_message(event_id, text)
 
 
-def span_interleaved_messages(
-    span: TimelineSpan, *, events: EventsSpec, compaction: Compaction
-) -> list[ChatMessage]:
-    """Splice a span's interleavable events into its message thread.
-
-    Draws events from the span's direct ``TimelineEvent`` content only
-    (descendant spans are not considered), reconstructs the span's thread
-    via ``span_messages`` (honoring ``compaction``), then anchors and
-    splices with ``_AnchorWalk``. An event whose anchoring turn was dropped
-    by compaction anchors to the previous surviving turn, or leads the span.
-
-    Args:
-        span: The scannable span to process.
-        events: Which event types to interleave (``"all"`` or a list).
-        compaction: Compaction handling for the span's message thread.
-
-    Returns:
-        The span's messages with marked event entries spliced in.
-    """
-    messages = span_messages(span, compaction=compaction)
-    excluded_ids = _compaction_excluded_ids(
-        span, (_message_id(m) for m in messages), compaction
-    )
-
-    # excluded_ids is derived from this span alone, so every id in it belongs
-    # to a turn this span compacted -- the whole span is the compaction scope.
-    # `None` is a real span_id here (the repo's compaction fixtures build
-    # span-less events), so it must be a bucket rather than filtered out.
-    span_event_spans = frozenset(
-        item.event.span_id for item in span.content if isinstance(item, TimelineEvent)
-    )
-    walk = _AnchorWalk(
-        [_message_id(m) for m in messages],
-        events,
-        excluded_ids=excluded_ids,
-        compaction_spans=span_event_spans,
-    )
-    for item in span.content:
-        if isinstance(item, TimelineEvent):
-            walk.add(item.event)
-
-    return list(walk.spliced(messages))
-
-
 def _render_branch_block(branch: OwnedBranch, events: EventsSpec) -> list[ChatMessage]:
     """Render a branch's items as a flat block of [E#] marker messages.
 
@@ -578,8 +469,8 @@ def span_owned_messages(
 ) -> list[ChatMessage]:
     """Splice an owned span's items and branches into its message thread.
 
-    Successor to ``span_interleaved_messages`` under the ownership model
-    (design §2): the thread comes from the span's DIRECT content only
+    Walks the ownership traversal's per-span view (design §2): the thread
+    comes from the span's DIRECT content only
     (``span_messages`` — hazard 1: foreign items never reach it), items
     are consumed by ``_AnchorWalk.add_owned`` in document order, and
     branch blocks are inserted at their resolved positions afterwards.
@@ -601,120 +492,6 @@ def span_owned_messages(
         walk.add_owned(item)
     spliced = list(walk.spliced(messages))
     return _splice_branches(spliced, owned, events)
-
-
-def _collect_span_external(
-    span: TimelineSpan,
-    events: EventsSpec,
-    *,
-    last_scannable: str | None,
-    in_scorers: bool,
-    external: defaultdict[str, list[InterleavedEvent]],
-    depth: int | None = None,
-    _scannable_depth: int = 0,
-) -> str | None:
-    """Depth-first helper for ``collect_span_external``; see its docstring."""
-    span_in_scorers = in_scorers or span.span_type == "scorers"
-    structurally_scannable = not span_in_scorers and span_is_scannable(span)
-    # Mirrors `_walk_spans`' depth bookkeeping (`timeline.py`): a scannable
-    # span beyond `depth` still consumes a depth level but is never walked,
-    # so its events (and its descendants') fall through to external
-    # collection, attributed to the last span that IS walked.
-    if structurally_scannable:
-        next_scannable_depth = _scannable_depth + 1
-        is_scannable = depth is None or next_scannable_depth <= depth
-    else:
-        next_scannable_depth = _scannable_depth
-        is_scannable = False
-
-    if is_scannable:
-        last_scannable = span.id
-
-    # A ModelEvent reached here has no thread to be "on", so it always
-    # renders as a `MODEL (BRANCH)` entry attached to `last_scannable`
-    # (ignoring `events` -- model content is always-on). This covers both
-    # genuinely non-scannable locations (utility spans, containers, root)
-    # and scannable spans excluded purely by `depth`. Grader ModelEvents
-    # (`span_in_scorers`) are the exception and never render. A scannable
-    # span's own events are skipped -- owned by its own splice.
-    for item in span.content:
-        if isinstance(item, TimelineEvent):
-            if is_scannable:
-                continue
-            event = item.event
-            if isinstance(event, ModelEvent):
-                if span_in_scorers:
-                    continue
-                text = _off_thread_model_text(event)
-            else:
-                text = _interleavable_text(event, events)
-            if text is not None:
-                key = last_scannable if last_scannable is not None else ""
-                external[key].append(InterleavedEvent(_event_id(event), text))
-        else:
-            last_scannable = _collect_span_external(
-                item,
-                events,
-                last_scannable=last_scannable,
-                in_scorers=span_in_scorers,
-                external=external,
-                depth=depth,
-                _scannable_depth=next_scannable_depth,
-            )
-    return last_scannable
-
-
-def collect_span_external(
-    timeline: Timeline | TimelineSpan, events: EventsSpec, *, depth: int | None = None
-) -> SpanExternalEvents:
-    """Collect span-external interleavable events from the unpruned timeline.
-
-    Companion to ``span_interleaved_messages()``, which splices a scannable
-    span's own direct events: this walks the tree's ``content`` depth-first to
-    find every event NOT owned by such a splice (utility spans, pure
-    containers, root level, ``scorers`` spans, spans beyond ``depth``) and
-    attributes each to the most recently reached scannable span (key ``""``
-    before the first one). The result is passed as
-    ``timeline_messages(..., span_external=...)``.
-
-    KNOWN GAP: ``TimelineSpan.branches`` is not walked, so events inside a
-    branch span are collected by neither driver -- ``_walk_spans`` does not
-    yield branch spans either. Loading ``BranchEvent`` (see
-    ``INTERLEAVE_DEPENDENCIES``) is what routes a branch into ``.branches``
-    rather than unrolling it into its parent's content, which is why those
-    events used to surface at all: misattributed to the parent thread. Not
-    rendering them is the safer of the two, but it is still a gap, and
-    ``timeline_stream._substitute_full_events`` *does* recurse into
-    ``.branches`` -- so the two walks disagree about the tree.
-
-    ``ModelEvent``s collected this way always render as ``MODEL (BRANCH)``
-    entries, except grader model calls under a ``scorers`` span, which never
-    render. Pass the tree through ``scorers_collection_source`` first -- it
-    documents the ``include_scorers`` handling.
-
-    Args:
-        timeline: The (unpruned, or caller-pre-filtered) timeline or span
-            subtree to walk.
-        events: Which event types to interleave (``"all"`` or a list).
-        depth: Maximum nesting level of scannable spans, matching
-            ``timeline_messages()``. A scannable span beyond this limit is
-            never walked, so its own events are collected as external too.
-
-    Returns:
-        Mapping of scannable span id (or ``""``) to ``(event_id,
-        rendered_text)`` entries, in document order.
-    """
-    root = timeline.root if isinstance(timeline, Timeline) else timeline
-    external: defaultdict[str, list[InterleavedEvent]] = defaultdict(list)
-    _collect_span_external(
-        root,
-        events,
-        last_scannable=None,
-        in_scorers=False,
-        external=external,
-        depth=depth,
-    )
-    return dict(external)
 
 
 def interleave_events(

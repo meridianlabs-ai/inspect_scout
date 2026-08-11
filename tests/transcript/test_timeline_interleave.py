@@ -427,7 +427,8 @@ async def test_off_thread_model_event_with_reasoning_only_content_renders() -> N
 
 
 # ---------------------------------------------------------------------------
-# collect_span_external() via transcript_messages() (Task 3)
+# Scorer-span pruning and branch/depth attribution via transcript_messages()
+# (Task 3)
 # ---------------------------------------------------------------------------
 
 
@@ -532,9 +533,9 @@ async def test_include_scorers_true_non_model_graded_score_collected_once() -> N
     """include_scorers=True: score from a scorers span with no ModelEvent.
 
     A scorers span with no ModelEvent (e.g. a non-model-graded scorer like
-    ``match``) is never walked by ``_walk_spans``, so its ScoreEvent must
-    still surface via span-external collection rather than being silently
-    dropped.
+    ``match``) is never walked as its own scannable span, so its ScoreEvent
+    must still surface -- attributed to the last scannable span via the
+    ownership traversal -- rather than being silently dropped.
     """
     out_a = ModelOutput.from_content(model="mockllm", content="answer-a")
     span_a = _span_of(
@@ -735,7 +736,7 @@ def _agentic_events_with_scores() -> list[Event]:
     - A genuine off-thread fork ``ModelEvent`` ("fork-1") in "main",
       rendering as a ``[E#] MODEL (BRANCH):`` entry.
     - (From plain ``agentic_events()``) the "sub" utility span's
-      ``ModelEvent``s: span-external model calls with no thread, rendered
+      ``ModelEvent``s: model calls with no thread of their own, rendered
       as ``MODEL (BRANCH)`` entries attributed to "main".
     """
     events = list(agentic_events())
@@ -832,8 +833,8 @@ async def test_stream_timeline_messages_events_parity(
 ) -> None:
     """``stream_timeline_messages(events=...)`` matches the materialized path.
 
-    Drives a multi-span fixture with an in-span score, a span-external
-    score (collected via a utility span), and a scorers-span score through
+    Drives a multi-span fixture with an in-span score, a score attributed
+    from a non-scannable utility span, and a scorers-span score through
     both the streaming and materialized ``timeline_messages`` call and
     asserts the yielded ``(span.id, messages_str)`` sequences match --
     across every ``compaction``/``depth`` combination.
@@ -966,7 +967,7 @@ async def test_stream_timeline_messages_cumulative_compaction_discriminator_pari
     Regression test for the bug where pass 2 substituted only the ACTUAL
     compaction's ``needed`` ModelEvents in full, leaving every other
     region's last ModelEvent output-only (``input=[]``). Because
-    ``span_interleaved_messages`` computes ``excluded_ids`` by
+    ``span_owned_messages`` computes ``excluded_ids`` by
     reconstructing the ``compaction="all"`` thread -- which reads every
     region-last ModelEvent's ``input`` -- and "t2" (region 1's last event)
     has a cumulative input embedding "t1"'s output, stripping "t2"'s input
@@ -1084,9 +1085,8 @@ async def test_stream_timeline_messages_events_uuidless_raises() -> None:
     Companion to ``test_selection_uuidless_raises``
     (``test_timeline_stream.py``): a needed ``ModelEvent`` lacking a uuid
     makes pass 1 fail regardless of ``events`` -- the raise happens before
-    ``events``/``span_external`` are ever consulted, so passing ``events``
-    cannot mask or change it (the property llm_scanner's fallback relies
-    on).
+    ``events`` is ever consulted, so passing ``events`` cannot mask or
+    change it (the property llm_scanner's fallback relies on).
     """
     from inspect_scout._transcript.timeline_stream import _StubSkeletonUnsupported
 

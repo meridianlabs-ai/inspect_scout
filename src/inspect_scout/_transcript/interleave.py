@@ -450,12 +450,13 @@ def _branch_thread_index(
     the occurrence the anchor walk actually consumed for it -- one whose
     output never landed on the thread is off-thread and cannot position a
     branch at all. A matching ``ToolEvent`` has no occurrence bookkeeping,
-    so it positions at the first thread message carrying the id.
-
-    Residual, out of scope: that ToolEvent lookup is still a plain id
-    match, so a cross-role duplicate of a tool message id would resolve to
-    whichever thread message comes first.
+    so it positions at the first thread message carrying the id -- a
+    cross-role duplicate of a tool message id resolves to whichever thread
+    message comes first.
     """
+    # Escalate to uuid/event-identity-keyed positioning rather than
+    # patching the role heuristics further (same route as _AnchorWalk's
+    # duplicate-id anchoring note).
     for item in owned.items:
         if not item.own:
             continue
@@ -480,42 +481,26 @@ def _splice_branches(
 ) -> list[ChatMessage]:
     """Insert branch blocks at their branched_from positions (design §4).
 
-    Mirrors the viewer's insertBranchCards/findEventByMessageId
-    (ts-mono inspect-components contentItems.ts): branches sharing a
-    branched_from are grouped and spliced consecutively at the single
-    resolved index; unmatched branches — including ``""``, exactly as the
-    viewer's inline positioning treats it — append at the end. Resolution
-    is event-level against the owner's OWN items, output message ids and
-    ToolEvent.message_id only: the streaming stub strips input message
-    ids, so the viewer's input-id tier would break streamed==materialized.
-    KNOWN DIVERGENCES (deliberate): splice.py reads ``""`` as "no shared
-    prefix"; the swimlane geometry (markers.ts resolveForkTimestamp) draws
-    a ``""`` branch from the parent's start. Inline card order is what a
-    debugging human compares against, and this matches it.
+    Branches sharing a ``branched_from`` are grouped and spliced
+    consecutively at the single resolved index; unmatched branches --
+    including ``""`` -- append at the end, matching the viewer's inline
+    positioning. Resolution is event-level against the owner's OWN items:
+    output message ids and ``ToolEvent.message_id`` only, never input ids
+    (the streaming stub strips those, and a tier one path cannot reach
+    would break streamed == materialized).
 
-    A matched key resolves through the anchor walk's CONSUMED OCCURRENCES,
-    translated into the rendered sequence by ``spliced_position_after``.
-    It is never a message-id scan over that sequence: a scan laundered two
-    distinct bugs into the position — a foreign event's uuid, written into
-    its marker's ``ChatMessage.id``, could match before the real thread
-    message; and an input message sharing an output's id could match
-    before the output turn the key actually names.
-
-    Injection is INDEX INSERTION, never add_model_output — consuming an
-    occurrence would re-open hazard 2 through the branch door.
-
-    Known limitation, duplicate message ids only (unreachable for
-    Inspect-minted logs, which auto-mint unique ids; reachable for
-    converter/synthetic logs): when one thread reuses an id across
-    messages, branch positioning resolves via assistant-role output
-    positions and a first-id lookup for ``ToolEvent.message_id`` --
-    an assistant-history message or tool-result sharing an id with
-    the resolution target can pull the splice off the viewer's
-    position, and anchoring may disagree with branch placement.
-    Escalate to uuid/event-identity-keyed positioning (same route as
-    ``_AnchorWalk``'s anchoring note) rather than patching the
-    role heuristics further.
+    Known limitation, duplicate message ids within one thread only
+    (reachable for converter/synthetic logs; Inspect auto-mints unique
+    ids): an assistant-history message or tool-result sharing an id with
+    the resolution target can pull the splice off the viewer's position,
+    and anchoring may disagree with branch placement.
     """
+    # Mirrors the viewer's insertBranchCards/findEventByMessageId (ts-mono
+    # inspect-components contentItems.ts). Knowing divergences: splice.py
+    # reads "" as "no shared prefix"; the swimlane geometry (markers.ts
+    # resolveForkTimestamp) draws a "" branch from the parent's start.
+    # Inline card order is what a debugging human compares against, and
+    # this matches it.
     if not owned.branches:
         return spliced
 
@@ -534,6 +519,11 @@ def _splice_branches(
 
     def insertion_index(key: str) -> int | None:
         # "" matches no own item and falls out here: unmatched, appended.
+        # Resolution goes through the anchor walk's consumed occurrences,
+        # translated by spliced_position_after -- never a message-id scan
+        # over the rendered sequence: a scan can match a foreign event's
+        # uuid (written into its marker's ChatMessage.id) or an input
+        # message sharing an output's id, before the turn the key names.
         index = _branch_thread_index(MessageId(key), owned, walk, message_ids)
         return None if index is None else walk.spliced_position_after(index)
 
@@ -541,7 +531,9 @@ def _splice_branches(
     matched: list[tuple[str, int]] = [
         (key, idx) for key, idx in resolved if idx is not None
     ]
-    # Back-to-front so earlier insertions don't shift later indexes.
+    # Index insertion, never add_model_output -- consuming an occurrence
+    # would re-open hazard 2 through the branch door. Back-to-front so
+    # earlier insertions don't shift later indexes.
     for key, idx in sorted(matched, key=lambda pair: pair[1], reverse=True):
         spliced[idx:idx] = groups[key]
     for unmatched_key, unmatched_idx in resolved:

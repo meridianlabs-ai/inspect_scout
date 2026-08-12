@@ -349,19 +349,18 @@ def walk_owned_spans(
     replay prefix (content before the branch's first direct
     ``BranchEvent``) cut, positioned later by ``branched_from`` (§4).
 
-    Each ``OwnedSpan`` is yielded complete, in pre-order: the traversal
-    buffers because tier 1 keeps accruing items to a walked ancestor while
-    nested walked spans come and go, and tier 2 depends on later document
-    positions. This eagerness is deliberate, not an implementation
-    convenience: every owner is fully accumulated (items hold references,
-    not copies) before anything is yielded, because tier-1/2 ownership can
-    only be resolved by later document positions. Do not make this lazy.
+    Each ``OwnedSpan`` is yielded complete, in pre-order.
 
     ``depth <= 0`` yields nothing (orphan homing suppressed too).
     """
     if depth is not None and depth <= 0:
         return
 
+    # Deliberately eager, not an implementation convenience: every owner is
+    # fully accumulated before anything is yielded (items hold references,
+    # not copies), because tier-1 items keep accruing to a walked ancestor
+    # while nested walked spans come and go, and tier-2 ownership is only
+    # resolvable from later document positions. Do not make this lazy.
     owners: list[OwnedSpan] = []
     orphan_items: list[OwnedItem] = []
     orphan_branches: list[OwnedBranch] = []

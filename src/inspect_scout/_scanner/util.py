@@ -8,17 +8,14 @@ from inspect_ai.model import ChatMessage, ChatMessageBase
 from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
 from inspect_scout._transcript.types import Transcript
 
+# The interleave plumbing brands its ids so a message id cannot be passed
+# where an event id is required (or vice versa). One deliberate laundering
+# point remains: `_event_message` writes an `EventId` into
+# `ChatMessage.id: str | None` and `extract.py` reads it back as a
+# `MessageId`; typing that honestly forces a cast, so it stays a documented
+# exception rather than a half-fix.
 EventId = NewType("EventId", str)
-"""A rendered event's citation identity (``event.uuid`` or a minted id).
-
-Prophylactic typing for the interleave plumbing: the citation-id bug this
-makes unwritable (_ModelOutputOp passing a message id where an event id was
-required) no longer has a site — it died in 2492b1902. Note one deliberate
-laundering point remains: ``_event_message`` writes an ``EventId`` into
-``ChatMessage.id: str | None`` and ``extract.py`` reads it back as a
-``MessageId``; typing that honestly forces a cast, so it stays documented
-rather than half-fixed.
-"""
+"""A rendered event's citation identity (``event.uuid`` or a minted id)."""
 MessageId = NewType("MessageId", str)
 SpanId = NewType("SpanId", str)
 

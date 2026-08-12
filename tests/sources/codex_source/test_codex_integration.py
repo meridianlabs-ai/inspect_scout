@@ -317,6 +317,27 @@ async def test_spawn_agent_session(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_spawn_agent_child_found_in_archived_sessions(tmp_path: Path) -> None:
+    """A spawned child archived after its parent still nests into the parent."""
+    codex_home = tmp_path / "codex-home"
+    _copy_fixtures(codex_home / "sessions" / "2026" / "08" / "01", [TID4])
+    _copy_fixtures(codex_home / "archived_sessions" / "2026" / "08" / "01", [TID4C])
+
+    transcripts = await _import_all(codex_home / "sessions")
+
+    assert len(transcripts) == 1
+    t = transcripts[0]
+    assert t.transcript_id == TID4
+    child_models = [
+        e
+        for e in t.events
+        if isinstance(e, ModelEvent) and e.model == "gpt-5.1-codex-mini"
+    ]
+    assert len(child_models) == 1
+    assert t.total_tokens == 500 + 200 + 150
+
+
+@pytest.mark.asyncio
 async def test_review_session_imported_standalone(fixtures_dir: Path) -> None:
     t = await _import_one(fixtures_dir, TID9)
     assert t.metadata["source"] == {"subagent": "review"}

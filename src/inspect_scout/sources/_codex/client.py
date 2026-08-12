@@ -180,6 +180,24 @@ def codex_home_for(rollout_file: Path) -> Path | None:
     return None
 
 
+def related_rollout_roots(rollout_file: Path) -> list[Path]:
+    """Roots to search for rollouts related to a file (children, history parents).
+
+    Threads are archived individually, so a related thread may live in the
+    other tree of the same codex home: both ``sessions`` and
+    ``archived_sessions`` are returned when the file belongs to a codex home.
+    Falls back to the file's own directory otherwise.
+    """
+    home = codex_home_for(rollout_file)
+    if home is None:
+        return [rollout_file.parent]
+    return [
+        root
+        for root in (home / SESSIONS_SUBDIR, home / ARCHIVED_SESSIONS_SUBDIR)
+        if root.is_dir()
+    ] or [rollout_file.parent]
+
+
 def _open_rollout_text(path: Path) -> TextIO:
     """Open a rollout file for text reading, decompressing .zst transparently."""
     if path.name.endswith(".zst"):

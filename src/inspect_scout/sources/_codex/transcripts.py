@@ -44,8 +44,8 @@ from .client import (
     load_thread_names,
     peek_session_meta,
     read_rollout_lines,
+    related_rollout_roots,
     rollout_thread_id,
-    sessions_root_for,
 )
 from .events import process_rollout_events
 
@@ -103,9 +103,13 @@ async def codex(
         thread_names = load_thread_names(home) if home else {}
     count = 0
 
-    # One finder per sessions tree, shared across its rollouts so the tree is
-    # scanned at most once per import for child-thread / history lookups.
-    finders: dict[Path, RolloutFinder] = {}
+    # One finder per set of related roots, shared across rollouts so each tree
+    # is scanned at most once per import for child-thread / history lookups.
+    # Related roots span sessions AND archived_sessions: threads are archived
+    # individually, so a spawned child (or history parent) may live in the
+    # other tree regardless of include_archived, which only controls which
+    # threads import as standalone transcripts.
+    finders: dict[tuple[Path, ...], RolloutFinder] = {}
 
     for rollout_file in rollout_files:
         if limit is not None and count >= limit:
@@ -122,8 +126,8 @@ async def codex(
         if _skip_for_source(meta, rollout_file):
             continue
 
-        root = sessions_root_for(rollout_file)
-        finder = finders.setdefault(root, RolloutFinder([root]))
+        roots = tuple(related_rollout_roots(rollout_file))
+        finder = finders.setdefault(roots, RolloutFinder(list(roots)))
         transcript = await _process_rollout_file(
             rollout_file, meta, thread_names, finder
         )

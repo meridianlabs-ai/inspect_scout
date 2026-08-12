@@ -118,10 +118,15 @@ def _item_coroutine(
                 try:
                     builder.event(event, value)
                     item = builder.value
+                except Exception:
+                    pass  # malformed item: drop it and keep parsing
+                else:
+                    # Deliberately outside the guard. `target_list` is a spool
+                    # sink, so an append failure means ENOSPC or a closed fd --
+                    # data loss, not a malformed item. Swallowing it would drop
+                    # the item while the parse went on to report success.
                     target_list.append(item)
                     attachment_refs.update(attachments)
-                except Exception:
-                    pass
             builder = None
             skip = False
             attachments.clear()
@@ -175,9 +180,13 @@ def _unfiltered_item_coroutine(
         if prefix == item_prefix and event == "end_map":
             try:
                 builder.event(event, value)
-                target_list.append(builder.value)
+                item = builder.value
             except Exception:
-                pass
+                pass  # malformed item: drop it and keep parsing
+            else:
+                # Outside the guard: see `_item_coroutine` -- an append failure
+                # is a spool write failure, and must not be silently dropped.
+                target_list.append(item)
             builder = None
             continue
         try:

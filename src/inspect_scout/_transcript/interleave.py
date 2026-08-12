@@ -503,6 +503,18 @@ def _splice_branches(
 
     Injection is INDEX INSERTION, never add_model_output — consuming an
     occurrence would re-open hazard 2 through the branch door.
+
+    Known limitation, duplicate message ids only (unreachable for
+    Inspect-minted logs, which auto-mint unique ids; reachable for
+    converter/synthetic logs): when one thread reuses an id across
+    messages, branch positioning resolves via assistant-role output
+    positions and a first-id lookup for ``ToolEvent.message_id`` --
+    an assistant-history message or tool-result sharing an id with
+    the resolution target can pull the splice off the viewer's
+    position, and anchoring may disagree with branch placement.
+    Escalate to uuid/event-identity-keyed positioning (same route as
+    ``_AnchorWalk``'s anchoring note) rather than patching the
+    role heuristics further.
     """
     if not owned.branches:
         return spliced

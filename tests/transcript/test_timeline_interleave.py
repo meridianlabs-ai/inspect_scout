@@ -34,7 +34,11 @@ from inspect_ai.scorer import Score
 from inspect_scout._scanner.extract import message_numbering
 from inspect_scout._transcript.handle import MaterializedTranscriptHandle
 from inspect_scout._transcript.messages import segment_messages, transcript_messages
-from inspect_scout._transcript.timeline import TimelineMessages, timeline_messages
+from inspect_scout._transcript.timeline import (
+    _ORPHAN_SPAN_ID,
+    TimelineMessages,
+    timeline_messages,
+)
 from inspect_scout._transcript.timeline_stream import stream_timeline_messages
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
 
@@ -609,10 +613,9 @@ async def test_stream_tool_event_nested_subagent_depth_excluded_parity() -> None
     entries attached to its parent. The streaming path already recurses
     into `ToolEvent.events` for both full- and off-thread-event
     substitution (`_collect_pass2_model_events`, `timeline_stream.py`), so
-    no changes were needed there either. Was xfailed as a "Task 9" parity
-    bridge; removed here because it XPASSes -- for this fixture shape, the
+    no changes were needed there either. For this fixture shape, the
     streaming and materialized ownership-traversal-backed paths already
-    agree (verified via `--runxfail`, see task-8-report.md).
+    agree (verified via `--runxfail`).
     """
     main_1 = _agentic_model_event(
         label="main-1",
@@ -1122,8 +1125,6 @@ async def test_stream_timeline_messages_events_uuidless_raises() -> None:
 # collect_span_owned directed tests (design: Verification, "New tests")
 # ---------------------------------------------------------------------------
 
-from inspect_scout._transcript.timeline import _ORPHAN_SPAN_ID  # noqa: E402
-
 
 @pytest.mark.anyio
 async def test_number6_instance1_utility_events_render_in_document_position() -> None:
@@ -1357,7 +1358,10 @@ async def test_orphan_only_segment_reduces_to_scalar_result() -> None:
 
 
 @pytest.mark.anyio
-async def test_agentic_events_none_yields_each_walked_span_exactly_once() -> None:
+@pytest.mark.parametrize("events", [None, "all"])
+async def test_agentic_events_yields_each_walked_span_exactly_once(
+    events: list[str] | str | None,
+) -> None:
     """Pins walk_owned_spans' one-OwnedSpan-per-walked-span discipline.
 
     A regression once split this into multiple "runs" per span to satisfy a
@@ -1368,23 +1372,7 @@ async def test_agentic_events_none_yields_each_walked_span_exactly_once() -> Non
     rendered more than once, not a legitimate content split.
     """
     tree = timeline_build(agentic_events())
-    results, combined = await _collect(tree.root, events=None, context_window=100_000)
-
-    assert [seg.span.id for seg in results] == [
-        "main",
-        "sub2",
-        "browser",
-        "tool-agent-call-handoff-tool",
-    ]
-    assert all(seg.span.id != _ORPHAN_SPAN_ID for seg in results)
-    assert combined.count("main-output-3") == 1
-
-
-@pytest.mark.anyio
-async def test_agentic_events_all_yields_each_walked_span_exactly_once() -> None:
-    """Same pin as above, for events="all" (renders every event, not a filter)."""
-    tree = timeline_build(agentic_events())
-    results, combined = await _collect(tree.root, events="all", context_window=100_000)
+    results, combined = await _collect(tree.root, events=events, context_window=100_000)
 
     assert [seg.span.id for seg in results] == [
         "main",

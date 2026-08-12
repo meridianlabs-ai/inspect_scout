@@ -152,10 +152,10 @@ def test_tool_event_nested_events_flatten_recursively_as_foreign() -> None:
 
     [owned] = _owned(span)
     flags = [(i.event, i.own) for i in owned.items]
-    assert (tool, True) in flags  # the direct ToolEvent is own
-    assert (nested_model, False) in flags  # one level down: foreign
-    assert (inner_tool, False) in flags  # tool-in-tool: foreign
-    assert (inner_model, False) in flags  # two levels down: foreign
+    assert (tool, True) in flags
+    assert (nested_model, False) in flags
+    assert (inner_tool, False) in flags
+    assert (inner_model, False) in flags
 
 
 def test_scorers_model_only_suppression_and_walked_by_include_scorers() -> None:
@@ -353,12 +353,11 @@ def test_branch_on_nonwalked_carrier_owner_captured_at_span_start() -> None:
     assert by_id["nested"].branches == []
     assert by_id["m2"].branches == []
 
-    # The brute-force reference must agree: the branch's own ModelEvent is
-    # owned by "m1", not "nested" (tree_gen.py's `_document_events` used to
-    # attribute a carrier's branches using `latest` as it stood AFTER the
-    # carrier's content was walked, since it yielded content before
-    # branches; fixed to yield branches first, snapshotting the owner at
-    # the carrier's entry, matching `walk_owned_spans`).
+    # The brute-force reference must independently agree: the branch's own
+    # ModelEvent is owned by "m1", not "nested" -- tree_gen.py's
+    # `_document_events` must snapshot the owner at the carrier's entry,
+    # before the carrier's nested content is walked, matching
+    # `walk_owned_spans`.
     assert branch_event.uuid is not None
     reference = expected_owners(root, depth=None, include_scorers=False)
     assert reference[branch_event.uuid] == "m1"

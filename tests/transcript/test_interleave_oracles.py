@@ -103,9 +103,7 @@ async def test_oracle1_document_order(include_scorers: bool, depth: int | None) 
     # it does not exclude the whole scorers subtree. An earlier round of this
     # reference wrongly excluded the whole subtree, which is what made legs
     # (a)/(c) alone artificially green for this parameter (fixed in
-    # `_document_events`; see task-3-report.md for the wrong-vs-corrected
-    # contract and the full red-check evidence, with and without leg (d),
-    # before and after that fix).
+    # `_document_events`).
     for seed in CORPUS_SEEDS:
         g = generate(seed)
         tree = timeline_build(g.events)

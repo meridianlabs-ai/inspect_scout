@@ -1,10 +1,8 @@
 """Shared ``TimelineSpan``/``ModelEvent`` test builders.
 
-Copied verbatim from ``tests/transcript/test_timeline_interleave.py:64-98``
-(human ruling, 2026-08-11 amendment to the collect-span-owned plan): rather
-than re-copying these 30 lines into every new test file, later test modules
-import them from here. ``test_timeline_interleave.py`` keeps its own local
-copies unchanged.
+Also duplicated verbatim in ``tests/transcript/test_timeline_interleave.py``
+(its local helpers) -- that file intentionally keeps its own copies rather
+than importing from here, so an edit in either place does not propagate.
 """
 
 from __future__ import annotations

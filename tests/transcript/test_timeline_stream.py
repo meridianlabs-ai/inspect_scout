@@ -718,11 +718,6 @@ def test_uuidless_offthread_empty_output_does_not_force_fallback() -> None:
 
 
 # --- collect_span_owned streaming parity (design §2, streaming 1-3; §4) ----
-# All names this section needs (BranchEvent, ModelEvent, ScoreEvent,
-# SpanBeginEvent, SpanEndEvent, ToolEvent, ChatMessageUser, GenerateConfig,
-# ModelOutput, Score, message_numbering, MaterializedTranscriptHandle,
-# transcript_messages, _ORPHAN_SPAN_ID, stream_timeline_messages, Transcript,
-# TranscriptInfo) are already imported at the top of this file.
 
 
 async def _both_paths(

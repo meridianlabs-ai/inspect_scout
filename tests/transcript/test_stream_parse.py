@@ -378,3 +378,31 @@ async def test_metadata_is_not_cached_between_calls(tmp_path: Path) -> None:
         assert first is not second
     finally:
         result.close()
+
+
+@pytest.mark.asyncio
+async def test_spool_write_failure_surfaces_instead_of_dropping_items(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failing spool write must raise, not silently drop the item.
+
+    The item coroutines tolerate a malformed item by design, but that guard
+    used to wrap the sink append too -- so a full disk or a closed fd dropped
+    a message or event while the parse went on to report success. Data loss
+    that a caller cannot see is worse than a crash.
+    """
+    from inspect_scout._transcript.json import spool as spool_mod
+
+    real_append = spool_mod.ItemSpool.append
+    calls = {"n": 0}
+
+    def failing_append(self: spool_mod.ItemSpool, item: dict[str, Any]) -> None:
+        calls["n"] += 1
+        if calls["n"] == 2:  # fail mid-parse, not on the first item
+            raise OSError(28, "No space left on device")
+        real_append(self, item)
+
+    monkeypatch.setattr(spool_mod.ItemSpool, "append", failing_append)
+
+    with pytest.raises(OSError, match="No space left on device"):
+        await stream_parse_to_spool(_stream(SAMPLE), "all", "all", tmp_path)

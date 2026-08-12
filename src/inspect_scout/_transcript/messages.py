@@ -439,7 +439,7 @@ async def transcript_messages(
         # because splicing nothing is not a reason to discard the thread.
         if transcript.messages:
             async for seg in segment_messages(
-                interleave_events(transcript, events, compaction=compaction),
+                interleave_events(transcript, events),
                 messages_as_str=messages_as_str,
                 model=model,
                 context_window=context_window,

@@ -581,7 +581,6 @@ def span_owned_messages(
 def interleave_events(
     transcript: Transcript,
     events: EventsSpec = "all",
-    compaction: Compaction = "all",
 ) -> list[ChatMessage]:
     """Splice loaded non-message events into ``transcript.messages``.
 
@@ -592,21 +591,14 @@ def interleave_events(
     hidden (see ``_AnchorWalk``). Grader model calls under a ``scorers``
     span are excluded from the walk entirely.
 
-    When the transcript has no top-level messages (events-only loads), the
-    thread is reconstructed from model events via ``span_messages``
-    (honoring ``compaction``).
-
-    Warning:
-        The events-only reconstruction assumes a single linear
-        conversation; with multiple parallel agents it drops every agent
-        but the last from the thread (their outputs surface only as branch
-        entries). Multi-agent transcripts must use the timeline machinery
-        instead; ``llm_scanner`` routes them there automatically.
-
     Args:
         transcript: Transcript providing messages and events.
         events: Which event types to interleave (``"all"`` or a list).
-        compaction: Compaction handling for events-only thread reconstruction.
+
+    Raises:
+        EventsOnlyInterleaveUnsupported: The transcript has events but no
+            top-level messages; use the timeline machinery instead --
+            ``llm_scanner`` routes such transcripts there automatically.
     """
     messages = list(transcript.messages)
     if not transcript.events:
@@ -614,9 +606,8 @@ def interleave_events(
     excluded_ids: frozenset[MessageId] = frozenset()
     if messages:
         # `messages` is the transcript's own live thread, already shaped by
-        # the original run's compaction (the `compaction` argument only
-        # governs events-only reconstruction below). The "last" sentinel
-        # forces `_compaction_excluded_ids` past its `"all"` fast path.
+        # the original run's compaction. The "last" sentinel forces
+        # `_compaction_excluded_ids` past its `"all"` fast path.
         if any(isinstance(e, CompactionEvent) for e in transcript.events):
             excluded_ids = _compaction_excluded_ids(
                 transcript.events,
@@ -651,7 +642,6 @@ def interleave_events(
 async def stream_interleave_events(
     handle: "TranscriptHandle",
     events: EventsSpec = "all",
-    compaction: Compaction = "all",
 ) -> AsyncIterator[ChatMessage]:
     """Streaming counterpart to ``interleave_events`` over a handle.
 
@@ -665,15 +655,10 @@ async def stream_interleave_events(
     the anchor walk (retaining just id + rendered text per selected event);
     then re-stream messages splicing anchored entries.
 
-    Events-only transcripts take two events passes -- one for span begins,
-    one to reconstruct the thread -- the latter
-    retaining only the region-last ``ModelEvent`` (whose input carries the
-    region's conversation) plus an op log of output-message ids and
-    pre-rendered branch text, replayed against the reconstructed thread.
-    That reconstruction carries ``interleave_events``' linear-conversation
-    limitation. ``llm_scanner`` never reaches it: it routes *every* handle
-    without messages to ``stream_timeline_messages``, so this branch serves
-    direct library callers only.
+    Raises:
+        EventsOnlyInterleaveUnsupported: The handle has no messages; use
+            ``stream_timeline_messages`` instead -- ``llm_scanner`` routes
+            such handles there automatically.
     """
     message_ids = [_message_id(m) async for m in handle.messages()]
     # Span boundaries are needed to spot grader model calls; the rest of the

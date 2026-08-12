@@ -527,7 +527,7 @@ def llm_scanner(
                 tuple[str | None, str]
             ]:
                 async for seg in stream_segment_messages(
-                    stream_interleave_events(handle, events, compaction=compaction),
+                    stream_interleave_events(handle, events),
                     messages_as_str=messages_as_str_fn,
                     model=resolved_model,
                     context_window=context_window,

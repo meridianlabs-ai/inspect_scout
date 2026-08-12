@@ -94,9 +94,10 @@ def pooled_passthrough(
     # scanned as it is emitted: an id cannot straddle two chunks because every
     # item is serialized whole, so this sees exactly what a scan of the
     # finished envelope would.
-    # Chunks go to a spool rather than a list: the joined envelope has to exist
-    # contiguously (a parquet cell is one value), but the pieces do not, and
-    # holding both at once doubled the peak on a multi-GB transcript.
+    #
+    # Chunks accumulate on a spool, not in memory: only the finished envelope
+    # has to exist contiguously, and holding the pieces as well would double
+    # the peak on a multi-GB transcript.
     envelope = ByteSpool(result.spool_dir)
     try:
         attachment_ids: set[str] = set()
@@ -110,22 +111,21 @@ def pooled_passthrough(
         def emit(text: str) -> None:
             emit_bytes(text.encode("utf-8"))
 
-        # Everything up to "messages", written key by key rather than dumped whole
-        # -- and sample metadata, which for a metadata-dominated transcript is most
-        # of the envelope, is copied straight from its spool without ever becoming
-        # objects or a `str`.
+        # Everything up to "messages", written key by key rather than dumped
+        # whole -- and sample metadata, most of the envelope on a
+        # metadata-dominated transcript, is copied straight from its spool
+        # without ever becoming objects or a `str`.
         #
-        # These values (unlike the spooled items below) originate from index rows
-        # rather than from parsed transcript JSON, so they can hold types stdlib
-        # `json` refuses -- a parquet TIMESTAMP column arrives as a `datetime`.
-        # `to_json_bytes_compact` is what the materialized path uses, so coercion
-        # of those, of NaN/Infinity, and of anything unserializable matches it
-        # exactly. Values here are small: the large one is spooled.
-        # Match the materialized path's field set exactly: it builds a
-        # `Transcript`, so subclass-only fields (a parquet index row carries
-        # `filename`) are dropped, and it serializes through `to_json_safe`,
-        # which passes exclude_none=True, so unset fields are omitted rather
-        # than emitted as null.
+        # These values come from index rows rather than parsed transcript JSON,
+        # so they can hold types stdlib `json` refuses -- a parquet TIMESTAMP
+        # column arrives as a `datetime`. `to_json_bytes_compact` is what the
+        # materialized path uses, so coercion of those, of NaN/Infinity, and of
+        # anything unserializable matches it exactly.
+        #
+        # The field set must match that path too: it builds a `Transcript`, so
+        # subclass-only fields (an index row carries `filename`) are dropped,
+        # and `to_json_safe` passes exclude_none=True, so unset fields are
+        # omitted rather than emitted as null.
         emit("{")
         for key, value in info.model_dump(exclude={"metadata"}).items():
             if value is None or key not in Transcript.model_fields:

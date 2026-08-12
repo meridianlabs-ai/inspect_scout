@@ -104,7 +104,7 @@ async def _collect_transcript(
     context_window: int = 10_000,
     depth: int | None = None,
 ) -> tuple[list[TimelineMessages], str]:
-    """Drive segments through transcript_messages() (exercises the collector)."""
+    """Drive segments through transcript_messages()."""
     transcript = Transcript(
         transcript_id="t1",
         timelines=[Timeline(name="Default", description="", root=root)],
@@ -432,7 +432,7 @@ async def test_off_thread_model_event_with_reasoning_only_content_renders() -> N
 
 # ---------------------------------------------------------------------------
 # Scorer-span model suppression and branch/depth attribution via
-# transcript_messages() (Task 3)
+# transcript_messages()
 # ---------------------------------------------------------------------------
 
 
@@ -626,8 +626,8 @@ async def test_stream_tool_event_nested_subagent_depth_excluded_parity() -> None
     # main-2's input embeds main-1's own output message, making it a
     # genuine cumulative on-thread continuation (matching how a real
     # transcript's ModelEvent.input grows turn over turn) -- otherwise the
-    # pre-existing `_AnchorWalk` off-thread/fork detection (Fix A) would
-    # itself classify main-1 as a fork, independent of anything under test
+    # pre-existing `_AnchorWalk` off-thread/fork detection would itself
+    # classify main-1 as a fork, independent of anything under test
     # here (see `_two_turn_events`/`_cumulative_compaction_events` above).
     main_2 = _agentic_model_event(
         label="main-2",
@@ -721,7 +721,7 @@ async def test_stream_tool_event_nested_subagent_depth_excluded_parity() -> None
 
 
 # ---------------------------------------------------------------------------
-# Streaming parity (Task 4): stream_timeline_messages(events=...) vs the
+# Streaming parity: stream_timeline_messages(events=...) vs the
 # materialized timeline_messages(events=...) call it must match.
 # ---------------------------------------------------------------------------
 

@@ -324,11 +324,6 @@ def needed_model_event_uuids(
     the set of events whose full content pass 2 must substitute back into
     the stub skeleton.
 
-    With ``include_scorers=False`` no owned span is a scorers span (the
-    traversal never walks one), so this never selects a grader
-    ``ModelEvent`` -- the memory guarantee is provided by the traversal
-    itself, not by any separate prune.
-
     Args:
         root: Root ``TimelineSpan`` of the built (stub) timeline.
         compaction: Compaction strategy (``"all"``, ``"last"``, or an int N).
@@ -343,6 +338,10 @@ def needed_model_event_uuids(
         _StubSkeletonUnsupported: If any selected ModelEvent lacks a uuid.
     """
     needed: set[str] = set()
+    # With `include_scorers=False` no owned span is a scorers span (the
+    # traversal never walks one), so this never selects a grader `ModelEvent`
+    # -- the memory guarantee is provided by the traversal itself, not by any
+    # separate prune.
     for owned in walk_owned_spans(root, depth=depth, include_scorers=include_scorers):
         span_events = [
             item.event for item in owned.span.content if isinstance(item, TimelineEvent)
@@ -352,13 +351,11 @@ def needed_model_event_uuids(
 
 
 def _output_only_model_event(event: ModelEvent) -> ModelEvent:
-    """Return a copy of `event` retaining only its first-choice output message.
-
-    Used for off-thread `ModelEvent`s when `events` interleaving is
-    enabled: `_AnchorWalk` needs the output message to render (or exclude)
-    the event, but never its (potentially huge) `input`, `tools`, or
-    further output choices, so those are dropped.
-    """
+    """Return a copy of `event` retaining only its first-choice output message."""
+    # Used for off-thread `ModelEvent`s when `events` interleaving is
+    # enabled: `_AnchorWalk` needs the output message to render (or exclude)
+    # the event, but never its (potentially huge) `input`, `tools`, or
+    # further output choices, so those are dropped.
     output = event.output
     kept_choices = output.choices[:1] if output.choices else []
     return event.model_copy(

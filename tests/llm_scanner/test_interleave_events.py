@@ -1,5 +1,5 @@
 import re
-from typing import AsyncIterator, Iterable, Sequence, cast
+from typing import AsyncIterator, Iterable, cast
 
 import pytest
 from inspect_ai.event import (
@@ -74,16 +74,13 @@ def _no_load_handle(
     messages: list[ChatMessage] | None = None,
     info: TranscriptInfo | None = None,
 ) -> MaterializedTranscriptHandle:
-    """Handle stub that streams the given content but raises on ``load()``.
-
-    Proves a streaming path never materializes: ``MaterializedTranscriptHandle``
-    itself can't, since its ``messages()``/``events()`` call ``load()``
-    internally. ``scan()`` narrows on the concrete handle classes, hence
-    the subclass.
-    """
+    """Handle stub that streams the given content but raises on ``load()``."""
     event_list = events
     message_list = messages or []
 
+    # Proves a streaming path never materializes: `MaterializedTranscriptHandle`
+    # itself can't, since its `messages()`/`events()` call `load()` internally.
+    # `scan()` narrows on the concrete handle classes, hence the subclass.
     class _NoLoadHandle(MaterializedTranscriptHandle):
         async def messages(self, *, types: object = None) -> AsyncIterator[ChatMessage]:
             for m in message_list:
@@ -329,11 +326,11 @@ def _compaction_pruned_and_fork_transcript() -> Transcript:
 def test_messages_present_hides_compaction_pruned_turn() -> None:
     """Messages-present path: compaction-pruned turn hidden, genuine fork still renders.
 
-    Regression test: `excluded_ids` used to be computed only on the
-    events-only reconstruction branches of `interleave_events`, so on the
-    messages-present path (the common shape) it was always `frozenset()` --
-    every compacted-away turn's output leaked through as a spurious
-    `[E#] MODEL (BRANCH):` entry. See `_compaction_pruned_and_fork_transcript`.
+    Regression test: `excluded_ids` must be computed on the messages-present
+    path too (the common shape), not just the events-only reconstruction
+    branches of `interleave_events` -- otherwise every compacted-away turn's
+    output leaks through as a spurious `[E#] MODEL (BRANCH):` entry. See
+    `_compaction_pruned_and_fork_transcript`.
     """
     transcript = _compaction_pruned_and_fork_transcript()
     result = interleave_events(transcript)
@@ -592,50 +589,6 @@ async def test_llm_scanner_events_only_scan_shows_thread_and_scores() -> None:
     assert re.search(r"\[M1\].*2\+2\?.*\[M2\].*\[E1\] SCORE", captured[0], re.DOTALL)
 
 
-def _two_agent_flat_events() -> list[Event]:
-    """Events-only, multi-agent flat event list (the Hawk "transcript tab" shape).
-
-    Two parallel agent spans, each with a single distinctive ModelEvent, plus
-    a root-level score with no span of its own. Used by both the
-    materialized and streaming multi-agent regression tests below.
-    """
-    out_a = ModelOutput.from_content(model="mockllm", content="agent-a-answer")
-    out_b = ModelOutput.from_content(model="mockllm", content="agent-b-answer")
-    model_a = ModelEvent(
-        span_id="span-a",
-        model="mockllm",
-        input=[ChatMessageUser(content="agent-a-question")],
-        output=out_a,
-        role="assistant",
-        tools=[],
-        tool_choice="auto",
-        config=GenerateConfig(),
-    )
-    model_b = ModelEvent(
-        span_id="span-b",
-        model="mockllm",
-        input=[ChatMessageUser(content="agent-b-question")],
-        output=out_b,
-        role="assistant",
-        tools=[],
-        tool_choice="auto",
-        config=GenerateConfig(),
-    )
-    return [
-        SpanBeginEvent(
-            id="span-a", parent_id=None, type="agent", name="agent-a", span_id="span-a"
-        ),
-        SpanBeginEvent(
-            id="span-b", parent_id=None, type="agent", name="agent-b", span_id="span-b"
-        ),
-        model_a,
-        model_b,
-        SpanEndEvent(id="span-a", span_id="span-a"),
-        SpanEndEvent(id="span-b", span_id="span-b"),
-        ScoreEvent(scorer="match", score=Score(value="C")),
-    ]
-
-
 def _spanless_two_agent_flat_events() -> list[Event]:
     """Events-only, multi-agent flat event list with NO span structure at all.
 
@@ -711,9 +664,9 @@ async def test_spanless_multi_agent_off_thread_agent_renders_via_branch_entries(
     # Minimal repro from the task background: a fork-heavy eval with no span
     # structure at all. Agent A's entire exchange is off-thread relative to
     # the region-last ModelEvent (agent B's second turn) that
-    # `span_messages` uses to derive "the" thread. Before rendering
-    # off-thread outputs as branch entries, agent A's content was silently
-    # dropped entirely; now it surfaces via `[E#] MODEL (BRANCH):` entries.
+    # `span_messages` uses to derive "the" thread. Agent A's content must
+    # surface via `[E#] MODEL (BRANCH):` entries rather than being silently
+    # dropped.
     transcript = Transcript(
         transcript_id="t", messages=[], events=_spanless_two_agent_flat_events()
     )
@@ -732,7 +685,7 @@ async def test_spanless_multi_agent_off_thread_agent_renders_via_branch_entries(
     assert "agent-b-question-1" in combined
     assert "agent-b-answer-1" in combined
     assert "agent-b-question-2" in combined
-    # Agent A's off-thread outputs now surface via branch entries.
+    # Agent A's off-thread outputs surface via branch entries.
     assert "MODEL (BRANCH):" in combined
     assert "agent-a-answer-1" in combined
     assert "agent-a-answer-2" in combined
@@ -743,7 +696,7 @@ def _timeline_scorers_flat_events() -> list[Event]:
     """A "main" agent span plus a top-level "scorers" span with a grader call.
 
     Timeline-shaped (span-structured) flat events, distinct from
-    `_two_agent_flat_events()`: exercises `stream_timeline_messages`'s
+    `_spanless_two_agent_flat_events()`: exercises `stream_timeline_messages`'s
     per-span walk/prune, not the flat `interleave_events` reconstruction
     already covered by `test_grader_model_event_in_scorers_span_excluded`.
     Real `ModelEvent(...)` construction auto-generates a uuid, required for
@@ -1024,13 +977,6 @@ def test_selective_load_preserves_branch_structure() -> None:
     out and the branch's conversation is unrolled into its parent, so the
     scanner reads the branch as the main thread and demotes the real answer
     to a ``MODEL (BRANCH)`` entry.
-
-    Asserted through the real filter rather than against
-    ``INTERLEAVE_DEPENDENCIES``: comparing the constant to itself cannot
-    detect a type missing from that constant. With the branch correctly
-    recognized, its own turn still renders -- spliced in as its own
-    ``MODEL (BRANCH)`` block -- but main's own turn stays intact and
-    undemoted.
     """
     events: list[Event] = [
         SpanBeginEvent(
@@ -1052,6 +998,11 @@ def test_selective_load_preserves_branch_structure() -> None:
 
     owned = next(walk_owned_spans(timeline_build(survived).root))
     thread = span_owned_messages(owned, events=[], compaction="all")
+    # Asserted through the real filter rather than against
+    # INTERLEAVE_DEPENDENCIES: comparing the constant to itself cannot detect
+    # a type missing from that constant. With the branch correctly
+    # recognized, its own turn still renders -- spliced in as its own
+    # MODEL (BRANCH) block -- but main's own turn stays intact and undemoted.
     assert [m.text for m in thread] == [
         "main q",
         "MAIN ANSWER",
@@ -1062,7 +1013,7 @@ def test_selective_load_preserves_branch_structure() -> None:
 
 @pytest.mark.anyio
 async def test_interleave_with_timeline_renders_per_span() -> None:
-    # Timeline-shaped transcript + events= must no longer raise: each span's
+    # Timeline-shaped transcript + events= must not raise: each span's
     # own events render in that span's own thread, and the resultset shape
     # matches an events=None run over the same transcript.
     out_a = ModelOutput.from_content(model="mockllm", content="4")
@@ -1240,35 +1191,9 @@ async def test_final_score_lands_in_last_chunk_when_split() -> None:
     assert "[E1] SCORE" in captured[-1]
 
 
-def _scorers_events(
-    *, preamble: Sequence[Event] | None = None, close_scorers: bool = True
-) -> list[Event]:
-    """Grader model call in a top-level `scorers` span, with optional preamble."""
-    return [
-        *(preamble or []),
-        SpanBeginEvent(
-            id="span-scorers",
-            parent_id=None,
-            type="scorers",
-            name="scorers",
-            span_id="span-scorers",
-        ),
-        _span_model_event("grade this", "grader assessment", "span-scorers"),
-        ScoreEvent(span_id="span-scorers", scorer="match", score=Score(value="C")),
-        *(
-            [SpanEndEvent(id="span-scorers", span_id="span-scorers")]
-            if close_scorers
-            else []
-        ),
-    ]
-
-
-def _grader_events(
-    *, parent_id: str | None, extra: Sequence[Event] = ()
-) -> list[Event]:
+def _grader_events(*, parent_id: str | None) -> list[Event]:
     """Grader model call in a `scorers` span rooted at `parent_id`."""
     return [
-        *extra,
         SpanBeginEvent(
             id="sc", parent_id=parent_id, type="scorers", name="scorers", span_id="sc"
         ),

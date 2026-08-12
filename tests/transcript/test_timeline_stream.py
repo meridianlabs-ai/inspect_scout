@@ -73,7 +73,7 @@ def _collect_utility(span: TimelineSpan) -> list[TimelineSpan]:
 
 
 def _spans(root: TimelineSpan, *, depth: int | None) -> list[TimelineSpan]:
-    """Port of the deleted `_walk_spans`: walked spans only, no orphan sentinel."""
+    """Walked spans only, no orphan sentinel."""
     return [
         owned.span
         for owned in walk_owned_spans(root, depth=depth)

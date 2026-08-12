@@ -129,14 +129,14 @@ def _model_output_id(event: ModelEvent) -> MessageId | None:
 def _off_thread_model_text(event: ModelEvent) -> str | None:
     """Render an off-thread ModelEvent's output as a ``MODEL (BRANCH):`` entry.
 
-    Renders the output message itself (not ``output.completion``) because
-    fork outputs often carry an empty completion with their real content in
-    reasoning content parts. Returns None if there is no output message or
-    the render is empty.
+    Returns None if there is no output message or the render is empty.
     """
     out = event.output
     if out is None or not out.choices or out.choices[0].message is None:
         return None
+    # Render the output message itself (not `output.completion`): fork
+    # outputs often carry an empty completion with their real content in
+    # reasoning content parts.
     message = out.choices[0].message
     branch_message = message.model_copy(
         update={
@@ -176,17 +176,6 @@ def scorer_span_ids(begins: Iterable[SpanBeginEvent]) -> frozenset[SpanId]:
     event tree in memory (``tests/llm_scanner/test_interleave_events.py``).
     This needs only the span begins.
 
-    ``event_tree`` indexes every span before resolving parents, and its
-    ``bucket()`` treats a span as a root when its parent id is falsy *or* names
-    a span it never saw. Resolving from the complete set of begins is what
-    makes this match the tree rather than approximate it: arrival order, span
-    ends, and boundary balance are all irrelevant to the tree, so they must be
-    irrelevant here too. Two previous incremental formulations -- counting
-    boundaries, then requiring ``parent_id is None`` -- each leaked grader
-    output on shapes the tree handles: sliced checkpoint-restore transcripts,
-    events preceding their own span begin, and the ``parent_id=""`` that this
-    repo's weave/langsmith/logfire converters emit for roots.
-
     A cyclic parent chain (possible with reused span ids) terminates here
     rather than recursing, unlike ``event_tree``.
     """
@@ -196,6 +185,13 @@ def scorer_span_ids(begins: Iterable[SpanBeginEvent]) -> frozenset[SpanId]:
     # Last begin wins for the name, as event_tree's node index does.
     name_by_id = {begin.id: begin.name for begin in begins}
 
+    # `event_tree` indexes every span before resolving parents, and its
+    # `bucket()` treats a span as a root when its parent id is falsy *or*
+    # names a span it never saw. Resolving from the complete set of begins
+    # matches that: arrival order, span ends, and boundary balance are all
+    # irrelevant to event_tree, so they must be irrelevant here too --
+    # `parent_id=""` and events preceding their own span begin must resolve
+    # the same way event_tree resolves them.
     def rooted_at_scorers(begin: SpanBeginEvent, seen: frozenset[str]) -> bool:
         if begin.id in seen:
             return False

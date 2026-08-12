@@ -318,14 +318,11 @@ async def reduce_timeline_results(
 
 
 def _empty_result() -> "Result":
-    """Outcome for a transcript that produced no scannable segments.
-
-    `value=None` rather than a reducer default: the reducers index `results[0]`
-    / `results[-1]` and raise IndexError on an empty list, and "no scannable
-    content" is genuinely unknown rather than a negative finding.
-    """
+    """Result for a transcript that produced no scannable segments."""
     from inspect_scout._scanner.result import Result
 
+    # `value=None` rather than a reducer default: "no scannable content" is
+    # genuinely unknown rather than a negative finding.
     return Result(value=None, explanation="No scannable content in transcript.")
 
 

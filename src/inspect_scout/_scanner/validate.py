@@ -93,12 +93,6 @@ def _spans_event_union(input_type: Any) -> bool:
     `Event` is itself a union, so `Event | None` and `ChatMessage | Event`
     flatten to every concrete event type. They name the base type rather than
     a selection of events, and are treated as such.
-
-    Declining inference restores the pre-widening behaviour; it does not make
-    these annotations usable. `_loaders._matches_message_or_event_type` still
-    rejects a union it cannot route to a single input kind, so they fail there
-    rather than with a misleading complaint about the deprecated
-    StepEvent/SubtaskEvent members they happen to contain.
     """
     return is_union_type(input_type) and set(get_args(Event)).issubset(
         get_args(input_type)
@@ -180,7 +174,12 @@ def infer_filters_from_type(
             return None, None, False
 
     # Handled like the bare `Event` check above: a union spanning the whole
-    # alias is the base type, not a selection of concrete events.
+    # alias is the base type, not a selection of concrete events. Declining
+    # inference here just restores the pre-widening behaviour, it doesn't
+    # make these annotations usable -- `_loaders._matches_message_or_event_type`
+    # still rejects a union it cannot route to a single input kind, so they
+    # fail there rather than with a misleading complaint about the deprecated
+    # StepEvent/SubtaskEvent members they happen to contain.
     if _spans_event_union(input_type):
         return None, None, False
 

@@ -454,18 +454,15 @@ def llm_scanner(
                 reducer=reducer,
             )
 
+        # Streaming events path via `stream_timeline_messages`. Two-pass
+        # streaming over `target`, yielding `TimelineMessages` segments (span
+        # ids for per-span grouping, like the materialized timeline path).
+        # Reached when the caller requested events content, or when an
+        # events-interleaving handle carries no messages at all -- multi-agent
+        # transcripts are only reconstructed correctly through this per-span
+        # machinery, not the flat interleave. `events=` threads straight
+        # through to `stream_timeline_messages`.
         async def stream_via_timeline(target: TranscriptHandle) -> Result:
-            """Streaming events path via `stream_timeline_messages`.
-
-            Two-pass streaming over `target`, yielding `TimelineMessages`
-            segments (span ids for per-span grouping, like the materialized
-            timeline path). Reached when the caller requested events content,
-            or when an events-interleaving handle carries no messages at all
-            -- multi-agent transcripts are only reconstructed correctly
-            through this per-span machinery, not the flat interleave.
-            `events=` threads straight through to `stream_timeline_messages`.
-            """
-
             async def stream_timeline_source() -> AsyncIterator[tuple[str | None, str]]:
                 async for seg in stream_timeline_messages(
                     target,

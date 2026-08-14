@@ -106,7 +106,9 @@ dev = [
     "huggingface_hub",
     "langsmith",
     "logfire",
-    "openai",
+    # >=3.0.0: openai 3.x types its exceptions against httpx2, which the
+    # tests construct directly (httpx2 arrives transitively via openai)
+    "openai>=3.0.0",
     "pytest-dotenv",
     "pytest-asyncio",
     "mypy",

@@ -157,6 +157,7 @@ class AnthropicProvider:
                 request.get("mcp_servers"),  # MCP servers if present
                 {},  # web_search_providers
                 {},  # code_execution_providers
+                allow_remote_mcp=True,
             )
             # Convert Tool to ToolInfo if needed
             for t in raw_tools:

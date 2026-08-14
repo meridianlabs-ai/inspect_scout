@@ -14,9 +14,6 @@ on:
     # 08:00 UTC (4am Boston), matching the other nightlies
     - cron: "0 8 * * *"
   workflow_dispatch:
-  push:
-    branches:
-      - nightly-ci # TEMPORARY: pre-merge test trigger, remove before merge
 
 jobs:
   ci:

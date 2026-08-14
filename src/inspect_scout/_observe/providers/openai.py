@@ -396,7 +396,9 @@ class OpenAIProvider:
             from inspect_ai.tool._tool_util import tool_to_tool_info
 
             for tool in request.get("tools", []):
-                tool_or_info = tool_from_responses_tool(tool, {}, {})
+                tool_or_info = tool_from_responses_tool(
+                    tool, {}, {}, allow_remote_mcp=True
+                )
                 # Convert Tool to ToolInfo if needed
                 if isinstance(tool_or_info, ToolInfo):
                     tools.append(tool_or_info)

@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import anthropic
 import httpx
+import httpx2
 import openai
 import pytest
 import pytest_asyncio
@@ -24,6 +25,10 @@ from pydantic import TypeAdapter
 
 def _fake_httpx_response(status_code: int) -> httpx.Response:
     return httpx.Response(status_code, request=httpx.Request("POST", "https://test"))
+
+
+def _fake_httpx2_response(status_code: int) -> httpx2.Response:
+    return httpx2.Response(status_code, request=httpx2.Request("POST", "https://test"))
 
 
 def _base64url(s: str) -> str:
@@ -352,7 +357,7 @@ class TestSearchEndpoint:
             (
                 openai.NotFoundError(
                     "The model `gpt-nope` does not exist or you do not have access to it.",
-                    response=_fake_httpx_response(404),
+                    response=_fake_httpx2_response(404),
                     body=None,
                 ),
                 "The model `gpt-nope` does not exist or you do not have access to it.",

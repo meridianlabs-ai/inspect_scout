@@ -1,0 +1,82 @@
+name: Nightly
+
+# Nightly run of the full CI gates against main. This repo can be broken by
+# upstream drift (build.yaml installs inspect_ai from git main, and
+# check-schema-and-types validates against it), so there is deliberately no
+# skip-if-unchanged check: re-testing an unchanged commit is the point.
+#
+# Reports to Slack only on failure (same channel as the inspect_ai slow
+# tests). Requires the SLACK_BOT_TOKEN and SLACK_CHANNEL_ID secrets, and the
+# Slack bot must be a member of the channel.
+
+on:
+  schedule:
+    # 08:00 UTC (4am Boston), matching the other nightlies
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: ./.github/workflows/build.yaml
+
+  report:
+    needs: ci
+    if: always() && needs.ci.result == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get short SHA
+        id: commit
+        run: echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Report failure to Slack
+        uses: slackapi/slack-github-action@v3.0.1
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            {
+              "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
+              "text": "🚨 Inspect Scout Nightly CI Failed",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "🚨 Inspect Scout Nightly CI Failed"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Trigger:*\n${{ github.event_name }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Workflow:*\n<https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Tested:*\n<https://github.com/${{ github.repository }}/commit/${{ github.sha }}|inspect_scout@${{ github.ref_name }}#${{ steps.commit.outputs.short_sha }}> against inspect_ai main"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "<!channel> The nightly CI run has failed. Please investigate."
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Actor: ${{ github.actor }}"
+                    }
+                  ]
+                }
+              ]
+            }

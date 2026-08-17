@@ -10,8 +10,11 @@ from typing import (
 )
 
 from inspect_ai.event import Timeline
+from inspect_ai.event._anchor import AnchorEvent
 from inspect_ai.event._approval import ApprovalEvent
+from inspect_ai.event._base import BaseEvent
 from inspect_ai.event._branch import BranchEvent
+from inspect_ai.event._checkpoint import CheckpointEvent
 from inspect_ai.event._compaction import CompactionEvent
 from inspect_ai.event._error import ErrorEvent
 from inspect_ai.event._event import (
@@ -19,12 +22,14 @@ from inspect_ai.event._event import (
 )
 from inspect_ai.event._info import InfoEvent
 from inspect_ai.event._input import InputEvent
+from inspect_ai.event._interrupt import InterruptEvent
 from inspect_ai.event._logger import LoggerEvent
 from inspect_ai.event._model import ModelEvent
 from inspect_ai.event._sample_init import SampleInitEvent
 from inspect_ai.event._sample_limit import SampleLimitEvent
 from inspect_ai.event._sandbox import SandboxEvent
 from inspect_ai.event._score import ScoreEvent
+from inspect_ai.event._score_edit import ScoreEditEvent
 from inspect_ai.event._span import SpanBeginEvent, SpanEndEvent
 from inspect_ai.event._state import StateEvent
 from inspect_ai.event._store import StoreEvent
@@ -37,6 +42,11 @@ from inspect_ai.model._chat_message import (
     ChatMessageUser,
 )
 
+from .._transcript.handle import (
+    MaterializedTranscriptHandle,
+    SpooledTranscriptHandle,
+    TranscriptHandle,
+)
 from .._transcript.types import EventType, MessageType, Transcript
 from .._util.type_hints import is_union_type
 
@@ -48,7 +58,7 @@ TYPE_TO_MESSAGE_FILTER: dict[type[Any], str] = {
     ChatMessageTool: "tool",
 }
 
-TYPE_TO_EVENT_FILTER: dict[type[Any], str] = {
+TYPE_TO_EVENT_FILTER: dict[type[Event], EventType] = {
     ModelEvent: "model",
     ToolEvent: "tool",
     SampleInitEvent: "sample_init",
@@ -59,6 +69,7 @@ TYPE_TO_EVENT_FILTER: dict[type[Any], str] = {
     ApprovalEvent: "approval",
     InputEvent: "input",
     ScoreEvent: "score",
+    ScoreEditEvent: "score_edit",
     ErrorEvent: "error",
     LoggerEvent: "logger",
     InfoEvent: "info",
@@ -66,13 +77,44 @@ TYPE_TO_EVENT_FILTER: dict[type[Any], str] = {
     SpanEndEvent: "span_end",
     CompactionEvent: "compaction",
     BranchEvent: "branch",
+    AnchorEvent: "anchor",
+    CheckpointEvent: "checkpoint",
+    InterruptEvent: "interrupt",
 }
+
+EVENT_FILTER_TO_TYPE: dict[EventType, type[Event]] = {
+    filter_name: event_type for event_type, filter_name in TYPE_TO_EVENT_FILTER.items()
+}
+
+
+def _spans_event_union(input_type: Any) -> bool:
+    """Whether `input_type` is a union covering the whole `Event` alias.
+
+    `Event` is itself a union, so `Event | None` and `ChatMessage | Event`
+    flatten to every concrete event type. They name the base type rather than
+    a selection of events, and are treated as such.
+    """
+    return is_union_type(input_type) and set(get_args(Event)).issubset(
+        get_args(input_type)
+    )
+
+
+def _unmapped_event_types(input_type: Any) -> list[type[Any]]:
+    """Concrete Event subclasses in `input_type` that have no filter mapping."""
+    candidates = get_args(input_type) if is_union_type(input_type) else [input_type]
+    return [
+        t
+        for t in candidates
+        if inspect.isclass(t)
+        and issubclass(t, BaseEvent)
+        and t not in TYPE_TO_EVENT_FILTER
+    ]
 
 
 def infer_filters_from_type(
     scanner_fn: Callable[..., Any],
     factory_globals: dict[str, Any],
-) -> tuple[list[str] | None, list[str] | None, bool]:
+) -> tuple[list[str] | None, list[EventType] | None, bool]:
     """
     Infer message, event, and timeline filters from scanner function type annotations.
 
@@ -131,6 +173,27 @@ def infer_filters_from_type(
         else:
             return None, None, False
 
+    # Handled like the bare `Event` check above: a union spanning the whole
+    # alias is the base type, not a selection of concrete events. Declining
+    # inference here just restores the pre-widening behaviour, it doesn't
+    # make these annotations usable -- `_loaders._matches_message_or_event_type`
+    # still rejects a union it cannot route to a single input kind, so they
+    # fail there rather than with a misleading complaint about the deprecated
+    # StepEvent/SubtaskEvent members they happen to contain.
+    if _spans_event_union(input_type):
+        return None, None, False
+
+    # An Event subclass with no filter mapping would otherwise infer nothing, leaving
+    # content.events as None — which filters down to an empty list, silently handing
+    # the scanner zero events instead of failing.
+    unmapped = _unmapped_event_types(input_type)
+    if unmapped:
+        raise TypeError(
+            f"Scanner input type {', '.join(t.__name__ for t in unmapped)} has no "
+            "corresponding events filter. Accept Event or Transcript instead, or add "
+            "the type to TYPE_TO_EVENT_FILTER."
+        )
+
     # Check if it's a specific message type or union
     message_filters = []
     event_filters = []
@@ -164,7 +227,6 @@ def infer_filters_from_type(
         return None, None, False
 
     # Return inferred filters
-    # Type: ignore because mypy can't understand that the lists contain the right string literals
     return (
         message_filters if message_filters else None,
         event_filters if event_filters else None,
@@ -386,26 +448,7 @@ def _get_event_types_from_filter(
     event_filter: list[EventType],
 ) -> set[Type[Event]]:
     """Map event filter strings to concrete Event types."""
-    type_map: dict[str, Type[Event]] = {
-        "model": ModelEvent,
-        "tool": ToolEvent,
-        "sample_init": SampleInitEvent,
-        "sample_limit": SampleLimitEvent,
-        "sandbox": SandboxEvent,
-        "state": StateEvent,
-        "store": StoreEvent,
-        "approval": ApprovalEvent,
-        "compaction": CompactionEvent,
-        "branch": BranchEvent,
-        "input": InputEvent,
-        "score": ScoreEvent,
-        "error": ErrorEvent,
-        "logger": LoggerEvent,
-        "info": InfoEvent,
-        "span_begin": SpanBeginEvent,
-        "span_end": SpanEndEvent,
-    }
-    return {type_map[f] for f in event_filter}
+    return {EVENT_FILTER_TO_TYPE[f] for f in event_filter}
 
 
 def _unwrap_list_type(type_hint: Any) -> tuple[bool, Any]:
@@ -487,6 +530,18 @@ def _union_covers_union(scanner_type: Any, target_type: Any) -> bool:
     )
 
 
+def _is_transcript_handle_type(type_hint: Any) -> bool:
+    """Whether a type hint is the TranscriptHandle protocol or a concrete impl.
+
+    Identity comparison, since the protocol's non-method ``info`` member breaks
+    ``issubclass``.
+    """
+    return type_hint is TranscriptHandle or type_hint in (
+        MaterializedTranscriptHandle,
+        SpooledTranscriptHandle,
+    )
+
+
 def _is_compatible_with_type(scanner_type: Any, target_type: Any) -> bool:
     """
     Check if scanner_type is compatible with target_type.
@@ -504,6 +559,20 @@ def _is_compatible_with_type(scanner_type: Any, target_type: Any) -> bool:
         # Direct equality
         if scanner_type == target_type:
             return True
+
+        # A `Transcript | TranscriptHandle` union is compatible wherever a bare
+        # Transcript is. Requiring a genuine handle member among the non-
+        # matching members keeps this from swallowing partial non-handle
+        # unions, which the coverage check below rejects.
+        union_members = _get_union_members(scanner_type)
+        if union_members is not None:
+            others = {
+                m for m in union_members if not _is_compatible_with_type(m, target_type)
+            }
+            if 0 < len(others) < len(union_members) and all(
+                _is_transcript_handle_type(m) for m in others
+            ):
+                return True
 
         # Unions never match on origin alone (every union's origin is Union,
         # so a partial union would wrongly match a full one)

@@ -27,6 +27,7 @@ from inspect_ai.tool import ToolInfo
 from inspect_scout._scanner.extract import MessagesAsStr
 
 if TYPE_CHECKING:
+    from inspect_scout._transcript.interleave import EventsSpec
     from inspect_scout._transcript.types import Transcript
 
 DEFAULT_CONTEXT_WINDOW = 128_000
@@ -228,6 +229,128 @@ async def segment_messages(
         )
 
 
+async def stream_segment_messages(
+    source: AsyncIterator[ChatMessage],
+    *,
+    messages_as_str: MessagesAsStr,
+    model: Model | str | None = None,
+    context_window: int | None = None,
+    prompt_reserve: int | float = 0.2,
+) -> AsyncIterator[MessagesSegment]:
+    """Streaming counterpart to ``segment_messages()``.
+
+    Consume ``source`` one message at a time and yield ``MessagesSegment``
+    instances as segments fill, so callers can process the first segment before
+    the rest is read.
+
+    Sizing matches ``segment_messages()``; token counts are serialized (one
+    ``count_tokens`` per chunk) since chunks aren't known ahead of time.
+
+    Args:
+        source: An async iterator of ChatMessage.
+        messages_as_str: Rendering function from ``message_numbering()``, called
+            sequentially to preserve counter ordering.
+        model: Model used for token counting.
+        context_window: Context window override; looked up from the model if None.
+        prompt_reserve: Window allowance for prompt scaffolding — a float
+            reserves that fraction, an int that many tokens (plus a safety
+            margin). Default 0.2 leaves 80% for messages.
+
+    Yields:
+        MessagesSegment instances within the token budget (a single oversized
+        chunk is still yielded alone). Segment counter increments across yields.
+    """
+    # Resolve model
+    model = get_model(model)
+
+    # Compute effective budget
+    effective_budget = max(
+        1,
+        _effective_segment_budget(
+            model=model,
+            context_window=context_window,
+            prompt_reserve=prompt_reserve,
+        ),
+    )
+
+    chunk_char_target = max(
+        1,
+        int(
+            effective_budget * _COUNT_CHUNK_BUDGET_FRACTION * _COUNT_EST_CHARS_PER_TOKEN
+        ),
+    )
+
+    segment_counter = 0
+    current_messages: list[ChatMessage] = []
+    current_texts: list[str] = []
+    running_tokens = 0
+
+    pending_chunk: list[tuple[ChatMessage, str]] = []
+    pending_chars = 0
+
+    async def close_chunk() -> tuple[list[ChatMessage], list[str], int]:
+        """Count tokens for the pending chunk and return its contents."""
+        nonlocal pending_chunk, pending_chars
+        chunk_messages = [msg for msg, _ in pending_chunk]
+        chunk_texts = [text for _, text in pending_chunk]
+        chunk_str = "\n".join(chunk_texts)
+        tokens = await model.count_tokens(chunk_str)
+        pending_chunk = []
+        pending_chars = 0
+        return chunk_messages, chunk_texts, tokens
+
+    async for msg in source:
+        text = await messages_as_str([msg])
+        if not text:  # Skip empty renders (e.g. filtered system messages)
+            continue
+
+        if pending_chunk and pending_chars + len(text) > chunk_char_target:
+            chunk_messages, chunk_texts, tokens = await close_chunk()
+
+            if current_messages and running_tokens + tokens > effective_budget:
+                yield MessagesSegment(
+                    messages=current_messages,
+                    messages_str="\n".join(current_texts),
+                    segment=segment_counter,
+                )
+                segment_counter += 1
+                current_messages = []
+                current_texts = []
+                running_tokens = 0
+
+            current_messages.extend(chunk_messages)
+            current_texts.extend(chunk_texts)
+            running_tokens += tokens
+
+        pending_chunk.append((msg, text))
+        pending_chars += len(text)
+
+    if pending_chunk:
+        chunk_messages, chunk_texts, tokens = await close_chunk()
+
+        if current_messages and running_tokens + tokens > effective_budget:
+            yield MessagesSegment(
+                messages=current_messages,
+                messages_str="\n".join(current_texts),
+                segment=segment_counter,
+            )
+            segment_counter += 1
+            current_messages = []
+            current_texts = []
+            running_tokens = 0
+
+        current_messages.extend(chunk_messages)
+        current_texts.extend(chunk_texts)
+        running_tokens += tokens
+
+    if current_messages:
+        yield MessagesSegment(
+            messages=current_messages,
+            messages_str="\n".join(current_texts),
+            segment=segment_counter,
+        )
+
+
 async def transcript_messages(
     transcript: "Transcript",
     *,
@@ -239,6 +362,7 @@ async def transcript_messages(
     depth: int | None = None,
     include_scorers: bool = False,
     prompt_reserve: int | float = 0.2,
+    events: EventsSpec | None = None,
 ) -> AsyncIterator[MessagesSegment]:
     """Yield pre-rendered message segments from a transcript.
 
@@ -251,9 +375,11 @@ async def transcript_messages(
     - If only messages are present, delegates to ``segment_messages()``
       for context window segmentation only
 
-    By default, scorer events are excluded from extraction. This
-    applies to both the timeline path (the scorers span is pruned)
-    and the events path (the scorers section is removed).
+    By default, grader ``ModelEvent``s under scorers spans are
+    suppressed (their ``ScoreEvent``s still render): on the timeline
+    path this is gated by ``include_scorers``; the flat (events-only)
+    path suppresses grader model calls unconditionally, by span name,
+    and does not consult ``include_scorers`` at all.
 
     Since ``TimelineMessages`` is structurally compatible with
     ``MessagesSegment``, callers get a uniform interface. Those needing
@@ -284,6 +410,11 @@ async def transcript_messages(
             margin). Default ``0.2`` leaves 80% of the window for
             messages. Forwarded to ``segment_messages()`` /
             ``timeline_messages()``.
+        events: Which non-message event types to interleave into the
+            message thread as marked entries (``"all"``, a list of
+            event types, or ``None`` to disable interleaving). Flat
+            transcripts splice directly; the timeline path splices
+            per-span. Inert on a messages-only transcript.
 
     Yields:
         ``MessagesSegment`` (or ``TimelineMessages``) for each segment.
@@ -292,8 +423,33 @@ async def transcript_messages(
         ValueError: If ``timeline`` names a timeline that does not
             exist on the transcript.
     """
+    if events is not None and not transcript.timelines and timeline is None:
+        from inspect_scout._transcript.interleave import interleave_events
+
+        # Flat transcript (top-level messages, no timelines): splice events
+        # directly into the message thread and segment it like a plain
+        # message list. Events-only transcripts fall through to the timeline
+        # path below, which reconstructs per-span threads so parallel agents
+        # aren't collapsed into one.
+        #
+        # The condition must stay exactly "messages present", matching the
+        # streaming router at `_llm_scanner.py:513-522`. A third condition
+        # here ("does anything render?") made the same scanner config yield
+        # different content depending only on whether `question` was callable,
+        # because splicing nothing is not a reason to discard the thread.
+        if transcript.messages:
+            async for seg in segment_messages(
+                interleave_events(transcript, events),
+                messages_as_str=messages_as_str,
+                model=model,
+                context_window=context_window,
+                prompt_reserve=prompt_reserve,
+            ):
+                yield seg
+            return
+
     if transcript.timelines or transcript.events:
-        from inspect_ai.event import timeline_build, timeline_filter
+        from inspect_ai.event import timeline_build
 
         from inspect_scout._transcript.timeline import timeline_messages
 
@@ -315,9 +471,6 @@ async def transcript_messages(
         else:
             selected = timelines[0]
 
-        if not include_scorers:
-            selected = timeline_filter(selected, lambda s: s.span_type != "scorers")
-
         async for timeline_seg in timeline_messages(
             selected,
             messages_as_str=messages_as_str,
@@ -326,6 +479,8 @@ async def transcript_messages(
             compaction=compaction,
             depth=depth,
             prompt_reserve=prompt_reserve,
+            events=events,
+            include_scorers=include_scorers,
         ):
             yield timeline_seg  # type: ignore[misc]
     else:

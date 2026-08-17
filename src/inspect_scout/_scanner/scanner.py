@@ -63,6 +63,7 @@ SCANNER_VERSION = "scanner_version"
 SCANNER_FILE_ATTR = "___scanner_file___"
 SCANNER_NAME_ATTR = "___scanner_name___"
 SCANNER_CONTENT_ATTR = "___scanner_content___"
+SCANNER_SUPPORTS_STREAMING_ATTR = "___scanner_supports_streaming___"
 
 # core types
 # Use bounded TypeVar (contravariant for scanner input)
@@ -97,6 +98,14 @@ class ScannerConfig:
     content: TranscriptContent = field(default_factory=TranscriptContent)
     # TODO: I want to make loader non-optional, but this obviously isn't right
     loader: Loader[ScannerInput] = field(default=cast(Loader[ScannerInput], None))
+    supports_streaming: bool = False
+    """Whether the scanner can operate on a streaming `TranscriptHandle`
+    without a materialized `Transcript`.
+
+    Set per-instance (rather than as a class-level capability) because
+    streaming-safety depends on runtime config - e.g. callable question
+    templates require full transcripts.
+    """
 
 
 ScannerFactory = Callable[P, Scanner[T]]
@@ -342,15 +351,12 @@ def scanner(
                 temp_messages, temp_events, temp_timeline = infer_filters_from_type(
                     scanner_fn, factory_fn.__globals__
                 )
-                # Cast to proper types (mypy can't infer the string literals)
                 inferred_messages = (
                     cast(list[MessageType] | None, temp_messages)
                     if temp_messages
                     else None
                 )
-                inferred_events = (
-                    cast(list[EventType] | None, temp_events) if temp_events else None
-                )
+                inferred_events = temp_events if temp_events else None
                 if temp_timeline:
                     inferred_timeline = "all"
                     # Timeline implies events="all"
@@ -413,6 +419,11 @@ def scanner(
                     scanner_fn, scanner_config.content
                 )
 
+            if hasattr(scanner_fn, SCANNER_SUPPORTS_STREAMING_ATTR):
+                scanner_config.supports_streaming = bool(
+                    getattr(scanner_fn, SCANNER_SUPPORTS_STREAMING_ATTR)
+                )
+
             registry_tag(
                 factory_fn,
                 scanner_fn,
@@ -465,6 +476,18 @@ def scanner_version(scanner: Scanner[Any]) -> int:
 
 def config_for_scanner(scanner: Scanner[Any]) -> ScannerConfig:
     return cast(ScannerConfig, registry_info(scanner).metadata[SCANNER_CONFIG])
+
+
+def scanner_supports_streaming(scanner: Scanner[Any]) -> bool:
+    """Whether a scanner can operate on a streaming `TranscriptHandle`.
+
+    Prefers the registered `ScannerConfig`, falling back to the attr on the
+    scan function for direct-call cases with no registered config.
+    """
+    try:
+        return config_for_scanner(scanner).supports_streaming
+    except (ValueError, KeyError):
+        return bool(getattr(scanner, SCANNER_SUPPORTS_STREAMING_ATTR, False))
 
 
 def scanners_from_file(file: str, scanner_args: dict[str, Any]) -> list[Scanner[Any]]:

@@ -13,6 +13,12 @@ from inspect_scout._transcript.types import Transcript
 
 LOGS_DIR = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
 
+# pin the scanned transcript to one with non-empty source metadata so the
+# no-leak assertion below cannot pass vacuously
+POPULARITY_LOG = (
+    LOGS_DIR / "2025-09-23T08-09-58-04-00_popularity_DN2wbX2ZvACsBpjwptzBRo.eval"
+)
+
 
 @loader(name="item_metadata_loader", messages="all")
 def item_metadata_loader_factory() -> Loader[Transcript]:
@@ -86,7 +92,7 @@ def test_loader_item_metadata_on_result_rows() -> None:
                 resultset_metadata_scanner_factory(),
                 default_loader_scanner_factory(),
             ],
-            transcripts=transcripts_from(LOGS_DIR),
+            transcripts=transcripts_from(str(POPULARITY_LOG)),
             scans=tmpdir,
             limit=1,
         )
@@ -127,5 +133,13 @@ def test_loader_item_metadata_on_result_rows() -> None:
         # default loaders pass the source transcript through: its metadata is
         # already surfaced as transcript_metadata and must not leak into the
         # result metadata column
-        default = _metadata_rows(status.location, "default_loader_scanner")
-        assert default == [{}]
+        results = scan_results_df(status.location, scanner="default_loader_scanner")
+        df = results.scanners["default_loader_scanner"]
+        transcript_metadata = df["transcript_metadata"].iloc[0]
+        if isinstance(transcript_metadata, str):
+            transcript_metadata = json.loads(transcript_metadata)
+        assert transcript_metadata, (
+            "scanned transcript must have source metadata for this test to be "
+            "meaningful"
+        )
+        assert [json.loads(m) for m in df["metadata"]] == [{}]

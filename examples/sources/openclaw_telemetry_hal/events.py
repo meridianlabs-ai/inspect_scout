@@ -10,8 +10,9 @@ Mapping (mirrors the Claude Code importer):
   main ``messages`` thread.
 - Each delegated sub-agent becomes a nested **agent span**
   (``SpanBeginEvent`` / ``SpanEndEvent``, ``type="agent"``) anchored at the
-  ``sessions_spawn`` tool call that created it. Sub-agent messages are excluded
-  from the main thread.
+  ``sessions_spawn`` tool call that created it — or, when no spawn call is
+  linkable (e.g. cron/system-spawned sessions), placed at its file-order
+  anchor. Sub-agent messages are excluded from the main thread.
 - Inbound operator messages (``message.in``) mark the matching user turns
   ``source="operator"``; an inbound message with no matching user turn (it never
   entered the session thread) becomes its own operator-sourced user message.
@@ -19,7 +20,7 @@ Mapping (mirrors the Claude Code importer):
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from logging import getLogger
 from typing import Any, Literal, cast
 
@@ -122,29 +123,35 @@ def build_content(
     message so mid-run operator interventions are preserved.
 
     Each sub-agent agent span is inserted immediately after the orchestrator
-    tool event that spawned it. A sub-agent whose spawn could not be linked to a
-    tool call is dropped with a warning (not observed in practice — every
-    sub-agent in the CRUX1 captures links via its spawn result's
-    ``childSessionKey``). Sub-agent messages are excluded from the thread.
+    tool event that spawned it. A sub-agent whose spawn could not be linked to
+    a tool call — cron/system-spawned sessions have no ``sessions_spawn`` call
+    at all, and are the majority on scheduled runs — is placed at its
+    file-order anchor (the latest orchestrator turn before the session's first
+    activity) with NO spawn tool call fabricated, so its delegated activity is
+    kept rather than silently lost. Sub-agent messages are excluded from the
+    thread.
     """
-    # Each sub-agent links to the single orchestrator toolCall that spawned it:
-    # a spawn result names exactly one ``childSessionKey``, so the mapping is
-    # 1:1. A sub-agent whose spawn call is missing (or, defensively, already
-    # claimed) cannot be placed in the timeline, so it is dropped with a warning
-    # rather than guessed at (see docstring).
+    # Each spawned sub-agent links to the single orchestrator toolCall that
+    # spawned it: a spawn result names exactly one ``childSessionKey``, so the
+    # mapping is 1:1. A sub-agent with no linkable spawn call (or, defensively,
+    # one whose call is already claimed) is placed by its file-order anchor
+    # instead — dropping it would silently lose that session's activity (46 of
+    # 101 sub-agent sessions on a real cron-scheduled CRUX capture).
     subagent_by_tool_call: dict[str, SubagentSpan] = {}
-    dropped: list[SubagentSpan] = []
+    unlinked: list[SubagentSpan] = []
     for sa in parse.subagents:
         tc_id = sa.spawn_tool_call_id
         if tc_id is not None and tc_id not in subagent_by_tool_call:
             subagent_by_tool_call[tc_id] = sa
         else:
-            dropped.append(sa)
-    if dropped:
-        logger.warning(
-            "Dropping %d OpenClaw sub-agent(s) with no linkable spawn call: %s",
-            len(dropped),
-            ", ".join(sa.session_key for sa in dropped),
+            unlinked.append(sa)
+    unlinked.sort(key=lambda sa: sa.anchor_ts)
+    if unlinked:
+        logger.info(
+            "Placing %d OpenClaw sub-agent(s) without a linkable spawn call "
+            "by file-order anchor: %s",
+            len(unlinked),
+            ", ".join(sa.session_key for sa in unlinked),
         )
 
     # The inbound operator channel (``message.in``). An inbound message whose
@@ -223,6 +230,19 @@ def build_content(
             )
             order += 1
             continue
+
+        # Emit any unlinked sub-agent spans whose file-order anchor has been
+        # reached, so each lands next to the orchestrator turn the run was on
+        # when the session first appeared.
+        while unlinked and unlinked[0].anchor_ts <= ts_ms:
+            order = _emit_subagent_span(
+                events,
+                unlinked.pop(0),
+                ts,
+                order,
+                parse.result_by_callid,
+                spawn_tool=None,
+            )
 
         # Assistant turn: emit a model event (carrying the conversation so far as
         # input), then its tool events.
@@ -311,6 +331,12 @@ def build_content(
                 )
             )
 
+    # Any unlinked sub-agent spans anchored after the last orchestrator turn.
+    for sa in unlinked:
+        order = _emit_subagent_span(
+            events, sa, last_ts, order, parse.result_by_callid, spawn_tool=None
+        )
+
     return events, messages
 
 
@@ -320,7 +346,7 @@ def _emit_subagent_span(
     timestamp: datetime,
     order: int,
     result_by_callid: dict[str, ToolResult],
-    spawn_tool: dict[str, Any],
+    spawn_tool: dict[str, Any] | None,
 ) -> int:
     """Emit a delegated sub-agent as a nested agent span and return next order.
 
@@ -329,7 +355,9 @@ def _emit_subagent_span(
     Claude Code importer, the orchestrator ``sessions_spawn`` call
     (``spawn_tool``) is emitted as the span's FIRST child, tagged with
     ``agent_span_id`` so the view folds it into the agent header rather than
-    drawing a standalone tool row.
+    drawing a standalone tool row. ``spawn_tool`` is ``None`` for an unlinked
+    (anchor-placed) session — no spawn call was recorded, so none is emitted
+    (fabricating one would forge telemetry that does not exist).
 
     - Schema A: each ``messages[]`` assistant turn becomes a ``ModelEvent``
     (with usage) followed by its ``ToolEvent``s (results matched by
@@ -352,7 +380,11 @@ def _emit_subagent_span(
     events.append(
         SpanBeginEvent(
             id=span_id,
-            name=sa.spawn_label or "subagent",
+            name=(
+                sa.spawn_label
+                or _short_description(_task_line(sa.prompt))
+                or "subagent"
+            ),
             type="agent",
             timestamp=timestamp,
             working_start=float(order),
@@ -370,32 +402,34 @@ def _emit_subagent_span(
 
     # The spawning sessions_spawn call, folded into the agent span (mirrors the
     # Claude Code importer's Task-tool handling) so it is not shown as a
-    # separate root-level tool event.
-    spawn_id = str(spawn_tool.get("id") or "")
-    spawn_function = str(spawn_tool.get("name") or "sessions_spawn")
-    spawn_arguments = spawn_tool.get("arguments") or {}
-    spawn_arguments = spawn_arguments if isinstance(spawn_arguments, dict) else {}
-    spawn_result, spawn_completed, spawn_error, spawn_failed = _tool_result_fields(
-        result_by_callid.get(spawn_id), timestamp
-    )
-    span_end_ts = max(span_end_ts, spawn_completed)
-    events.append(
-        ToolEvent(
-            id=spawn_id,
-            function=spawn_function,
-            arguments=spawn_arguments,
-            result=cast(ToolResultContent, spawn_result),
-            error=spawn_error,
-            failed=spawn_failed,
-            timestamp=timestamp,
-            completed=spawn_completed,
-            working_start=float(order),
-            span_id=span_id,
-            agent_span_id=span_id,
-            view=_tool_call_view(spawn_function, spawn_arguments),
+    # separate root-level tool event. An unlinked (anchor-placed) session has
+    # no spawn call to fold in.
+    if spawn_tool is not None:
+        spawn_id = str(spawn_tool.get("id") or "")
+        spawn_function = str(spawn_tool.get("name") or "sessions_spawn")
+        spawn_arguments = spawn_tool.get("arguments") or {}
+        spawn_arguments = spawn_arguments if isinstance(spawn_arguments, dict) else {}
+        spawn_result, spawn_completed, spawn_error, spawn_failed = _tool_result_fields(
+            result_by_callid.get(spawn_id), timestamp
         )
-    )
-    order += 1
+        span_end_ts = max(span_end_ts, spawn_completed)
+        events.append(
+            ToolEvent(
+                id=spawn_id,
+                function=spawn_function,
+                arguments=spawn_arguments,
+                result=cast(ToolResultContent, spawn_result),
+                error=spawn_error,
+                failed=spawn_failed,
+                timestamp=timestamp,
+                completed=spawn_completed,
+                working_start=float(order),
+                span_id=span_id,
+                agent_span_id=span_id,
+                view=_tool_call_view(spawn_function, spawn_arguments),
+            )
+        )
+        order += 1
 
     # Schema A: rebuild the sub-agent's own model + tool events from its turns.
     sub_messages: list[ChatMessage] = []
@@ -488,9 +522,17 @@ def _emit_subagent_span(
         }
         # Prefer the tool.*'s own ``ts`` (enriched envelope) so a call carries a
         # real start->end span; fall back to the spawn time when absent (bare
-        # captures), which collapses it to zero duration but never mis-orders it.
+        # captures), which never mis-orders it. Bare captures record no
+        # ``endTs`` either, but ``durationMs`` (from tool.end) still gives the
+        # call a real width — downstream busy-time sums rely on it — so only a
+        # call with neither collapses to zero duration.
         call_start = _ts_to_datetime(call.get("startTs")) or timestamp
-        call_end = _ts_to_datetime(call.get("endTs")) or call_start
+        duration_ms = call.get("durationMs")
+        call_end = _ts_to_datetime(call.get("endTs")) or (
+            call_start + timedelta(milliseconds=duration_ms)
+            if duration_ms
+            else call_start
+        )
         # A recorded ``success`` of false is a real failure: surface it through
         # the standard ToolEvent fields (with the tool.end ``error`` as the
         # message) rather than leaving ``failed``/``error`` unset.
@@ -563,6 +605,26 @@ def _ts_to_datetime(value: Any) -> datetime | None:
     if ms <= 0:
         return None
     return datetime.fromtimestamp(ms / 1000.0, tz=timezone.utc)
+
+
+def _task_line(prompt: str | None) -> str | None:
+    """The first task-bearing line of a sub-agent prompt, for span naming.
+
+    A spawn-less (anchor-placed) session has no ``label``/``task`` arguments to
+    name its span from, only its own prompt — which opens with OpenClaw's
+    scaffold preamble (e.g. ``[Subagent Context] You are running as a
+    subagent…``). Skip bracketed and boilerplate lines and return the first
+    line that carries the actual task, or ``None`` when there is none.
+    """
+    for line in (prompt or "").splitlines():
+        line = line.strip()
+        if (
+            line
+            and not line.startswith("[")
+            and "you are running as a subagent" not in line.lower()
+        ):
+            return line
+    return None
 
 
 def _short_description(task: str | None, limit: int = 80) -> str | None:

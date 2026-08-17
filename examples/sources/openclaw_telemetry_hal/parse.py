@@ -16,7 +16,10 @@ JSONL, one event per line. Payload-bearing events:
   be deduped by ``responseId`` — or, when the capture carries none, by
   ``(timestamp, content)`` with toolCall ids masked, because OpenClaw's history
   sanitizer rewrites those ids between a turn's first snapshot and all later
-  ones (see :func:`_keyless_content_json`).
+  ones (see :func:`_keyless_content_json`). Snapshots may also carry scaffold
+  *roll-up* records — turn-finalization aggregates whose usage duplicates the
+  preceding per-call records; these are dropped (see
+  :func:`_drop_rollup_aggregates`).
 - ``tool.start`` / ``tool.end`` are individual tool calls (the only place
   schema-B sub-agent activity is recorded).
 - ``sessionKey`` is ``agent:<...>:<kind>:<uuid>`` with ``kind`` one of ``main``,
@@ -107,6 +110,12 @@ class SubagentSpan:
     ``turns`` are the sub-agent's own assistant turn messages (schema A);
     ``tool_calls`` are its ``tool.*`` calls (schema B). Both feed the
     reconstruction of the sub-agent's activity inside its agent span.
+
+    ``anchor_ts`` is the session's *file-order anchor*: the timestamp of the
+    latest orchestrator assistant turn seen before the session's first event.
+    A session with no linkable spawn call (``spawn_tool_call_id`` is None —
+    e.g. cron/system-spawned sub-agents) is placed in the timeline at this
+    anchor instead of being dropped; see :func:`events.build_content`.
     """
 
     session_key: str
@@ -118,6 +127,7 @@ class SubagentSpan:
     spawn_task: str | None  # the spawn's ``task`` arg (the delegated instruction)
     turns: list[dict[str, Any]]  # schema-A assistant turns (in file order)
     tool_calls: list[dict[str, Any]]  # schema-B tool.* calls (in file order)
+    anchor_ts: int = 0  # latest orchestrator turn ts before first activity
 
 
 @dataclass
@@ -177,6 +187,50 @@ def _primary_model(orchestrator_turns: list[dict[str, Any]]) -> str | None:
     return winner[0][0] if winner else None
 
 
+def _drop_rollup_aggregates(
+    orchestrator_turns: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Drop scaffold roll-up aggregate records from the assembled turns.
+
+    OpenClaw's turn-finalization bookkeeping appends an AGGREGATE assistant
+    record after a block of per-call records: no ``responseId``, stopReason
+    ``stop``, no toolCalls, and a ``totalTokens`` FROZEN at the previous
+    record's value (its usage restates the block it closes, not a new API
+    call). Keeping it double-counts every usage field — ~23M phantom
+    ``cache_read`` tokens on one real CRUX capture — so a record matching the
+    full signature against the previously KEPT turn is dropped, with an info
+    log of how many. The signature is deliberately conjunctive: a turn with a
+    ``responseId``, a non-``stop`` stopReason, any toolCall, or a moving
+    ``totalTokens`` is never touched.
+    """
+
+    def _is_rollup(turn: dict[str, Any], prev: dict[str, Any] | None) -> bool:
+        if prev is None or turn.get("responseId") is not None:
+            return False
+        if (turn.get("stopReason") or "stop") != "stop":
+            return False
+        if toolcalls_of(turn.get("content")):
+            return False
+        total = (turn.get("usage") or {}).get("totalTokens")
+        prev_total = (prev.get("usage") or {}).get("totalTokens")
+        return total is not None and total == prev_total
+
+    kept: list[dict[str, Any]] = []
+    n_rollups = 0
+    for turn in orchestrator_turns:
+        if _is_rollup(turn, kept[-1] if kept else None):
+            n_rollups += 1
+            continue
+        kept.append(turn)
+    if n_rollups:
+        logger.info(
+            "Dropped %d scaffold roll-up aggregate record(s) whose usage "
+            "duplicates the preceding per-call records",
+            n_rollups,
+        )
+    return kept
+
+
 def parse_telemetry(raw_events: Iterable[dict[str, Any]]) -> OpenClawTelemetry:
     """Parse raw OpenClaw telemetry events into the consolidated intermediate.
 
@@ -185,13 +239,15 @@ def parse_telemetry(raw_events: Iterable[dict[str, Any]]) -> OpenClawTelemetry:
     """
     c = _consolidate(raw_events)
 
-    orchestrator_turns = sorted(
-        (
-            c.assistant_by_id[rid]
-            for rid, kind in c.assistant_kind.items()
-            if is_orchestrator(kind)
-        ),
-        key=lambda m: int(m.get("timestamp") or 0),
+    orchestrator_turns = _drop_rollup_aggregates(
+        sorted(
+            (
+                c.assistant_by_id[rid]
+                for rid, kind in c.assistant_kind.items()
+                if is_orchestrator(kind)
+            ),
+            key=lambda m: int(m.get("timestamp") or 0),
+        )
     )
 
     # Keyed turns are canonical; a keyless turn whose text matches a keyed one is
@@ -241,6 +297,7 @@ def parse_telemetry(raw_events: Iterable[dict[str, Any]]) -> OpenClawTelemetry:
             spawn_task=(child_to_spawn_args.get(sk) or {}).get("task"),
             turns=s.get("turns", []),
             tool_calls=s.get("tool_calls", []),
+            anchor_ts=s.get("anchor_ts", 0),
         )
         for sk, s in c.sessions.items()
     ]
@@ -346,6 +403,7 @@ def _consolidate(raw_events: Iterable[dict[str, Any]]) -> _Consolidated:
        yields a real id.
     """
     out = _Consolidated()
+    orch_cursor = 0  # latest orchestrator assistant ts seen so far (file order)
     seen_subagent_rids: set[Any] = set()
     warned_compaction_sessions: set[str] = set()
     for ev in raw_events:
@@ -407,6 +465,12 @@ def _consolidate(raw_events: Iterable[dict[str, Any]]) -> _Consolidated:
                     if rid not in out.assistant_by_id:
                         out.assistant_by_id[rid] = m
                         out.assistant_kind[rid] = kind
+                    if is_orchestrator(kind):
+                        # Advance the file-order anchor cursor: sub-agent
+                        # sessions first seen after this point anchor here.
+                        turn_ts = int(m.get("timestamp") or 0)
+                        if turn_ts > orch_cursor:
+                            orch_cursor = turn_ts
                 elif role == "user" and is_orchestrator(kind):
                     # OpenClaw re-serializes a human prompt across snapshots: a
                     # transient first-snapshot form (no key, structured content)
@@ -461,7 +525,12 @@ def _consolidate(raw_events: Iterable[dict[str, Any]]) -> _Consolidated:
         # (2) sub-agent reconstruction.
         if kind != SUBAGENT_KIND:
             continue
-        s = out.sessions.setdefault(sk, _new_session())
+        if sk not in out.sessions:
+            out.sessions[sk] = _new_session()
+            # File-order anchor: where a session with no linkable spawn call
+            # (e.g. cron/system-spawned) is placed in the timeline.
+            out.sessions[sk]["anchor_ts"] = orch_cursor
+        s = out.sessions[sk]
         if is_agent:
             if t == "agent.start" and ev.get("prompt") and not s["prompt"]:
                 s["prompt"] = ev["prompt"]

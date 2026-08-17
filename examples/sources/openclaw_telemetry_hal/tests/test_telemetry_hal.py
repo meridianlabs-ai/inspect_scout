@@ -1113,13 +1113,14 @@ class TestSchemaASubagents:
         assert len(exec_events) == 1
         assert exec_events[0].result == "file.txt"
 
-    def test_unlinked_subagent_dropped_with_warning(
+    def test_unlinked_subagent_placed_not_dropped(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         # A sub-agent whose spawn cannot be linked to a tool call (no
-        # childSessionKey resolvable to a spawn call) cannot be placed in the
-        # timeline, so it is dropped with a warning rather than guessed at. Not
-        # observed in the CRUX1 captures; this locks the fallback behaviour.
+        # childSessionKey resolvable to a spawn call) is placed by its
+        # file-order anchor with an info log, not dropped — cron/system-spawned
+        # sessions have no spawn call at all. Placement order and the
+        # no-fabricated-spawn invariant are locked in TestSpawnlessSubagents.
         child = "agent:run:subagent:orphan-1"
         raw = [
             {
@@ -1153,12 +1154,13 @@ class TestSchemaASubagents:
         parse = parse_telemetry(raw)
         assert len(parse.subagents) == 1
         assert parse.subagents[0].spawn_tool_call_id is None
-        with caplog.at_level(logging.WARNING):
+        with caplog.at_level(logging.INFO):
             events = build_events(parse)
-        # No span is emitted for the unlinked sub-agent, and it is reported.
-        assert not any(isinstance(e, SpanBeginEvent) for e in events)
+        # The unlinked sub-agent still gets its agent span, and is reported.
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        assert span.id == child
         assert any(
-            "no linkable spawn call" in r.getMessage() and child in r.getMessage()
+            "file-order anchor" in r.getMessage() and child in r.getMessage()
             for r in caplog.records
         )
 
@@ -1250,10 +1252,25 @@ class TestSchemaBSubagents:
         span_end = next(e for e in events if isinstance(e, SpanEndEvent))
         assert span_end.timestamp >= tool.completed
 
-    def test_schema_b_missing_ts_falls_back_to_spawn_time(self) -> None:
-        # Bare captures carry no ``ts``; the call is stamped with the spawn time
-        # (zero duration) rather than failing.
+    def test_schema_b_missing_ts_derives_width_from_duration_ms(self) -> None:
+        # Bare captures carry no ``ts``: the call is stamped at the spawn time,
+        # and ``durationMs`` (from tool.end) still gives it a real start->end
+        # width — downstream busy-time sums rely on it.
         events = build_events(parse_telemetry(self._raw(success=True, ts=False)))
+        tool = self._tool_event(events)
+        assert tool.completed is not None
+        assert (tool.completed - tool.timestamp).total_seconds() == 0.25
+        # The agent span still ends at the call's derived end time.
+        span_end = next(e for e in events if isinstance(e, SpanEndEvent))
+        assert span_end.timestamp >= tool.completed
+
+    def test_schema_b_missing_ts_and_duration_collapses_to_zero(self) -> None:
+        # Only a call with neither ``ts`` nor ``durationMs`` collapses to the
+        # spawn time (zero duration) rather than failing.
+        raw = self._raw(success=True, ts=False)
+        end = next(e for e in raw if e.get("type") == "tool.end")
+        del end["durationMs"]
+        events = build_events(parse_telemetry(raw))
         tool = self._tool_event(events)
         assert tool.completed == tool.timestamp
 
@@ -1273,6 +1290,222 @@ class TestSchemaBSubagents:
         tool = self._tool_event(events)
         assert tool.failed is False
         assert tool.error is None
+
+
+class TestSpawnlessSubagents:
+    """Sub-agent sessions with no linkable ``sessions_spawn`` call.
+
+    Cron/system-spawned sessions (a normal OpenClaw pattern on scheduled runs;
+    46 of 101 sub-agent sessions on a real cron-scheduled CRUX capture) appear
+    in the telemetry with no spawn tool call at all. They are placed at their
+    file-order anchor — the latest orchestrator turn seen before the session's
+    first event — with no spawn call fabricated, instead of being dropped.
+    """
+
+    CHILD = "agent:main:subagent:cron-child-1"
+    PROMPT = (
+        "[Subagent Context] You are a subagent spawned by the main agent.\n"
+        "You are running as a subagent. Report back when done.\n"
+        "Run the ablation sweep for setting X.\n"
+        "Include the smaller grids first."
+    )
+
+    def _turn(self, rid: str, ts: int, text: str) -> dict[str, Any]:
+        return {
+            "role": "assistant",
+            "responseId": rid,
+            "timestamp": ts,
+            "model": "m",
+            "content": [{"type": "text", "text": text}],
+        }
+
+    def _raw(self) -> list[dict[str, Any]]:
+        orch = "agent:main:cron:orchestrator"
+        a1, a2, a3 = (
+            self._turn("r1", 1000, "A1"),
+            self._turn("r2", 2000, "A2"),
+            self._turn("r3", 3000, "A3"),
+        )
+        return [
+            # First snapshot: A1 + A2 precede the sub-agent in file order.
+            {"type": "agent.start", "sessionKey": orch, "messages": [a1, a2]},
+            {"type": "agent.start", "sessionKey": self.CHILD, "prompt": self.PROMPT},
+            {
+                "type": "tool.start",
+                "sessionKey": self.CHILD,
+                "toolName": "exec",
+                "params": {"command": "run sweep"},
+            },
+            {
+                "type": "tool.end",
+                "sessionKey": self.CHILD,
+                "toolName": "exec",
+                "durationMs": 100,
+                "success": True,
+            },
+            # Later cumulative snapshot appends A3 after the sub-agent appeared.
+            {"type": "agent.end", "sessionKey": orch, "messages": [a1, a2, a3]},
+        ]
+
+    def test_placed_at_file_order_anchor(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        parse = parse_telemetry(self._raw())
+        assert len(parse.subagents) == 1
+        assert parse.subagents[0].spawn_tool_call_id is None
+        # The anchor is A2's timestamp: the latest orchestrator turn seen (in
+        # file order) before the session's first event.
+        assert parse.subagents[0].anchor_ts == 2000
+        with caplog.at_level(logging.INFO):
+            events = build_events(parse)
+        # Placed between A1 and A3 — not dropped, and reported at info level.
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        roots = [e for e in events if isinstance(e, ModelEvent)]
+        assert events.index(roots[0]) < events.index(span) < events.index(roots[2])
+        assert any(
+            "file-order anchor" in r.getMessage() and self.CHILD in r.getMessage()
+            for r in caplog.records
+        )
+
+    def test_no_spawn_tool_call_fabricated(self) -> None:
+        events = build_events(parse_telemetry(self._raw()))
+        # No spawn call was recorded, so none is folded into the span — but the
+        # session's own activity is still reconstructed inside it.
+        folded = [
+            e
+            for e in events
+            if isinstance(e, ToolEvent) and e.agent_span_id == self.CHILD
+        ]
+        assert folded == []
+        inner = [
+            e for e in events if isinstance(e, ToolEvent) and e.span_id == self.CHILD
+        ]
+        assert [e.function for e in inner] == ["exec"]
+
+    def test_span_named_from_prompt_task_line(self) -> None:
+        # No spawn label exists, so the span is named from the first
+        # task-bearing line of the session's own prompt, skipping OpenClaw's
+        # "[Subagent Context] …" / "You are running as a subagent…" preamble.
+        events = build_events(parse_telemetry(self._raw()))
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        assert span.name == "Run the ablation sweep for setting X."
+
+    def test_anchor_at_run_start_places_before_first_turn(self) -> None:
+        # A session first seen before ANY orchestrator turn anchors at 0 and is
+        # emitted ahead of the first turn rather than lost.
+        raw = self._raw()
+        raw.insert(0, raw.pop(1))  # move the sub-agent's agent.start first
+        parse = parse_telemetry(raw)
+        assert parse.subagents[0].anchor_ts == 0
+        events = build_events(parse)
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        first_model = next(e for e in events if isinstance(e, ModelEvent))
+        assert events.index(span) < events.index(first_model)
+
+
+class TestRollupAggregates:
+    """Scaffold roll-up aggregate records are dropped, not double-counted.
+
+    OpenClaw's turn-finalization bookkeeping appends an aggregate assistant
+    record after a block of per-call records: no ``responseId``, stopReason
+    ``stop``, no toolCalls, and ``totalTokens`` frozen at the previous record's
+    value. Its usage restates the block it closes, so keeping it double-counts
+    every usage field (~23M phantom cache-read tokens on one real CRUX capture).
+    """
+
+    ORCH = "agent:main:cron:orchestrator"
+
+    def _turn(
+        self,
+        *,
+        rid: str | None,
+        ts: int,
+        text: str,
+        usage: dict[str, int],
+        stop: str = "stop",
+        tool_call: bool = False,
+    ) -> dict[str, Any]:
+        content: list[dict[str, Any]] = [{"type": "text", "text": text}]
+        if tool_call:
+            content.append(
+                {"type": "toolCall", "id": "tc1", "name": "exec", "arguments": {}}
+            )
+        turn: dict[str, Any] = {
+            "role": "assistant",
+            "timestamp": ts,
+            "model": "m",
+            "stopReason": stop,
+            "content": content,
+            "usage": usage,
+        }
+        if rid is not None:
+            turn["responseId"] = rid
+        return turn
+
+    def _parse(self, turns: list[dict[str, Any]]) -> OpenClawTelemetry:
+        return parse_telemetry(
+            [{"type": "agent.start", "sessionKey": self.ORCH, "messages": turns}]
+        )
+
+    def test_rollup_dropped_and_usage_not_double_counted(self) -> None:
+        usage = {"input": 100, "output": 50, "cacheRead": 800, "totalTokens": 950}
+        parse = self._parse(
+            [
+                self._turn(rid="r1", ts=1000, text="A1", usage=usage),
+                # The roll-up: rid-less, tool-less 'stop' record whose
+                # totalTokens is frozen at A1's value.
+                self._turn(rid=None, ts=1500, text="A1", usage=dict(usage)),
+                self._turn(
+                    rid="r2",
+                    ts=2000,
+                    text="A2",
+                    usage={"input": 10, "output": 5, "totalTokens": 15},
+                ),
+            ]
+        )
+        assert len(parse.orchestrator_turns) == 2
+        events = build_events(parse)
+        usages = [
+            e.output.usage
+            for e in events
+            if isinstance(e, ModelEvent) and e.output.usage is not None
+        ]
+        assert len(usages) == 2
+        # Without the drop these would be 1600 / 1915.
+        assert sum(u.input_tokens_cache_read or 0 for u in usages) == 800
+        assert sum(u.total_tokens for u in usages) == 965
+
+    def test_moving_total_tokens_is_kept(self) -> None:
+        # A rid-less 'stop' record whose totalTokens MOVED is a real turn
+        # (service-sink captures have no responseId at all) — never dropped.
+        parse = self._parse(
+            [
+                self._turn(rid=None, ts=1000, text="A1", usage={"totalTokens": 950}),
+                self._turn(rid=None, ts=1500, text="A2", usage={"totalTokens": 990}),
+            ]
+        )
+        assert len(parse.orchestrator_turns) == 2
+
+    def test_response_id_or_tool_calls_disqualify(self) -> None:
+        # The signature is conjunctive: a responseId, a toolCall, or a
+        # non-'stop' stopReason each mark a genuine turn even with frozen
+        # totals.
+        usage = {"totalTokens": 950}
+        parse = self._parse(
+            [
+                self._turn(rid="r1", ts=1000, text="A1", usage=dict(usage)),
+                self._turn(rid="r2", ts=1500, text="A2", usage=dict(usage)),
+                self._turn(
+                    rid=None,
+                    ts=2000,
+                    text="A3",
+                    usage=dict(usage),
+                    tool_call=True,
+                    stop="toolUse",
+                ),
+            ]
+        )
+        assert len(parse.orchestrator_turns) == 3
 
 
 class TestMessages:

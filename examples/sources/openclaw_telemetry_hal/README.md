@@ -317,16 +317,35 @@ session thread (e.g. delivered while the agent was busy) becomes its own
 operator-sourced user message — so mid-run operator interventions are
 preserved for downstream analysis.
 
+### Spawn-less sub-agent sessions are placed by file-order anchor
+
+Not every sub-agent session is created by a `sessions_spawn` tool call:
+cron/system-spawned sessions (a normal OpenClaw pattern on scheduled runs)
+appear in the telemetry with no spawn call to link to — on one real
+cron-scheduled CRUX capture, 46 of 101 sub-agent sessions. Dropping them would
+silently lose that delegated activity, so an unlinked session is instead
+**placed at its file-order anchor**: its agent span is emitted immediately
+after the latest orchestrator turn seen (in file order) before the session's
+first event. No spawn tool call is fabricated — the span simply has no folded
+`sessions_spawn` child — and its span is named from the spawn `label` when one
+exists, else the first task-bearing line of the session's own prompt (skipping
+the `[Subagent Context]` scaffold preamble). The placement is a *file-order*
+heuristic, not a recorded parent link: it says "the orchestrator was here when
+this session started", nothing stronger.
+
 ### Schema-B sub-agents have no internal transcript
 
 Under schema B, a sub-agent's `agent.start` carries only the
 spawn `prompt` with an empty `messages[]`; its activity is visible solely as
-`tool.start`/`tool.end` events, which record **no result body, no usage, and no
-timestamps** (only `durationMs` on `tool.end`). Consequently a schema-B
-sub-agent span shows its reconstructed tool calls but no model turns, token
-totals, or wall-clock duration (it renders as `0 · 0s`). This is a property of
-the source telemetry, not the importer. Schema-A sub-agents (which carry their
-own assistant turns in `messages[]`) are reconstructed in full.
+`tool.start`/`tool.end` events, which record **no result body and no usage**.
+Consequently a schema-B sub-agent span shows its reconstructed tool calls but
+no model turns or token totals. This is a property of the source telemetry,
+not the importer. Per-call timing is best-effort: the enriched (service-sink)
+envelope's `ts` gives each call a real start→end span; bare captures carry no
+`ts`, so the call is stamped at the spawn time and `durationMs` (from
+`tool.end`) supplies its width — only a call with neither collapses to zero
+duration. Schema-A sub-agents (which carry their own assistant turns in
+`messages[]`) are reconstructed in full.
 
 ### Sub-agent compactions are not surfaced
 

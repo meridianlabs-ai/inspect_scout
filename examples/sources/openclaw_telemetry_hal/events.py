@@ -12,13 +12,16 @@ Mapping (mirrors the Claude Code importer):
   (``SpanBeginEvent`` / ``SpanEndEvent``, ``type="agent"``) anchored at the
   ``sessions_spawn`` tool call that created it. Sub-agent messages are excluded
   from the main thread.
+- Inbound operator messages (``message.in``) mark the matching user turns
+  ``source="operator"``; an inbound message with no matching user turn (it never
+  entered the session thread) becomes its own operator-sourced user message.
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
 from logging import getLogger
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from inspect_ai.event import (
     CompactionEvent,
@@ -86,6 +89,21 @@ def _stop_and_error(turn: dict[str, Any]) -> tuple[StopReason, str | None]:
     return "unknown", (str(message) if message else None)
 
 
+def _plain_text(content: object) -> str:
+    """A message ``content`` as comparable plain text (str or rich blocks).
+
+    Used to match an inbound ``message.in`` (always a plain string) against the
+    session's user turns (plain strings or content-block lists).
+    """
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        return " ".join(
+            str(b.get("text", "")) for b in content if isinstance(b, dict)
+        ).strip()
+    return str(content or "").strip()
+
+
 def build_content(
     parse: OpenClawTelemetry,
 ) -> tuple[list[Event], list[ChatMessage]]:
@@ -96,6 +114,12 @@ def build_content(
     both outputs: each ``ModelEvent.input`` carries the conversation up to that
     turn (so the events view shows user prompts and tool results, matching the
     Claude Code importer), and the final running list is the message thread.
+
+    Inbound operator messages (``message.in``) are reconciled with the user
+    turns by content: a match stamps the existing turn ``source="operator"``
+    (never a duplicate message); an unmatched inbound message — one that never
+    entered the session thread — is added as its own operator-sourced user
+    message so mid-run operator interventions are preserved.
 
     Each sub-agent agent span is inserted immediately after the orchestrator
     tool event that spawned it. A sub-agent whose spawn could not be linked to a
@@ -123,9 +147,26 @@ def build_content(
             ", ".join(sa.session_key for sa in dropped),
         )
 
-    # Merge user turns + assistant turns + real compactions, ordered by timestamp.
+    # The inbound operator channel (``message.in``). An inbound message whose
+    # text matches a user turn marks THAT turn ``source="operator"`` (no
+    # duplicate message); one with no matching user turn (it never entered the
+    # session thread, e.g. delivered while the agent was busy) becomes its own
+    # operator-sourced user message, placed by its timestamp.
+    operator_contents = {_plain_text(m.get("content")) for m in parse.operator_messages}
+    matched = {
+        _plain_text(t.get("content")) for t in parse.user_turns
+    } & operator_contents
+    extra_operator = [
+        m
+        for m in parse.operator_messages
+        if _plain_text(m.get("content")) not in matched
+    ]
+
+    # Merge user turns + operator messages + assistant turns + real compactions,
+    # ordered by timestamp.
     ordered: list[tuple[int, str, dict[str, Any]]] = (
         [(int(t.get("timestamp") or 0), "user", t) for t in parse.user_turns]
+        + [(int(m.get("timestamp") or 0), "operator", m) for m in extra_operator]
         + [
             (int(t.get("timestamp") or 0), "assistant", t)
             for t in parse.orchestrator_turns
@@ -145,7 +186,24 @@ def build_content(
         last_ts = ts
 
         if kind == "user":
-            messages.append(ChatMessageUser(content=rich_or_text(item.get("content"))))
+            # An operator-delivered turn carries its true source; other user
+            # turns (runtime context, inter-session messages) carry none.
+            source: Literal["operator"] | None = (
+                "operator" if _plain_text(item.get("content")) in matched else None
+            )
+            messages.append(
+                ChatMessageUser(
+                    content=rich_or_text(item.get("content")), source=source
+                )
+            )
+            continue
+
+        if kind == "operator":  # message.in not present in the session thread
+            messages.append(
+                ChatMessageUser(
+                    content=rich_or_text(item.get("content")), source="operator"
+                )
+            )
             continue
 
         if kind == "compaction":

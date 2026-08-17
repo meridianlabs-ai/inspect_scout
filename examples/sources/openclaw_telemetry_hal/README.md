@@ -63,7 +63,7 @@ entirely different schema. This example only handles the `openclaw-telemetry-hal
 schema.
 
 Within that schema, the importer is strict about session classification: a
-`sessionKey` kind outside `main`/`telegram`/`dashboard`/`subagent` on a consumed
+`sessionKey` kind outside `main`/`telegram`/`dashboard`/`cron`/`subagent` on a consumed
 (`agent.*`/`tool.*`) event — e.g. a chat surface we have not seen — fails the
 import with an error naming the kind, rather than silently dropping that
 session's activity. Native session support is a future, separate source — see "Native
@@ -307,8 +307,15 @@ sub-agent that produced it**. File order misleads (reports arrive in completion
 order, not spawn order; e.g. the *Eastern* report can immediately follow the
 *weather-west* sub-agent's activity), and the only thing tying a report to a
 sub-agent is the report text echoing the spawn `label` — a content heuristic
-that does not generalize. We therefore **do not** consume `message.*` events or
-nest reports inside sub-agent spans.
+that does not generalize. We therefore **do not** consume the outbound
+`message.sending`/`message.out` events or nest reports inside sub-agent spans.
+
+The inbound `message.in` events (the operator channel) **are** consumed, for
+provenance rather than content: an inbound message whose text matches a user
+turn marks that turn `source="operator"`, and one that never entered the
+session thread (e.g. delivered while the agent was busy) becomes its own
+operator-sourced user message — so mid-run operator interventions are
+preserved for downstream analysis.
 
 ### Schema-B sub-agents have no internal transcript
 

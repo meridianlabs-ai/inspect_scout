@@ -242,7 +242,7 @@ class TestParse:
     def test_unrecognized_session_kind_fails_with_meaningful_error(
         self, event: dict[str, Any], expected_kind: str
     ) -> None:
-        # A kind outside main/telegram/dashboard/subagent on a consumed event
+        # A kind outside main/telegram/dashboard/cron/subagent on a consumed event
         # means a session whose turns would otherwise be silently discarded
         # (classified as neither orchestrator nor sub-agent), so the import
         # must fail loudly, naming the kind and the sessionKey.
@@ -297,16 +297,18 @@ class TestParse:
         assert [t["responseId"] for t in parse.orchestrator_turns] == ["r1", "r2"]
         assert parse.subagents == []
 
-    def test_message_events_without_session_key_are_ignored(self) -> None:
-        # message.* events carry no sessionKey and are intentionally not
-        # consumed; their missing kind must NOT trip the unrecognized-kind
-        # check.
+    def test_message_events_without_session_key_do_not_trip_kind_check(self) -> None:
+        # message.* events carry no sessionKey; their missing kind must NOT
+        # trip the unrecognized-kind check. message.in is consumed as the
+        # inbound operator channel; message.out stays unconsumed.
         raw = [
             {"type": "message.in", "channel": "telegram", "content": "hi"},
             *self._orch_raw("agent:main:main:s1"),
             {"type": "message.out", "channel": "telegram", "content": "bye"},
         ]
-        assert len(parse_telemetry(raw).orchestrator_turns) == 1
+        parse = parse_telemetry(raw)
+        assert len(parse.orchestrator_turns) == 1
+        assert [m["content"] for m in parse.operator_messages] == ["hi"]
 
     def _orch_raw(self, session_key: str) -> list[dict[str, Any]]:
         return [
@@ -351,14 +353,18 @@ class TestParse:
             "agent:main:main:s1",
             "agent:main:telegram:default:direct:5912046256",
             "agent:main:dashboard:e6746281-f3cd-4be5-9d0c-633772cdcace",
+            "agent:main:cron:5b3f2a10-9c7e-4d21-8e6a-2f1d0c9b8a76",
         ],
     )
     def test_orchestrator_kinds_yield_orchestrator_turns(
         self, session_key: str
     ) -> None:
-        # Every orchestrator surface (terminal, Telegram, web dashboard) must
-        # have its assistant turns classified as orchestrator turns; otherwise
-        # the transcript is silently dropped for having no turns.
+        # Every orchestrator surface (terminal, Telegram, web dashboard, and
+        # the cron scheduler — a cron-scheduled run's orchestrator session
+        # carries the ``cron`` kind) must have its assistant turns classified
+        # as orchestrator turns; otherwise the import fails on the
+        # unrecognized-kind check (or, if it were lenient, the transcript
+        # would be silently dropped for having no turns).
         parse = parse_telemetry(self._orch_raw(session_key))
         assert len(parse.orchestrator_turns) == 1
 
@@ -1306,6 +1312,93 @@ class TestMessages:
         }
         # Every tool message corresponds to an assistant tool call.
         assert tool_msg_ids <= tool_call_ids
+
+
+class TestOperatorChannel:
+    """Inbound operator messages (``message.in``) carry provenance.
+
+    A ``message.in`` whose text matches a user turn marks THAT turn
+    ``source="operator"`` (no duplicate message); one with no matching user
+    turn (it never entered the session thread, e.g. delivered while the agent
+    was busy) becomes its own operator-sourced user message, placed by its
+    timestamp.
+    """
+
+    def _raw(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "please check the baselines",
+                "timestamp": 900,
+            },
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:main:main:s1",
+                "messages": [
+                    {
+                        "role": "user",
+                        "timestamp": 1000,
+                        "idempotencyKey": "m1",
+                        "content": "please check the baselines",
+                    },
+                    {
+                        "role": "user",
+                        "timestamp": 1500,
+                        "content": "[runtime context]",
+                    },
+                    {
+                        "role": "assistant",
+                        "responseId": "r1",
+                        "timestamp": 2000,
+                        "model": "m",
+                        "content": [{"type": "text", "text": "on it"}],
+                    },
+                ],
+            },
+            # Delivered mid-run but never re-entered the session thread as a
+            # user turn: must become its own operator-sourced message.
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "actually, prioritise the ablation",
+                "timestamp": 2500,
+            },
+        ]
+
+    def test_matched_message_in_marks_user_turn_operator(self) -> None:
+        messages = build_messages(parse_telemetry(self._raw()))
+        by_text = {m.text: m for m in messages if m.role == "user"}
+        # The operator-delivered prompt is stamped; no duplicate is added.
+        assert by_text["please check the baselines"].source == "operator"
+        assert sum(1 for m in messages if m.text == "please check the baselines") == 1
+        # A user turn that did not arrive via the operator channel (runtime
+        # context) carries no source.
+        assert by_text["[runtime context]"].source is None
+
+    def test_unmatched_message_in_becomes_operator_message(self) -> None:
+        messages = build_messages(parse_telemetry(self._raw()))
+        unmatched = [
+            m
+            for m in messages
+            if m.role == "user" and m.text == "actually, prioritise the ablation"
+        ]
+        assert len(unmatched) == 1
+        assert unmatched[0].source == "operator"
+        # Placed by timestamp: after the assistant turn it interrupted.
+        roles = [m.role for m in messages]
+        assert roles.index("assistant") < messages.index(unmatched[0])
+
+    def test_fixture_prompts_carry_operator_source(
+        self, raw_events: list[dict[str, Any]]
+    ) -> None:
+        # The bundled fixture's three human Telegram prompts each arrive as a
+        # message.in and re-enter the thread as user turns: all three must be
+        # stamped, and no extra user message may appear.
+        messages = build_messages(parse_telemetry(raw_events))
+        users = [m for m in messages if m.role == "user"]
+        assert len(users) == 3
+        assert all(m.source == "operator" for m in users)
 
 
 class TestTranscript:

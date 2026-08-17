@@ -20,14 +20,20 @@ JSONL, one event per line. Payload-bearing events:
 - ``tool.start`` / ``tool.end`` are individual tool calls (the only place
   schema-B sub-agent activity is recorded).
 - ``sessionKey`` is ``agent:<...>:<kind>:<uuid>`` with ``kind`` one of ``main``,
-  ``telegram``, ``dashboard``, ``explicit`` (orchestrator surfaces — ``explicit``
-  is an explicitly-created session on the orchestrator agent, e.g. OpenClaw's
+  ``telegram``, ``dashboard``, ``cron``, ``explicit`` (orchestrator surfaces —
+  ``cron`` is the scheduler surface of a cron-scheduled run; ``explicit`` an
+  explicitly-created session on the orchestrator agent, e.g. OpenClaw's
   gateway-fallback path) or ``subagent`` (delegated work). Any other kind on a
   consumed event fails the import loudly rather than silently dropping that
   session's activity.
+- ``message.in`` is the inbound operator channel: each event carries the full
+  text of a message a human sent the agent mid-run. These are collected as
+  ``operator_messages`` so the mapping can stamp the corresponding user turns
+  ``source="operator"`` (and surface inbound messages that never entered the
+  session thread) — see :func:`events.build_content`.
 
-Intentionally NOT consumed: ``message.in`` / ``message.sending`` /
-``message.out`` (channel I/O). A sub-agent's final report is auto-announced as a
+Intentionally NOT consumed: ``message.sending`` / ``message.out`` (outbound
+channel I/O). A sub-agent's final report is auto-announced as a
 ``message.out`` on the orchestrator's outbound channel, but those events carry
 no ``sessionKey``, ``runId``, or ``agentId`` (and the spawn result is only an
 ``accepted`` ack), so a report cannot be deterministically attributed to the
@@ -138,6 +144,11 @@ class OpenClawTelemetry:
     session uuid for ``main``/``dashboard`` surfaces, but a chat id shared across
     runs for ``telegram``. It is therefore NOT unique per run on its own; the
     transcript layer combines it with the run's earliest timestamp.
+
+    ``operator_messages`` are the raw ``message.in`` events (inbound operator
+    channel), in file order. The mapping uses them to mark operator-delivered
+    user turns ``source="operator"`` and to surface inbound messages that never
+    entered the session thread.
     """
 
     orchestrator_turns: list[dict[str, Any]]
@@ -147,6 +158,7 @@ class OpenClawTelemetry:
     model_name: str | None
     subagents: list[SubagentSpan]
     session_id: str | None
+    operator_messages: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _primary_model(orchestrator_turns: list[dict[str, Any]]) -> str | None:
@@ -252,6 +264,7 @@ def parse_telemetry(raw_events: Iterable[dict[str, Any]]) -> OpenClawTelemetry:
         model_name=_primary_model(orchestrator_turns),
         subagents=subagents,
         session_id=c.session_id,
+        operator_messages=c.message_ins,
     )
 
 
@@ -271,6 +284,7 @@ class _Consolidated:
     user_by_idempotency: dict[str, dict[str, Any]] = field(default_factory=dict)
     user_by_key: dict[Any, dict[str, Any]] = field(default_factory=dict)
     sessions: dict[str, dict[str, Any]] = field(default_factory=dict)
+    message_ins: list[dict[str, Any]] = field(default_factory=list)
     session_id: str | None = None
 
 
@@ -338,6 +352,12 @@ def _consolidate(raw_events: Iterable[dict[str, Any]]) -> _Consolidated:
         if not isinstance(ev, dict):
             continue
         t = ev.get("type")
+        # The inbound operator channel: collect message.in events whole (they
+        # carry no sessionKey — the mapping matches them to user turns by
+        # content, see ``events.build_content``).
+        if t == "message.in":
+            out.message_ins.append(ev)
+            continue
         sk = ev.get("sessionKey", "")
         kind = session_kind(sk)
         is_agent = t in ("agent.start", "agent.end")
@@ -345,9 +365,9 @@ def _consolidate(raw_events: Iterable[dict[str, Any]]) -> _Consolidated:
         # The events the importer consumes must classify as orchestrator or
         # sub-agent. Any other kind — a surface we have not seen (e.g. another
         # chat channel), or an absent/malformed sessionKey — would silently
-        # drop that session's activity, so fail loudly instead. (``message.*``
-        # events carry no sessionKey and are intentionally not consumed, so
-        # they are not checked.)
+        # drop that session's activity, so fail loudly instead. (The outbound
+        # ``message.sending``/``message.out`` events carry no sessionKey and
+        # are intentionally not consumed, so they are not checked.)
         if (is_agent or t in ("tool.start", "tool.end")) and not (
             is_orchestrator(kind) or kind == SUBAGENT_KIND
         ):

@@ -1425,7 +1425,7 @@ class TestSpawnlessSubagents:
         # before a compaction is emitted before that compaction, not swept
         # past it to the next assistant turn.
         orch = "agent:main:cron:orchestrator"
-        raw = [
+        raw: list[dict[str, Any]] = [
             {
                 "type": "agent.start",
                 "sessionKey": orch,
@@ -1517,6 +1517,7 @@ class TestSpawnlessSubagents:
                 },
             ],
         }
+
         def span_for(key: str) -> SubagentSpan:
             return SubagentSpan(
                 session_key=key,
@@ -1530,6 +1531,7 @@ class TestSpawnlessSubagents:
                 tool_calls=[],
                 anchor_ts=1000,
             )
+
         parse = OpenClawTelemetry(
             orchestrator_turns=[turn],
             user_turns=[],
@@ -1611,7 +1613,12 @@ class TestRollupAggregates:
                     rid="r1",
                     ts=1000,
                     text="A1",
-                    usage={"input": 100, "output": 50, "cacheRead": 800, "totalTokens": 950},
+                    usage={
+                        "input": 100,
+                        "output": 50,
+                        "cacheRead": 800,
+                        "totalTokens": 950,
+                    },
                 ),
                 # The roll-up: rid-less, tool-less 'stop' record whose
                 # totalTokens is frozen at A1's value while its components sum
@@ -1675,8 +1682,12 @@ class TestRollupAggregates:
         }
         parse = self._parse(
             [
-                self._turn(rid=None, ts=1000, text="[assistant turn failed]", usage=dict(zero)),
-                self._turn(rid=None, ts=1500, text="[assistant turn failed]", usage=dict(zero)),
+                self._turn(
+                    rid=None, ts=1000, text="[assistant turn failed]", usage=dict(zero)
+                ),
+                self._turn(
+                    rid=None, ts=1500, text="[assistant turn failed]", usage=dict(zero)
+                ),
             ]
         )
         assert len(parse.orchestrator_turns) == 2
@@ -1797,7 +1808,9 @@ class TestRollupAggregates:
             if isinstance(e, ModelEvent) and e.span_id == sub
         ]
         assert len(sub_usages) == 1
-        assert sub_usages[0].total_tokens == 950
+        sub_usage = sub_usages[0]
+        assert sub_usage is not None
+        assert sub_usage.total_tokens == 950
 
     def test_moving_total_tokens_is_kept(self) -> None:
         # A rid-less 'stop' record whose totalTokens MOVED is a real turn
@@ -1951,7 +1964,7 @@ class TestOperatorChannel:
         # the thread as a user turn. Occurrence-based reconciliation must
         # surface the second send as its own operator message — set-of-texts
         # semantics silently dropped it once the first occurrence matched.
-        raw = [
+        raw: list[dict[str, Any]] = [
             {
                 "type": "message.in",
                 "channel": "telegram",
@@ -1992,7 +2005,7 @@ class TestOperatorChannel:
         # Two user turns share the operator text; the send precedes only the
         # second. A message can only enter the thread at-or-after it arrives,
         # so the LATER twin is stamped and the earlier one left untouched.
-        raw = [
+        raw: list[dict[str, Any]] = [
             {
                 "type": "agent.start",
                 "sessionKey": "agent:main:main:s1",
@@ -2017,7 +2030,7 @@ class TestOperatorChannel:
         # A multi-line send re-enters the thread as a content-block list; both
         # sides must flatten identically (content_to_text) or the turn is left
         # unstamped AND the send duplicated as a standalone message.
-        raw = [
+        raw: list[dict[str, Any]] = [
             {
                 "type": "message.in",
                 "channel": "telegram",
@@ -2048,7 +2061,7 @@ class TestOperatorChannel:
         # An unmatched inbound message never entered the session thread — the
         # model never saw it. It belongs in the final message thread, but NOT
         # in later ModelEvents' input (the conversation the model was shown).
-        raw = [
+        raw: list[dict[str, Any]] = [
             {
                 "type": "agent.start",
                 "sessionKey": "agent:main:main:s1",

@@ -181,8 +181,10 @@ def build_content(
     # delivered while the agent was busy) becomes its own operator-sourced
     # user message, placed by its timestamp.
     turns_by_text: dict[str, list[dict[str, Any]]] = {}
-    for turn in parse.user_turns:  # already timestamp-sorted
-        turns_by_text.setdefault(_match_text(turn.get("content")), []).append(turn)
+    for user_turn in parse.user_turns:  # already timestamp-sorted
+        turns_by_text.setdefault(_match_text(user_turn.get("content")), []).append(
+            user_turn
+        )
     operator_turn_ids: set[int] = set()
     extra_operator: list[dict[str, Any]] = []
     for m in sorted(
@@ -190,7 +192,9 @@ def build_content(
     ):
         queue = turns_by_text.get(_match_text(m.get("content")), [])
         m_ts = int(m.get("timestamp") or 0)
-        turn = next((t for t in queue if int(t.get("timestamp") or 0) >= m_ts), None)
+        turn: dict[str, Any] | None = next(
+            (t for t in queue if int(t.get("timestamp") or 0) >= m_ts), None
+        )
         if turn is not None:
             queue.remove(turn)
             operator_turn_ids.add(id(turn))

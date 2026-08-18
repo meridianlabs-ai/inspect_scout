@@ -227,7 +227,7 @@ def _drop_rollup_aggregates(
         prev_total = (prev.get("usage") or {}).get("totalTokens")
         if total is None or total != prev_total:
             return False
-        return tokens_from_usage(turn.get("usage")) != total
+        return bool(tokens_from_usage(turn.get("usage")) != total)
 
     kept: list[dict[str, Any]] = []
     n_rollups = 0
@@ -319,7 +319,9 @@ def parse_telemetry(raw_events: Iterable[dict[str, Any]]) -> OpenClawTelemetry:
                 session_key=sk,
                 prompt=s.get("prompt"),
                 n_tool_calls=s.get("n_tool_calls", 0),
-                n_assistant_turns=len(turns) if turns else s.get("n_assistant_turns", 0),
+                n_assistant_turns=len(turns)
+                if turns
+                else s.get("n_assistant_turns", 0),
                 spawn_tool_call_id=child_to_toolcall.get(sk),
                 spawn_label=(child_to_spawn_args.get(sk) or {}).get("label"),
                 spawn_task=(child_to_spawn_args.get(sk) or {}).get("task"),

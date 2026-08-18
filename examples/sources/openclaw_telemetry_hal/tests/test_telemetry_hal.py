@@ -1408,9 +1408,12 @@ class TestRollupAggregates:
 
     OpenClaw's turn-finalization bookkeeping appends an aggregate assistant
     record after a block of per-call records: no ``responseId``, stopReason
-    ``stop``, no toolCalls, and ``totalTokens`` frozen at the previous record's
-    value. Its usage restates the block it closes, so keeping it double-counts
-    every usage field (~23M phantom cache-read tokens on one real CRUX capture).
+    ``stop``, no toolCalls, ``totalTokens`` frozen at the previous record's
+    value, and usage components that SUM the block (breaking the per-call
+    identity ``input + output + cacheRead + cacheWrite == totalTokens``).
+    Keeping it double-counts every usage field (~23M phantom cache-read tokens
+    on one real CRUX capture). The filter runs per orchestrator surface and
+    per sub-agent session, so interleaving cannot mask the comparison.
     """
 
     ORCH = "agent:main:cron:orchestrator"
@@ -1448,13 +1451,29 @@ class TestRollupAggregates:
         )
 
     def test_rollup_dropped_and_usage_not_double_counted(self) -> None:
-        usage = {"input": 100, "output": 50, "cacheRead": 800, "totalTokens": 950}
         parse = self._parse(
             [
-                self._turn(rid="r1", ts=1000, text="A1", usage=usage),
+                self._turn(
+                    rid="r1",
+                    ts=1000,
+                    text="A1",
+                    usage={"input": 100, "output": 50, "cacheRead": 800, "totalTokens": 950},
+                ),
                 # The roll-up: rid-less, tool-less 'stop' record whose
-                # totalTokens is frozen at A1's value.
-                self._turn(rid=None, ts=1500, text="A1", usage=dict(usage)),
+                # totalTokens is frozen at A1's value while its components sum
+                # the block it closes (the shape observed on real captures).
+                self._turn(
+                    rid=None,
+                    ts=1500,
+                    text="A1",
+                    usage={
+                        "input": 105,
+                        "output": 220,
+                        "cacheRead": 1600,
+                        "cacheWrite": 40,
+                        "totalTokens": 950,
+                    },
+                ),
                 self._turn(
                     rid="r2",
                     ts=2000,
@@ -1471,9 +1490,160 @@ class TestRollupAggregates:
             if isinstance(e, ModelEvent) and e.output.usage is not None
         ]
         assert len(usages) == 2
-        # Without the drop these would be 1600 / 1915.
+        # Without the drop these would be 2400 / 1915.
         assert sum(u.input_tokens_cache_read or 0 for u in usages) == 800
         assert sum(u.total_tokens for u in usages) == 965
+
+    def test_genuine_turns_with_equal_totals_are_kept(self) -> None:
+        # On rid-less (service-sink) captures two consecutive genuine text-only
+        # replies can repeat a totalTokens value. A genuine per-call record is
+        # self-consistent (input + output + cacheRead + cacheWrite ==
+        # totalTokens), which a roll-up never is — so the frozen total alone
+        # must not delete the second real turn.
+        usage = {"input": 10, "output": 40, "cacheRead": 900, "totalTokens": 950}
+        parse = self._parse(
+            [
+                self._turn(rid=None, ts=1000, text="A1", usage=dict(usage)),
+                self._turn(rid=None, ts=1500, text="A2", usage=dict(usage)),
+            ]
+        )
+        assert len(parse.orchestrator_turns) == 2
+
+    def test_adjacent_zero_usage_placeholders_are_kept(self) -> None:
+        # Adjacent provider-failure placeholders share totalTokens=0 but are
+        # self-consistent (0 == 0+0+0+0): both must survive the filter.
+        zero = {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "totalTokens": 0,
+        }
+        parse = self._parse(
+            [
+                self._turn(rid=None, ts=1000, text="[assistant turn failed]", usage=dict(zero)),
+                self._turn(rid=None, ts=1500, text="[assistant turn failed]", usage=dict(zero)),
+            ]
+        )
+        assert len(parse.orchestrator_turns) == 2
+
+    def test_rollup_detected_across_interleaved_surfaces(self) -> None:
+        # A turn from another orchestrator surface lands between a block's
+        # closing per-call record and its roll-up (multi-surface captures are
+        # real). The filter runs per surface, so the interleaving must not
+        # mask the frozen-total comparison — and the other surface's genuine
+        # turn must survive.
+        telegram_turn = {
+            "role": "assistant",
+            "responseId": "t1",
+            "timestamp": 1200,
+            "model": "m",
+            "stopReason": "stop",
+            "content": [{"type": "text", "text": "T1"}],
+            "usage": {"input": 5, "output": 10, "cacheRead": 485, "totalTokens": 500},
+        }
+        parse = parse_telemetry(
+            [
+                {
+                    "type": "agent.start",
+                    "sessionKey": self.ORCH,
+                    "messages": [
+                        self._turn(
+                            rid="r1",
+                            ts=1000,
+                            text="A1",
+                            usage={
+                                "input": 100,
+                                "output": 50,
+                                "cacheRead": 800,
+                                "totalTokens": 950,
+                            },
+                        ),
+                        self._turn(
+                            rid=None,
+                            ts=1500,
+                            text="A1",
+                            usage={
+                                "input": 104,
+                                "output": 210,
+                                "cacheRead": 1650,
+                                "cacheWrite": 30,
+                                "totalTokens": 950,
+                            },
+                        ),
+                    ],
+                },
+                {
+                    "type": "agent.start",
+                    "sessionKey": "agent:main:telegram:chat-1",
+                    "messages": [telegram_turn],
+                },
+            ]
+        )
+        texts = [content_to_text(t.get("content")) for t in parse.orchestrator_turns]
+        assert texts == ["A1", "T1"]
+
+    def test_subagent_schema_a_rollup_dropped(self) -> None:
+        # Sub-agent sessions are finalized by the same scaffold, so a
+        # roll-up-shaped record inside a session's messages[] must not double
+        # the span's usage either.
+        sub = "agent:main:subagent:sub-roll"
+        per_call = {
+            "role": "assistant",
+            "responseId": "s1",
+            "timestamp": 1000,
+            "model": "m",
+            "stopReason": "stop",
+            "content": [{"type": "text", "text": "S1"}],
+            "usage": {"input": 20, "output": 40, "cacheRead": 890, "totalTokens": 950},
+        }
+        rollup = {
+            "role": "assistant",
+            "timestamp": 1500,
+            "model": "m",
+            "stopReason": "stop",
+            "content": [{"type": "text", "text": "S1"}],
+            "usage": {
+                "input": 22,
+                "output": 55,
+                "cacheRead": 1780,
+                "cacheWrite": 10,
+                "totalTokens": 950,
+            },
+        }
+        parse = parse_telemetry(
+            [
+                {
+                    "type": "agent.start",
+                    "sessionKey": self.ORCH,
+                    "messages": [
+                        self._turn(
+                            rid="r1",
+                            ts=500,
+                            text="A1",
+                            usage={"input": 1, "output": 4, "totalTokens": 5},
+                        )
+                    ],
+                },
+                {
+                    "type": "agent.start",
+                    "sessionKey": sub,
+                    "prompt": "do the thing",
+                    "messages": [per_call, rollup],
+                },
+            ]
+        )
+        assert len(parse.subagents) == 1
+        assert len(parse.subagents[0].turns) == 1
+        assert parse.subagents[0].n_assistant_turns == 1
+        events = build_events(parse)
+        sub_usages = [
+            e.output.usage
+            for e in events
+            if isinstance(e, ModelEvent) and e.span_id == sub
+        ]
+        assert len(sub_usages) == 1
+        assert sub_usages[0].total_tokens == 950
 
     def test_moving_total_tokens_is_kept(self) -> None:
         # A rid-less 'stop' record whose totalTokens MOVED is a real turn

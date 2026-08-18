@@ -17,8 +17,8 @@ JSONL, one event per line. Payload-bearing events:
   ``(timestamp, content)`` with toolCall ids masked, because OpenClaw's history
   sanitizer rewrites those ids between a turn's first snapshot and all later
   ones (see :func:`_keyless_content_json`). Snapshots may also carry scaffold
-  *roll-up* records — turn-finalization aggregates whose usage duplicates the
-  preceding per-call records; these are dropped (see
+  *roll-up* records — turn-finalization aggregates whose usage restates (sums)
+  the preceding per-call block; these are dropped (see
   :func:`_drop_rollup_aggregates`).
 - ``tool.start`` / ``tool.end`` are individual tool calls (the only place
   schema-B sub-agent activity is recorded).
@@ -74,6 +74,7 @@ from .detection import (
 from .extraction import (
     content_to_text,
     rich_or_text,
+    tokens_from_usage,
     toolcalls_of,
 )
 
@@ -188,20 +189,31 @@ def _primary_model(orchestrator_turns: list[dict[str, Any]]) -> str | None:
 
 
 def _drop_rollup_aggregates(
-    orchestrator_turns: list[dict[str, Any]],
+    turns: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Drop scaffold roll-up aggregate records from the assembled turns.
+    """Drop scaffold roll-up aggregate records from one assembled turn stream.
 
     OpenClaw's turn-finalization bookkeeping appends an AGGREGATE assistant
-    record after a block of per-call records: no ``responseId``, stopReason
-    ``stop``, no toolCalls, and a ``totalTokens`` FROZEN at the previous
-    record's value (its usage restates the block it closes, not a new API
-    call). Keeping it double-counts every usage field — ~23M phantom
-    ``cache_read`` tokens on one real CRUX capture — so a record matching the
-    full signature against the previously KEPT turn is dropped, with an info
-    log of how many. The signature is deliberately conjunctive: a turn with a
-    ``responseId``, a non-``stop`` stopReason, any toolCall, or a moving
-    ``totalTokens`` is never touched.
+    record after a block of per-call records. Its signature — deliberately
+    conjunctive, all five conditions — against the previously KEPT turn: no
+    ``responseId``, stopReason ``stop``, no toolCalls, a ``totalTokens``
+    FROZEN at the previous record's value, and usage that is NOT internally
+    consistent. A genuine per-call record satisfies ``input + output +
+    cacheRead + cacheWrite == totalTokens`` (verified for every turn across
+    the real captures; see :func:`.extraction.usage_to_inspect`), while an
+    aggregate's components SUM the block it closes against that stale total,
+    breaking the identity. Keeping one double-counts every usage field — ~23M
+    phantom ``cache_read`` tokens on one real CRUX capture.
+
+    The consistency condition keeps the genuine turns the frozen-total
+    comparison alone would delete on rid-less (service-sink) captures: a
+    text-only reply that happens to repeat the previous total, and adjacent
+    zero-usage provider-failure placeholders (``0 == 0+0+0+0``).
+
+    ``turns`` must be a SINGLE surface's (or a single sub-agent session's)
+    stream: callers group per session kind / per session first, so a turn
+    interleaved from another surface cannot sit between a block's closing
+    record and its roll-up and mask the frozen-total comparison.
     """
 
     def _is_rollup(turn: dict[str, Any], prev: dict[str, Any] | None) -> bool:
@@ -213,11 +225,13 @@ def _drop_rollup_aggregates(
             return False
         total = (turn.get("usage") or {}).get("totalTokens")
         prev_total = (prev.get("usage") or {}).get("totalTokens")
-        return total is not None and total == prev_total
+        if total is None or total != prev_total:
+            return False
+        return tokens_from_usage(turn.get("usage")) != total
 
     kept: list[dict[str, Any]] = []
     n_rollups = 0
-    for turn in orchestrator_turns:
+    for turn in turns:
         if _is_rollup(turn, kept[-1] if kept else None):
             n_rollups += 1
             continue
@@ -225,7 +239,7 @@ def _drop_rollup_aggregates(
     if n_rollups:
         logger.info(
             "Dropped %d scaffold roll-up aggregate record(s) whose usage "
-            "duplicates the preceding per-call records",
+            "restates the preceding per-call records",
             n_rollups,
         )
     return kept
@@ -239,15 +253,23 @@ def parse_telemetry(raw_events: Iterable[dict[str, Any]]) -> OpenClawTelemetry:
     """
     c = _consolidate(raw_events)
 
-    orchestrator_turns = _drop_rollup_aggregates(
-        sorted(
-            (
-                c.assistant_by_id[rid]
-                for rid, kind in c.assistant_kind.items()
-                if is_orchestrator(kind)
-            ),
-            key=lambda m: int(m.get("timestamp") or 0),
-        )
+    # The roll-up filter runs per surface: an aggregate closes a block on ITS
+    # surface, so a turn interleaved from another orchestrator surface (real
+    # captures mix e.g. main/telegram/cron) must not sit between a block's
+    # closing record and its roll-up and mask the frozen-total comparison.
+    turns_by_surface: dict[str, list[dict[str, Any]]] = {}
+    for rid, kind in c.assistant_kind.items():
+        if is_orchestrator(kind):
+            turns_by_surface.setdefault(kind, []).append(c.assistant_by_id[rid])
+    orchestrator_turns = sorted(
+        (
+            turn
+            for surface_turns in turns_by_surface.values()
+            for turn in _drop_rollup_aggregates(
+                sorted(surface_turns, key=lambda m: int(m.get("timestamp") or 0))
+            )
+        ),
+        key=lambda m: int(m.get("timestamp") or 0),
     )
 
     # Keyed turns are canonical; a keyless turn whose text matches a keyed one is
@@ -286,21 +308,26 @@ def parse_telemetry(raw_events: Iterable[dict[str, Any]]) -> OpenClawTelemetry:
                 args = tc.get("arguments")
                 child_to_spawn_args[csk] = args if isinstance(args, dict) else {}
 
-    subagents = [
-        SubagentSpan(
-            session_key=sk,
-            prompt=s.get("prompt"),
-            n_tool_calls=s.get("n_tool_calls", 0),
-            n_assistant_turns=s.get("n_assistant_turns", 0),
-            spawn_tool_call_id=child_to_toolcall.get(sk),
-            spawn_label=(child_to_spawn_args.get(sk) or {}).get("label"),
-            spawn_task=(child_to_spawn_args.get(sk) or {}).get("task"),
-            turns=s.get("turns", []),
-            tool_calls=s.get("tool_calls", []),
-            anchor_ts=s.get("anchor_ts", 0),
+    subagents = []
+    for sk, s in c.sessions.items():
+        # The same scaffold finalizes sub-agent sessions, so their schema-A
+        # turns get the same roll-up filter (not yet observed inside real
+        # sub-agent sessions — defensive parity with the orchestrator).
+        turns = _drop_rollup_aggregates(s.get("turns", []))
+        subagents.append(
+            SubagentSpan(
+                session_key=sk,
+                prompt=s.get("prompt"),
+                n_tool_calls=s.get("n_tool_calls", 0),
+                n_assistant_turns=len(turns) if turns else s.get("n_assistant_turns", 0),
+                spawn_tool_call_id=child_to_toolcall.get(sk),
+                spawn_label=(child_to_spawn_args.get(sk) or {}).get("label"),
+                spawn_task=(child_to_spawn_args.get(sk) or {}).get("task"),
+                turns=turns,
+                tool_calls=s.get("tool_calls", []),
+                anchor_ts=s.get("anchor_ts", 0),
+            )
         )
-        for sk, s in c.sessions.items()
-    ]
 
     # Every assistant turn in valid telemetry-hal records its model. A missing
     # one means malformed / non-telemetry-hal input, so fail here — the single,

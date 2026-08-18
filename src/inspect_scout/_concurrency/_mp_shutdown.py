@@ -125,9 +125,12 @@ async def shutdown_subprocesses(
     # PHASE 5: Inject shutdown sentinel to wake collector
     print_diagnostics("SubprocessShutdown", "Phase 5: Injecting shutdown sentinel")
     try:
-        # put_nowait: the queue is bounded, and a blocking put on a full queue
-        # would hang shutdown. If the queue is full the collector cannot be
-        # blocked on get() anyway, so the wake-up sentinel isn't needed.
+        # put_nowait: by Phase 5 the collector *task* has already exited (the
+        # task group is done); the sentinel only wakes an abandoned daemon
+        # reader thread, so it's best-effort. A blocking put could hang
+        # forever: workers killed in Phases 3/4 may have died between
+        # acquiring the bounded queue's semaphore and flushing to the pipe,
+        # leaking permits that Phase 6's drain can never release.
         ctx.upstream_queue.put_nowait(shutdown_sentinel)
         print_diagnostics("SubprocessShutdown", "Injected upstream queue sentinel")
     except Full:

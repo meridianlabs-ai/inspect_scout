@@ -209,7 +209,12 @@ def subprocess_main(
     def _put_upstream_or_drop(item: _mp_common.UpstreamQueueItem) -> None:
         # sync context: never block the event loop on a full queue. Dropping
         # a metrics snapshot or log record under backpressure beats stalling
-        # the worker's event loop.
+        # the worker's event loop. Note the *final* metrics snapshot (sent
+        # after the strategy zeroes its counts) has no successor to supersede
+        # it, so it can be lost too — that only leaves the live display and
+        # active-scans store stale (authoritative metrics accumulate
+        # parent-side in record_results), so don't "fix" a stale end-of-scan
+        # count by making this put blocking.
         try:
             ipc_ctx.upstream_queue.put_nowait(item)
         except Full:

@@ -113,9 +113,18 @@ def active_scans_store() -> Generator[ActiveScansStore, None, None]:
                 kvstore.delete(key)
 
         class _Store:
+            def __init__(self) -> None:
+                # deferred writers (e.g. a throttled metrics callback) can fire
+                # after the scan is over: a put would then raise on the closed
+                # sqlite connection, or resurrect the just-deleted entry. once
+                # closed, all puts are ignored.
+                self._closed = False
+
             def put_spec(
                 self, scan_id: str, spec: "ScanSpec", total_scans: int, location: str
             ) -> None:
+                if self._closed:
+                    return
                 scanner_names = list(spec.scanners.keys())
                 existing = json.loads(kvstore.get(pid_key) or "{}")
                 existing.update(
@@ -135,6 +144,8 @@ def active_scans_store() -> Generator[ActiveScansStore, None, None]:
                 kvstore.put(pid_key, json.dumps(existing))
 
             def put_metrics(self, scan_id: str, metrics: ScanMetrics) -> None:
+                if self._closed:
+                    return
                 existing = json.loads(kvstore.get(pid_key) or "{}")
                 existing.update(
                     {
@@ -148,6 +159,8 @@ def active_scans_store() -> Generator[ActiveScansStore, None, None]:
             def put_scanner_results(
                 self, scan_id: str, scanner: str, results: Sequence["ResultReport"]
             ) -> None:
+                if self._closed:
+                    return
                 existing = json.loads(kvstore.get(pid_key) or "{}")
                 summary = Summary.model_validate(
                     existing.get("summary", {"complete": False})
@@ -184,7 +197,11 @@ def active_scans_store() -> Generator[ActiveScansStore, None, None]:
                 data = json.loads(value)
                 return _parse_active_scan_info(data)
 
-        yield _Store()
+        store = _Store()
+        try:
+            yield store
+        finally:
+            store._closed = True
 
 
 def _parse_active_scan_info(data: dict[str, object]) -> ActiveScanInfo:

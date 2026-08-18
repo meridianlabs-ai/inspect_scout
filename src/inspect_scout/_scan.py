@@ -756,10 +756,9 @@ async def _scan_async_inner(
                         )
                         maybe_start_results_sync()
 
-                    # metrics reporting is throttled, so a trailing-edge write can
-                    # be deferred past the end of the scan. by then the store's
-                    # connection is closed and its entry has been deleted, so the
-                    # write must not run at all.
+                    # the store ignores writes once closed (see _Store); this
+                    # guard additionally keeps a late trailing-edge fire away
+                    # from the finished display.
                     scan_finished = False
 
                     def update_metrics(metrics: ScanMetrics) -> None:
@@ -800,8 +799,6 @@ async def _scan_async_inner(
                             await recorder.location(), complete=len(errors) == 0
                         )
                     finally:
-                        # nothing awaits between here and the delete, so a deferred
-                        # metrics write cannot land in the gap
                         scan_finished = True
                         active_store.delete_current()
 

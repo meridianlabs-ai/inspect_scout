@@ -14,8 +14,10 @@ Mapping (mirrors the Claude Code importer):
   linkable (e.g. cron/system-spawned sessions), placed at its file-order
   anchor. Sub-agent messages are excluded from the main thread.
 - Inbound operator messages (``message.in``) mark the matching user turns
-  ``source="operator"``; an inbound message with no matching user turn (it never
-  entered the session thread) becomes its own operator-sourced user message.
+  ``source="operator"`` (occurrence-for-occurrence, in time order); an inbound
+  message with no matching user turn (it never entered the session thread)
+  becomes its own operator-sourced user message in the thread — excluded from
+  later ``ModelEvent.input``, which reflects only what the model was shown.
 """
 
 from __future__ import annotations
@@ -49,6 +51,7 @@ from inspect_ai.tool import ToolResult as ToolResultContent
 
 from .extraction import (
     content_blocks,
+    content_to_text,
     rich_or_text,
     toolcalls_of,
     usage_to_inspect,
@@ -90,19 +93,16 @@ def _stop_and_error(turn: dict[str, Any]) -> tuple[StopReason, str | None]:
     return "unknown", (str(message) if message else None)
 
 
-def _plain_text(content: object) -> str:
-    """A message ``content`` as comparable plain text (str or rich blocks).
+def _match_text(content: object) -> str:
+    """A message ``content`` as comparable text for operator reconciliation.
 
-    Used to match an inbound ``message.in`` (always a plain string) against the
-    session's user turns (plain strings or content-block lists).
+    Both sides flatten through :func:`.extraction.content_to_text`: an inbound
+    ``message.in`` is a plain string, but its user turn may have re-entered
+    the thread as a content-block list, and the two must compare equal (same
+    joiner, same block filter) or the turn is left unstamped and the send
+    duplicated as a standalone message.
     """
-    if isinstance(content, str):
-        return content.strip()
-    if isinstance(content, list):
-        return " ".join(
-            str(b.get("text", "")) for b in content if isinstance(b, dict)
-        ).strip()
-    return str(content or "").strip()
+    return content_to_text(content).strip()
 
 
 def build_content(
@@ -111,16 +111,19 @@ def build_content(
     """Build the event stream and the main-thread messages in one pass.
 
     User turns, orchestrator assistant turns, and real compactions are
-    interleaved by timestamp. A single running conversation is threaded through
-    both outputs: each ``ModelEvent.input`` carries the conversation up to that
+    interleaved by timestamp. A running conversation is threaded through both
+    outputs: each ``ModelEvent.input`` carries the conversation up to that
     turn (so the events view shows user prompts and tool results, matching the
-    Claude Code importer), and the final running list is the message thread.
+    Claude Code importer), and the full running list is the message thread.
 
     Inbound operator messages (``message.in``) are reconciled with the user
-    turns by content: a match stamps the existing turn ``source="operator"``
-    (never a duplicate message); an unmatched inbound message — one that never
-    entered the session thread — is added as its own operator-sourced user
-    message so mid-run operator interventions are preserved.
+    turns by content, occurrence-for-occurrence in time order: each send
+    stamps the first unconsumed user turn carrying the same text at-or-after
+    it ``source="operator"`` (never a duplicate message). A send with no such
+    turn — it never entered the session thread — is added as its own
+    operator-sourced user message so mid-run operator interventions are
+    preserved; it appears in the message thread only, NOT in later
+    ``ModelEvent.input``, because the model never saw it.
 
     Each sub-agent agent span is inserted immediately after the orchestrator
     tool event that spawned it. A sub-agent whose spawn could not be linked to
@@ -154,20 +157,32 @@ def build_content(
             ", ".join(sa.session_key for sa in unlinked),
         )
 
-    # The inbound operator channel (``message.in``). An inbound message whose
-    # text matches a user turn marks THAT turn ``source="operator"`` (no
-    # duplicate message); one with no matching user turn (it never entered the
-    # session thread, e.g. delivered while the agent was busy) becomes its own
-    # operator-sourced user message, placed by its timestamp.
-    operator_contents = {_plain_text(m.get("content")) for m in parse.operator_messages}
-    matched = {
-        _plain_text(t.get("content")) for t in parse.user_turns
-    } & operator_contents
-    extra_operator = [
-        m
-        for m in parse.operator_messages
-        if _plain_text(m.get("content")) not in matched
-    ]
+    # The inbound operator channel (``message.in``). Each send pairs with at
+    # most ONE user turn carrying the same text — the first unconsumed one
+    # at-or-after the send, since a message can only enter the session thread
+    # after it arrives (observed lags on real captures run from 0 to minutes;
+    # user turns carry no idempotencyKey there, so text is the only join key).
+    # Set-of-texts matching would silently drop a repeated send once its first
+    # occurrence matched, and could stamp a twin turn that predates the send.
+    # A send with no matching turn (it never entered the session thread, e.g.
+    # delivered while the agent was busy) becomes its own operator-sourced
+    # user message, placed by its timestamp.
+    turns_by_text: dict[str, list[dict[str, Any]]] = {}
+    for turn in parse.user_turns:  # already timestamp-sorted
+        turns_by_text.setdefault(_match_text(turn.get("content")), []).append(turn)
+    operator_turn_ids: set[int] = set()
+    extra_operator: list[dict[str, Any]] = []
+    for m in sorted(
+        parse.operator_messages, key=lambda m: int(m.get("timestamp") or 0)
+    ):
+        queue = turns_by_text.get(_match_text(m.get("content")), [])
+        m_ts = int(m.get("timestamp") or 0)
+        turn = next((t for t in queue if int(t.get("timestamp") or 0) >= m_ts), None)
+        if turn is not None:
+            queue.remove(turn)
+            operator_turn_ids.add(id(turn))
+        else:
+            extra_operator.append(m)
 
     # Merge user turns + operator messages + assistant turns + real compactions,
     # ordered by timestamp.
@@ -183,7 +198,8 @@ def build_content(
     ordered.sort(key=lambda item: item[0])
 
     events: list[Event] = []
-    messages: list[ChatMessage] = []  # running conversation; also the final thread
+    thread: list[ChatMessage] = []  # the final message thread (all messages)
+    conversation: list[ChatMessage] = []  # what the model saw (ModelEvent.input)
     order = 0  # monotonic working_start ordinal (stable tie-break for the timeline)
     last_ts = _ts_to_datetime(ordered[0][0]) if ordered else None
     last_ts = last_ts or _EPOCH
@@ -196,17 +212,19 @@ def build_content(
             # An operator-delivered turn carries its true source; other user
             # turns (runtime context, inter-session messages) carry none.
             source: Literal["operator"] | None = (
-                "operator" if _plain_text(item.get("content")) in matched else None
+                "operator" if id(item) in operator_turn_ids else None
             )
-            messages.append(
-                ChatMessageUser(
-                    content=rich_or_text(item.get("content")), source=source
-                )
+            user_msg = ChatMessageUser(
+                content=rich_or_text(item.get("content")), source=source
             )
+            thread.append(user_msg)
+            conversation.append(user_msg)
             continue
 
         if kind == "operator":  # message.in not present in the session thread
-            messages.append(
+            # Thread-only: the model never saw this message, so it must not
+            # appear in later ModelEvents' input.
+            thread.append(
                 ChatMessageUser(
                     content=rich_or_text(item.get("content")), source="operator"
                 )
@@ -273,7 +291,7 @@ def build_content(
         events.append(
             ModelEvent(
                 model=turn_model,
-                input=list(messages),  # conversation up to (not including) this turn
+                input=list(conversation),  # what the model saw before this turn
                 tools=[],
                 tool_choice="auto",
                 config=GenerateConfig(),
@@ -285,7 +303,8 @@ def build_content(
             )
         )
         order += 1
-        messages.append(assistant_msg)
+        thread.append(assistant_msg)
+        conversation.append(assistant_msg)
 
         for tc in toolcalls:
             tc_id = str(tc.get("id") or "")
@@ -322,14 +341,14 @@ def build_content(
 
             # The tool result still belongs in the orchestrator message thread,
             # whether or not the tool spawned a sub-agent.
-            messages.append(
-                ChatMessageTool(
-                    content=result_content,
-                    tool_call_id=tc_id,
-                    function=function,
-                    error=error,
-                )
+            tool_msg = ChatMessageTool(
+                content=result_content,
+                tool_call_id=tc_id,
+                function=function,
+                error=error,
             )
+            thread.append(tool_msg)
+            conversation.append(tool_msg)
 
     # Any unlinked sub-agent spans anchored after the last orchestrator turn.
     for sa in unlinked:
@@ -337,7 +356,7 @@ def build_content(
             events, sa, last_ts, order, parse.result_by_callid, spawn_tool=None
         )
 
-    return events, messages
+    return events, thread
 
 
 def _emit_subagent_span(

@@ -311,11 +311,15 @@ that does not generalize. We therefore **do not** consume the outbound
 `message.sending`/`message.out` events or nest reports inside sub-agent spans.
 
 The inbound `message.in` events (the operator channel) **are** consumed, for
-provenance rather than content: an inbound message whose text matches a user
-turn marks that turn `source="operator"`, and one that never entered the
-session thread (e.g. delivered while the agent was busy) becomes its own
-operator-sourced user message — so mid-run operator interventions are
-preserved for downstream analysis.
+provenance rather than content: each inbound send marks the first user turn
+carrying the same text at-or-after it `source="operator"`
+(occurrence-for-occurrence, so a repeated send is never collapsed into its
+first match), and a send that never entered the session thread (e.g.
+delivered while the agent was busy) becomes its own operator-sourced user
+message — so mid-run operator interventions are preserved for downstream
+analysis. Such a message appears in the message thread only, **not** in later
+`ModelEvent.input`: the model never saw it, and `input` reflects only what
+the model was actually shown.
 
 ### Spawn-less sub-agent sessions are placed by file-order anchor
 

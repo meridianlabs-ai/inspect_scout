@@ -1792,6 +1792,145 @@ class TestOperatorChannel:
         roles = [m.role for m in messages]
         assert roles.index("assistant") < messages.index(unmatched[0])
 
+    def test_repeated_operator_send_not_lost(self) -> None:
+        # The operator sends the same text twice; only one instance re-entered
+        # the thread as a user turn. Occurrence-based reconciliation must
+        # surface the second send as its own operator message — set-of-texts
+        # semantics silently dropped it once the first occurrence matched.
+        raw = [
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "status?",
+                "timestamp": 900,
+            },
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:main:main:s1",
+                "messages": [
+                    {"role": "user", "timestamp": 1000, "content": "status?"},
+                    {
+                        "role": "assistant",
+                        "responseId": "r1",
+                        "timestamp": 2000,
+                        "model": "m",
+                        "content": [{"type": "text", "text": "working"}],
+                    },
+                ],
+            },
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "status?",
+                "timestamp": 2500,
+            },
+        ]
+        messages = build_messages(parse_telemetry(raw))
+        status = [m for m in messages if m.role == "user" and m.text == "status?"]
+        assert len(status) == 2
+        assert all(m.source == "operator" for m in status)
+        # The unmatched second send is placed by its timestamp, after the
+        # assistant turn it followed.
+        roles = [m.role for m in messages]
+        assert roles.index("assistant") < messages.index(status[1])
+
+    def test_twin_text_matches_turn_at_or_after_send(self) -> None:
+        # Two user turns share the operator text; the send precedes only the
+        # second. A message can only enter the thread at-or-after it arrives,
+        # so the LATER twin is stamped and the earlier one left untouched.
+        raw = [
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:main:main:s1",
+                "messages": [
+                    {"role": "user", "timestamp": 500, "content": "ok"},
+                    {"role": "user", "timestamp": 1500, "content": "ok"},
+                ],
+            },
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "ok",
+                "timestamp": 1000,
+            },
+        ]
+        messages = build_messages(parse_telemetry(raw))
+        users = [m for m in messages if m.role == "user"]
+        assert len(users) == 2  # matched: no standalone duplicate added
+        assert [m.source for m in users] == [None, "operator"]
+
+    def test_multiline_send_matches_block_content_turn(self) -> None:
+        # A multi-line send re-enters the thread as a content-block list; both
+        # sides must flatten identically (content_to_text) or the turn is left
+        # unstamped AND the send duplicated as a standalone message.
+        raw = [
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "line1\nline2",
+                "timestamp": 900,
+            },
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:main:main:s1",
+                "messages": [
+                    {
+                        "role": "user",
+                        "timestamp": 1000,
+                        "content": [
+                            {"type": "text", "text": "line1"},
+                            {"type": "text", "text": "line2"},
+                        ],
+                    },
+                ],
+            },
+        ]
+        messages = build_messages(parse_telemetry(raw))
+        users = [m for m in messages if m.role == "user"]
+        assert len(users) == 1
+        assert users[0].source == "operator"
+
+    def test_unmatched_send_not_in_later_model_input(self) -> None:
+        # An unmatched inbound message never entered the session thread — the
+        # model never saw it. It belongs in the final message thread, but NOT
+        # in later ModelEvents' input (the conversation the model was shown).
+        raw = [
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:main:main:s1",
+                "messages": [
+                    {"role": "user", "timestamp": 1000, "content": "start"},
+                    {
+                        "role": "assistant",
+                        "responseId": "r1",
+                        "timestamp": 2000,
+                        "model": "m",
+                        "content": [{"type": "text", "text": "A1"}],
+                    },
+                    {
+                        "role": "assistant",
+                        "responseId": "r2",
+                        "timestamp": 3000,
+                        "model": "m",
+                        "content": [{"type": "text", "text": "A2"}],
+                    },
+                ],
+            },
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "secret aside",
+                "timestamp": 2500,
+            },
+        ]
+        events, messages = build_content(parse_telemetry(raw))
+        models = [e for e in events if isinstance(e, ModelEvent)]
+        assert len(models) == 2
+        assert not any(m.text == "secret aside" for m in models[1].input)
+        aside = [m for m in messages if m.role == "user" and m.text == "secret aside"]
+        assert len(aside) == 1
+        assert aside[0].source == "operator"
+
     def test_fixture_prompts_carry_operator_source(
         self, raw_events: list[dict[str, Any]]
     ) -> None:

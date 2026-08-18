@@ -251,6 +251,52 @@ class TestParse:
         with pytest.raises(ValueError, match=f"kind {expected_kind!r}"):
             parse_telemetry([*self._orch_raw("agent:main:main:s1"), event])
 
+    def test_explicit_kind_is_orchestrator(self) -> None:
+        # OpenClaw's gateway-fallback path opens explicitly-created sessions on
+        # the orchestrator agent (sessionKey
+        # ``agent:main:explicit:gateway-fallback-<uuid>``; observed carrying the
+        # same ``agentId`` as the ``main`` sessions and ordinary main-agent tool
+        # activity). Such a session must import as orchestrator activity: its
+        # assistant turns join ``orchestrator_turns``, it is NOT reconstructed
+        # as a sub-agent, and its always-on ``tool.*`` timing channel is
+        # accepted rather than tripping the unrecognized-kind refusal.
+        explicit_key = (
+            "agent:main:explicit:gateway-fallback-9b603d99-b6c2-477e-b61e-e079f0e8"
+        )
+        raw = [
+            *self._orch_raw("agent:main:main:s1"),
+            {
+                "type": "agent.start",
+                "sessionKey": explicit_key,
+                "prompt": "fallback prompt",
+                "messages": [
+                    {
+                        "role": "assistant",
+                        "responseId": "r2",
+                        "timestamp": 2,
+                        "model": "m",
+                        "content": [{"type": "text", "text": "via fallback"}],
+                    }
+                ],
+            },
+            {
+                "type": "tool.start",
+                "sessionKey": explicit_key,
+                "toolName": "exec",
+                "params": {},
+            },
+            {
+                "type": "tool.end",
+                "sessionKey": explicit_key,
+                "toolName": "exec",
+                "durationMs": 5,
+                "success": True,
+            },
+        ]
+        parse = parse_telemetry(raw)
+        assert [t["responseId"] for t in parse.orchestrator_turns] == ["r1", "r2"]
+        assert parse.subagents == []
+
     def test_message_events_without_session_key_are_ignored(self) -> None:
         # message.* events carry no sessionKey and are intentionally not
         # consumed; their missing kind must NOT trip the unrecognized-kind

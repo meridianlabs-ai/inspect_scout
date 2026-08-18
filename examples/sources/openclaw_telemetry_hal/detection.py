@@ -12,11 +12,15 @@ import json
 
 # Session-kind classification (sessionKey = agent:<...>:<kind>:<uuid>).
 # ``main``/``telegram``/``dashboard`` are orchestrator surfaces (terminal, the
-# Telegram channel, and the web dashboard respectively); ``subagent`` is
-# delegated work. Any other kind on a consumed event (a surface we have not
+# Telegram channel, and the web dashboard respectively); ``explicit`` is an
+# explicitly-created session on the orchestrator agent — observed as
+# ``agent:main:explicit:gateway-fallback-<uuid>`` when OpenClaw's
+# gateway-fallback path opens a session for the main agent (same ``agentId``
+# as the ``main`` sessions, ordinary main-agent tool activity); ``subagent``
+# is delegated work. Any other kind on a consumed event (a surface we have not
 # seen, e.g. another chat channel) fails the import loudly — see
 # ``_consolidate`` — rather than silently dropping that session's turns.
-ORCH_KINDS = ("telegram", "main", "dashboard")  # the orchestrator
+ORCH_KINDS = ("telegram", "main", "dashboard", "explicit")  # the orchestrator
 SUBAGENT_KIND = "subagent"
 
 _REDACTED = "[REMOVED]"

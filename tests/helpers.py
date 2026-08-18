@@ -29,11 +29,8 @@ def temp_kvstore() -> Iterator[str]:
 def temp_active_scans_store() -> Iterator[str]:
     """Redirect the active-scans store to a temp kvstore, cleaned up on exit.
 
-    Keeps tests that run real scans from writing into the developer's live
-    scout_active_scans store (and from sweeping its real entries).
-
-    Yields:
-        The temporary kvstore name.
+    Keeps scan-running tests out of the developer's live scout_active_scans
+    store. Yields the temporary kvstore name.
     """
     with temp_kvstore() as name:
         with patch("inspect_scout._recorder.active_scans_store._STORE_NAME", name):

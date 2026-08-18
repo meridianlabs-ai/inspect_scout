@@ -21,11 +21,9 @@ from tests.helpers import temp_active_scans_store
 
 LOGS_DIR = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
 
-# the strategy hardcodes @throttle(1); shrinking the window keeps the same
-# trailing-edge mechanics while the test holds the vulnerable gap open for
-# fractions of a second instead of multiples of it. the window must still be
-# generous enough that the strategy's teardown metrics call lands inside it
-# even on a loaded CI machine, or no trailing-edge fire gets scheduled.
+# shrinks the strategy's hardcoded @throttle(1) window, but stays generous
+# enough that the strategy's teardown metrics call lands inside it on a
+# loaded CI machine (otherwise no trailing-edge fire gets scheduled at all)
 THROTTLE_WINDOW = 0.3
 
 
@@ -46,12 +44,10 @@ def failing_probe_scanner() -> Scanner[Transcript]:
 
 
 def test_completed_scan_leaves_no_active_scan_entry(tmp_path: Path) -> None:
-    """Cleanup smoke test for the success path.
+    """Cleanup smoke test: a completed scan deletes its active-scans entry.
 
-    A completed scan must delete its active-scans entry. (The late
-    metrics-write hazard is only reachable on the interrupted path -- on
-    completion the pending trailing-edge write is cancelled with the scan's
-    task group -- so this test pins only the cleanup behavior.)
+    The late-write hazard is only reachable on the interrupted path (on
+    completion the pending write is cancelled with the scan's task group).
     """
     with temp_active_scans_store():
         status = scan(
@@ -75,20 +71,8 @@ def test_interrupted_scan_survives_a_late_metrics_write(
 ) -> None:
     """A trailing-edge metrics write coming due after the store has closed.
 
-    When a scanner error interrupts the scan, the active-scans store is closed
-    and its entry deleted, then handle_scan_interrupted awaits a final sync.
-    A pending trailing-edge metrics write whose throttle window expires during
-    that sync must not run: the store's sqlite connection is closed and the
-    write would raise (and resurrect the deleted entry if it got further).
-
-    Holding the interrupted-path sync open past the throttle window makes the
-    write come due inside that gap deterministically. The test records when
-    throttled fires happen and when the scan deletes its store entry, and
-    asserts a fire actually came due after the delete -- so it fails loudly
-    if the vulnerable window ever stops opening, rather than passing
-    vacuously. (Without the guards, that post-delete fire raises
-    sqlite3.ProgrammingError out of scan() itself, failing the test with the
-    original error.)
+    Holds the interrupted-path sync open past the throttle window and asserts
+    a fire came due after the entry delete (fails loudly if the window closes).
     """
     # shrink the throttle window and record when the throttled function fires
     fire_times: list[float] = []

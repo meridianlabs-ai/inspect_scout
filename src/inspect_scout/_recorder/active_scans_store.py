@@ -115,9 +115,8 @@ def active_scans_store() -> Generator[ActiveScansStore, None, None]:
         class _Store:
             def __init__(self) -> None:
                 # deferred writers (e.g. a throttled metrics callback) can fire
-                # after the scan is over: a put would then raise on the closed
-                # sqlite connection, or resurrect the just-deleted entry. once
-                # closed, all puts are ignored.
+                # after the scan is over. once closed, puts are ignored rather
+                # than raising or resurrecting the just-deleted entry.
                 self._closed = False
 
             def put_spec(

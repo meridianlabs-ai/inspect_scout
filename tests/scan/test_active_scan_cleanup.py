@@ -130,8 +130,8 @@ def test_interrupted_scan_survives_a_late_metrics_write(
         assert deleted_at, "scan never deleted its active-scans entry"
         assert fire_times and max(fire_times) > deleted_at[0], (
             "no trailing-edge metrics write came due after the store entry "
-            "was deleted -- the vulnerable window this test exercises did "
-            "not open"
+            "was deleted, so the vulnerable window this test exercises "
+            "never opened"
         )
         with active_scans_store() as store:
             assert store.read_all() == {}

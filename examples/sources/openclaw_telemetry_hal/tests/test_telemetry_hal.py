@@ -50,6 +50,7 @@ from ..extraction import (
 )
 from ..parse import (
     OpenClawTelemetry,
+    SubagentSpan,
     parse_telemetry,
 )
 
@@ -1274,6 +1275,20 @@ class TestSchemaBSubagents:
         tool = self._tool_event(events)
         assert tool.completed == tool.timestamp
 
+    def test_schema_b_malformed_duration_ms_survives(self) -> None:
+        # ``durationMs`` comes verbatim out of json.loads: a numeric string
+        # still yields a width; a non-numeric or negative value degrades to
+        # zero width — never a TypeError that aborts the whole import (and a
+        # negative never places ``completed`` before ``timestamp``).
+        for bad, width in (("250", 0.25), ("bogus", 0.0), (-500, 0.0)):
+            raw = self._raw(success=True, ts=False)
+            end = next(e for e in raw if e.get("type") == "tool.end")
+            end["durationMs"] = bad
+            events = build_events(parse_telemetry(raw))
+            tool = self._tool_event(events)
+            assert tool.completed is not None
+            assert (tool.completed - tool.timestamp).total_seconds() == width
+
     def test_schema_b_tool_failure_surfaced(self) -> None:
         # A tool.end with success=false is a real failure: the standard
         # failed/error fields are populated (not left None) and carry the
@@ -1358,10 +1373,13 @@ class TestSpawnlessSubagents:
         assert parse.subagents[0].anchor_ts == 2000
         with caplog.at_level(logging.INFO):
             events = build_events(parse)
-        # Placed between A1 and A3 — not dropped, and reported at info level.
+        # Placed immediately AFTER its anchor turn A2 (the latest orchestrator
+        # turn seen, in file order, before the session's first event): the
+        # orchestrator had already produced A2 when the session appeared, so
+        # the span belongs on A2's far side. Reported at info level.
         span = next(e for e in events if isinstance(e, SpanBeginEvent))
         roots = [e for e in events if isinstance(e, ModelEvent)]
-        assert events.index(roots[0]) < events.index(span) < events.index(roots[2])
+        assert events.index(span) == events.index(roots[1]) + 1
         assert any(
             "file-order anchor" in r.getMessage() and self.CHILD in r.getMessage()
             for r in caplog.records
@@ -1401,6 +1419,142 @@ class TestSpawnlessSubagents:
         span = next(e for e in events if isinstance(e, SpanBeginEvent))
         first_model = next(e for e in events if isinstance(e, ModelEvent))
         assert events.index(span) < events.index(first_model)
+
+    def test_anchor_flush_precedes_interleaved_compaction(self) -> None:
+        # The anchor flush runs on every timeline item, so a span anchored
+        # before a compaction is emitted before that compaction, not swept
+        # past it to the next assistant turn.
+        orch = "agent:main:cron:orchestrator"
+        raw = [
+            {
+                "type": "agent.start",
+                "sessionKey": orch,
+                "messages": [self._turn("r1", 1000, "A1")],
+            },
+            {"type": "agent.start", "sessionKey": self.CHILD, "prompt": self.PROMPT},
+            {
+                "type": "tool.start",
+                "sessionKey": self.CHILD,
+                "toolName": "exec",
+                "params": {},
+            },
+            {
+                "type": "agent.end",
+                "sessionKey": orch,
+                "messages": [
+                    self._turn("r1", 1000, "A1"),
+                    {
+                        "role": "compactionSummary",
+                        "timestamp": 1500,
+                        "tokensBefore": 100,
+                    },
+                    self._turn("r2", 2000, "A2"),
+                ],
+            },
+        ]
+        events = build_events(parse_telemetry(raw))
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        compaction = next(e for e in events if isinstance(e, CompactionEvent))
+        assert events.index(span) < events.index(compaction)
+
+    def test_span_named_from_inline_subagent_task_tag(self) -> None:
+        # The fixture-shaped prompt announces the task INLINE after the
+        # "[Subagent Task]:" tag. The tag is authoritative — it must not be
+        # skipped as bracket boilerplate (which named the span from the later
+        # report-back line instead).
+        raw = self._raw()
+        raw[1] = dict(
+            raw[1],
+            prompt=(
+                "[Fri 2026-03-06 13:08 PST] [Subagent Context] You are running "
+                "as a subagent (depth 1/1). Results auto-announce to your "
+                "requester; do not busy-poll for status.\n"
+                "\n"
+                "[Subagent Task]: Check the unread queue\n"
+                "\n"
+                "Report back with anything unread."
+            ),
+        )
+        events = build_events(parse_telemetry(raw))
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        assert span.name == "Check the unread queue"
+
+    def test_span_named_from_line_after_bare_task_tag(self) -> None:
+        # The tag alone on its line: the task is the next non-empty line.
+        raw = self._raw()
+        raw[1] = dict(
+            raw[1],
+            prompt=(
+                "[Subagent Context] You are running as a subagent.\n"
+                "[Subagent Task]\n"
+                "Run the smaller grids first.\n"
+                "Then report back."
+            ),
+        )
+        events = build_events(parse_telemetry(raw))
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        assert span.name == "Run the smaller grids first."
+
+    def test_duplicate_spawn_claim_warns_and_places_by_anchor(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        # A second session claiming an already-claimed spawn call violates the
+        # documented 1:1 spawn->session mapping (corrupt/ambiguous linkage).
+        # It is anchor-placed like a spawn-less session, but the anomaly must
+        # surface at WARNING level — the normal cron pattern stays at info.
+        turn = {
+            "role": "assistant",
+            "responseId": "r1",
+            "timestamp": 1000,
+            "model": "m",
+            "content": [
+                {"type": "text", "text": "spawning"},
+                {
+                    "type": "toolCall",
+                    "id": "tc1",
+                    "name": "sessions_spawn",
+                    "arguments": {"label": "one"},
+                },
+            ],
+        }
+        def span_for(key: str) -> SubagentSpan:
+            return SubagentSpan(
+                session_key=key,
+                prompt=None,
+                n_tool_calls=0,
+                n_assistant_turns=0,
+                spawn_tool_call_id="tc1",
+                spawn_label="one",
+                spawn_task=None,
+                turns=[],
+                tool_calls=[],
+                anchor_ts=1000,
+            )
+        parse = OpenClawTelemetry(
+            orchestrator_turns=[turn],
+            user_turns=[],
+            compactions=[],
+            result_by_callid={},
+            model_name="m",
+            subagents=[
+                span_for("agent:main:subagent:claim-1"),
+                span_for("agent:main:subagent:claim-2"),
+            ],
+            session_id="s",
+        )
+        with caplog.at_level(logging.WARNING):
+            events = build_events(parse)
+        spans = {e.id for e in events if isinstance(e, SpanBeginEvent)}
+        assert spans == {
+            "agent:main:subagent:claim-1",
+            "agent:main:subagent:claim-2",
+        }
+        assert any(
+            r.levelno == logging.WARNING
+            and "already claimed" in r.getMessage()
+            and "agent:main:subagent:claim-2" in r.getMessage()
+            for r in caplog.records
+        )
 
 
 class TestRollupAggregates:

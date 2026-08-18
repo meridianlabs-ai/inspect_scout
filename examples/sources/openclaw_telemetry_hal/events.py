@@ -136,18 +136,31 @@ def build_content(
     """
     # Each spawned sub-agent links to the single orchestrator toolCall that
     # spawned it: a spawn result names exactly one ``childSessionKey``, so the
-    # mapping is 1:1. A sub-agent with no linkable spawn call (or, defensively,
-    # one whose call is already claimed) is placed by its file-order anchor
-    # instead — dropping it would silently lose that session's activity (46 of
-    # 101 sub-agent sessions on a real cron-scheduled CRUX capture).
+    # mapping is 1:1. A sub-agent with no linkable spawn call is placed by its
+    # file-order anchor instead — dropping it would silently lose that
+    # session's activity (46 of 101 sub-agent sessions on a real
+    # cron-scheduled CRUX capture).
     subagent_by_tool_call: dict[str, SubagentSpan] = {}
     unlinked: list[SubagentSpan] = []
     for sa in parse.subagents:
         tc_id = sa.spawn_tool_call_id
-        if tc_id is not None and tc_id not in subagent_by_tool_call:
-            subagent_by_tool_call[tc_id] = sa
-        else:
+        if tc_id is None:
             unlinked.append(sa)
+        elif tc_id in subagent_by_tool_call:
+            # A second claim on the same spawn call violates the documented
+            # 1:1 spawn->session mapping (corrupt/ambiguous linkage). Place it
+            # like a spawn-less session, but — unlike that normal cron
+            # pattern — surface the anomaly as a warning.
+            logger.warning(
+                "OpenClaw sub-agent %s claims spawn call %s already claimed "
+                "by %s; placing it by file-order anchor instead",
+                sa.session_key,
+                tc_id,
+                subagent_by_tool_call[tc_id].session_key,
+            )
+            unlinked.append(sa)
+        else:
+            subagent_by_tool_call[tc_id] = sa
     unlinked.sort(key=lambda sa: sa.anchor_ts)
     if unlinked:
         logger.info(
@@ -208,6 +221,25 @@ def build_content(
         ts = _ts_to_datetime(ts_ms) or last_ts
         last_ts = ts
 
+        # Emit any unlinked sub-agent spans whose file-order anchor has been
+        # passed, so each lands immediately AFTER the orchestrator turn the
+        # run was on when the session first appeared. Strictly-before (<): a
+        # span whose anchor EQUALS this item's ts belongs on the far side of
+        # the anchor turn — the turn had already been produced when the
+        # session appeared. Running the flush on every timeline item keeps
+        # the span as close to its anchor as possible (in particular, before
+        # an interleaved compaction rather than after it); the trailing loop
+        # below covers anchors at or past the last item.
+        while unlinked and unlinked[0].anchor_ts < ts_ms:
+            order = _emit_subagent_span(
+                events,
+                unlinked.pop(0),
+                ts,
+                order,
+                parse.result_by_callid,
+                spawn_tool=None,
+            )
+
         if kind == "user":
             # An operator-delivered turn carries its true source; other user
             # turns (runtime context, inter-session messages) carry none.
@@ -248,19 +280,6 @@ def build_content(
             )
             order += 1
             continue
-
-        # Emit any unlinked sub-agent spans whose file-order anchor has been
-        # reached, so each lands next to the orchestrator turn the run was on
-        # when the session first appeared.
-        while unlinked and unlinked[0].anchor_ts <= ts_ms:
-            order = _emit_subagent_span(
-                events,
-                unlinked.pop(0),
-                ts,
-                order,
-                parse.result_by_callid,
-                spawn_tool=None,
-            )
 
         # Assistant turn: emit a model event (carrying the conversation so far as
         # input), then its tool events.
@@ -546,7 +565,7 @@ def _emit_subagent_span(
         # call a real width — downstream busy-time sums rely on it — so only a
         # call with neither collapses to zero duration.
         call_start = _ts_to_datetime(call.get("startTs")) or timestamp
-        duration_ms = call.get("durationMs")
+        duration_ms = _duration_to_ms(call.get("durationMs"))
         call_end = _ts_to_datetime(call.get("endTs")) or (
             call_start + timedelta(milliseconds=duration_ms)
             if duration_ms
@@ -626,17 +645,47 @@ def _ts_to_datetime(value: Any) -> datetime | None:
     return datetime.fromtimestamp(ms / 1000.0, tz=timezone.utc)
 
 
+def _duration_to_ms(value: Any) -> int | None:
+    """Coerce a telemetry ``durationMs`` to positive-int milliseconds.
+
+    The value comes verbatim out of ``json.loads``, so guard it the way
+    ``_ts_to_datetime`` guards timestamps: a numeric string still yields a
+    width; a non-numeric or non-positive value yields ``None`` (zero width)
+    rather than aborting the import inside ``timedelta`` arithmetic — or
+    placing a call's completion before its start.
+    """
+    try:
+        ms = int(value)
+    except (TypeError, ValueError):
+        return None
+    return ms if ms > 0 else None
+
+
+_TASK_TAG = "[Subagent Task]"
+
+
 def _task_line(prompt: str | None) -> str | None:
     """The first task-bearing line of a sub-agent prompt, for span naming.
 
     A spawn-less (anchor-placed) session has no ``label``/``task`` arguments to
     name its span from, only its own prompt — which opens with OpenClaw's
-    scaffold preamble (e.g. ``[Subagent Context] You are running as a
-    subagent…``). Skip bracketed and boilerplate lines and return the first
-    line that carries the actual task, or ``None`` when there is none.
+    scaffold preamble (a timestamp tag and/or ``[Subagent Context] You are
+    running as a subagent…``) and usually announces the task with a
+    ``[Subagent Task]`` tag: inline (``[Subagent Task]: <task>``) or with the
+    task on the following line. The tag is authoritative when present.
+    Otherwise fall back to the first line that is neither bracketed nor the
+    subagent boilerplate — prompt BODIES also carry bracketed lines (template
+    placeholders), so an unrecognized bracket line never becomes a name.
+    Returns ``None`` when nothing task-bearing is found.
     """
-    for line in (prompt or "").splitlines():
-        line = line.strip()
+    lines = [line.strip() for line in (prompt or "").splitlines()]
+    for i, line in enumerate(lines):
+        if line.startswith(_TASK_TAG):
+            inline = line[len(_TASK_TAG) :].lstrip(" :").strip()
+            if inline:
+                return inline
+            return next((follow for follow in lines[i + 1 :] if follow), None)
+    for line in lines:
         if (
             line
             and not line.startswith("[")

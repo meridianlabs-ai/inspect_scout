@@ -233,12 +233,15 @@ def build_content(
         # session appeared. Running the flush on every timeline item keeps
         # the span as close to its anchor as possible (in particular, before
         # an interleaved compaction rather than after it); the trailing loop
-        # below covers anchors at or past the last item.
+        # below covers anchors at or past the last item. Each span is STAMPED
+        # at its own anchor time — not this (later) item's — falling back to
+        # the current ts only for a zero/invalid anchor.
         while unlinked and unlinked[0].anchor_ts < ts_ms:
+            anchored = unlinked.pop(0)
             order = _emit_subagent_span(
                 events,
-                unlinked.pop(0),
-                ts,
+                anchored,
+                _ts_to_datetime(anchored.anchor_ts) or ts,
                 order,
                 parse.result_by_callid,
                 spawn_tool=None,
@@ -376,7 +379,12 @@ def build_content(
     # Any unlinked sub-agent spans anchored after the last orchestrator turn.
     for sa in unlinked:
         order = _emit_subagent_span(
-            events, sa, last_ts, order, parse.result_by_callid, spawn_tool=None
+            events,
+            sa,
+            _ts_to_datetime(sa.anchor_ts) or last_ts,
+            order,
+            parse.result_by_callid,
+            spawn_tool=None,
         )
 
     return events, thread

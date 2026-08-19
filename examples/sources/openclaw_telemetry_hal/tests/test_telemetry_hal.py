@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import logging
 from collections import Counter
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -437,6 +438,71 @@ class TestParse:
         # One agent span, and no stray root-level spawn event from the twin.
         assert sum(1 for e in events if isinstance(e, SpanBeginEvent)) == 1
         assert not [e for e in events if isinstance(e, ToolEvent) and e.span_id is None]
+
+    def test_keyless_turns_do_not_collapse_across_sessions(self) -> None:
+        # The keyless fallback exists to collapse a session's own cumulative
+        # re-dumps, which always share their sessionKey. Two GENUINE turns
+        # from two different sessions that coincide on (timestamp, content) —
+        # reachable on rid-less captures with many concurrent same-kind
+        # sessions — are distinct turns and must both survive.
+        def session(sk: str) -> dict[str, Any]:
+            return {
+                "type": "agent.start",
+                "sessionKey": sk,
+                "messages": [
+                    {
+                        "role": "assistant",
+                        "timestamp": 1000,
+                        "model": "m",
+                        "stopReason": "stop",
+                        "usage": {"input": 1, "output": 4, "totalTokens": 5},
+                        "content": [{"type": "text", "text": "on it"}],
+                    }
+                ],
+            }
+
+        parse = parse_telemetry(
+            [
+                session("agent:main:telegram:chat-1"),
+                session("agent:main:telegram:chat-2"),
+            ]
+        )
+        assert len(parse.orchestrator_turns) == 2
+
+    def test_equal_ts_ties_keep_file_order(self) -> None:
+        # Turns from different surfaces sharing a timestamp must merge in file
+        # order (the pre-grouping behavior), not surface-first-seen order —
+        # _primary_model's tie-break reads first-seen from this ordering.
+        def turn(rid: str, text: str) -> dict[str, Any]:
+            return {
+                "role": "assistant",
+                "responseId": rid,
+                "timestamp": 1000,
+                "model": "m",
+                "content": [{"type": "text", "text": text}],
+            }
+
+        parse = parse_telemetry(
+            [
+                {
+                    "type": "agent.start",
+                    "sessionKey": "agent:main:main:s1",
+                    "messages": [turn("r1", "M1")],
+                },
+                {
+                    "type": "agent.start",
+                    "sessionKey": "agent:main:telegram:chat-1",
+                    "messages": [turn("t1", "T1")],
+                },
+                {
+                    "type": "agent.end",
+                    "sessionKey": "agent:main:main:s1",
+                    "messages": [turn("r1", "M1"), turn("r2", "M2")],
+                },
+            ]
+        )
+        texts = [content_to_text(t.get("content")) for t in parse.orchestrator_turns]
+        assert texts == ["M1", "T1", "M2"]
 
     def test_user_prompt_transient_and_settled_collapse(self) -> None:
         # OpenClaw re-serializes a human prompt across snapshots: a transient
@@ -1380,6 +1446,15 @@ class TestSpawnlessSubagents:
         span = next(e for e in events if isinstance(e, SpanBeginEvent))
         roots = [e for e in events if isinstance(e, ModelEvent)]
         assert events.index(span) == events.index(roots[1]) + 1
+        # ...and STAMPED at the anchor's time, not the next timeline item's:
+        # the span (and its ts-less schema-B call, which falls back to the
+        # span time) must not report activity as starting at A3.
+        anchor_dt = datetime.fromtimestamp(2.0, tz=timezone.utc)  # A2 @ 2000ms
+        assert span.timestamp == anchor_dt
+        inner = next(
+            e for e in events if isinstance(e, ToolEvent) and e.span_id == self.CHILD
+        )
+        assert inner.timestamp == anchor_dt
         assert any(
             "file-order anchor" in r.getMessage() and self.CHILD in r.getMessage()
             for r in caplog.records
@@ -1747,6 +1822,68 @@ class TestRollupAggregates:
         )
         texts = [content_to_text(t.get("content")) for t in parse.orchestrator_turns]
         assert texts == ["A1", "T1"]
+
+    def test_rollup_detected_across_same_kind_sessions(self) -> None:
+        # Two concurrent sessions of the SAME kind (e.g. two telegram chats,
+        # or two cron runs — one real capture carries 419 orchestrator
+        # sessions): chat-2's turn interleaving between chat-1's closing
+        # record and its roll-up must not mask the comparison, so the filter
+        # groups by full sessionKey, not by kind.
+        def snapshot(sk: str, turns: list[dict[str, Any]]) -> dict[str, Any]:
+            return {"type": "agent.start", "sessionKey": sk, "messages": turns}
+
+        def turn(
+            rid: str | None, ts: int, text: str, usage: dict[str, int]
+        ) -> dict[str, Any]:
+            return {
+                "role": "assistant",
+                "responseId": rid,
+                "timestamp": ts,
+                "model": "m",
+                "stopReason": "stop",
+                "content": [{"type": "text", "text": text}],
+                "usage": usage,
+            }
+
+        chat1 = [
+            turn(
+                "r1",
+                1000,
+                "C1-A",
+                {"input": 100, "output": 50, "cacheRead": 800, "totalTokens": 950},
+            ),
+            # chat-1's roll-up (block-sum usage, frozen total)
+            {
+                "role": "assistant",
+                "timestamp": 1500,
+                "model": "m",
+                "stopReason": "stop",
+                "content": [{"type": "text", "text": "C1-A"}],
+                "usage": {
+                    "input": 104,
+                    "output": 210,
+                    "cacheRead": 1650,
+                    "cacheWrite": 30,
+                    "totalTokens": 950,
+                },
+            },
+        ]
+        chat2 = [
+            turn(
+                "r2",
+                1200,
+                "C2-A",
+                {"input": 5, "output": 10, "cacheRead": 485, "totalTokens": 500},
+            )
+        ]
+        parse = parse_telemetry(
+            [
+                snapshot("agent:main:telegram:chat-1", chat1),
+                snapshot("agent:main:telegram:chat-2", chat2),
+            ]
+        )
+        texts = [content_to_text(t.get("content")) for t in parse.orchestrator_turns]
+        assert texts == ["C1-A", "C2-A"]
 
     def test_subagent_schema_a_rollup_dropped(self) -> None:
         # Sub-agent sessions are finalized by the same scaffold, so a

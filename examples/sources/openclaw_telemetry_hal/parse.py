@@ -14,9 +14,9 @@ JSONL, one event per line. Payload-bearing events:
   ``messages[]`` snapshot (assistant turns, ``toolResult``s,
   ``compactionSummary``s). The same turn recurs across snapshots, so turns must
   be deduped by ``responseId`` — or, when the capture carries none, by
-  ``(timestamp, content)`` with toolCall ids masked, because OpenClaw's history
-  sanitizer rewrites those ids between a turn's first snapshot and all later
-  ones (see :func:`_keyless_content_json`). Snapshots may also carry scaffold
+  ``(session, timestamp, content)`` with toolCall ids masked, because
+  OpenClaw's history sanitizer rewrites those ids between a turn's first
+  snapshot and all later ones (see :func:`_keyless_content_json`). Snapshots may also carry scaffold
   *roll-up* records — turn-finalization aggregates whose usage restates (sums)
   the preceding per-call block; these are dropped (see
   :func:`_drop_rollup_aggregates`).
@@ -210,10 +210,11 @@ def _drop_rollup_aggregates(
     text-only reply that happens to repeat the previous total, and adjacent
     zero-usage provider-failure placeholders (``0 == 0+0+0+0``).
 
-    ``turns`` must be a SINGLE surface's (or a single sub-agent session's)
-    stream: callers group per session kind / per session first, so a turn
-    interleaved from another surface cannot sit between a block's closing
-    record and its roll-up and mask the frozen-total comparison.
+    ``turns`` must be a SINGLE session's stream: callers group per
+    ``sessionKey`` (or per sub-agent session) first, so a turn interleaved
+    from another session — another surface, or another concurrent session of
+    the same kind — cannot sit between a block's closing record and its
+    roll-up and mask the frozen-total comparison.
     """
 
     def _is_rollup(turn: dict[str, Any], prev: dict[str, Any] | None) -> bool:
@@ -253,23 +254,32 @@ def parse_telemetry(raw_events: Iterable[dict[str, Any]]) -> OpenClawTelemetry:
     """
     c = _consolidate(raw_events)
 
-    # The roll-up filter runs per surface: an aggregate closes a block on ITS
-    # surface, so a turn interleaved from another orchestrator surface (real
-    # captures mix e.g. main/telegram/cron) must not sit between a block's
-    # closing record and its roll-up and mask the frozen-total comparison.
-    turns_by_surface: dict[str, list[dict[str, Any]]] = {}
+    # The roll-up filter runs per SESSION: an aggregate closes a block within
+    # its own session's message stream, so a turn interleaved from any OTHER
+    # session — another surface, or another session of the same kind (real
+    # captures carry hundreds of concurrent cron sessions) — must not sit
+    # between a block's closing record and its roll-up and mask the
+    # frozen-total comparison. Timestamp ties keep file order through the
+    # regroup (``_primary_model``'s first-seen tie-break reads this ordering).
+    file_order = {id(m): i for i, m in enumerate(c.assistant_by_id.values())}
+
+    def turn_sort_key(m: dict[str, Any]) -> tuple[int, int]:
+        return (int(m.get("timestamp") or 0), file_order[id(m)])
+
+    turns_by_session: dict[str, list[dict[str, Any]]] = {}
     for rid, kind in c.assistant_kind.items():
         if is_orchestrator(kind):
-            turns_by_surface.setdefault(kind, []).append(c.assistant_by_id[rid])
+            session = c.assistant_session[rid]
+            turns_by_session.setdefault(session, []).append(c.assistant_by_id[rid])
     orchestrator_turns = sorted(
         (
             turn
-            for surface_turns in turns_by_surface.values()
+            for session_turns in turns_by_session.values()
             for turn in _drop_rollup_aggregates(
-                sorted(surface_turns, key=lambda m: int(m.get("timestamp") or 0))
+                sorted(session_turns, key=turn_sort_key)
             )
         ),
-        key=lambda m: int(m.get("timestamp") or 0),
+        key=turn_sort_key,
     )
 
     # Keyed turns are canonical; a keyless turn whose text matches a keyed one is
@@ -365,6 +375,7 @@ class _Consolidated:
 
     assistant_by_id: dict[Any, dict[str, Any]] = field(default_factory=dict)
     assistant_kind: dict[Any, str] = field(default_factory=dict)
+    assistant_session: dict[Any, str] = field(default_factory=dict)
     result_by_callid: dict[str, ToolResult] = field(default_factory=dict)
     compactions: dict[Any, dict[str, Any]] = field(default_factory=dict)
     user_by_idempotency: dict[str, dict[str, Any]] = field(default_factory=dict)
@@ -483,17 +494,24 @@ def _consolidate(raw_events: Iterable[dict[str, Any]]) -> _Consolidated:
                     rid: Any = m.get("responseId")
                     if rid is None:
                         # No responseId (absent from service-sink captures). Key
-                        # by (timestamp, id-masked content) so the SAME turn
-                        # re-dumped across cumulative snapshots — including with
-                        # sanitizer-rewritten toolCall ids — collapses to one.
+                        # by (session, timestamp, id-masked content) so the SAME
+                        # turn re-dumped across cumulative snapshots — including
+                        # with sanitizer-rewritten toolCall ids — collapses to
+                        # one. Re-dumps always come from the turn's own session,
+                        # so the session in the key never blocks that collapse;
+                        # without it, two GENUINE turns from two concurrent
+                        # sessions coinciding on (timestamp, content) would
+                        # wrongly merge.
                         rid = (
                             "a",
+                            sk,
                             m.get("timestamp"),
                             _keyless_content_json(m.get("content")),
                         )
                     if rid not in out.assistant_by_id:
                         out.assistant_by_id[rid] = m
                         out.assistant_kind[rid] = kind
+                        out.assistant_session[rid] = sk
                     if is_orchestrator(kind):
                         # Advance the file-order anchor cursor: sub-agent
                         # sessions first seen after this point anchor here.

@@ -180,20 +180,31 @@ def build_content(
     # A send with no matching turn (it never entered the session thread, e.g.
     # delivered while the agent was busy) becomes its own operator-sourced
     # user message, placed by its timestamp.
+    # Empty text never joins: a content-less send (media-only) and an
+    # image-only turn both flatten to "", and pairing them would stamp an
+    # unrelated turn. Empty sends surface standalone. A turn with NO
+    # timestamp cannot fail the at-or-after check — it is always eligible
+    # (surfacing a duplicate would be worse than the loose match).
     turns_by_text: dict[str, list[dict[str, Any]]] = {}
     for user_turn in parse.user_turns:  # already timestamp-sorted
-        turns_by_text.setdefault(_match_text(user_turn.get("content")), []).append(
-            user_turn
-        )
+        turn_text = _match_text(user_turn.get("content"))
+        if turn_text:
+            turns_by_text.setdefault(turn_text, []).append(user_turn)
     operator_turn_ids: set[int] = set()
     extra_operator: list[dict[str, Any]] = []
     for m in sorted(
         parse.operator_messages, key=lambda m: int(m.get("timestamp") or 0)
     ):
-        queue = turns_by_text.get(_match_text(m.get("content")), [])
+        text = _match_text(m.get("content"))
+        queue = turns_by_text.get(text, []) if text else []
         m_ts = int(m.get("timestamp") or 0)
         turn: dict[str, Any] | None = next(
-            (t for t in queue if int(t.get("timestamp") or 0) >= m_ts), None
+            (
+                t
+                for t in queue
+                if (t_ts := int(t.get("timestamp") or 0)) == 0 or t_ts >= m_ts
+            ),
+            None,
         )
         if turn is not None:
             queue.remove(turn)
@@ -676,6 +687,20 @@ def _duration_to_ms(value: Any) -> int | None:
 _TASK_TAG = "[Subagent Task]"
 
 
+def _is_task_bearing(line: str) -> bool:
+    """A prompt line usable as a span name.
+
+    Non-empty, not a bracketed line (scaffold tags, timestamps, and template
+    placeholders all take that shape — an unrecognized bracket line must
+    never become a name), and not the subagent boilerplate sentence.
+    """
+    return (
+        bool(line)
+        and not line.startswith("[")
+        and "you are running as a subagent" not in line.lower()
+    )
+
+
 def _task_line(prompt: str | None) -> str | None:
     """The first task-bearing line of a sub-agent prompt, for span naming.
 
@@ -683,26 +708,29 @@ def _task_line(prompt: str | None) -> str | None:
     name its span from, only its own prompt — which opens with OpenClaw's
     scaffold preamble (a timestamp tag and/or ``[Subagent Context] You are
     running as a subagent…``) and usually announces the task with a
-    ``[Subagent Task]`` tag: inline (``[Subagent Task]: <task>``) or with the
-    task on the following line. The tag is authoritative when present.
-    Otherwise fall back to the first line that is neither bracketed nor the
-    subagent boilerplate — prompt BODIES also carry bracketed lines (template
-    placeholders), so an unrecognized bracket line never becomes a name.
-    Returns ``None`` when nothing task-bearing is found.
+    ``[Subagent Task]`` tag: inline (``[Subagent Task]: <task>``), possibly
+    sharing its line with the timestamp preamble, or with the task on a
+    following line. The tag is authoritative when present anywhere on a line,
+    and prompts may repeat it — a bare heading first, the task-carrying tag
+    line after — so a bare tag's lookahead runs only up to the NEXT tag line
+    and defers to it, applying the same bracket/boilerplate skip as the
+    no-tag fallback. Returns ``None`` when nothing task-bearing is found.
     """
     lines = [line.strip() for line in (prompt or "").splitlines()]
-    for i, line in enumerate(lines):
-        if line.startswith(_TASK_TAG):
-            inline = line[len(_TASK_TAG) :].lstrip(" :").strip()
-            if inline:
-                return inline
-            return next((follow for follow in lines[i + 1 :] if follow), None)
+    tag_idxs = [i for i, line in enumerate(lines) if _TASK_TAG in line]
+    for pos, i in enumerate(tag_idxs):
+        line = lines[i]
+        inline = line[line.find(_TASK_TAG) + len(_TASK_TAG) :].lstrip(" :").strip()
+        if inline:
+            return inline
+        stop = tag_idxs[pos + 1] if pos + 1 < len(tag_idxs) else len(lines)
+        for follow in lines[i + 1 : stop]:
+            if _is_task_bearing(follow):
+                return follow
+    if tag_idxs:
+        return None
     for line in lines:
-        if (
-            line
-            and not line.startswith("[")
-            and "you are running as a subagent" not in line.lower()
-        ):
+        if _is_task_bearing(line):
             return line
     return None
 

@@ -1570,6 +1570,63 @@ class TestSpawnlessSubagents:
         span = next(e for e in events if isinstance(e, SpanBeginEvent))
         assert span.name == "Run the smaller grids first."
 
+    def test_mid_line_task_tag_detected(self) -> None:
+        # The tag can share its line with the timestamp preamble; prefix-only
+        # detection would skip the whole line as bracket boilerplate and name
+        # the span from a later body line.
+        raw = self._raw()
+        raw[1] = dict(
+            raw[1],
+            prompt=(
+                "[Fri 2026-03-06 13:08 PST] [Subagent Task]: Check the unread queue\n"
+                "\n"
+                "Report back with anything unread."
+            ),
+        )
+        events = build_events(parse_telemetry(raw))
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        assert span.name == "Check the unread queue"
+
+    def test_bare_tag_lookahead_skips_bracketed_lines(self) -> None:
+        # The task-on-next-line lookahead applies the same bracket/boilerplate
+        # skip as the fallback: an unrecognized bracket line (workspace tags,
+        # template placeholders) never becomes a span name.
+        raw = self._raw()
+        raw[1] = dict(
+            raw[1],
+            prompt=(
+                "[Subagent Task]\n"
+                "[workspace: /tmp/run-42]\n"
+                "Run the smaller grids first.\n"
+            ),
+        )
+        events = build_events(parse_telemetry(raw))
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        assert span.name == "Run the smaller grids first."
+
+    def test_bare_tag_defers_to_later_inline_tag(self) -> None:
+        # Real prompts repeat the tag — a bare heading first, the
+        # task-carrying tag line after (the dominant shape on both real
+        # captures). The bare tag's lookahead must stop at the next tag line
+        # and defer to it, not skip it as bracket noise and name the span
+        # from later body text.
+        raw = self._raw()
+        raw[1] = dict(
+            raw[1],
+            prompt=(
+                "[Subagent Context] You are running as a subagent.\n"
+                "\n"
+                "[Subagent Task]\n"
+                "\n"
+                "[Subagent Task]: Sweep the smaller grids\n"
+                "\n"
+                "Report back when done."
+            ),
+        )
+        events = build_events(parse_telemetry(raw))
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        assert span.name == "Sweep the smaller grids"
+
     def test_duplicate_spawn_claim_warns_and_places_by_anchor(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
@@ -1655,7 +1712,7 @@ class TestRollupAggregates:
         rid: str | None,
         ts: int,
         text: str,
-        usage: dict[str, int],
+        usage: dict[str, Any],
         stop: str = "stop",
         tool_call: bool = False,
     ) -> dict[str, Any]:
@@ -1949,6 +2006,45 @@ class TestRollupAggregates:
         assert sub_usage is not None
         assert sub_usage.total_tokens == 950
 
+    def test_string_total_tokens_coerced_not_identity_broken(self) -> None:
+        # totalTokens as a numeric string (raw-JSON hazard): "950" == "950"
+        # passes the frozen-total gate, and an un-coerced identity comparison
+        # (int sum != str total) would delete the second GENUINE turn. Totals
+        # are coerced before comparing, so the self-consistent turn is kept —
+        # while a real block-sum roll-up with string totals is still dropped.
+        genuine = {"input": 10, "output": 40, "cacheRead": 900, "totalTokens": "950"}
+        parse = self._parse(
+            [
+                self._turn(rid=None, ts=1000, text="A1", usage=dict(genuine)),
+                self._turn(rid=None, ts=1500, text="A2", usage=dict(genuine)),
+                self._turn(
+                    rid=None,
+                    ts=2000,
+                    text="A2",
+                    usage={
+                        "input": 20,
+                        "output": 80,
+                        "cacheRead": 1800,
+                        "totalTokens": "950",
+                    },
+                ),
+            ]
+        )
+        texts = [content_to_text(t.get("content")) for t in parse.orchestrator_turns]
+        assert texts == ["A1", "A2"]
+
+    def test_component_less_usage_is_unclassifiable_and_kept(self) -> None:
+        # A usage carrying ONLY totalTokens gives the identity nothing to
+        # classify (components sum to 0 on genuine turns of that shape too),
+        # so the record is kept rather than treated as identity-broken.
+        parse = self._parse(
+            [
+                self._turn(rid=None, ts=1000, text="A1", usage={"totalTokens": 950}),
+                self._turn(rid=None, ts=1500, text="A2", usage={"totalTokens": 950}),
+            ]
+        )
+        assert len(parse.orchestrator_turns) == 2
+
     def test_moving_total_tokens_is_kept(self) -> None:
         # A rid-less 'stop' record whose totalTokens MOVED is a real turn
         # (service-sink captures have no responseId at all) — never dropped.
@@ -2234,6 +2330,57 @@ class TestOperatorChannel:
         aside = [m for m in messages if m.role == "user" and m.text == "secret aside"]
         assert len(aside) == 1
         assert aside[0].source == "operator"
+
+    def test_empty_send_does_not_stamp_media_only_turn(self) -> None:
+        # A content-less message.in (media-only send) flattens to "" — as
+        # does an image-only user turn. Empty text must not participate in
+        # the pairing join: the turn stays unstamped and the send surfaces
+        # standalone.
+        raw: list[dict[str, Any]] = [
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "",
+                "timestamp": 900,
+            },
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:main:main:s1",
+                "messages": [
+                    {
+                        "role": "user",
+                        "timestamp": 1000,
+                        "content": [{"type": "image", "data": "iVBORw0KGgo="}],
+                    },
+                ],
+            },
+        ]
+        messages = build_messages(parse_telemetry(raw))
+        users = [m for m in messages if m.role == "user"]
+        assert len(users) == 2
+        assert [m.source for m in users] == ["operator", None]
+
+    def test_ts_less_turn_still_matched_by_text(self) -> None:
+        # A user turn with no timestamp cannot fail the at-or-after check: it
+        # is always eligible (the pre-pairing set semantics matched it, and a
+        # standalone duplicate would be worse than a loose match).
+        raw: list[dict[str, Any]] = [
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "hello",
+                "timestamp": 900,
+            },
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:main:main:s1",
+                "messages": [{"role": "user", "content": "hello"}],
+            },
+        ]
+        messages = build_messages(parse_telemetry(raw))
+        users = [m for m in messages if m.role == "user"]
+        assert len(users) == 1
+        assert users[0].source == "operator"
 
     def test_fixture_prompts_carry_operator_source(
         self, raw_events: list[dict[str, Any]]

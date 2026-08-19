@@ -188,6 +188,19 @@ def _primary_model(orchestrator_turns: list[dict[str, Any]]) -> str | None:
     return winner[0][0] if winner else None
 
 
+def _int_or_none(value: Any) -> int | None:
+    """Coerce a telemetry numeric field to ``int``, else ``None``.
+
+    Conformant telemetry-hal records integers, but the values come verbatim
+    out of ``json.loads``, so a numeric string is coerced and anything else
+    yields ``None`` (callers treat that as unclassifiable, never as a match).
+    """
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _drop_rollup_aggregates(
     turns: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
@@ -224,11 +237,23 @@ def _drop_rollup_aggregates(
             return False
         if toolcalls_of(turn.get("content")):
             return False
-        total = (turn.get("usage") or {}).get("totalTokens")
-        prev_total = (prev.get("usage") or {}).get("totalTokens")
-        if total is None or total != prev_total:
+        # Coerce totals before comparing: raw json.loads output can carry a
+        # numeric STRING, and an un-coerced comparison would pass the frozen
+        # gate ("950" == "950") yet break the int-summed identity below,
+        # deleting a genuine turn. Non-numeric totals are unclassifiable.
+        usage = turn.get("usage") or {}
+        total = _int_or_none(usage.get("totalTokens"))
+        prev_total = _int_or_none((prev.get("usage") or {}).get("totalTokens"))
+        if total is None or prev_total is None or total != prev_total:
             return False
-        return bool(tokens_from_usage(turn.get("usage")) != total)
+        # A usage with no component fields gives the identity nothing to
+        # classify (its sum is 0 on genuine turns of that shape too): keep —
+        # the filter drops only on positive evidence of restated usage.
+        if all(
+            usage.get(k) is None for k in ("input", "output", "cacheRead", "cacheWrite")
+        ):
+            return False
+        return bool(tokens_from_usage(usage) != total)
 
     kept: list[dict[str, Any]] = []
     n_rollups = 0

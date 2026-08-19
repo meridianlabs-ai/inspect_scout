@@ -138,9 +138,10 @@ class OpenClawTelemetry:
     The whole-file consolidation (turns deduped, sub-agents reconstructed) lands
     here so the event/message mapping never touches the raw cumulative snapshots.
 
-    ``orchestrator_turns`` are the deduped main/telegram assistant turns in
-    timestamp order (each a raw OpenClaw message dict with ``content``,
-    ``usage``, ``timestamp``, ``model``). ``compactions`` are the orchestrator's
+    ``orchestrator_turns`` are the deduped assistant turns of every
+    orchestrator surface (``main``/``telegram``/``dashboard``/``cron``/
+    ``explicit``) in timestamp order (each a raw OpenClaw message dict with
+    ``content``, ``usage``, ``timestamp``, ``model``). ``compactions`` are the orchestrator's
     real ``compactionSummary`` turns (a sub-agent's own compactions are dropped
     with a warning). ``result_by_callid`` maps a toolCall id to its
     :class:`ToolResult` (text + success/error + completion time).
@@ -307,20 +308,25 @@ def parse_telemetry(raw_events: Iterable[dict[str, Any]]) -> OpenClawTelemetry:
         key=turn_sort_key,
     )
 
-    # Keyed turns are canonical; a keyless turn whose text matches a keyed one is
-    # that prompt's transient first-snapshot serialization, so drop it. Keyless
-    # turns with no keyed twin (runtime context, inter-session messages, keyless
-    # human prompts) are kept.
-    keyed_texts = {
-        content_to_text(m.get("content")) for m in c.user_by_idempotency.values()
-    }
+    # Keyed turns are canonical; a keyless turn whose text matches a keyed one
+    # FROM ITS OWN SESSION is that prompt's transient first-snapshot
+    # serialization, so drop it — the transient and settled forms are the same
+    # session re-serializing its own prompt, so a same-text prompt in another
+    # session is a distinct turn. Keyless turns with no keyed twin (runtime
+    # context, inter-session messages, keyless human prompts) are kept.
+    keyed_texts_by_session: dict[str, set[str]] = {}
+    for idem, keyed_turn in c.user_by_idempotency.items():
+        keyed_texts_by_session.setdefault(
+            c.user_session_by_idempotency[idem], set()
+        ).add(content_to_text(keyed_turn.get("content")))
     user_turns = sorted(
         (
             *c.user_by_idempotency.values(),
             *(
                 m
-                for m in c.user_by_key.values()
-                if content_to_text(m.get("content")) not in keyed_texts
+                for (user_sk, _ts, _content), m in c.user_by_key.items()
+                if content_to_text(m.get("content"))
+                not in keyed_texts_by_session.get(user_sk, set())
             ),
         ),
         key=lambda m: int(m.get("timestamp") or 0),
@@ -404,6 +410,7 @@ class _Consolidated:
     result_by_callid: dict[str, ToolResult] = field(default_factory=dict)
     compactions: dict[Any, dict[str, Any]] = field(default_factory=dict)
     user_by_idempotency: dict[str, dict[str, Any]] = field(default_factory=dict)
+    user_session_by_idempotency: dict[str, str] = field(default_factory=dict)
     user_by_key: dict[Any, dict[str, Any]] = field(default_factory=dict)
     sessions: dict[str, dict[str, Any]] = field(default_factory=dict)
     message_ins: list[dict[str, Any]] = field(default_factory=list)
@@ -456,8 +463,8 @@ def _consolidate(raw_events: Iterable[dict[str, Any]]) -> _Consolidated:
        deduped by ``responseId`` (recording each turn's first-occurrence session
        kind), ``toolResult``s by ``toolCallId``, and orchestrator-only
        ``compactionSummary``s and ``user`` turns. Turns and user prompts with no
-       ``responseId`` are keyed by ``(timestamp, content)`` since they recur
-       across cumulative snapshots.
+       ``responseId`` are keyed by ``(session, timestamp, content)`` since they
+       recur across their own session's cumulative snapshots.
 
     2. Sub-agent reconstruction, robust across both export schemas. Schema A: the
        sub-agent's assistant turns live in its own ``agent.* messages[]`` (with
@@ -549,15 +556,22 @@ def _consolidate(raw_events: Iterable[dict[str, Any]]) -> _Consolidated:
                     # and a settled form carrying a stable ``idempotencyKey``
                     # (the inbound message id). Dedup keyed turns by that id (the
                     # user-turn analogue of ``responseId``); fall back to
-                    # (timestamp, content) only for genuinely keyless turns
-                    # (runtime context, inter-session messages, and human prompts
-                    # that arrived without a key). The transient twins are dropped
-                    # against the keyed set in ``parse_telemetry``.
+                    # (session, timestamp, content) only for genuinely keyless
+                    # turns (runtime context, inter-session messages, and human
+                    # prompts that arrived without a key) — session-scoped for
+                    # the same reason as the assistant key: re-dumps come from
+                    # the turn's own session, while two concurrent sessions can
+                    # genuinely coincide on (timestamp, content). The transient
+                    # twins are dropped against their own session's keyed set
+                    # in ``parse_telemetry``.
                     idem = m.get("idempotencyKey")
                     if idem is not None:
-                        out.user_by_idempotency.setdefault(idem, m)
+                        if idem not in out.user_by_idempotency:
+                            out.user_by_idempotency[idem] = m
+                            out.user_session_by_idempotency[idem] = sk
                     else:
                         key = (
+                            sk,
                             m.get("timestamp"),
                             json.dumps(m.get("content"), sort_keys=True, default=str),
                         )
@@ -577,9 +591,9 @@ def _consolidate(raw_events: Iterable[dict[str, Any]]) -> _Consolidated:
                         )
                 elif role == "compactionSummary":
                     if is_orchestrator(kind):
-                        key = (m.get("timestamp"), "compaction")
-                        if key not in out.compactions:
-                            out.compactions[key] = m
+                        compaction_key = (m.get("timestamp"), "compaction")
+                        if compaction_key not in out.compactions:
+                            out.compactions[compaction_key] = m
                     elif sk not in warned_compaction_sessions:
                         # A sub-agent compacting its own thread — never observed
                         # in the sample captures (all 467 CRUX1 compactions are
@@ -613,8 +627,8 @@ def _consolidate(raw_events: Iterable[dict[str, Any]]) -> _Consolidated:
                 if rid is None:
                     # No responseId (absent from service-sink captures: the
                     # datasets that carry a seq/ts envelope). Key by
-                    # (timestamp, id-masked content) so the SAME turn re-dumped
-                    # across cumulative snapshots — including with
+                    # (session, timestamp, id-masked content) so the SAME turn
+                    # re-dumped across cumulative snapshots — including with
                     # sanitizer-rewritten toolCall ids — collapses to one.
                     rid = (
                         "a",

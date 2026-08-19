@@ -5,7 +5,8 @@ the consolidated intermediate produced by :mod:`.parse`.
 
 Mapping (mirrors the Claude Code importer):
 
-- The orchestrator (``main``/``telegram``) is the spine: its turns become the
+- The orchestrator (any orchestrator-surface session — ``main``, ``telegram``,
+  ``dashboard``, ``cron``, ``explicit``) is the spine: its turns become the
   root-level ``ModelEvent`` / ``ToolEvent`` / ``CompactionEvent`` stream and the
   main ``messages`` thread.
 - Each delegated sub-agent becomes a nested **agent span**
@@ -119,7 +120,10 @@ def build_content(
     Inbound operator messages (``message.in``) are reconciled with the user
     turns by content, occurrence-for-occurrence in time order: each send
     stamps the first unconsumed user turn carrying the same text at-or-after
-    it ``source="operator"`` (never a duplicate message). A send with no such
+    it ``source="operator"`` (never a duplicate message). Two edge rules:
+    empty text never joins (a media-only send surfaces standalone rather than
+    stamping an image-only turn), and a turn with no timestamp stays eligible
+    as a fallback when no at-or-after turn exists. A send with no matching
     turn — it never entered the session thread — is added as its own
     operator-sourced user message so mid-run operator interventions are
     preserved; it appears in the message thread only, NOT in later
@@ -183,8 +187,10 @@ def build_content(
     # Empty text never joins: a content-less send (media-only) and an
     # image-only turn both flatten to "", and pairing them would stamp an
     # unrelated turn. Empty sends surface standalone. A turn with NO
-    # timestamp cannot fail the at-or-after check — it is always eligible
-    # (surfacing a duplicate would be worse than the loose match).
+    # timestamp cannot fail the at-or-after check — it stays eligible
+    # (surfacing a duplicate would be worse than the loose match), but only
+    # as a FALLBACK: a turn satisfying at-or-after wins first, so a ts-less
+    # twin never steals a send whose true match exists.
     turns_by_text: dict[str, list[dict[str, Any]]] = {}
     for user_turn in parse.user_turns:  # already timestamp-sorted
         turn_text = _match_text(user_turn.get("content"))
@@ -202,10 +208,12 @@ def build_content(
             (
                 t
                 for t in queue
-                if (t_ts := int(t.get("timestamp") or 0)) == 0 or t_ts >= m_ts
+                if (t_ts := int(t.get("timestamp") or 0)) != 0 and t_ts >= m_ts
             ),
             None,
         )
+        if turn is None:
+            turn = next((t for t in queue if int(t.get("timestamp") or 0) == 0), None)
         if turn is not None:
             queue.remove(turn)
             operator_turn_ids.add(id(turn))

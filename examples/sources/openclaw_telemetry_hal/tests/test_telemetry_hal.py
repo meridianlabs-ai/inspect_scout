@@ -504,6 +504,66 @@ class TestParse:
         texts = [content_to_text(t.get("content")) for t in parse.orchestrator_turns]
         assert texts == ["M1", "T1", "M2"]
 
+    def test_keyless_user_turns_do_not_collapse_across_sessions(self) -> None:
+        # Same rationale as the assistant-side key: re-dumps always come from
+        # the turn's own session, so two genuine keyless prompts from two
+        # concurrent sessions coinciding on (timestamp, content) — e.g.
+        # scheduler-stamped injections across cron sessions — are distinct
+        # turns and must both survive.
+        def session(sk: str) -> dict[str, Any]:
+            return {
+                "type": "agent.start",
+                "sessionKey": sk,
+                "messages": [
+                    {
+                        "role": "user",
+                        "timestamp": 60000,
+                        "content": "Run the scheduled sweep",
+                    },
+                    {
+                        "role": "assistant",
+                        "responseId": f"r-{sk[-1]}",
+                        "timestamp": 61000,
+                        "model": "m",
+                        "content": [{"type": "text", "text": "ok"}],
+                    },
+                ],
+            }
+
+        parse = parse_telemetry(
+            [session("agent:main:cron:job-1"), session("agent:main:cron:job-2")]
+        )
+        assert len(parse.user_turns) == 2
+
+    def test_transient_twin_drop_is_session_scoped(self) -> None:
+        # The transient/settled collapse concerns one session re-serializing
+        # its OWN prompt. A genuinely keyless prompt in another session that
+        # happens to share text with a keyed prompt elsewhere is a separate
+        # turn and must not be text-dropped against it.
+        raw = [
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:main:main:s1",
+                "messages": [
+                    {
+                        "role": "user",
+                        "timestamp": 1000,
+                        "idempotencyKey": "m1",
+                        "content": "check the queue",
+                    },
+                ],
+            },
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:main:cron:job-1",
+                "messages": [
+                    {"role": "user", "timestamp": 5000, "content": "check the queue"},
+                ],
+            },
+        ]
+        parse = parse_telemetry(raw)
+        assert len(parse.user_turns) == 2
+
     def test_user_prompt_transient_and_settled_collapse(self) -> None:
         # OpenClaw re-serializes a human prompt across snapshots: a transient
         # first-snapshot form (no idempotencyKey, structured content) and a
@@ -1495,6 +1555,16 @@ class TestSpawnlessSubagents:
         first_model = next(e for e in events if isinstance(e, ModelEvent))
         assert events.index(span) < events.index(first_model)
 
+    def test_trailing_anchor_span_stamped_at_anchor(self) -> None:
+        # A session anchored at (or past) the last orchestrator turn is
+        # emitted by the trailing flush — it must stamp at the anchor time
+        # too, not at the last item's.
+        raw = self._raw()
+        raw.pop()  # drop the agent.end snapshot that appends A3
+        events = build_events(parse_telemetry(raw))
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        assert span.timestamp == datetime.fromtimestamp(2.0, tz=timezone.utc)
+
     def test_anchor_flush_precedes_interleaved_compaction(self) -> None:
         # The anchor flush runs on every timeline item, so a span anchored
         # before a compaction is emitted before that compaction, not swept
@@ -1700,8 +1770,9 @@ class TestRollupAggregates:
     value, and usage components that SUM the block (breaking the per-call
     identity ``input + output + cacheRead + cacheWrite == totalTokens``).
     Keeping it double-counts every usage field (~23M phantom cache-read tokens
-    on one real CRUX capture). The filter runs per orchestrator surface and
-    per sub-agent session, so interleaving cannot mask the comparison.
+    on one real CRUX capture). The filter runs per session — each orchestrator
+    session and each sub-agent session — so interleaving cannot mask the
+    comparison.
     """
 
     ORCH = "agent:main:cron:orchestrator"
@@ -2381,6 +2452,38 @@ class TestOperatorChannel:
         users = [m for m in messages if m.role == "user"]
         assert len(users) == 1
         assert users[0].source == "operator"
+
+    def test_ts_less_turn_does_not_steal_at_or_after_match(self) -> None:
+        # A ts-less turn is always-ELIGIBLE, not always-PREFERRED: when a turn
+        # satisfying at-or-after exists, it wins, and the ts-less turn is left
+        # for a send that has no such match — otherwise the greedy pick
+        # manufactures exactly the standalone duplicate it exists to avoid.
+        raw: list[dict[str, Any]] = [
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "status?",
+                "timestamp": 1000,
+            },
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:main:main:s1",
+                "messages": [
+                    {"role": "user", "content": "status?"},
+                    {"role": "user", "timestamp": 2000, "content": "status?"},
+                ],
+            },
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "status?",
+                "timestamp": 3000,
+            },
+        ]
+        messages = build_messages(parse_telemetry(raw))
+        users = [m for m in messages if m.role == "user"]
+        assert len(users) == 2  # both sends matched: no standalone duplicate
+        assert all(m.source == "operator" for m in users)
 
     def test_fixture_prompts_carry_operator_source(
         self, raw_events: list[dict[str, Any]]

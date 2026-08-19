@@ -214,7 +214,9 @@ labelled by `span_id`, so code that reads only `messages` will not see them.
 
 Assistant turns recur across the cumulative `agent.*` snapshots and are deduped
 by `responseId`. Service-sink captures (e.g. CRUX1) carry **no** `responseId`,
-so the fallback key is `(timestamp, content)` — and that content is serialized
+so the fallback key is `(session, timestamp, content)` — session-scoped because
+re-dumps always come from the turn's own session while concurrent sessions can
+genuinely coincide on `(timestamp, content)` — and that content is serialized
 with toolCall ids **masked** (`_keyless_content_json` in `parse.py`).
 
 The masking exists because OpenClaw's history sanitizer rewrites tool-call ids

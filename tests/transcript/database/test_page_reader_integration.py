@@ -327,7 +327,10 @@ async def test_read_uses_page_reader(
 
     monkeypatch.setattr(transcripts_module, "ParquetContentReader", counting)
     infos = [info async for info in db.select()]
-    await db.read(infos[0], TranscriptContent(messages="all", events="all"))
+    # select() has no ordering guarantee across the store's files, and the
+    # rb-* rows deliberately don't parse as full transcripts
+    info = next(i for i in infos if i.transcript_id == "t-000")
+    await db.read(info, TranscriptContent(messages="all", events="all"))
     assert calls, "read() did not construct a ParquetContentReader"
 
 

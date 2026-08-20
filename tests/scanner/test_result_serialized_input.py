@@ -11,14 +11,14 @@ from inspect_scout._scanner.result import SerializedTranscript, _serialize_input
     [
         pytest.param(
             SerializedTranscript(
-                input_json=b'{"transcript_id":"t1","events":[]}',
-                input_data_json=b'{"messages":[],"calls":[]}',
+                input_json=bytearray(b'{"transcript_id":"t1","events":[]}'),
+                input_data_json=bytearray(b'{"messages":[],"calls":[]}'),
             ),
             b'{"messages":[],"calls":[]}',
             id="with-input-data",
         ),
         pytest.param(
-            SerializedTranscript(input_json=b'{"transcript_id":"t1"}'),
+            SerializedTranscript(input_json=bytearray(b'{"transcript_id":"t1"}')),
             None,
             id="input-data-absent",
         ),
@@ -34,4 +34,4 @@ def test_serialized_transcript_passes_values_through(
 
 def test_serialized_transcript_rejects_unknown_fields() -> None:
     with pytest.raises(ValueError):
-        SerializedTranscript(input_json=b"{}", nope=1)  # type: ignore[call-arg]
+        SerializedTranscript(input_json=bytearray(b"{}"), nope=1)  # type: ignore[call-arg]

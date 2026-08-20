@@ -1,13 +1,23 @@
 """DuckDB/Parquet-backed transcript database implementation."""
 
+import contextlib
 import json
 import os
 import tempfile
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from logging import getLogger
 from pathlib import Path
-from typing import Any, AsyncIterable, AsyncIterator, Iterable, cast
+from typing import (
+    Any,
+    AsyncGenerator,
+    AsyncIterable,
+    AsyncIterator,
+    Iterable,
+    Iterator,
+    cast,
+)
 
 import duckdb
 import pandas as pd
@@ -67,6 +77,7 @@ from .index import (
     init_index_table,
 )
 from .migration import migrate_view
+from .page_reader import ParquetContentReader
 from .types import INDEX_EXTENSION, IndexStorage
 
 logger = getLogger(__name__)
@@ -74,6 +85,80 @@ logger = getLogger(__name__)
 
 PARQUET_TRANSCRIPTS_GLOB = "*.parquet"
 CHUNK_SIZE = 64 * 1024  # 64KB chunks for streaming
+
+
+_page_reader_fallback_warned = False
+
+
+def _log_page_reader_fallback(path: str, ex: Exception) -> None:
+    """Record a page-reader fallback: once as a warning, then at trace level.
+
+    A silent permanent fallback would look exactly like a working reader,
+    only slower, so the first one is visible without logging every read.
+    """
+    global _page_reader_fallback_warned
+    if not _page_reader_fallback_warned:
+        _page_reader_fallback_warned = True
+        logger.warning(
+            f"Parquet page reader falling back to DuckDB (first occurrence, "
+            f"further fallbacks logged at trace level): {path}: {ex}"
+        )
+    trace_message(
+        logger, "Scout Parquet Page Reader", f"Falling back to DuckDB for {path}: {ex}"
+    )
+
+
+def _close_reader_quietly(reader: ParquetContentReader) -> None:
+    """Close a reader we are abandoning; a close failure is never the story."""
+    with contextlib.suppress(Exception):
+        reader.close()
+
+
+def _cell_or_default(cell: Iterator[bytes] | None, default: bytes) -> Iterator[bytes]:
+    """Yield a cell's bytes, or the default for NULL/absent/empty cells.
+
+    Matches the DuckDB path's truthiness check: an empty-string cell renders
+    as the default, exactly like `if messages_json:` does on the fallback.
+    """
+    if cell is None:
+        yield default
+        return
+    first = next(cell, None)
+    if not first:
+        yield default
+        return
+    yield first
+    yield from cell
+
+
+@dataclass
+class _PageReaderContent:
+    """Resolved page-reader cell streams for one read() call."""
+
+    reader: ParquetContentReader
+    messages: Iterator[bytes] | None
+    events: Iterator[bytes] | None
+    timelines: Iterator[bytes] | None
+    events_data_json: str | None
+
+    async def stream_content_bytes(self) -> AsyncIterator[bytes]:
+        yield b'{"messages": '
+        for piece in _cell_or_default(self.messages, b"[]"):
+            yield piece
+        yield b', "events": '
+        for piece in _cell_or_default(self.events, b"[]"):
+            yield piece
+        first = next(self.timelines, None) if self.timelines is not None else None
+        if first:
+            yield b', "timelines": '
+            yield first
+            assert self.timelines is not None
+            for piece in self.timelines:
+                yield piece
+        yield b"}"
+
+    def close(self) -> None:
+        _close_reader_quietly(self.reader)
 
 
 class _ParquetStreamContextManager:
@@ -93,19 +178,22 @@ class _ParquetStreamContextManager:
         self._conn: duckdb.DuckDBPyConnection | None = None
 
     async def __aenter__(self) -> "_ParquetStreamContextManager":
-        # Create fresh connection for streaming
-        self._conn = duckdb.connect(":memory:")
-        if not self._parquet_path.startswith(("s3://", "hf://")):
-            restrict_external_access(self._conn, allowed_paths=[self._parquet_path])
         return self
 
+    def _duckdb_conn(self) -> duckdb.DuckDBPyConnection:
+        if self._conn is None:
+            self._conn = duckdb.connect(":memory:")
+            if not self._parquet_path.startswith(("s3://", "hf://")):
+                restrict_external_access(self._conn, allowed_paths=[self._parquet_path])
+        return self._conn
+
     async def __aexit__(self, *_: object) -> None:
-        if self._conn:
-            self._conn.close()
-            self._conn = None
+        await self.aclose()
 
     async def aclose(self) -> None:
         """Explicitly close resources. Safe to call multiple times or after __aexit__."""
+        if hasattr(self, "_generator"):
+            await self._generator.aclose()
         if self._conn:
             self._conn.close()
             self._conn = None
@@ -123,9 +211,9 @@ class _ParquetStreamContextManager:
         except StopAsyncIteration:
             raise
 
-    async def _stream_chunks(self) -> AsyncIterator[bytes]:
-        """Stream JSON chunks from DuckDB query result."""
-        assert self._conn is not None
+    async def _stream_chunks_duckdb(self) -> AsyncIterator[bytes]:
+        """Stream JSON chunks from DuckDB (fallback path)."""
+        conn = self._duckdb_conn()
 
         try:
             sql = (
@@ -133,7 +221,7 @@ class _ParquetStreamContextManager:
                 " FROM read_parquet(?, union_by_name=true)"
                 " WHERE transcript_id = ?"
             )
-            result = self._conn.execute(
+            result = conn.execute(
                 sql,
                 [escape_duckdb_glob(self._parquet_path), self._transcript_id],
             ).fetchone()
@@ -145,7 +233,7 @@ class _ParquetStreamContextManager:
                     " FROM read_parquet(?, union_by_name=true)"
                     " WHERE transcript_id = ?"
                 )
-                result = self._conn.execute(
+                result = conn.execute(
                     sql,
                     [escape_duckdb_glob(self._parquet_path), self._transcript_id],
                 ).fetchone()
@@ -156,7 +244,7 @@ class _ParquetStreamContextManager:
                         " FROM read_parquet(?, union_by_name=true)"
                         " WHERE transcript_id = ?"
                     )
-                    result = self._conn.execute(
+                    result = conn.execute(
                         sql,
                         [
                             escape_duckdb_glob(self._parquet_path),
@@ -212,6 +300,63 @@ class _ParquetStreamContextManager:
             yield b', "timelines": []'
 
         yield b"}"
+
+    async def _stream_chunks(self) -> AsyncGenerator[bytes, None]:
+        """Stream the content envelope, preferring the page reader.
+
+        Falls back to DuckDB only if no bytes have been emitted yet, so a
+        consumer can never observe a partial envelope followed by a restart.
+        """
+        emitted = False
+        try:
+            for chunk in self._page_reader_chunks():
+                emitted = True
+                yield chunk
+            return
+        except Exception as ex:
+            if emitted:
+                raise
+            _log_page_reader_fallback(self._parquet_path, ex)
+        async for chunk in self._stream_chunks_duckdb():
+            yield chunk
+
+    def _page_reader_chunks(self) -> Iterator[bytes]:
+        reader = ParquetContentReader(self._parquet_path)
+        try:
+            location = reader.locate(self._transcript_id)
+            names = reader.column_names()
+
+            def cell(column: str) -> Iterator[bytes] | None:
+                if location is None or column not in names:
+                    return None
+                return reader.stream_cell(location, column)
+
+            # Resolve every cell before the first byte is emitted so any
+            # unsupported shape falls back with no partial output.
+            messages = cell("messages")
+            events = cell("events")
+            events_data = cell("events_data")
+            timelines = cell("timelines")
+
+            yield b'{"messages": '
+            yield from _cell_or_default(messages, b"[]")
+            yield b', "events": '
+            yield from _cell_or_default(events, b"[]")
+            yield b', "events_data": '
+            yield from _cell_or_default(events_data, b"null")
+            first = next(timelines, None) if timelines is not None else None
+            if first:
+                yield b', "timelines": '
+                yield first
+                assert timelines is not None
+                yield from timelines
+            else:
+                yield b', "timelines": []'
+            yield b"}"
+        finally:
+            # A close failure after the final byte must not raise with
+            # emitted=True.
+            _close_reader_quietly(reader)
 
 
 class ParquetTranscriptInfo(TranscriptInfo):
@@ -639,14 +784,33 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             return transcript_ids
 
+    def _reader_content_size(
+        self, reader: ParquetContentReader, transcript_id: str
+    ) -> int:
+        """UTF-8 byte size of messages+events+events_data on an open reader."""
+        location = reader.locate(transcript_id)
+        if location is None:
+            return 0
+        names = reader.column_names()
+        return sum(
+            reader.cell_size(location, column)
+            for column in ("messages", "events", "events_data")
+            if column in names
+        )
+
     def _get_content_size(self, full_path: str, transcript_id: str) -> int:
-        """Get decompressed size of messages+events+events_data columns for a transcript."""
+        """UTF-8 byte size of messages+events+events_data for a transcript."""
+        try:
+            with ParquetContentReader(full_path) as reader:
+                return self._reader_content_size(reader, transcript_id)
+        except Exception as ex:
+            _log_page_reader_fallback(full_path, ex)
         assert self._conn is not None
         try:
             result = self._conn.execute(
                 """
-                SELECT COALESCE(LENGTH(messages), 0) + COALESCE(LENGTH(events), 0)
-                     + COALESCE(LENGTH(events_data), 0)
+                SELECT COALESCE(strlen(messages), 0) + COALESCE(strlen(events), 0)
+                     + COALESCE(strlen(events_data), 0)
                 FROM read_parquet(?) WHERE transcript_id = ?
                 """,
                 [escape_duckdb_glob(full_path), transcript_id],
@@ -654,12 +818,61 @@ class ParquetTranscriptsDB(TranscriptsDB):
         except duckdb.BinderException:
             result = self._conn.execute(
                 """
-                SELECT COALESCE(LENGTH(messages), 0) + COALESCE(LENGTH(events), 0)
+                SELECT COALESCE(strlen(messages), 0) + COALESCE(strlen(events), 0)
                 FROM read_parquet(?) WHERE transcript_id = ?
                 """,
                 [escape_duckdb_glob(full_path), transcript_id],
             ).fetchone()
         return result[0] if result else 0
+
+    def _open_content_reader(self, full_path: str) -> ParquetContentReader | None:
+        """Open a page reader, or None (logged) if it cannot be opened."""
+        try:
+            return ParquetContentReader(full_path)
+        except Exception as ex:
+            _log_page_reader_fallback(full_path, ex)
+            return None
+
+    def _page_reader_content(
+        self, reader: ParquetContentReader, transcript_id: str, columns: list[str]
+    ) -> _PageReaderContent | None:
+        """Open content cell streams on an already-open page reader.
+
+        Returns None when anything at all goes wrong (closing the reader);
+        the caller then uses the DuckDB path. events_data is materialized
+        here (it is consumed as a str by expand_events); the other cells stay
+        streaming.
+        """
+        full_path = reader.path
+        try:
+            location = reader.locate(transcript_id)
+            if location is None:
+                # stale index: let the DuckDB branch report not-found
+                _close_reader_quietly(reader)
+                return None
+            names = reader.column_names()
+
+            def cell(column: str) -> Iterator[bytes] | None:
+                if column not in columns or column not in names:
+                    return None
+                return reader.stream_cell(location, column)
+
+            events_data_json: str | None = None
+            events_data_cell = cell("events_data")
+            if events_data_cell is not None:
+                data = b"".join(events_data_cell)
+                events_data_json = data.decode("utf-8") if data else None
+            return _PageReaderContent(
+                reader=reader,
+                messages=cell("messages"),
+                events=cell("events"),
+                timelines=cell("timelines"),
+                events_data_json=events_data_json,
+            )
+        except Exception as ex:
+            _close_reader_quietly(reader)
+            _log_page_reader_fallback(full_path, ex)
+            return None
 
     @override
     async def read(
@@ -744,144 +957,186 @@ class ParquetTranscriptsDB(TranscriptsDB):
             relative_filename = filename_result[0]
             full_path = self._full_parquet_path(relative_filename)
 
+            # One reader serves both the max_bytes gate and the content, so a
+            # gated read does not open (and re-locate) the file twice.
+            reader = self._open_content_reader(full_path)
+
             # Check size limit before loading content
             if max_bytes is not None:
-                content_size = self._get_content_size(full_path, t.transcript_id)
+                content_size: int | None = None
+                if reader is not None:
+                    try:
+                        content_size = self._reader_content_size(
+                            reader, t.transcript_id
+                        )
+                    except Exception as ex:
+                        _close_reader_quietly(reader)
+                        reader = None
+                        _log_page_reader_fallback(full_path, ex)
+                if content_size is None:
+                    content_size = self._get_content_size(full_path, t.transcript_id)
                 if content_size > max_bytes:
+                    if reader is not None:
+                        _close_reader_quietly(reader)
                     raise TranscriptTooLargeError(
                         t.transcript_id, content_size, max_bytes
                     )
 
-            # Try optimistic read first (fast path for files with all columns)
-            try:
-                sql = (
-                    "SELECT "
-                    + ", ".join(quote_identifier(column) for column in columns)
-                    + " FROM read_parquet(?, union_by_name=true) "
-                    "WHERE transcript_id = ?"
-                )
-                result = self._conn.execute(
-                    sql, [escape_duckdb_glob(full_path), t.transcript_id]
-                ).fetchone()
-                columns_read = columns  # All requested columns were available
-            except duckdb.BinderException:
-                # Column doesn't exist - check which ones are available (cached)
-                available = self._get_available_content_columns(full_path)
-                columns_read = [c for c in columns if c in available]
-
-                if not columns_read:
-                    # No content columns available - return empty content
-                    return transcript_no_content()
-
-                # Retry with only available columns
-                sql = (
-                    "SELECT "
-                    + ", ".join(quote_identifier(column) for column in columns_read)
-                    + " FROM read_parquet(?, union_by_name=true) "
-                    "WHERE transcript_id = ?"
-                )
-                result = self._conn.execute(
-                    sql, [escape_duckdb_glob(full_path), t.transcript_id]
-                ).fetchone()
-
-            if not result:
-                # Transcript not found - use model_construct to preserve LazyJSONDict
-                return transcript_no_content()
-
-            # Extract column values based on which columns were actually read
-            messages_json: str | None = None
-            events_json: str | None = None
-            timelines_json: str | None = None
-            events_data_json: str | None = None
-
-            col_idx = 0
-            if "messages" in columns_read:
-                messages_json = result[col_idx]
-                col_idx += 1
-            if "events" in columns_read:
-                events_json = result[col_idx]
-                col_idx += 1
-            if "timelines" in columns_read:
-                timelines_json = result[col_idx]
-                col_idx += 1
-            if "events_data" in columns_read:
-                events_data_json = result[col_idx]
-                col_idx += 1
-
-            # Stream combined JSON construction
-            async def stream_content_bytes() -> AsyncIterator[bytes]:
-                """Stream construction of combined JSON object."""
-                chunk_size = 64 * 1024
-
-                yield b'{"messages": '
-                if messages_json:
-                    messages_bytes = messages_json.encode("utf-8")
-                    for i in range(0, len(messages_bytes), chunk_size):
-                        yield messages_bytes[i : i + chunk_size]
-                else:
-                    yield b"[]"
-
-                yield b', "events": '
-                if events_json:
-                    events_bytes = events_json.encode("utf-8")
-                    for i in range(0, len(events_bytes), chunk_size):
-                        yield events_bytes[i : i + chunk_size]
-                else:
-                    yield b"[]"
-
-                if timelines_json:
-                    yield b', "timelines": '
-                    timelines_bytes = timelines_json.encode("utf-8")
-                    for i in range(0, len(timelines_bytes), chunk_size):
-                        yield timelines_bytes[i : i + chunk_size]
-
-                yield b"}"
-
-            # When timelines are requested, load all events so that
-            # stored timeline UUID references can be resolved (stored
-            # timelines may reference any event type, not just the
-            # filtered subset).
-            events_filter = "all" if content.timeline is not None else content.events
-            transcript = await load_filtered_transcript(
-                stream_content_bytes(),
-                t,
-                content.messages,
-                events_filter,
+            page_content = (
+                None
+                if reader is None
+                else self._page_reader_content(reader, t.transcript_id, columns)
             )
+            try:
+                if page_content is not None:
+                    events_data_json = page_content.events_data_json
+                    content_stream: AsyncIterator[bytes] = (
+                        page_content.stream_content_bytes()
+                    )
+                else:
+                    # Try optimistic read first (fast path for files with all columns)
+                    try:
+                        sql = (
+                            "SELECT "
+                            + ", ".join(quote_identifier(column) for column in columns)
+                            + " FROM read_parquet(?, union_by_name=true) "
+                            "WHERE transcript_id = ?"
+                        )
+                        result = self._conn.execute(
+                            sql, [escape_duckdb_glob(full_path), t.transcript_id]
+                        ).fetchone()
+                        columns_read = columns  # All requested columns were available
+                    except duckdb.BinderException:
+                        # Column doesn't exist - check which ones are available (cached)
+                        available = self._get_available_content_columns(full_path)
+                        columns_read = [c for c in columns if c in available]
 
-            # Resolve pool references back to full messages/calls
-            if events_data_json:
-                resolved_events = expand_events(transcript.events, events_data_json)
-                transcript = transcript.model_copy(update={"events": resolved_events})
+                        if not columns_read:
+                            # No content columns available - return empty content
+                            return transcript_no_content()
 
-            # Fallback: if timelines were requested but not stored, build from events
-            if (
-                content.timeline is not None
-                and not transcript.timelines
-                and transcript.events
-            ):
-                from inspect_ai.event import timeline_build
+                        # Retry with only available columns
+                        sql = (
+                            "SELECT "
+                            + ", ".join(
+                                quote_identifier(column) for column in columns_read
+                            )
+                            + " FROM read_parquet(?, union_by_name=true) "
+                            "WHERE transcript_id = ?"
+                        )
+                        result = self._conn.execute(
+                            sql, [escape_duckdb_glob(full_path), t.transcript_id]
+                        ).fetchone()
 
-                from ...util import filter_timelines
+                    if not result:
+                        # Transcript not found - use model_construct to preserve LazyJSONDict
+                        return transcript_no_content()
 
-                raw_timeline = timeline_build(transcript.events)
-                timelines = filter_timelines([raw_timeline], content.timeline)
-                transcript = transcript.model_copy(update={"timelines": timelines})
+                    # Extract column values based on which columns were actually read
+                    messages_json: str | None = None
+                    events_json: str | None = None
+                    timelines_json: str | None = None
+                    events_data_json = None
 
-            # Filter events back down to what the scanner requested
-            # (we loaded "all" above only for timeline resolution).
-            if (
-                content.timeline is not None
-                and content.events is not None
-                and content.events != "all"
-            ):
-                from ...util import filter_list
+                    col_idx = 0
+                    if "messages" in columns_read:
+                        messages_json = result[col_idx]
+                        col_idx += 1
+                    if "events" in columns_read:
+                        events_json = result[col_idx]
+                        col_idx += 1
+                    if "timelines" in columns_read:
+                        timelines_json = result[col_idx]
+                        col_idx += 1
+                    if "events_data" in columns_read:
+                        events_data_json = result[col_idx]
+                        col_idx += 1
 
-                transcript = transcript.model_copy(
-                    update={"events": filter_list(transcript.events, content.events)}
+                    # Stream combined JSON construction
+                    async def stream_content_bytes() -> AsyncIterator[bytes]:
+                        """Stream construction of combined JSON object."""
+                        chunk_size = 64 * 1024
+
+                        yield b'{"messages": '
+                        if messages_json:
+                            messages_bytes = messages_json.encode("utf-8")
+                            for i in range(0, len(messages_bytes), chunk_size):
+                                yield messages_bytes[i : i + chunk_size]
+                        else:
+                            yield b"[]"
+
+                        yield b', "events": '
+                        if events_json:
+                            events_bytes = events_json.encode("utf-8")
+                            for i in range(0, len(events_bytes), chunk_size):
+                                yield events_bytes[i : i + chunk_size]
+                        else:
+                            yield b"[]"
+
+                        if timelines_json:
+                            yield b', "timelines": '
+                            timelines_bytes = timelines_json.encode("utf-8")
+                            for i in range(0, len(timelines_bytes), chunk_size):
+                                yield timelines_bytes[i : i + chunk_size]
+
+                        yield b"}"
+
+                    content_stream = stream_content_bytes()
+
+                # When timelines are requested, load all events so that
+                # stored timeline UUID references can be resolved (stored
+                # timelines may reference any event type, not just the
+                # filtered subset).
+                events_filter = (
+                    "all" if content.timeline is not None else content.events
+                )
+                transcript = await load_filtered_transcript(
+                    content_stream,
+                    t,
+                    content.messages,
+                    events_filter,
                 )
 
-            return transcript
+                # Resolve pool references back to full messages/calls
+                if events_data_json:
+                    resolved_events = expand_events(transcript.events, events_data_json)
+                    transcript = transcript.model_copy(
+                        update={"events": resolved_events}
+                    )
+
+                # Fallback: if timelines were requested but not stored, build from events
+                if (
+                    content.timeline is not None
+                    and not transcript.timelines
+                    and transcript.events
+                ):
+                    from inspect_ai.event import timeline_build
+
+                    from ...util import filter_timelines
+
+                    raw_timeline = timeline_build(transcript.events)
+                    timelines = filter_timelines([raw_timeline], content.timeline)
+                    transcript = transcript.model_copy(update={"timelines": timelines})
+
+                # Filter events back down to what the scanner requested
+                # (we loaded "all" above only for timeline resolution).
+                if (
+                    content.timeline is not None
+                    and content.events is not None
+                    and content.events != "all"
+                ):
+                    from ...util import filter_list
+
+                    transcript = transcript.model_copy(
+                        update={
+                            "events": filter_list(transcript.events, content.events)
+                        }
+                    )
+
+                return transcript
+            finally:
+                if page_content is not None:
+                    page_content.close()
 
     @override
     async def read_messages_events(
@@ -1270,7 +1525,22 @@ class ParquetTranscriptsDB(TranscriptsDB):
             table,
             path,
             compression="zstd",
-            use_dictionary=True,
+            # Content cells must be page-addressable for the page reader:
+            # with use_dictionary=True every content cell of a row group
+            # lands in ONE dictionary page, and parquet-cpp checks
+            # data_page_size only once per write batch (default 1024 values),
+            # so write_batch_size=1 makes the check per-value. Layout
+            # contract: a cell crossing data_page_size is always LAST in its
+            # page, may share it with up to ~data_page_size of preceding
+            # small cells, and two crossing cells never share a page. The
+            # reader does not rely on this layout for correctness (it walks
+            # whatever it finds), only for efficiency. write_batch_size is a
+            # global writer property — keep these kwargs local to this
+            # writer.
+            use_dictionary=[  # type: ignore[arg-type]
+                column for column in table.column_names if column not in CONTENT_COLUMNS
+            ],
+            write_batch_size=1,
             row_group_size=self._row_group_size,
             write_statistics=True,
         )

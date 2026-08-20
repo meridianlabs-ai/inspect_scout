@@ -177,8 +177,12 @@ def test_walk_legacy_layout_is_dict_plus_data(tmp_path: Path) -> None:
 
 def test_walk_batch1_layout_splits_pages(tmp_path: Path) -> None:
     path = str(tmp_path / "batch1.parquet")
-    write_content_file(path, sample_values(), use_dictionary=False, write_batch_size=1)
-    # row group 0 holds rows 0-3 incl. the 2MB cell: > 1 data page, no dict
+    # two values that each cross the 1MiB data_page_size must land in
+    # separate pages under write_batch_size=1 (the flush check runs per
+    # value); the trailing small rows coalesce into a final page.
+    values: list[str | None] = ["x" * 2_000_000, "y" * 2_000_000, "small", None]
+    write_content_file(path, values, use_dictionary=False, write_batch_size=1)
     pages = walk_column_pages(path, 0, 1)
     assert all(p.page_type == _PAGE_TYPE_DATA for p in pages)
     assert len(pages) >= 2
+    assert sum(p.num_values for p in pages) == 4

@@ -58,6 +58,22 @@ class CellLocation:
 # --- thrift compact protocol (just enough for PageHeader) ---
 
 
+def _read_varint(data: bytes, pos: int) -> tuple[int, int]:
+    """Read one LEB128 varint at `pos`; returns (value, position after it).
+
+    Raises IndexError when the varint runs past the end of `data`.
+    """
+    result = 0
+    shift = 0
+    while True:
+        b = data[pos]
+        pos += 1
+        result |= (b & 0x7F) << shift
+        if not (b & 0x80):
+            return result, pos
+        shift += 7
+
+
 class _ThriftReader:
     def __init__(self, buf: bytes) -> None:
         self.buf = buf
@@ -69,14 +85,8 @@ class _ThriftReader:
         return b
 
     def varint(self) -> int:
-        result = 0
-        shift = 0
-        while True:
-            b = self.byte()
-            result |= (b & 0x7F) << shift
-            if not (b & 0x80):
-                return result
-            shift += 7
+        result, self.pos = _read_varint(self.buf, self.pos)
+        return result
 
     def zigzag(self) -> int:
         n = self.varint()
@@ -89,6 +99,18 @@ class _ThriftReader:
             raise IndexError("binary field extends past buffer")
         self.pos += n
         return value
+
+
+def _check_collection_size(r: _ThriftReader, size: int) -> None:
+    """Reject collections that cannot fit in the remaining buffer.
+
+    Bool elements consume no bytes at all, so an 18-byte header can otherwise
+    declare 2**34 elements and hang the parse.
+    """
+    if size > len(r.buf) - r.pos:
+        raise PageReaderUnsupportedError(
+            f"thrift collection of {size} elements exceeds the remaining buffer"
+        )
 
 
 def _parse_value(r: _ThriftReader, ftype: int) -> Any:
@@ -114,11 +136,13 @@ def _parse_value(r: _ThriftReader, ftype: int) -> Any:
         elem_type = header & 0x0F
         if size == 15:
             size = r.varint()
+        _check_collection_size(r, size)
         return [_parse_value(r, elem_type) for _ in range(size)]
     if ftype == 11:  # map
         size = r.varint()
         if size == 0:
             return {}
+        _check_collection_size(r, size)
         header = r.byte()
         key_type, value_type = header >> 4, header & 0x0F
         result: dict[Any, Any] = {}
@@ -162,25 +186,44 @@ class _PageInfo:
     def_level_encoding: int
 
 
+def _int_field(fields: dict[int, Any], field_id: int, *, minimum: int = 0) -> int:
+    """Read a non-negative int field, rejecting missing/wrong/negative values.
+
+    Corrupt headers otherwise reach the walk as negative sizes, where they
+    send it backwards forever, or as absent fields, where they KeyError.
+    """
+    value = fields.get(field_id)
+    if not isinstance(value, int) or isinstance(value, bool) or value < minimum:
+        raise PageReaderUnsupportedError(f"invalid thrift field {field_id}: {value!r}")
+    return value
+
+
+def _struct_field(fields: dict[int, Any], field_id: int) -> dict[int, Any]:
+    value = fields.get(field_id)
+    if not isinstance(value, dict):
+        raise PageReaderUnsupportedError(f"invalid thrift field {field_id}: {value!r}")
+    return value
+
+
 def _parse_page_header(buf: bytes, header_offset: int) -> _PageInfo:
     """Parse one PageHeader from buf.
 
     Raises IndexError when buf is too short (callers re-read with a larger
     slice) and PageReaderUnsupportedError for page types the reader cannot decode
-    (DATA_PAGE_V2, INDEX_PAGE, ...).
+    (DATA_PAGE_V2, INDEX_PAGE, ...) and for structurally invalid fields.
     """
     r = _ThriftReader(buf)
     fields = _parse_struct(r)
-    page_type = fields[1]
+    page_type = _int_field(fields, 1)
     if page_type == _PAGE_TYPE_DATA:
-        header = fields[5]  # DataPageHeader
-        num_values = header[1]
-        encoding = header[2]
-        def_level_encoding = header[3]
+        header = _struct_field(fields, 5)  # DataPageHeader
+        num_values = _int_field(header, 1)
+        encoding = _int_field(header, 2)
+        def_level_encoding = _int_field(header, 3)
     elif page_type == _PAGE_TYPE_DICTIONARY:
-        header = fields[7]  # DictionaryPageHeader
-        num_values = header[1]
-        encoding = header[2]
+        header = _struct_field(fields, 7)  # DictionaryPageHeader
+        num_values = _int_field(header, 1)
+        encoding = _int_field(header, 2)
         def_level_encoding = _ENC_RLE
     else:
         raise PageReaderUnsupportedError(f"unsupported page type {page_type}")
@@ -188,8 +231,8 @@ def _parse_page_header(buf: bytes, header_offset: int) -> _PageInfo:
         header_offset=header_offset,
         data_offset=header_offset + r.pos,
         page_type=page_type,
-        compressed_size=fields[3],
-        uncompressed_size=fields[2],
+        compressed_size=_int_field(fields, 3),
+        uncompressed_size=_int_field(fields, 2),
         num_values=num_values,
         encoding=encoding,
         def_level_encoding=def_level_encoding,
@@ -223,6 +266,11 @@ class _ChunkSource:
             self._buf = fileobj.read(total_compressed)
 
     def read_at(self, offset: int, size: int) -> bytes:
+        # Without this the coalesced branch would slice with a negative index
+        # and silently return the wrong bytes, where the ranged branch reads
+        # outside the chunk. Neither is a legal request.
+        if offset < self.start:
+            raise PageReaderUnsupportedError("read before chunk start")
         size = min(size, self.end - offset)
         if size <= 0:
             return b""
@@ -265,8 +313,11 @@ def _walk_pages(chunk: _ChunkSource) -> Iterator[_PageInfo]:
                         "page header parse ran past column chunk end"
                     ) from None
                 slice_size *= 4
+        next_position = page.data_offset + page.compressed_size
+        if next_position <= position:
+            raise PageReaderUnsupportedError("page does not advance")
         yield page
-        position = page.data_offset + page.compressed_size
+        position = next_position
 
 
 def _decode_rle_hybrid(data: bytes, bit_width: int, count: int) -> list[int]:
@@ -278,15 +329,7 @@ def _decode_rle_hybrid(data: bytes, bit_width: int, count: int) -> list[int]:
     out: list[int] = []
     pos = 0
     while pos < len(data) and len(out) < count:
-        header = 0
-        shift = 0
-        while True:
-            b = data[pos]
-            pos += 1
-            header |= (b & 0x7F) << shift
-            if not (b & 0x80):
-                break
-            shift += 7
+        header, pos = _read_varint(data, pos)
         if header & 1:  # bit-packed: (header >> 1) groups of 8 values
             n_groups = header >> 1
             n_bytes = n_groups * bit_width
@@ -307,6 +350,11 @@ def _decode_rle_hybrid(data: bytes, bit_width: int, count: int) -> list[int]:
             value = int.from_bytes(value_bytes, "little")
             pos += byte_width
             out.extend([value] * run)
+    if len(out) < count:
+        # Returning short here surfaced later as an unrelated IndexError.
+        raise PageReaderUnsupportedError(
+            "RLE data ended before producing requested values"
+        )
     return out[:count]
 
 

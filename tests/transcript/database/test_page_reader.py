@@ -136,6 +136,119 @@ def test_truncated_header_raises_index_error(tmp_path: Path) -> None:
         _parse_page_header(buf, offset)
 
 
+# --- crafted page headers (thrift compact wire format) ---
+
+
+def encode_varint(value: int) -> bytes:
+    out = bytearray()
+    while True:
+        byte = value & 0x7F
+        value >>= 7
+        out.append(byte | 0x80 if value else byte)
+        if not value:
+            return bytes(out)
+
+
+def encode_zigzag(value: int) -> bytes:
+    return encode_varint((value << 1) ^ (value >> 63))
+
+
+def encode_field(field_id: int, ftype: int, payload: bytes) -> bytes:
+    """One struct field in long form (delta 0 + explicit zigzag field id)."""
+    return bytes([ftype]) + encode_zigzag(field_id) + payload
+
+
+def encode_i32(field_id: int, value: int) -> bytes:
+    return encode_field(field_id, 5, encode_zigzag(value))
+
+
+def encode_page_header(
+    *,
+    page_type: int = _PAGE_TYPE_DATA,
+    uncompressed: int = 64,
+    compressed: int = 32,
+    num_values: int = 4,
+    encoding: int = 0,
+    extra: bytes = b"",
+) -> bytes:
+    data_page = (
+        encode_i32(1, num_values)
+        + encode_i32(2, encoding)
+        + encode_i32(3, 3)  # definition_level_encoding = RLE
+        + encode_i32(4, 3)  # repetition_level_encoding = RLE
+        + b"\x00"
+    )
+    return (
+        encode_i32(1, page_type)
+        + encode_i32(2, uncompressed)
+        + encode_i32(3, compressed)
+        + encode_field(5, 12, data_page)
+        + extra
+        + b"\x00"
+    )
+
+
+def test_crafted_header_encoder_round_trips() -> None:
+    """Sanity-checks the test encoder itself before it is used adversarially."""
+    page = _parse_page_header(encode_page_header(), 100)
+    assert page.page_type == _PAGE_TYPE_DATA
+    assert page.header_offset == 100
+    assert page.data_offset == 100 + len(encode_page_header())
+    assert (page.uncompressed_size, page.compressed_size) == (64, 32)
+    assert (page.num_values, page.encoding) == (4, 0)
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        encode_page_header(compressed=-18),
+        encode_page_header(uncompressed=-1),
+        encode_page_header(num_values=-5),
+        encode_page_header(page_type=-1),
+        encode_page_header(encoding=-2),
+    ],
+    ids=["compressed", "uncompressed", "num-values", "page-type", "encoding"],
+)
+def test_negative_header_sizes_raise(header: bytes) -> None:
+    """A negative compressed_size would make _walk_pages spin forever."""
+    with pytest.raises(PageReaderUnsupportedError, match="invalid thrift field"):
+        _parse_page_header(header, 0)
+
+
+def test_missing_data_page_header_raises() -> None:
+    """A DATA page whose nested header is absent must not KeyError."""
+    header = (
+        encode_i32(1, _PAGE_TYPE_DATA) + encode_i32(2, 64) + encode_i32(3, 32) + b"\x00"
+    )
+    with pytest.raises(PageReaderUnsupportedError, match="invalid thrift field 5"):
+        _parse_page_header(header, 0)
+
+
+def test_thrift_collection_bomb_raises() -> None:
+    """Bool list elements consume no bytes, so a declared 2**34 would hang."""
+    bomb = encode_field(9, 9, bytes([0xF0 | 1]) + encode_varint(2**34))
+    with pytest.raises(PageReaderUnsupportedError, match="thrift collection"):
+        _parse_page_header(encode_page_header(extra=bomb), 0)
+
+
+def test_walk_pages_rejects_negative_page_size(tmp_path: Path) -> None:
+    """A negative compressed_size used to walk backwards forever.
+
+    `stall` is built so that data_offset + compressed_size lands back on its
+    own header offset: before the size check, _walk_pages re-read and
+    re-yielded the same page without ever advancing.
+    """
+    path = str(tmp_path / "stall.parquet")
+    stall = encode_page_header(compressed=-1, uncompressed=8, num_values=0)
+    stall = encode_page_header(compressed=-len(stall), uncompressed=8, num_values=0)
+    data = stall + b"\x00" * 64
+    Path(path).write_bytes(data)
+    with open(path, "rb") as f:
+        chunk = _ChunkSource(f, 0, len(data))
+        with pytest.raises(PageReaderUnsupportedError, match="invalid thrift field 3"):
+            list(_walk_pages(chunk))
+
+
 def walk_column_pages(path: str, row_group: int, column: int) -> list[_PageInfo]:
     md = pq.ParquetFile(path).metadata
     cc = md.row_group(row_group).column(column)
@@ -229,6 +342,12 @@ def test_rle_hybrid_decodes(
 def test_rle_truncated_payload_raises(data: bytes, bit_width: int) -> None:
     with pytest.raises(PageReaderUnsupportedError, match="truncated"):
         _decode_rle_hybrid(data, bit_width, 8)
+
+
+def test_rle_short_data_raises_rather_than_returning_short() -> None:
+    """Data that runs out before `count` values must not silently return short."""
+    with pytest.raises(PageReaderUnsupportedError, match="RLE data ended"):
+        _decode_rle_hybrid(b"\x06\x01", 1, 10)  # a run of 3, 10 requested
 
 
 def test_stream_cursor_reads_across_chunks() -> None:
@@ -448,6 +567,22 @@ def test_reader_opens_only_its_own_path(monkeypatch: pytest.MonkeyPatch) -> None
         b"".join(cell)
     expected = MemoryFileSystem._strip_protocol(str(target))
     assert set(opened) == {expected}
+
+
+@pytest.mark.parametrize(
+    "coalesce_threshold", [0, 2**40], ids=["ranged", "whole-chunk"]
+)
+def test_read_before_chunk_start_raises(
+    tmp_path: Path, coalesce_threshold: int
+) -> None:
+    """Coalesced mode used to silently return the wrong bytes below start."""
+    path = str(tmp_path / "before.parquet")
+    Path(path).write_bytes(b"0123456789")
+    with open(path, "rb") as f:
+        chunk = _ChunkSource(f, 4, 6, coalesce_threshold=coalesce_threshold)
+        assert chunk.read_at(4, 2) == b"45"
+        with pytest.raises(PageReaderUnsupportedError, match="before chunk start"):
+            chunk.read_at(2, 2)
 
 
 def test_coalescing_modes_agree(tmp_path: Path) -> None:

@@ -1,8 +1,9 @@
 """Byte-equivalence of the page-reader and DuckDB paths through Scout's API."""
 
+import contextlib
 import json
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Iterator
 
 import duckdb
 import inspect_scout._transcript.database.parquet.transcripts as transcripts_module
@@ -10,6 +11,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 import pytest_asyncio
+from inspect_ai.event import Timeline, TimelineSpan
 from inspect_ai.model._chat_message import ChatMessageUser
 from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
 from inspect_scout._transcript.database.parquet.page_reader import (
@@ -23,7 +25,9 @@ from inspect_scout._transcript.types import (
 )
 
 
-def make_transcript(id: str, content_size: int) -> Transcript:
+def make_transcript(
+    id: str, content_size: int, *, timelines: list[Timeline] | None = None
+) -> Transcript:
     return Transcript(
         transcript_id=id,
         source_type="test",
@@ -32,7 +36,39 @@ def make_transcript(id: str, content_size: int) -> Transcript:
         metadata={},
         messages=[ChatMessageUser(content=f"héllo→世界😀 {id} " + "x" * content_size)],
         events=[],
+        timelines=timelines or [],
     )
+
+
+def make_timeline(id: str) -> Timeline:
+    return Timeline(
+        name=f"tl-{id}",
+        description="héllo→世界😀",
+        root=TimelineSpan(
+            id=f"root-{id}",
+            name="root",
+            branches=[TimelineSpan(id=f"child-{id}", name="child")],
+        ),
+    )
+
+
+@contextlib.contextmanager
+def assert_no_fallback(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Fail if anything falls back to DuckDB inside the block.
+
+    Without this the equivalence tests would still pass if the reader
+    regressed to always falling back: they would compare DuckDB with itself.
+    """
+    fallbacks: list[str] = []
+    original = transcripts_module._log_page_reader_fallback
+
+    def record(path: str, ex: Exception) -> None:
+        fallbacks.append(f"{path}: {ex}")
+        original(path, ex)
+
+    monkeypatch.setattr(transcripts_module, "_log_page_reader_fallback", record)
+    yield
+    assert not fallbacks, f"unexpected DuckDB fallback(s): {fallbacks}"
 
 
 def adversarial_batch() -> pa.RecordBatchReader:
@@ -71,7 +107,15 @@ async def db(tmp_path: Path) -> AsyncIterator[ParquetTranscriptsDB]:
     database = ParquetTranscriptsDB(str(location))
     await database.connect()
     await database.insert(
-        [make_transcript(f"t-{i:03d}", 2_000_000 if i == 1 else 200) for i in range(4)]
+        [
+            make_transcript(
+                f"t-{i:03d}",
+                2_000_000 if i == 1 else 200,
+                # one row carries a stored timeline, the rest have none
+                timelines=[make_timeline(f"t-{i:03d}")] if i == 2 else None,
+            )
+            for i in range(4)
+        ]
     )
     await database.insert(adversarial_batch())
     await database.commit()
@@ -105,9 +149,11 @@ async def test_stream_chunks_byte_identical_to_duckdb(
 ) -> None:
     infos = [info async for info in db.select()]
     assert len(infos) == 7
-    via_reader = {
-        info.transcript_id: await collect_messages_events(db, info) for info in infos
-    }
+    with assert_no_fallback(monkeypatch):
+        via_reader = {
+            info.transcript_id: await collect_messages_events(db, info)
+            for info in infos
+        }
     # every envelope must be well-formed JSON with the standard keys
     for payload in via_reader.values():
         parsed = json.loads(payload)
@@ -225,8 +271,17 @@ async def test_stream_abandonment_closes_reader(
         TranscriptContent(messages=["user"], events=None),
         TranscriptContent(messages=None, events="all"),
         TranscriptContent(messages=None, events=None),
+        TranscriptContent(messages="all", events="all", timeline="all"),
+        TranscriptContent(messages=None, events=None, timeline="all"),
     ],
-    ids=["all-all", "user-none", "none-events", "none-none"],
+    ids=[
+        "all-all",
+        "user-none",
+        "none-events",
+        "none-none",
+        "all-all-timeline",
+        "timeline-only",
+    ],
 )
 async def test_read_matches_duckdb(
     db: ParquetTranscriptsDB,
@@ -237,9 +292,14 @@ async def test_read_matches_duckdb(
     real = [
         info for info in infos if info.transcript_id.startswith("t-")
     ]  # Transcript-inserted rows parse as full transcripts
-    via_reader = {
-        info.transcript_id: (await db.read(info, content)).model_dump() for info in real
-    }
+    with assert_no_fallback(monkeypatch):
+        via_reader = {
+            info.transcript_id: (await db.read(info, content)).model_dump()
+            for info in real
+        }
+    if content.timeline is not None:
+        # t-002 stores a timeline: keeps the timeline cases from going vacuous
+        assert any(dump["timelines"] for dump in via_reader.values())
     break_page_reader(monkeypatch)
     for info in real:
         assert (await db.read(info, content)).model_dump() == via_reader[
@@ -262,6 +322,58 @@ async def test_read_uses_page_reader(
     infos = [info async for info in db.select()]
     await db.read(infos[0], TranscriptContent(messages="all", events="all"))
     assert calls, "read() did not construct a ParquetContentReader"
+
+
+@pytest.mark.asyncio
+async def test_multi_row_group_store_matches_duckdb(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Rows spread over many row groups read identically on both paths.
+
+    row_group_size=3 over 10 mixed-size rows puts every row at a different
+    offset within its group, which is where a cross-row-group off-by-one in
+    the locate/page-walk arithmetic would show up.
+    """
+    location = tmp_path / "store"
+    location.mkdir()
+    database = ParquetTranscriptsDB(str(location), row_group_size=3)
+    await database.connect()
+    await database.insert(
+        [
+            make_transcript(
+                f"g-{i:03d}",
+                2_000_000 if i == 5 else 100 * i,
+                timelines=[make_timeline(f"g-{i:03d}")] if i % 4 == 0 else None,
+            )
+            for i in range(10)
+        ]
+    )
+    await database.commit()
+    try:
+        store_file = next(location.glob("transcripts_*.parquet"))
+        assert pq.ParquetFile(str(store_file)).metadata.num_row_groups >= 4
+
+        infos = [info async for info in database.select()]
+        assert len(infos) == 10
+        content = TranscriptContent(messages="all", events="all", timeline="all")
+        with assert_no_fallback(monkeypatch):
+            via_reader = {
+                info.transcript_id: (
+                    await collect_messages_events(database, info),
+                    (await database.read(info, content)).model_dump(),
+                )
+                for info in infos
+            }
+        assert any(dump["timelines"] for _, dump in via_reader.values())
+        break_page_reader(monkeypatch)
+        for info in infos:
+            duckdb_bytes = await collect_messages_events(database, info)
+            duckdb_read = (await database.read(info, content)).model_dump()
+            assert (duckdb_bytes, duckdb_read) == via_reader[info.transcript_id], (
+                info.transcript_id
+            )
+    finally:
+        await database.disconnect()
 
 
 def stored_content_sizes(store: Path, transcript_id: str) -> tuple[int, int]:
@@ -308,10 +420,11 @@ async def test_max_bytes_gate_is_byte_accurate(
     assert byte_size > 0
 
     # one byte below the true size must raise; at the true size must succeed
-    with pytest.raises(TranscriptTooLargeError):
-        await db.read(info, content, max_bytes=byte_size - 1)
-    transcript = await db.read(info, content, max_bytes=byte_size)
-    assert transcript.messages
+    with contextlib.nullcontext() if use_fallback else assert_no_fallback(monkeypatch):
+        with pytest.raises(TranscriptTooLargeError):
+            await db.read(info, content, max_bytes=byte_size - 1)
+        transcript = await db.read(info, content, max_bytes=byte_size)
+        assert transcript.messages
 
 
 @pytest.mark.asyncio
@@ -334,5 +447,6 @@ async def test_content_size_counts_bytes_not_characters(
 
     byte_size, char_size = stored_content_sizes(tmp_path / "store", "rb-000")
     assert byte_size > char_size, "fixture no longer distinguishes bytes from chars"
-    result = await db.read_messages_events(info)
-    assert result.uncompressed_size == byte_size
+    with contextlib.nullcontext() if use_fallback else assert_no_fallback(monkeypatch):
+        result = await db.read_messages_events(info)
+        assert result.uncompressed_size == byte_size

@@ -22,7 +22,7 @@ import struct
 from collections.abc import Iterator
 from dataclasses import dataclass
 from types import TracebackType
-from typing import IO, Any
+from typing import IO, Any, cast
 
 import pyarrow.parquet as pq
 import zstandard
@@ -365,16 +365,49 @@ class _StreamCursor:
             yield piece
 
 
-def _decompressed_stream(compressed: Iterator[bytes], codec: str) -> Iterator[bytes]:
-    """Stream-decompress one page. Codec is pre-validated by the caller."""
+class _IteratorReader:
+    """Minimal read(n) adapter over an iterator of byte chunks."""
+
+    def __init__(self, chunks: Iterator[bytes]) -> None:
+        self._chunks = chunks
+        self._buffer = b""
+
+    def read(self, n: int) -> bytes:
+        while len(self._buffer) < n:
+            piece = next(self._chunks, None)
+            if piece is None:
+                break
+            self._buffer += piece
+        out = self._buffer[:n]
+        self._buffer = self._buffer[n:]
+        return out
+
+
+def _decompressed_stream(
+    compressed: Iterator[bytes],
+    codec: str,
+    chunk_size: int = DEFAULT_STREAM_CHUNK_SIZE,
+) -> Iterator[bytes]:
+    """Stream-decompress one page, bounding each yielded chunk.
+
+    zstandard's decompressobj returns ALL output for the input consumed —
+    one tiny piece of a highly-compressible frame can decompress to the
+    whole cell — so pull bounded reads through stream_reader instead.
+    Codec is pre-validated by the caller.
+    """
     if codec == "UNCOMPRESSED":
         yield from compressed
         return
-    decompressor = zstandard.ZstdDecompressor().decompressobj()
-    for piece in compressed:
-        out = decompressor.decompress(piece)
-        if out:
-            yield out
+    # stream_reader only ever calls read(n) on its source, so the minimal
+    # adapter is sufficient despite the stubs asking for a full IO[bytes].
+    reader = zstandard.ZstdDecompressor().stream_reader(
+        cast(IO[bytes], _IteratorReader(compressed))
+    )
+    while True:
+        piece = reader.read(chunk_size)
+        if not piece:
+            return
+        yield piece
 
 
 def _read_def_levels(

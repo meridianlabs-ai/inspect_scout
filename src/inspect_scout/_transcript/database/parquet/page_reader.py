@@ -374,7 +374,6 @@ def _decode_rle_hybrid(data: bytes, bit_width: int, count: int) -> list[int]:
             pos += byte_width
             out.extend([value] * run)
     if len(out) < count:
-        # Returning short here surfaced later as an unrelated IndexError.
         raise PageReaderUnsupportedError(
             "RLE data ended before producing requested values"
         )
@@ -613,7 +612,7 @@ class ParquetContentReader:
             for row_in_group in range(group_rows):
                 identifier = all_ids[row + row_in_group]
                 if identifier is not None:
-                    # first occurrence wins, matching the previous index() lookup
+                    # first occurrence wins for duplicate ids
                     locations.setdefault(
                         identifier, CellLocation(row_group, row_in_group)
                     )

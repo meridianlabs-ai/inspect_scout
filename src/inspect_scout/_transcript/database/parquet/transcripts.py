@@ -158,8 +158,6 @@ class _PageReaderContent:
         yield b"}"
 
     def close(self) -> None:
-        # A close failure after a fully successful read must not fail the
-        # read (this is called from read()'s finally).
         _close_reader_quietly(self.reader)
 
 

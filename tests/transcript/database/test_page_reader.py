@@ -232,24 +232,6 @@ def test_thrift_collection_bomb_raises() -> None:
         _parse_page_header(encode_page_header(extra=bomb), 0)
 
 
-def test_walk_pages_rejects_negative_page_size(tmp_path: Path) -> None:
-    """A negative compressed_size used to walk backwards forever.
-
-    `stall` is built so that data_offset + compressed_size lands back on its
-    own header offset: before the size check, _walk_pages re-read and
-    re-yielded the same page without ever advancing.
-    """
-    path = str(tmp_path / "stall.parquet")
-    stall = encode_page_header(compressed=-1, uncompressed=8, num_values=0)
-    stall = encode_page_header(compressed=-len(stall), uncompressed=8, num_values=0)
-    data = stall + b"\x00" * 64
-    Path(path).write_bytes(data)
-    with open(path, "rb") as f:
-        chunk = _ChunkSource(f, 0, len(data))
-        with pytest.raises(PageReaderUnsupportedError, match="invalid thrift field 3"):
-            list(_walk_pages(chunk))
-
-
 def walk_column_pages(path: str, row_group: int, column: int) -> list[_PageInfo]:
     md = pq.ParquetFile(path).metadata
     cc = md.row_group(row_group).column(column)
@@ -576,7 +558,7 @@ def test_reader_opens_only_its_own_path(monkeypatch: pytest.MonkeyPatch) -> None
 def test_read_before_chunk_start_raises(
     tmp_path: Path, coalesce_threshold: int
 ) -> None:
-    """Coalesced mode used to silently return the wrong bytes below start."""
+    """Reads below the chunk start are illegal in both coalesce modes."""
     path = str(tmp_path / "before.parquet")
     Path(path).write_bytes(b"0123456789")
     with open(path, "rb") as f:

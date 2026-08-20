@@ -825,17 +825,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
         try:
             location = reader.locate(transcript_id)
             if location is None:
-                # Uniform not-found handling: let the caller's existing
-                # `if not result: return transcript_no_content()` handle a
-                # stale-index not-found identically on both paths.
+                # stale index: let the DuckDB branch report not-found
                 with contextlib.suppress(Exception):
                     reader.close()
                 return None
             names = reader.column_names()
 
             def cell(column: str) -> Iterator[bytes] | None:
-                # location is never None here; the guard is cheap defense.
-                if location is None or column not in columns or column not in names:
+                if column not in columns or column not in names:
                     return None
                 return reader.stream_cell(location, column)
 

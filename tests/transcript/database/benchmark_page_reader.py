@@ -109,11 +109,7 @@ async def _read_once(location: Path, mb: int, fallback: bool) -> None:
 
 
 def _spawn(extra_args: list[str]) -> None:
-    """Exec a fresh child process for this same script and wait for it.
-
-    The child's stdout (its single result line, if any) is inherited, i.e.
-    passed straight through to this process's stdout.
-    """
+    """Exec a fresh child of this script; its stdout passes straight through."""
     subprocess.run([sys.executable, __file__, *extra_args], check=True)
 
 
@@ -154,10 +150,8 @@ def main() -> int:
         asyncio.run(_read_once(Path(args.read), args.mb, args.fallback))
         return 0
 
-    # Orchestrator: never allocates the large content itself, so its own RSS
-    # stays low for the lifetime of the process -- see module docstring for
-    # why that matters even though this process never reads the child's
-    # ru_maxrss.
+    # Orchestrator: must stay memory-light for its whole lifetime (children
+    # inherit its resident-page high-water mark at fork; see module docstring).
     with tempfile.TemporaryDirectory() as tmp:
         location = Path(tmp) / "store"
         location.mkdir()

@@ -756,13 +756,30 @@ class ParquetTranscriptsDB(TranscriptsDB):
             return transcript_ids
 
     def _get_content_size(self, full_path: str, transcript_id: str) -> int:
-        """Get decompressed size of messages+events+events_data columns for a transcript."""
+        """UTF-8 byte size of messages+events+events_data for a transcript."""
+        try:
+            with ParquetContentReader(full_path) as reader:
+                location = reader.locate(transcript_id)
+                if location is None:
+                    return 0
+                names = reader.column_names()
+                return sum(
+                    reader.cell_size(location, column)
+                    for column in ("messages", "events", "events_data")
+                    if column in names
+                )
+        except Exception as ex:
+            trace_message(
+                logger,
+                "Scout Parquet Page Reader",
+                f"Falling back to DuckDB for {full_path}: {ex}",
+            )
         assert self._conn is not None
         try:
             result = self._conn.execute(
                 """
-                SELECT COALESCE(LENGTH(messages), 0) + COALESCE(LENGTH(events), 0)
-                     + COALESCE(LENGTH(events_data), 0)
+                SELECT COALESCE(strlen(messages), 0) + COALESCE(strlen(events), 0)
+                     + COALESCE(strlen(events_data), 0)
                 FROM read_parquet(?) WHERE transcript_id = ?
                 """,
                 [escape_duckdb_glob(full_path), transcript_id],
@@ -770,7 +787,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         except duckdb.BinderException:
             result = self._conn.execute(
                 """
-                SELECT COALESCE(LENGTH(messages), 0) + COALESCE(LENGTH(events), 0)
+                SELECT COALESCE(strlen(messages), 0) + COALESCE(strlen(events), 0)
                 FROM read_parquet(?) WHERE transcript_id = ?
                 """,
                 [escape_duckdb_glob(full_path), transcript_id],

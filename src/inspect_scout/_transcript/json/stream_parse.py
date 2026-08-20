@@ -49,7 +49,6 @@ from .reducer import (
     scores_coroutine,
     spooling_metadata_coroutine,
     target_coroutine,
-    timeline_item_coroutine,
 )
 from .spool import BlobSpool, ByteSpool, ItemSpool
 
@@ -59,7 +58,6 @@ _SECTION_MESSAGES = 1
 _SECTION_EVENTS = 2
 _SECTION_ATTACHMENTS = 3
 _SECTION_METADATA = 4
-_SECTION_TIMELINES = 5
 _SECTION_TARGET = 6
 _SECTION_SCORES = 7
 _SECTION_MESSAGE_POOL = 8
@@ -160,7 +158,6 @@ class StreamParseResult:
     """Where these spools live, so consumers can open their own alongside."""
     target: str | list[str] | None = None
     scores: dict[str, Any] = field(default_factory=dict)
-    timelines: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def has_metadata(self) -> bool:
@@ -279,7 +276,6 @@ async def stream_parse_to_spool(
         if events_config
         else None
     )
-    timelines_coro = timeline_item_coroutine(state)
     attachments_coro = _spool_attachments_coroutine(blobs)
     metadata_coro = spooling_metadata_coroutine(metadata_spool.write)
     target_coro: CoroutineGen | None = target_coroutine(state)
@@ -379,16 +375,16 @@ async def stream_parse_to_spool(
                     ):
                         current_section = _SECTION_CALL_POOL
                     elif prefix[0] == "t":
-                        if prefix[1] == _TARGET_CHAR1:
-                            current_section = _SECTION_TARGET
-                        elif (
-                            p_len >= _TIMELINES_ITEM_PREFIX_LEN
-                            and prefix[:_TIMELINES_ITEM_PREFIX_LEN]
-                            == TIMELINES_ITEM_PREFIX
-                        ):
-                            current_section = _SECTION_TIMELINES
-                        else:
-                            current_section = _SECTION_OTHER
+                        # "target" vs "timelines", on the 2nd char. Timelines
+                        # are skipped: a timeline scan is not streaming
+                        # eligible (_scan.py `_streaming_eligible`), so nothing
+                        # downstream can read them and spooling them would
+                        # retain the whole section for the parse's lifetime.
+                        current_section = (
+                            _SECTION_TARGET
+                            if prefix[1] == _TARGET_CHAR1
+                            else _SECTION_OTHER
+                        )
                     elif (
                         prefix[0] == "s"
                         and prefix[:_SCORES_PREFIX_LEN] == SCORES_PREFIX
@@ -410,8 +406,6 @@ async def stream_parse_to_spool(
                         target_coro.send((prefix, event, value))
                     except StopIteration:
                         target_coro = None
-                elif current_section == _SECTION_TIMELINES:
-                    timelines_coro.send((prefix, event, value))
                 elif current_section == _SECTION_SCORES:
                     scores_coro.send((prefix, event, value))
                 elif current_section == _SECTION_MESSAGE_POOL:
@@ -423,7 +417,6 @@ async def stream_parse_to_spool(
 
         result.target = state.target
         result.scores = state.scores
-        result.timelines = state.timelines
         return result
     except BaseException:
         result.close()

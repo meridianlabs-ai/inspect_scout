@@ -2194,6 +2194,7 @@ async def test_content_columns_are_page_bounded(test_location: Path) -> None:
         _PAGE_TYPE_DATA,
         _PAGE_TYPE_DICTIONARY,
         _ChunkSource,
+        _PageInfo,
         _walk_pages,
     )
 
@@ -2214,7 +2215,7 @@ async def test_content_columns_are_page_bounded(test_location: Path) -> None:
     metadata = pq.ParquetFile(str(files[0])).metadata
     columns = {metadata.schema.column(i).name: i for i in range(metadata.num_columns)}
 
-    def pages_of(column: str) -> list[Any]:
+    def pages_of(column: str) -> list[_PageInfo]:
         chunk_meta = metadata.row_group(0).column(columns[column])
         starts = [
             offset

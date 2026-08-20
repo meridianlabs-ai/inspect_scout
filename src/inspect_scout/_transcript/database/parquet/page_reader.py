@@ -481,30 +481,27 @@ def _read_def_levels(
     return _decode_rle_hybrid(cursor.read(levels_len), 1, num_values)
 
 
+def _seek_to_value(cursor: _StreamCursor, values_to_skip: int) -> int:
+    """Advance past `values_to_skip` values; returns the target's length."""
+    for _ in range(values_to_skip):
+        (value_len,) = struct.unpack("<I", cursor.read(4))
+        cursor.skip(value_len)
+    (value_len,) = struct.unpack("<I", cursor.read(4))
+    return int(value_len)
+
+
 @dataclass
 class _OpenCell:
-    """A located, validated cell.
-
-    A cursor positioned after the def levels plus the number of preceding
-    values to skip.
-    """
+    """A located, fully-seeked cell: cursor positioned at the value bytes."""
 
     cursor: _StreamCursor
-    values_to_skip: int
-
-    def _seek_target(self) -> int:
-        for _ in range(self.values_to_skip):
-            (value_len,) = struct.unpack("<I", self.cursor.read(4))
-            self.cursor.skip(value_len)
-        (value_len,) = struct.unpack("<I", self.cursor.read(4))
-        return int(value_len)
+    value_len: int
 
     def stream(self, chunk_size: int) -> Iterator[bytes]:
-        value_len = self._seek_target()
-        yield from self.cursor.iter_read(value_len, chunk_size)
+        yield from self.cursor.iter_read(self.value_len, chunk_size)
 
     def size(self) -> int:
-        return self._seek_target()
+        return self.value_len
 
 
 class ParquetContentReader:
@@ -519,8 +516,8 @@ class ParquetContentReader:
     ) -> None:
         self._path = path
         self._coalesce_threshold = coalesce_threshold
-        raw: Any = None
-        meta: Any = None
+        raw: IO[bytes] | None = None
+        meta: IO[bytes] | None = None
         try:
             if "://" in path:
                 fs = filesystem(path).fs
@@ -546,8 +543,8 @@ class ParquetContentReader:
                 if raw is not None:
                     raw.close()
             raise
-        self._raw: Any = raw
-        self._meta_file: Any = meta
+        self._raw: IO[bytes] = raw
+        self._meta_file: IO[bytes] | None = meta
         self._parquet_file = parquet_file
 
     @property
@@ -567,10 +564,14 @@ class ParquetContentReader:
         self.close()
 
     def close(self) -> None:
-        self._parquet_file.close()
-        if self._meta_file is not None:
-            self._meta_file.close()
-        self._raw.close()
+        """Release every handle, even if an earlier one fails to close."""
+        with contextlib.suppress(Exception):
+            self._parquet_file.close()
+        with contextlib.suppress(Exception):
+            if self._meta_file is not None:
+                self._meta_file.close()
+        with contextlib.suppress(Exception):
+            self._raw.close()
 
     def column_names(self) -> set[str]:
         return set(self._parquet_file.schema_arrow.names)
@@ -704,7 +705,7 @@ class ParquetContentReader:
         if def_levels[row_in_page] == 0:
             return None
         values_before = sum(1 for level in def_levels[:row_in_page] if level)
-        return _OpenCell(cursor=cursor, values_to_skip=values_before)
+        return _OpenCell(cursor, _seek_to_value(cursor, values_before))
 
     def _open_dictionary_cell(
         self,
@@ -744,4 +745,6 @@ class ParquetContentReader:
                 codec,
             )
         )
-        return _OpenCell(cursor=dictionary_cursor, values_to_skip=dictionary_index)
+        return _OpenCell(
+            dictionary_cursor, _seek_to_value(dictionary_cursor, dictionary_index)
+        )

@@ -87,6 +87,33 @@ PARQUET_TRANSCRIPTS_GLOB = "*.parquet"
 CHUNK_SIZE = 64 * 1024  # 64KB chunks for streaming
 
 
+_page_reader_fallback_warned = False
+
+
+def _log_page_reader_fallback(path: str, ex: Exception) -> None:
+    """Record a page-reader fallback: once as a warning, then at trace level.
+
+    A silent permanent fallback would look exactly like a working reader,
+    only slower, so the first one is visible without logging every read.
+    """
+    global _page_reader_fallback_warned
+    if not _page_reader_fallback_warned:
+        _page_reader_fallback_warned = True
+        logger.warning(
+            f"Parquet page reader falling back to DuckDB (first occurrence, "
+            f"further fallbacks logged at trace level): {path}: {ex}"
+        )
+    trace_message(
+        logger, "Scout Parquet Page Reader", f"Falling back to DuckDB for {path}: {ex}"
+    )
+
+
+def _close_reader_quietly(reader: ParquetContentReader) -> None:
+    """Close a reader we are abandoning; a close failure is never the story."""
+    with contextlib.suppress(Exception):
+        reader.close()
+
+
 def _cell_or_default(cell: Iterator[bytes] | None, default: bytes) -> Iterator[bytes]:
     """Yield a cell's bytes, or the default for NULL/absent/empty cells.
 
@@ -133,8 +160,7 @@ class _PageReaderContent:
     def close(self) -> None:
         # A close failure after a fully successful read must not fail the
         # read (this is called from read()'s finally).
-        with contextlib.suppress(Exception):
-            self.reader.close()
+        _close_reader_quietly(self.reader)
 
 
 class _ParquetStreamContextManager:
@@ -292,11 +318,7 @@ class _ParquetStreamContextManager:
         except Exception as ex:
             if emitted:
                 raise
-            trace_message(
-                logger,
-                "Scout Parquet Page Reader",
-                f"Falling back to DuckDB for {self._parquet_path}: {ex}",
-            )
+            _log_page_reader_fallback(self._parquet_path, ex)
         async for chunk in self._stream_chunks_duckdb():
             yield chunk
 
@@ -336,8 +358,7 @@ class _ParquetStreamContextManager:
         finally:
             # A close failure after the final byte must not raise with
             # emitted=True.
-            with contextlib.suppress(Exception):
-                reader.close()
+            _close_reader_quietly(reader)
 
 
 class ParquetTranscriptInfo(TranscriptInfo):
@@ -785,11 +806,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             with ParquetContentReader(full_path) as reader:
                 return self._reader_content_size(reader, transcript_id)
         except Exception as ex:
-            trace_message(
-                logger,
-                "Scout Parquet Page Reader",
-                f"Falling back to DuckDB for {full_path}: {ex}",
-            )
+            _log_page_reader_fallback(full_path, ex)
         assert self._conn is not None
         try:
             result = self._conn.execute(
@@ -815,11 +832,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         try:
             return ParquetContentReader(full_path)
         except Exception as ex:
-            trace_message(
-                logger,
-                "Scout Parquet Page Reader",
-                f"Falling back to DuckDB for {full_path}: {ex}",
-            )
+            _log_page_reader_fallback(full_path, ex)
             return None
 
     def _page_reader_content(
@@ -837,8 +850,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             location = reader.locate(transcript_id)
             if location is None:
                 # stale index: let the DuckDB branch report not-found
-                with contextlib.suppress(Exception):
-                    reader.close()
+                _close_reader_quietly(reader)
                 return None
             names = reader.column_names()
 
@@ -860,13 +872,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 events_data_json=events_data_json,
             )
         except Exception as ex:
-            with contextlib.suppress(Exception):
-                reader.close()
-            trace_message(
-                logger,
-                "Scout Parquet Page Reader",
-                f"Falling back to DuckDB for {full_path}: {ex}",
-            )
+            _close_reader_quietly(reader)
+            _log_page_reader_fallback(full_path, ex)
             return None
 
     @override
@@ -965,20 +972,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
                             reader, t.transcript_id
                         )
                     except Exception as ex:
-                        with contextlib.suppress(Exception):
-                            reader.close()
+                        _close_reader_quietly(reader)
                         reader = None
-                        trace_message(
-                            logger,
-                            "Scout Parquet Page Reader",
-                            f"Falling back to DuckDB for {full_path}: {ex}",
-                        )
+                        _log_page_reader_fallback(full_path, ex)
                 if content_size is None:
                     content_size = self._get_content_size(full_path, t.transcript_id)
                 if content_size > max_bytes:
                     if reader is not None:
-                        with contextlib.suppress(Exception):
-                            reader.close()
+                        _close_reader_quietly(reader)
                     raise TranscriptTooLargeError(
                         t.transcript_id, content_size, max_bytes
                     )

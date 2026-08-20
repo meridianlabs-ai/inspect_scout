@@ -204,7 +204,7 @@ async def test_stream_abandonment_closes_reader(
     closed: list[bool] = []
     original_close = ParquetContentReader.close
 
-    def tracking_close(self: Any) -> None:
+    def tracking_close(self: ParquetContentReader) -> None:
         closed.append(True)
         original_close(self)
 
@@ -254,7 +254,7 @@ async def test_read_uses_page_reader(
     calls: list[str] = []
     original = transcripts_module.ParquetContentReader  # type: ignore[attr-defined]
 
-    def counting(path: str, **kwargs: Any) -> Any:
+    def counting(path: str, **kwargs: Any) -> ParquetContentReader:
         calls.append(path)
         return original(path, **kwargs)
 

@@ -14,6 +14,7 @@ from fsspec.implementations.memory import (  # type: ignore[import-untyped]
 from inspect_scout._transcript.database.parquet.page_reader import (
     _PAGE_TYPE_DATA,
     _PAGE_TYPE_DICTIONARY,
+    DEFAULT_STREAM_CHUNK_SIZE,
     CellLocation,
     PageReaderUnsupportedError,
     ParquetContentReader,
@@ -246,6 +247,16 @@ def test_decompressed_stream_zstd_roundtrip() -> None:
     pieces = [frame[i : i + 100] for i in range(0, len(frame), 100)]
     assert b"".join(_decompressed_stream(iter(pieces), "ZSTD")) == payload
     assert b"".join(_decompressed_stream(iter([payload]), "UNCOMPRESSED")) == payload
+
+
+def test_decompressed_stream_output_is_bounded() -> None:
+    """One tiny compressed piece must not decompress into one huge chunk."""
+    payload = b"x" * (32 * 1024 * 1024)
+    frame = zstandard.ZstdCompressor().compress(payload)
+    assert len(frame) < 64 * 1024  # the whole frame arrives as one piece
+    sizes = [len(piece) for piece in _decompressed_stream(iter([frame]), "ZSTD")]
+    assert max(sizes) <= DEFAULT_STREAM_CHUNK_SIZE
+    assert sum(sizes) == len(payload)
 
 
 def test_read_def_levels() -> None:

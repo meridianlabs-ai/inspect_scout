@@ -125,3 +125,60 @@ def test_truncated_header_raises_index_error(tmp_path: Path) -> None:
         buf = f.read(3)  # far too short for any header
     with pytest.raises(IndexError):
         _parse_page_header(buf, offset)
+
+
+def walk_column_pages(path: str, row_group: int, column: int) -> list[Any]:
+    from inspect_scout._transcript.database.parquet.page_reader import (
+        _ChunkSource,
+        _walk_pages,
+    )
+
+    md = pq.ParquetFile(path).metadata
+    cc = md.row_group(row_group).column(column)
+    with open(path, "rb") as f:
+        chunk = _ChunkSource(
+            f, first_page_offset(md, row_group, column), cc.total_compressed_size
+        )
+        return list(_walk_pages(chunk))
+
+
+@pytest.mark.parametrize("coalesce", [True, False], ids=["whole-chunk", "ranged"])
+def test_walk_accounts_for_full_chunk(tmp_path: Path, coalesce: bool) -> None:
+    from inspect_scout._transcript.database.parquet.page_reader import (
+        _ChunkSource,
+        _walk_pages,
+    )
+
+    path = str(tmp_path / "walk.parquet")
+    write_content_file(path, sample_values(), use_dictionary=False, write_batch_size=1)
+    md = pq.ParquetFile(path).metadata
+    for row_group in range(md.num_row_groups):
+        cc = md.row_group(row_group).column(1)
+        with open(path, "rb") as f:
+            chunk = _ChunkSource(
+                f,
+                first_page_offset(md, row_group, 1),
+                cc.total_compressed_size,
+                coalesce_threshold=(2**40 if coalesce else 0),
+            )
+            pages = list(_walk_pages(chunk))
+        walked = sum(p.data_offset - p.header_offset + p.compressed_size for p in pages)
+        assert walked == cc.total_compressed_size
+        data_rows = sum(p.num_values for p in pages if p.page_type == _PAGE_TYPE_DATA)
+        assert data_rows == md.row_group(row_group).num_rows
+
+
+def test_walk_legacy_layout_is_dict_plus_data(tmp_path: Path) -> None:
+    path = str(tmp_path / "legacy.parquet")
+    write_content_file(path, sample_values())
+    pages = walk_column_pages(path, 0, 1)
+    assert [p.page_type for p in pages] == [_PAGE_TYPE_DICTIONARY, _PAGE_TYPE_DATA]
+
+
+def test_walk_batch1_layout_splits_pages(tmp_path: Path) -> None:
+    path = str(tmp_path / "batch1.parquet")
+    write_content_file(path, sample_values(), use_dictionary=False, write_batch_size=1)
+    # row group 0 holds rows 0-3 incl. the 2MB cell: > 1 data page, no dict
+    pages = walk_column_pages(path, 0, 1)
+    assert all(p.page_type == _PAGE_TYPE_DATA for p in pages)
+    assert len(pages) >= 2

@@ -18,8 +18,9 @@ DuckDB read path.
 from __future__ import annotations
 
 import struct
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Any
+from typing import IO, Any
 
 WHOLE_CHUNK_READ_THRESHOLD = 4 * 1024 * 1024
 """Column chunks at or below this compressed size are fetched in one read."""
@@ -187,3 +188,76 @@ def _parse_page_header(buf: bytes, header_offset: int) -> _PageInfo:
         encoding=encoding,
         def_level_encoding=def_level_encoding,
     )
+
+
+_HEADER_SLICE = 8 * 1024
+
+
+class _ChunkSource:
+    """Byte access within one column chunk.
+
+    Chunks at or below the coalesce threshold are read whole in one ranged
+    read (matching DuckDB's I/O pattern on small chunks); larger chunks are
+    read with explicit per-range seeks so non-target pages are never fetched.
+    """
+
+    def __init__(
+        self,
+        fileobj: IO[bytes],
+        start: int,
+        total_compressed: int,
+        coalesce_threshold: int = WHOLE_CHUNK_READ_THRESHOLD,
+    ) -> None:
+        self._fileobj = fileobj
+        self.start = start
+        self.end = start + total_compressed
+        self._buf: bytes | None = None
+        if total_compressed <= coalesce_threshold:
+            fileobj.seek(start)
+            self._buf = fileobj.read(total_compressed)
+
+    def read_at(self, offset: int, size: int) -> bytes:
+        size = min(size, self.end - offset)
+        if size <= 0:
+            return b""
+        if self._buf is not None:
+            rel = offset - self.start
+            return self._buf[rel : rel + size]
+        self._fileobj.seek(offset)
+        return self._fileobj.read(size)
+
+    def iter_range(
+        self,
+        offset: int,
+        size: int,
+        chunk_size: int = DEFAULT_STREAM_CHUNK_SIZE,
+    ) -> Iterator[bytes]:
+        position = offset
+        remaining = size
+        while remaining > 0:
+            piece = self.read_at(position, min(chunk_size, remaining))
+            if not piece:
+                raise PageReaderUnsupported("truncated column chunk")
+            yield piece
+            position += len(piece)
+            remaining -= len(piece)
+
+
+def _walk_pages(chunk: _ChunkSource) -> Iterator[_PageInfo]:
+    """Yield page infos in file order, reading only page headers."""
+    position = chunk.start
+    while position < chunk.end:
+        slice_size = _HEADER_SLICE
+        while True:
+            buf = chunk.read_at(position, slice_size)
+            try:
+                page = _parse_page_header(buf, position)
+                break
+            except (IndexError, struct.error):
+                if slice_size >= chunk.end - position:
+                    raise PageReaderUnsupported(
+                        "page header parse ran past column chunk end"
+                    ) from None
+                slice_size *= 4
+        yield page
+        position = page.data_offset + page.compressed_size

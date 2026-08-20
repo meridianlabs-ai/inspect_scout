@@ -263,8 +263,8 @@ def test_walk_accounts_for_full_chunk(tmp_path: Path, coalesce: bool) -> None:
         assert data_rows == md.row_group(row_group).num_rows
 
 
-def test_walk_legacy_layout_is_dict_plus_data(tmp_path: Path) -> None:
-    path = str(tmp_path / "legacy.parquet")
+def test_walk_dictionary_layout_is_dict_plus_data(tmp_path: Path) -> None:
+    path = str(tmp_path / "dictionary.parquet")
     write_content_file(path, sample_values())
     pages = walk_column_pages(path, 0, 1)
     assert [p.page_type for p in pages] == [_PAGE_TYPE_DICTIONARY, _PAGE_TYPE_DATA]
@@ -380,8 +380,8 @@ PLAIN_LAYOUTS: dict[str, dict[str, Any]] = {
 
 ALL_LAYOUTS: dict[str, dict[str, Any]] = {
     **PLAIN_LAYOUTS,
-    # today's writer flags: one dictionary page holds every value
-    "legacy_dict": {"use_dictionary": True},
+    # one dictionary page holds every distinct value for the row group
+    "dict_single_page": {"use_dictionary": True},
     # dictionary overflow fallback: dict page + RLE_DICTIONARY + PLAIN pages
     "mixed_dict_plain": {"use_dictionary": True, "write_batch_size": 1},
 }

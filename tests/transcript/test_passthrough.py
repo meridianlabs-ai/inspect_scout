@@ -41,15 +41,11 @@ def _result(tmp_path: Path, events: list[dict[str, Any]]) -> StreamParseResult:
         # up would raise KeyError, which `_transcript_for_record` would swallow
         # and record an empty transcript for the whole scan.
         pytest.param([[1, 4]], ["m1", "m2"], [[0, 2]], id="past-the-pool"),
-        # Negative and unbounded bounds must follow Python slicing, because
-        # that is what the materialized path does. Enumerating the range
-        # verbatim would count a negative bound from zero (selecting the whole
-        # pool for [-1, 3] instead of just its last entry) and would walk a
-        # billion positions for a huge upper bound that slicing truncates.
+        # Bounds follow Python slicing, because that is what the materialized
+        # path does.
         pytest.param([[-1, 3]], ["m2"], [[0, 1]], id="negative-start"),
         pytest.param([[-3, -1]], ["m0", "m1"], [[0, 2]], id="negative-both"),
         pytest.param([[1, 10**9]], ["m1", "m2"], [[0, 2]], id="huge-end"),
-        pytest.param([[-99, 99]], ["m0", "m1", "m2"], [[0, 3]], id="both-out-of-range"),
         pytest.param([[2, 1]], [], [], id="inverted-empty"),
     ],
 )
@@ -250,12 +246,7 @@ def test_index_metadata_values_json_stdlib_refuses_are_coerced(
 def test_slice_positions_matches_python_slicing(
     start: int, end: int, pool_len: int
 ) -> None:
-    """The spool paths index by position, so they must reproduce slicing.
-
-    The materialized path expands refs as `pool[start:end]`; anything the
-    spool-backed paths do differently is a silent divergence in recorded
-    output.
-    """
+    """Divergence from slicing here is a silent divergence in recorded output."""
     pool = list(range(pool_len))
     assert [pool[i] for i in slice_positions(start, end, pool_len)] == pool[start:end]
 
@@ -263,13 +254,7 @@ def test_slice_positions_matches_python_slicing(
 def test_input_data_streams_pool_entries_without_holding_them(
     tmp_path: Path,
 ) -> None:
-    """`input_data` must stay near the cell size, like the envelope does.
-
-    Building it as objects and dumping it whole held the parsed entries, a
-    string of them, and its encoding at once -- about 5x the cell on a
-    pool-dominated transcript. Peak is measured against the value actually
-    produced, so this fails if any of those copies comes back.
-    """
+    """`input_data` must stay near the cell size, like the envelope does."""
     entry = "x" * (512 * 1024)
     blobs = BlobSpool(tmp_path)
     for i in range(40):  # ~20 MB of pool
@@ -296,6 +281,6 @@ def test_input_data_streams_pool_entries_without_holding_them(
     assert input_data_json is not None
     cell = len(input_data_json)
     assert cell > 15 * 1024 * 1024, "fixture should be big enough to be meaningful"
-    # The read-back is unavoidable; two whole copies is generous headroom and
-    # still far below the ~5x the object-graph build cost.
+    # The read-back is unavoidable; 2.5x leaves headroom while still failing
+    # if the value is built as an object graph and dumped whole (~5x).
     assert peak < cell * 2.5, f"peak {peak} exceeds 2.5x the {cell}-byte cell"

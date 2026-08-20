@@ -266,3 +266,19 @@ def test_read_def_levels() -> None:
     cursor2 = _StreamCursor(iter([b""]))
     assert _read_def_levels(cursor2, 3, 0) == [1, 1, 1]
     assert cursor2.bytes_read == 0
+
+
+def test_rle_multibyte_header_and_truncation() -> None:
+    from inspect_scout._transcript.database.parquet.page_reader import (
+        PageReaderUnsupported,
+        _decode_rle_hybrid,
+    )
+
+    # multi-byte varint header: run of 100 -> header 200 -> varint b"\xc8\x01"
+    assert _decode_rle_hybrid(b"\xc8\x01\x01", 1, 100) == [1] * 100
+    # RLE header present but run value byte missing
+    with pytest.raises(PageReaderUnsupported, match="truncated"):
+        _decode_rle_hybrid(b"\x08", 2, 4)
+    # bit-packed header present but group bytes missing
+    with pytest.raises(PageReaderUnsupported, match="truncated"):
+        _decode_rle_hybrid(b"\x03", 1, 8)

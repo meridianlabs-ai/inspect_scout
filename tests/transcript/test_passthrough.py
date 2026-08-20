@@ -9,6 +9,7 @@ from typing import Any
 
 import pytest
 from inspect_scout._transcript.json.passthrough import pooled_passthrough
+from inspect_scout._transcript.json.pool import slice_positions
 from inspect_scout._transcript.json.spool import BlobSpool, ByteSpool, ItemSpool
 from inspect_scout._transcript.json.stream_parse import StreamParseResult
 from inspect_scout._transcript.types import TranscriptInfo
@@ -39,6 +40,16 @@ def _result(tmp_path: Path, events: list[dict[str, Any]]) -> StreamParseResult:
         # up would raise KeyError, which `_transcript_for_record` would swallow
         # and record an empty transcript for the whole scan.
         pytest.param([[1, 4]], ["m1", "m2"], [[0, 2]], id="past-the-pool"),
+        # Negative and unbounded bounds must follow Python slicing, because
+        # that is what the materialized path does. Enumerating the range
+        # verbatim would count a negative bound from zero (selecting the whole
+        # pool for [-1, 3] instead of just its last entry) and would walk a
+        # billion positions for a huge upper bound that slicing truncates.
+        pytest.param([[-1, 3]], ["m2"], [[0, 1]], id="negative-start"),
+        pytest.param([[-3, -1]], ["m0", "m1"], [[0, 2]], id="negative-both"),
+        pytest.param([[1, 10**9]], ["m1", "m2"], [[0, 2]], id="huge-end"),
+        pytest.param([[-99, 99]], ["m0", "m1", "m2"], [[0, 3]], id="both-out-of-range"),
+        pytest.param([[2, 1]], [], [], id="inverted-empty"),
     ],
 )
 def test_pool_refs_are_pruned_and_remapped(
@@ -219,3 +230,30 @@ def test_index_metadata_values_json_stdlib_refuses_are_coerced(
     assert json.dumps(
         envelope["metadata"]["created"]
     ).encode() == to_json_bytes_compact(info.metadata["created"])
+
+
+@pytest.mark.parametrize(
+    ("start", "end", "pool_len"),
+    [
+        (0, 3, 3),
+        (1, 4, 3),
+        (-1, 3, 3),
+        (-3, -1, 3),
+        (1, 10**9, 3),
+        (-99, 99, 3),
+        (2, 1, 3),
+        (0, 1, 0),
+        (-1, 10**9, 5),
+    ],
+)
+def test_slice_positions_matches_python_slicing(
+    start: int, end: int, pool_len: int
+) -> None:
+    """The spool paths index by position, so they must reproduce slicing.
+
+    The materialized path expands refs as `pool[start:end]`; anything the
+    spool-backed paths do differently is a silent divergence in recorded
+    output.
+    """
+    pool = list(range(pool_len))
+    assert [pool[i] for i in slice_positions(start, end, pool_len)] == pool[start:end]

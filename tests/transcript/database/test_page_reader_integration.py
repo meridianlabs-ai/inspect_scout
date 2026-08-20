@@ -46,7 +46,11 @@ def adversarial_batch() -> pa.RecordBatchReader:
                 pa.large_string(),
             ),
             "events": pa.array(
-                ['[{"event":"x","data":"' + "y" * 2_000_000 + '"}]', None, "[]"],
+                [
+                    '[{"event":"x","data":"héllo→世界😀 ' + "y" * 2_000_000 + '"}]',
+                    None,
+                    "[]",
+                ],
                 pa.large_string(),
             ),
             "events_data": pa.array(
@@ -273,6 +277,12 @@ async def test_max_bytes_gate_is_byte_accurate(
     The fixture content contains non-ASCII (héllo→世界😀), so the byte length
     strictly exceeds the character count; a LENGTH()-based gate lets
     oversized content through.
+
+    Note: t-000's stored `messages` cell is ASCII-escaped by json.dumps
+    (see _transcript_to_row), so byte_size == char_size here and this test
+    does not, by itself, distinguish bytes from characters — it pins the
+    gate's boundary semantics on both paths. See
+    test_content_size_counts_bytes_not_characters for the non-vacuous proof.
     """
     if use_fallback:
         break_page_reader(monkeypatch)
@@ -304,3 +314,45 @@ async def test_max_bytes_gate_is_byte_accurate(
         await db.read(info, content, max_bytes=byte_size - 1)
     transcript = await db.read(info, content, max_bytes=byte_size)
     assert transcript.messages
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("use_fallback", [False, True], ids=["reader", "duckdb"])
+async def test_content_size_counts_bytes_not_characters(
+    db: ParquetTranscriptsDB,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    use_fallback: bool,
+) -> None:
+    """uncompressed_size must be UTF-8 bytes, not characters.
+
+    Proven on a cell whose stored bytes contain unescaped non-ASCII
+    (RecordBatch rows bypass json.dumps' ASCII escaping).
+    """
+    if use_fallback:
+        break_page_reader(monkeypatch)
+    infos = [info async for info in db.select()]
+    info = next(i for i in infos if i.transcript_id == "rb-000")
+
+    import duckdb as duckdb_module
+
+    store_files = [
+        str(f) for f in sorted((tmp_path / "store").glob("transcripts_*.parquet"))
+    ]
+    conn = duckdb_module.connect()
+    row = conn.execute(
+        """
+        SELECT COALESCE(strlen(messages), 0) + COALESCE(strlen(events), 0)
+                 + COALESCE(strlen(events_data), 0),
+               COALESCE(LENGTH(messages), 0) + COALESCE(LENGTH(events), 0)
+                 + COALESCE(LENGTH(events_data), 0)
+        FROM read_parquet(?) WHERE transcript_id = ?
+        """,
+        [store_files, "rb-000"],
+    ).fetchone()
+    conn.close()
+    assert row is not None
+    byte_size, char_size = row
+    assert byte_size > char_size, "fixture no longer distinguishes bytes from chars"
+    result = await db.read_messages_events(info)
+    assert result.uncompressed_size == byte_size

@@ -2240,8 +2240,13 @@ async def test_content_columns_are_page_bounded(test_location: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_old_and_new_layouts_read_together(test_location: Path) -> None:
-    """A store mixing pre-change and post-change files reads identically."""
+async def test_mixed_content_encodings_read_identically(test_location: Path) -> None:
+    """Content encoding is invisible to readers, even mixed within one store.
+
+    Stores accumulate both kinds of file: existing files keep their
+    dictionary-encoded content columns forever, while the writer produces
+    plain page-bounded content columns.
+    """
     import duckdb
     import pyarrow.parquet as pq
 
@@ -2253,10 +2258,10 @@ async def test_old_and_new_layouts_read_together(test_location: Path) -> None:
 
     files = list(test_location.glob("transcripts_*.parquet"))
     assert len(files) == 1
-    old_style = test_location / "old_layout.parquet"
+    dict_encoded = test_location / "dictionary_layout.parquet"
     pq.write_table(
         pq.read_table(str(files[0])),
-        str(old_style),
+        str(dict_encoded),
         compression="zstd",
         use_dictionary=True,
         row_group_size=25,
@@ -2266,7 +2271,7 @@ async def test_old_and_new_layouts_read_together(test_location: Path) -> None:
     rows = conn.execute(
         "SELECT transcript_id, md5(messages) FROM read_parquet(?, union_by_name=true)"
         " ORDER BY transcript_id",
-        [[str(files[0]), str(old_style)]],
+        [[str(files[0]), str(dict_encoded)]],
     ).fetchall()
     conn.close()
     assert len(rows) == 12

@@ -186,3 +186,83 @@ def test_walk_batch1_layout_splits_pages(tmp_path: Path) -> None:
     assert all(p.page_type == _PAGE_TYPE_DATA for p in pages)
     assert len(pages) >= 2
     assert sum(p.num_values for p in pages) == 4
+
+
+def test_rle_run_decodes() -> None:
+    from inspect_scout._transcript.database.parquet.page_reader import (
+        _decode_rle_hybrid,
+    )
+
+    # RLE run: header = count << 1; 25 values of 1 at bit width 1
+    assert _decode_rle_hybrid(b"\x32\x01", 1, 25) == [1] * 25
+    # bit width 2, run of 4 values of 2
+    assert _decode_rle_hybrid(b"\x08\x02", 2, 4) == [2, 2, 2, 2]
+    # bit width 0 (single dictionary entry): no bytes at all
+    assert _decode_rle_hybrid(b"", 0, 3) == [0, 0, 0]
+
+
+def test_rle_bitpacked_decodes() -> None:
+    from inspect_scout._transcript.database.parquet.page_reader import (
+        _decode_rle_hybrid,
+    )
+
+    # bit-packed: header = (groups << 1) | 1; one group of 8, byte 0x55
+    assert _decode_rle_hybrid(b"\x03\x55", 1, 8) == [1, 0, 1, 0, 1, 0, 1, 0]
+    # mixed: run of 3 zeros then the bit-packed group, truncated to count
+    assert _decode_rle_hybrid(b"\x06\x00\x03\x55", 1, 11) == [
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+    ]
+
+
+def test_stream_cursor_reads_across_chunks() -> None:
+    from inspect_scout._transcript.database.parquet.page_reader import (
+        PageReaderUnsupported,
+        _StreamCursor,
+    )
+
+    cursor = _StreamCursor(iter([b"ab", b"", b"cdef", b"g"]))
+    assert cursor.read(3) == b"abc"
+    cursor.skip(2)
+    assert cursor.bytes_read == 5
+    assert b"".join(cursor.iter_read(2, chunk_size=1)) == b"fg"
+    with pytest.raises(PageReaderUnsupported, match="end of page"):
+        cursor.read(1)
+
+
+def test_decompressed_stream_zstd_roundtrip() -> None:
+    import zstandard
+    from inspect_scout._transcript.database.parquet.page_reader import (
+        _decompressed_stream,
+    )
+
+    payload = ("héllo→世界😀" * 10_000).encode("utf-8")
+    frame = zstandard.ZstdCompressor().compress(payload)
+    pieces = [frame[i : i + 100] for i in range(0, len(frame), 100)]
+    assert b"".join(_decompressed_stream(iter(pieces), "ZSTD")) == payload
+    assert b"".join(_decompressed_stream(iter([payload]), "UNCOMPRESSED")) == payload
+
+
+def test_read_def_levels() -> None:
+    from inspect_scout._transcript.database.parquet.page_reader import (
+        _read_def_levels,
+        _StreamCursor,
+    )
+
+    # 4-byte length prefix + RLE run of 25 ones (the Task-1 test vector)
+    cursor = _StreamCursor(iter([b"\x02\x00\x00\x00\x32\x01"]))
+    assert _read_def_levels(cursor, 25, 1) == [1] * 25
+    assert cursor.bytes_read == 6
+    # required column (max_def_level 0): nothing consumed, all defined
+    cursor2 = _StreamCursor(iter([b""]))
+    assert _read_def_levels(cursor2, 3, 0) == [1, 1, 1]
+    assert cursor2.bytes_read == 0

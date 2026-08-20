@@ -136,14 +136,22 @@ def single_process_strategy(
         def _scanner_job_info(item: ScannerJob) -> str:
             return f"{item.union_transcript.transcript_id, item.scanner_name}"
 
-        @throttle(1)
-        def _update_metrics() -> None:
-            if update_metrics:
+        # the finally at the end of the_func delivers the final zeroed update
+        # itself, and sets this so a trailing-edge fire still pending in the
+        # throttle does not deliver a duplicate of it after teardown
+        final_metrics_delivered = False
+
+        def _update_metrics_now() -> None:
+            if update_metrics and not final_metrics_delivered:
                 # USS - Unique Set Size
                 metrics.memory_usage = process.memory_full_info().uss
                 # print(f"{diag_prefix} CPU {metrics.cpu_use}")
                 metrics.buffered_scanner_jobs = len(scanner_job_deque)
                 update_metrics(metrics)
+
+        @throttle(1)
+        def _update_metrics() -> None:
+            _update_metrics_now()
 
         def _choose_next_action() -> Literal["parse", "scan", "wait"]:
             """Decide what action this worker should take: 'parse', 'scan', or 'wait'."""
@@ -347,6 +355,10 @@ def single_process_strategy(
             metrics.tasks_parsing = 0
             metrics.tasks_scanning = 0
             metrics.tasks_idle = 0
-            _update_metrics()
+            # deliver synchronously, since a throttled call would defer to a
+            # trailing-edge fire that may not survive teardown (#569). nothing
+            # awaits between the delivery and the flag, so no fire interleaves
+            _update_metrics_now()
+            final_metrics_delivered = True
 
     return the_func

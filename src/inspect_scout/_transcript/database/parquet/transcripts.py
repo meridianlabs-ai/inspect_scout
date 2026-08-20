@@ -7,7 +7,15 @@ import uuid
 from datetime import datetime, timezone
 from logging import getLogger
 from pathlib import Path
-from typing import Any, AsyncIterable, AsyncIterator, Iterable, Iterator, cast
+from typing import (
+    Any,
+    AsyncGenerator,
+    AsyncIterable,
+    AsyncIterator,
+    Iterable,
+    Iterator,
+    cast,
+)
 
 import duckdb
 import pandas as pd
@@ -121,12 +129,12 @@ class _ParquetStreamContextManager:
         return self._conn
 
     async def __aexit__(self, *_: object) -> None:
-        if self._conn:
-            self._conn.close()
-            self._conn = None
+        await self.aclose()
 
     async def aclose(self) -> None:
         """Explicitly close resources. Safe to call multiple times or after __aexit__."""
+        if hasattr(self, "_generator"):
+            await self._generator.aclose()
         if self._conn:
             self._conn.close()
             self._conn = None
@@ -234,7 +242,7 @@ class _ParquetStreamContextManager:
 
         yield b"}"
 
-    async def _stream_chunks(self) -> AsyncIterator[bytes]:
+    async def _stream_chunks(self) -> AsyncGenerator[bytes, None]:
         """Stream the content envelope, preferring the page reader.
 
         Falls back to DuckDB only if no bytes have been emitted yet, so a

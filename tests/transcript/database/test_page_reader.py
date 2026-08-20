@@ -402,3 +402,113 @@ def test_duplicate_cells_share_dictionary_entry(tmp_path: Path) -> None:
     assert pages[0].page_type == _PAGE_TYPE_DICTIONARY
     assert pages[0].num_values == 2
     assert_reader_matches_source(path, values)
+
+
+@pytest.mark.parametrize(
+    "write_kwargs,match",
+    [
+        ({"compression": "snappy", "use_dictionary": False}, "codec SNAPPY"),
+        ({"compression": "gzip", "use_dictionary": False}, "codec GZIP"),
+        (
+            {"data_page_version": "2.0", "use_dictionary": False},
+            "page type",
+        ),
+    ],
+    ids=["snappy", "gzip", "data-page-v2"],
+)
+def test_unsupported_shapes_raise(
+    tmp_path: Path, write_kwargs: dict[str, Any], match: str
+) -> None:
+    from inspect_scout._transcript.database.parquet.page_reader import (
+        PageReaderUnsupported,
+        ParquetContentReader,
+    )
+
+    path = str(tmp_path / "unsupported.parquet")
+    write_content_file(path, sample_values(), **write_kwargs)
+    with ParquetContentReader(path) as reader:
+        location = reader.locate("tr_0000")
+        assert location is not None
+        with pytest.raises(PageReaderUnsupported, match=match):
+            reader.stream_cell(location, "events")
+        with pytest.raises(PageReaderUnsupported, match=match):
+            reader.cell_size(location, "events")
+
+
+def test_memory_filesystem_matches_source() -> None:
+    from upath import UPath
+
+    url = UPath("memory://page-reader-tests/data.parquet")
+    values = sample_values()
+    table = build_content_table(values)
+    with url.fs.open(str(url), "wb") as f:
+        pq.write_table(
+            table,
+            f,
+            compression="zstd",
+            use_dictionary=False,
+            write_batch_size=1,
+            row_group_size=4,
+            write_statistics=True,
+        )
+    assert_reader_matches_source(str(url), values)
+
+
+def test_reader_opens_only_its_own_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    from fsspec.implementations.memory import (
+        MemoryFileSystem,  # type: ignore[import-untyped]
+    )
+    from inspect_scout._transcript.database.parquet.page_reader import (
+        ParquetContentReader,
+    )
+    from upath import UPath
+
+    target = UPath("memory://page-reader-spy/target.parquet")
+    other = UPath("memory://page-reader-spy/other.parquet")
+    for url in (target, other):
+        with url.fs.open(str(url), "wb") as f:
+            pq.write_table(
+                build_content_table(sample_values()),
+                f,
+                compression="zstd",
+                use_dictionary=False,
+                write_batch_size=1,
+                row_group_size=4,
+                write_statistics=True,
+            )
+
+    opened: list[str] = []
+    original_open = MemoryFileSystem._open
+
+    def spy(self: MemoryFileSystem, path: str, *args: Any, **kwargs: Any) -> Any:
+        opened.append(path)
+        return original_open(self, path, *args, **kwargs)
+
+    monkeypatch.setattr(MemoryFileSystem, "_open", spy)
+    with ParquetContentReader(str(target)) as reader:
+        location = reader.locate("tr_0000")
+        assert location is not None
+        cell = reader.stream_cell(location, "events")
+        assert cell is not None
+        b"".join(cell)
+    expected = MemoryFileSystem._strip_protocol(str(target))
+    assert set(opened) == {expected}
+
+
+def test_coalescing_modes_agree(tmp_path: Path) -> None:
+    from inspect_scout._transcript.database.parquet.page_reader import (
+        ParquetContentReader,
+    )
+
+    path = str(tmp_path / "coalesce.parquet")
+    values = sample_values()
+    write_content_file(path, values, use_dictionary=False, write_batch_size=1)
+    for threshold in (0, 2**40):
+        with ParquetContentReader(path, coalesce_threshold=threshold) as reader:
+            for i, expected in enumerate(values):
+                location = reader.locate(f"tr_{i:04d}")
+                assert location is not None
+                cell = reader.stream_cell(location, "events")
+                got = None if cell is None else b"".join(cell)
+                want = None if expected is None else expected.encode("utf-8")
+                assert got == want, f"threshold={threshold} row={i}"

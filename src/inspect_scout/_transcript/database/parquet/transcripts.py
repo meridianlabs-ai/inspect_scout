@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime, timezone
 from logging import getLogger
 from pathlib import Path
-from typing import Any, AsyncIterable, AsyncIterator, Iterable, cast
+from typing import Any, AsyncIterable, AsyncIterator, Iterable, Iterator, cast
 
 import duckdb
 import pandas as pd
@@ -67,6 +67,7 @@ from .index import (
     init_index_table,
 )
 from .migration import migrate_view
+from .page_reader import ParquetContentReader
 from .types import INDEX_EXTENSION, IndexStorage
 
 logger = getLogger(__name__)
@@ -74,6 +75,23 @@ logger = getLogger(__name__)
 
 PARQUET_TRANSCRIPTS_GLOB = "*.parquet"
 CHUNK_SIZE = 64 * 1024  # 64KB chunks for streaming
+
+
+def _cell_or_default(cell: Iterator[bytes] | None, default: bytes) -> Iterator[bytes]:
+    """Yield a cell's bytes, or the default for NULL/absent/empty cells.
+
+    Matches the DuckDB path's truthiness check: an empty-string cell renders
+    as the default, exactly like `if messages_json:` does on the fallback.
+    """
+    if cell is None:
+        yield default
+        return
+    first = next(cell, None)
+    if not first:
+        yield default
+        return
+    yield first
+    yield from cell
 
 
 class _ParquetStreamContextManager:
@@ -93,11 +111,14 @@ class _ParquetStreamContextManager:
         self._conn: duckdb.DuckDBPyConnection | None = None
 
     async def __aenter__(self) -> "_ParquetStreamContextManager":
-        # Create fresh connection for streaming
-        self._conn = duckdb.connect(":memory:")
-        if not self._parquet_path.startswith(("s3://", "hf://")):
-            restrict_external_access(self._conn, allowed_paths=[self._parquet_path])
         return self
+
+    def _duckdb_conn(self) -> duckdb.DuckDBPyConnection:
+        if self._conn is None:
+            self._conn = duckdb.connect(":memory:")
+            if not self._parquet_path.startswith(("s3://", "hf://")):
+                restrict_external_access(self._conn, allowed_paths=[self._parquet_path])
+        return self._conn
 
     async def __aexit__(self, *_: object) -> None:
         if self._conn:
@@ -123,9 +144,9 @@ class _ParquetStreamContextManager:
         except StopAsyncIteration:
             raise
 
-    async def _stream_chunks(self) -> AsyncIterator[bytes]:
-        """Stream JSON chunks from DuckDB query result."""
-        assert self._conn is not None
+    async def _stream_chunks_duckdb(self) -> AsyncIterator[bytes]:
+        """Stream JSON chunks from DuckDB (fallback path)."""
+        conn = self._duckdb_conn()
 
         try:
             sql = (
@@ -133,7 +154,7 @@ class _ParquetStreamContextManager:
                 " FROM read_parquet(?, union_by_name=true)"
                 " WHERE transcript_id = ?"
             )
-            result = self._conn.execute(
+            result = conn.execute(
                 sql,
                 [escape_duckdb_glob(self._parquet_path), self._transcript_id],
             ).fetchone()
@@ -145,7 +166,7 @@ class _ParquetStreamContextManager:
                     " FROM read_parquet(?, union_by_name=true)"
                     " WHERE transcript_id = ?"
                 )
-                result = self._conn.execute(
+                result = conn.execute(
                     sql,
                     [escape_duckdb_glob(self._parquet_path), self._transcript_id],
                 ).fetchone()
@@ -156,7 +177,7 @@ class _ParquetStreamContextManager:
                         " FROM read_parquet(?, union_by_name=true)"
                         " WHERE transcript_id = ?"
                     )
-                    result = self._conn.execute(
+                    result = conn.execute(
                         sql,
                         [
                             escape_duckdb_glob(self._parquet_path),
@@ -212,6 +233,62 @@ class _ParquetStreamContextManager:
             yield b', "timelines": []'
 
         yield b"}"
+
+    async def _stream_chunks(self) -> AsyncIterator[bytes]:
+        """Stream the content envelope, preferring the page reader.
+
+        Falls back to DuckDB only if no bytes have been emitted yet, so a
+        consumer can never observe a partial envelope followed by a restart.
+        """
+        emitted = False
+        try:
+            for chunk in self._page_reader_chunks():
+                emitted = True
+                yield chunk
+            return
+        except Exception as ex:
+            if emitted:
+                raise
+            trace_message(
+                logger,
+                "Scout Parquet Page Reader",
+                f"Falling back to DuckDB for {self._parquet_path}: {ex}",
+            )
+        async for chunk in self._stream_chunks_duckdb():
+            yield chunk
+
+    def _page_reader_chunks(self) -> Iterator[bytes]:
+        with ParquetContentReader(self._parquet_path) as reader:
+            location = reader.locate(self._transcript_id)
+            names = reader.column_names()
+
+            def cell(column: str) -> Iterator[bytes] | None:
+                if location is None or column not in names:
+                    return None
+                return reader.stream_cell(location, column)
+
+            # Resolve every cell before the first byte is emitted so any
+            # unsupported shape falls back with no partial output.
+            messages = cell("messages")
+            events = cell("events")
+            events_data = cell("events_data")
+            timelines = cell("timelines")
+
+            yield b'{"messages": '
+            yield from _cell_or_default(messages, b"[]")
+            yield b', "events": '
+            yield from _cell_or_default(events, b"[]")
+            yield b', "events_data": '
+            yield from _cell_or_default(events_data, b"null")
+            first = next(timelines, None) if timelines is not None else None
+            if first:
+                yield b', "timelines": '
+                yield first
+                assert timelines is not None
+                yield from timelines
+            else:
+                yield b', "timelines": []'
+            yield b"}"
 
 
 class ParquetTranscriptInfo(TranscriptInfo):

@@ -17,6 +17,7 @@ from inspect_scout._transcript.types import (
     Transcript,
     TranscriptContent,
     TranscriptInfo,
+    TranscriptTooLargeError,
 )
 
 
@@ -257,3 +258,49 @@ async def test_read_uses_page_reader(
     infos = [info async for info in db.select()]
     await db.read(infos[0], TranscriptContent(messages="all", events="all"))
     assert calls, "read() did not construct a ParquetContentReader"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("use_fallback", [False, True], ids=["reader", "duckdb"])
+async def test_max_bytes_gate_is_byte_accurate(
+    db: ParquetTranscriptsDB,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    use_fallback: bool,
+) -> None:
+    """The max_bytes gate must measure UTF-8 bytes, not characters.
+
+    The fixture content contains non-ASCII (héllo→世界😀), so the byte length
+    strictly exceeds the character count; a LENGTH()-based gate lets
+    oversized content through.
+    """
+    if use_fallback:
+        break_page_reader(monkeypatch)
+    infos = [info async for info in db.select()]
+    info = next(i for i in infos if i.transcript_id == "t-000")
+    content = TranscriptContent(messages="all", events="all")
+
+    # establish exact stored byte size from the raw envelope cells
+    # (the db fixture builds its store at tmp_path / "store")
+    import duckdb as duckdb_module
+
+    store_files = list((tmp_path / "store").glob("transcripts_*.parquet"))
+    conn = duckdb_module.connect()
+    row = conn.execute(
+        """
+        SELECT COALESCE(strlen(messages), 0) + COALESCE(strlen(events), 0)
+             + COALESCE(strlen(events_data), 0)
+        FROM read_parquet(?) WHERE transcript_id = ?
+        """,
+        [[str(f) for f in store_files], "t-000"],
+    ).fetchone()
+    conn.close()
+    assert row is not None
+    byte_size = row[0]
+    assert byte_size > 0
+
+    # one byte below the true size must raise; at the true size must succeed
+    with pytest.raises(TranscriptTooLargeError):
+        await db.read(info, content, max_bytes=byte_size - 1)
+    transcript = await db.read(info, content, max_bytes=byte_size)
+    assert transcript.messages

@@ -1,5 +1,6 @@
 """Tests for the parquet page reader."""
 
+import builtins
 from pathlib import Path
 from typing import Any
 
@@ -347,3 +348,28 @@ def test_absent_column_raises_value_error(tmp_path: Path) -> None:
         assert location is not None
         with pytest.raises(ValueError, match="messages"):
             reader.stream_cell(location, "messages")
+
+
+def test_init_failure_closes_handles(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from inspect_scout._transcript.database.parquet.page_reader import (
+        ParquetContentReader,
+    )
+
+    path = str(tmp_path / "garbage.parquet")
+    Path(path).write_bytes(b"not a parquet file")
+    opened: list[Any] = []
+    original_open = builtins.open
+
+    def tracking_open(*args: Any, **kwargs: Any) -> Any:
+        handle = original_open(*args, **kwargs)
+        if args and args[0] == path:
+            opened.append(handle)
+        return handle
+
+    monkeypatch.setattr(builtins, "open", tracking_open)
+    with pytest.raises(Exception):  # noqa: B017
+        ParquetContentReader(path)
+    assert opened, "raw handle was never opened"
+    assert all(handle.closed for handle in opened)

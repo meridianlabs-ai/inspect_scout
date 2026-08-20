@@ -17,6 +17,7 @@ DuckDB read path.
 
 from __future__ import annotations
 
+import contextlib
 import struct
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -422,21 +423,34 @@ class ParquetContentReader:
     ) -> None:
         self._path = path
         self._coalesce_threshold = coalesce_threshold
-        self._meta_file: Any = None
-        if "://" in path:
-            url = UPath(path)
-            # cache_type="none": fsspec readahead would turn each ~30-byte
-            # header read into a multi-MB block fetch.
-            self._raw: Any = url.fs.open(str(url), "rb", cache_type="none")
-            self._meta_file = url.fs.open(str(url), "rb")
-            self._parquet_file = pq.ParquetFile(self._meta_file)
-        else:
-            self._raw = open(path, "rb")
-            self._parquet_file = pq.ParquetFile(path)
-        metadata = self._parquet_file.metadata
-        self._column_index = {
-            metadata.schema.column(i).name: i for i in range(metadata.num_columns)
-        }
+        raw: Any = None
+        meta: Any = None
+        try:
+            if "://" in path:
+                url = UPath(path)
+                # cache_type="none": fsspec readahead would turn each ~30-byte
+                # header read into a multi-MB block fetch.
+                raw = url.fs.open(str(url), "rb", cache_type="none")
+                meta = url.fs.open(str(url), "rb")
+                parquet_file = pq.ParquetFile(meta)
+            else:
+                raw = open(path, "rb")
+                parquet_file = pq.ParquetFile(path)
+            metadata = parquet_file.metadata
+            self._column_index = {
+                metadata.schema.column(i).name: i for i in range(metadata.num_columns)
+            }
+        except Exception:
+            with contextlib.suppress(Exception):
+                if meta is not None:
+                    meta.close()
+            with contextlib.suppress(Exception):
+                if raw is not None:
+                    raw.close()
+            raise
+        self._raw: Any = raw
+        self._meta_file: Any = meta
+        self._parquet_file = parquet_file
 
     def __enter__(self) -> "ParquetContentReader":
         return self

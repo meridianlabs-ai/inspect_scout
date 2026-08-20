@@ -266,6 +266,12 @@ def create_search_router() -> APIRouter:
                         template=LLM_SEARCH_TEMPLATE,
                         model=request.model,
                         reducer=ResultReducer.llm(model=request.model),
+                        # Without this the scanner falls back to its declared
+                        # messages="all"; an events-scope search would then ask
+                        # the handle for messages it was not opened with and
+                        # scan nothing, while still returning a synthesized
+                        # answer over zero segments.
+                        content=content,
                     )
                     try:
                         output = await scan(handle)

@@ -20,23 +20,43 @@ from typing import IO, Any, Iterator
 SpoolKey = tuple[str, int] | str
 
 
-def _read_at(fd: int, lock: threading.Lock, length: int, offset: int) -> bytes:
-    """Read up to ``length`` bytes from ``offset`` (portable ``os.pread``)."""
+# Linux caps a single read(2) at 0x7ffff000, so any value larger than this
+# comes back short no matter what is asked for -- which is the normal case for
+# the transcripts this spool exists to bound.
+_READ_CAP = 0x7FFFF000
+
+
+def _read_at(fd: int, lock: threading.Lock, length: int, offset: int) -> bytearray:
+    """Read up to ``length`` bytes from ``offset`` (portable ``os.pread``).
+
+    Fills one preallocated buffer rather than concatenating what each read
+    returns. Above `_READ_CAP` every read is short, and appending would both
+    reallocate the whole accumulated value per iteration -- quadratic, and
+    briefly holding two copies of a multi-GB cell -- and defeat the bound this
+    spool exists to keep.
+
+    Returns a `bytearray` so the caller owns the buffer with no final copy;
+    converting to `bytes` here would reintroduce the doubling.
+    """
+    buffer = bytearray(length)
+    if length == 0:
+        return buffer
+    view = memoryview(buffer)
+    filled = 0
     with lock:
-        os.lseek(fd, offset, os.SEEK_SET)
-        data = os.read(fd, length)
-        # Regular-file reads normally satisfy the request outright; loop only
-        # for the short-read case so the common path stays copy-free.
-        while len(data) < length:
-            chunk = os.read(fd, length - len(data))
-            if not chunk:
+        while filled < length:
+            got = os.preadv(fd, [view[filled:]], offset + filled)
+            if not got:
                 break
-            data += chunk
-    return data
+            filled += got
+    if filled < length:
+        del view
+        del buffer[filled:]
+    return buffer
 
 
 def _write_at(
-    fd: int, lock: threading.Lock, data: bytes | memoryview, offset: int
+    fd: int, lock: threading.Lock, data: bytes | bytearray | memoryview, offset: int
 ) -> None:
     """Write all of ``data`` at ``offset`` (portable ``os.pwrite``)."""
     with lock:
@@ -121,7 +141,7 @@ class ByteSpool:
         self._lock = threading.Lock()
         self._write_offset = 0
 
-    def write(self, data: bytes | memoryview) -> None:
+    def write(self, data: bytes | bytearray | memoryview) -> None:
         if self._fd is None:
             raise ValueError("spool is closed")
         _write_at(self._fd, self._lock, data, self._write_offset)
@@ -130,7 +150,7 @@ class ByteSpool:
     def __len__(self) -> int:
         return self._write_offset
 
-    def chunks(self, chunk_size: int = 1024 * 1024) -> Iterator[bytes]:
+    def chunks(self, chunk_size: int = 1024 * 1024) -> Iterator[bytearray]:
         """Yield the value in chunks, so it never exists whole in memory."""
         if self._fd is None:
             raise ValueError("spool is closed")
@@ -140,7 +160,7 @@ class ByteSpool:
             yield _read_at(self._fd, self._lock, read_len, offset)
             offset += read_len
 
-    def read(self) -> bytes:
+    def read(self) -> bytearray:
         """The whole value. Prefer ``chunks()`` when it may be large."""
         if self._fd is None:
             raise ValueError("spool is closed")
@@ -187,14 +207,15 @@ class ItemSpool:
         end = self._write_offset
         offset = 0
         chunk_size = 256 * 1024
-        parts: list[bytes] = []  # pieces of a line split across chunks
-        buffer = b""
+        parts: list[bytes | bytearray] = []  # pieces of a line split across chunks
+        buffer: bytes | bytearray = b""
         cursor = 0
         while True:
             newline = buffer.find(b"\n", cursor)
             if newline != -1:
                 segment = buffer[cursor:newline]
                 cursor = newline + 1
+                line: bytes | bytearray
                 if parts:
                     parts.append(segment)
                     line = b"".join(parts)

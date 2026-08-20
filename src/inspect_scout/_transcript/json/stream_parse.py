@@ -125,9 +125,9 @@ class _ChunkReader(io.RawIOBase):
     remainder on every one.
     """
 
-    def __init__(self, chunks: Iterator[bytes]) -> None:
+    def __init__(self, chunks: Iterator[bytes | bytearray]) -> None:
         self._chunks = chunks
-        self._buffer = b""
+        self._buffer: bytes | bytearray = b""
         self._pos = 0
 
     def readable(self) -> bool:

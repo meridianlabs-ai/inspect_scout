@@ -105,12 +105,17 @@ class SerializedTranscript(BaseModel):
     non-ASCII text costs two bytes per character in memory.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    # `bytearray`, not `bytes` and not a union of the two. `bytes` would make
+    # pydantic copy the buffer the spool handed over, and a `bytes | bytearray`
+    # union makes it build a coerced `bytes` copy while deciding which member
+    # matches -- transient, but a whole extra copy of a multi-GB cell.
+    # It needs arbitrary_types_allowed because pydantic has no bytearray schema.
+    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
-    input_json: bytes
+    input_json: bytearray
     """Value for the `input` column: transcript JSON, events pool-condensed."""
 
-    input_data_json: bytes | None = None
+    input_data_json: bytearray | None = None
     """Value for the `input_data` column: `{messages, calls, attachments}`,
     or None when nothing is pooled and there are no attachments."""
 
@@ -145,9 +150,9 @@ class ResultReport(BaseModel):
 
     def to_df_columns(
         self, *, pool_dedup: bool = True
-    ) -> dict[str, str | bytes | bool | int | float | None]:
+    ) -> dict[str, str | bytes | bytearray | bool | int | float | None]:
         # `input`/`input_data` are UTF-8 bytes: see `_serialize_input`.
-        columns: dict[str, str | bytes | bool | int | float | None] = {}
+        columns: dict[str, str | bytes | bytearray | bool | int | float | None] = {}
 
         # input (transcript, event, or message)
         columns["input_type"] = self.input_type
@@ -248,7 +253,7 @@ def _serialize_input(
     input_type: ScannerInputNames,
     *,
     pool_dedup: bool,
-) -> tuple[bytes, bytes | None]:
+) -> tuple[bytes | bytearray, bytes | bytearray | None]:
     """Serialize scanner input, optionally condensing events.
 
     Only "transcript" input pools events separately (second tuple element);

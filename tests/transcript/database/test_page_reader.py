@@ -285,6 +285,22 @@ def test_rle_multibyte_header_and_truncation() -> None:
         _decode_rle_hybrid(b"\x03", 1, 8)
 
 
+def test_rle_run_capped_to_remaining_count() -> None:
+    """A corrupt/adversarial run length must not balloon the allocation.
+
+    header = (run << 1); run = 2**30 -> header = 2**31, varint-encoded below
+    as a 5-byte little-endian-group varint. With bit_width=8, one value byte
+    follows. Decoding with a small count must return exactly [value] * count
+    rather than materializing 2**30 elements before truncating.
+    """
+    from inspect_scout._transcript.database.parquet.page_reader import (
+        _decode_rle_hybrid,
+    )
+
+    payload = b"\x80\x80\x80\x80\x08" + b"\x09"
+    assert _decode_rle_hybrid(payload, 8, 5) == [9] * 5
+
+
 PLAIN_LAYOUTS: dict[str, dict[str, Any]] = {
     "plain_batch1": {"use_dictionary": False, "write_batch_size": 1},
     "plain_single_page": {"use_dictionary": False},
@@ -292,12 +308,20 @@ PLAIN_LAYOUTS: dict[str, dict[str, Any]] = {
 }
 
 
-def assert_reader_matches_source(path: str, values: list[str | None]) -> None:
+def assert_reader_matches_source(
+    path: str,
+    values: list[str | None],
+    *,
+    coalesce_threshold: int | None = None,
+) -> None:
     from inspect_scout._transcript.database.parquet.page_reader import (
         ParquetContentReader,
     )
 
-    with ParquetContentReader(path) as reader:
+    kwargs: dict[str, int] = (
+        {} if coalesce_threshold is None else {"coalesce_threshold": coalesce_threshold}
+    )
+    with ParquetContentReader(path, **kwargs) as reader:
         assert reader.column_names() == {"transcript_id", "events"}
         for i, expected in enumerate(values):
             location = reader.locate(f"tr_{i:04d}")
@@ -452,6 +476,9 @@ def test_memory_filesystem_matches_source() -> None:
             write_statistics=True,
         )
     assert_reader_matches_source(str(url), values)
+    # coalesce_threshold=0 forces per-page ranged reads (rather than one
+    # whole-chunk read) through a non-POSIX (fsspec) filesystem.
+    assert_reader_matches_source(str(url), values, coalesce_threshold=0)
 
 
 def test_reader_opens_only_its_own_path(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -26,7 +26,7 @@ from typing import IO, Any
 
 import pyarrow.parquet as pq
 import zstandard
-from upath import UPath
+from inspect_ai._util.file import filesystem
 
 WHOLE_CHUNK_READ_THRESHOLD = 4 * 1024 * 1024
 """Column chunks at or below this compressed size are fetched in one read."""
@@ -298,7 +298,11 @@ def _decode_rle_hybrid(data: bytes, bit_width: int, count: int) -> list[int]:
             for j in range(n_groups * 8):
                 out.append((packed >> (j * bit_width)) & mask)
         else:  # RLE run
-            run = header >> 1
+            # Cap to what's still needed: a corrupt varint could otherwise
+            # demand a huge `[value] * run` allocation (MemoryError is not
+            # fallback-able). The trailing out[:count] truncation makes this
+            # semantically identical for valid data.
+            run = min(header >> 1, count - len(out))
             value_bytes = data[pos : pos + byte_width]
             if len(value_bytes) != byte_width:
                 raise PageReaderUnsupported("truncated RLE run value")
@@ -427,11 +431,13 @@ class ParquetContentReader:
         meta: Any = None
         try:
             if "://" in path:
-                url = UPath(path)
+                fs = filesystem(path).fs
                 # cache_type="none": fsspec readahead would turn each ~30-byte
-                # header read into a multi-MB block fetch.
-                raw = url.fs.open(str(url), "rb", cache_type="none")
-                meta = url.fs.open(str(url), "rb")
+                # header read into a multi-MB block fetch. pyarrow does its
+                # own buffering for the metadata handle too, so "none" is
+                # correct there as well.
+                raw = fs.open(path, "rb", cache_type="none")
+                meta = fs.open(path, "rb", cache_type="none")
                 parquet_file = pq.ParquetFile(meta)
             else:
                 raw = open(path, "rb")

@@ -13,7 +13,7 @@ attachments table travels inside `input_data` instead.
 from __future__ import annotations
 
 import json
-from typing import Any, Iterable
+from typing import Any, Iterable, Iterator
 
 from inspect_ai.event._pool import (
     POOL_REF_FIELDS,
@@ -56,21 +56,19 @@ def pooled_passthrough(
         result: The spooled parse to copy from.
 
     Returns:
-        The `input` column value, and the `input_data` column value or None
-        when nothing is pooled and no attachments are referenced. UTF-8 bytes
-        rather than ``str``: these go straight into a parquet column, and
-        decoding would double a non-ASCII value in memory for nothing.
+        The `input` and `input_data` column values, as UTF-8 bytes rather
+        than ``str``: these go straight into a parquet column, and decoding
+        would double a non-ASCII value in memory for nothing.
     """
     # Pass 1: which pool positions and attachments do the events reference?
     pool_lens = {pool: result.blobs.pool_len(pool) for pool in _POOLS}
     referenced = _referenced_positions(result.events.items(), pool_lens)
 
-    # Fetch the surviving pool entries and build old -> new position maps.
-    # Both come from one fetched list so they cannot disagree about which
-    # entries survived -- a mismatch would silently point refs at the wrong
-    # pool entry. Ascending order keeps pool ordering stable.
-    # Only the surviving positions are needed here; the entries themselves are
-    # streamed later, one at a time, rather than held as an object graph.
+    # Position maps and the emitted pools both derive from `surviving`, so
+    # they cannot disagree about which entries exist -- a mismatch would
+    # silently point refs at the wrong entry. Ascending order keeps pool
+    # ordering stable. The entries themselves are fetched later, one at a
+    # time, rather than held as an object graph.
     surviving: dict[str, list[int]] = {}
     pos_maps: dict[str, dict[int, int]] = {}
     for pool in _POOLS:
@@ -177,19 +175,15 @@ def _emit_input_data(
 ) -> bytes:
     """Serialize the `input_data` column through a scratch spool.
 
-    The same bound the envelope keeps, for the same reason. Building this
-    value as objects and dumping it whole holds several copies of it at once
-    -- the parsed pool entries, a string of them, and its encoding -- and on
-    a pool-dominated transcript that value is the largest thing in the
-    process. Streaming holds one pool entry or one attachment at a time,
-    leaving the single read-back, which a parquet cell requires, as the only
-    whole-value copy.
-
-    Pool entries are parsed and re-serialized individually rather than
-    spliced verbatim, so the bytes match what dumping the whole structure
-    produced. Attachments are written last because their ids are only fully
-    known once the pool entries have been scanned.
+    Holds one pool entry or attachment at a time, leaving the single
+    read-back a parquet cell requires as the only whole-value copy -- the
+    bound the envelope keeps, and for the same reason: on a pool-dominated
+    transcript this value is the largest thing in the process.
     """
+    # Entries are parsed and re-serialized individually rather than spliced
+    # verbatim, so the bytes match a dump of the whole structure. Attachments
+    # come last because their ids are only complete once every pool entry has
+    # been scanned.
     spool = ByteSpool(result.spool_dir)
     try:
 
@@ -200,21 +194,26 @@ def _emit_input_data(
             )
             spool.write(data)
 
-        for pool, key in (("message_pool", "messages"), ("call_pool", "calls")):
-            emit(f'{{"{key}":[' if key == "messages" else f'],"{key}":[')
+        for prefix, pool in (
+            ('{"messages":[', "message_pool"),
+            ('],"calls":[', "call_pool"),
+        ):
+            emit(prefix)
             for index, position in enumerate(surviving[pool]):
                 raw = result.blobs.get((pool, position))
-                if raw is None:  # pragma: no cover - `surviving` checked has()
-                    continue
+                # `surviving` was built from has(), so a miss here means the
+                # spool changed underneath us. Dropping the entry would shift
+                # every later position out from under the maps built above.
+                assert raw is not None, f"{pool} lost position {position}"
                 emit(("," if index else "") + _dumps(json.loads(raw)))
         spool.write(b"]")
 
+        # Ids with nothing spooled are dangling refs; skipping them matches
+        # what the materialized path ships.
         written = False
         for att_id in sorted(attachment_ids):
-            if not result.blobs.has(att_id):
-                continue
             content = result.blobs.get(att_id)
-            if content is None:  # pragma: no cover - has() just confirmed it
+            if content is None:
                 continue
             spool.write(b',"attachments":{' if not written else b",")
             written = True
@@ -231,37 +230,38 @@ def _emit_input_data(
 _POOL_FOR_FIELD = {"message": "message_pool", "call": "call_pool"}
 
 
+def _ref_positions(refs: Any, pool_len: int) -> Iterator[int]:
+    """Pool positions a raw `*_refs` list selects, under slicing semantics."""
+    if not isinstance(refs, list):
+        return
+    for ref in refs:
+        if (
+            isinstance(ref, (list, tuple))
+            and len(ref) == 2
+            and isinstance(ref[0], int)
+            and isinstance(ref[1], int)
+        ):
+            yield from slice_positions(ref[0], ref[1], pool_len)
+
+
 def _referenced_positions(
     events: Iterable[dict[str, Any]], pool_lens: dict[str, int]
 ) -> dict[str, set[int]]:
-    """Pool positions the events reference, under slicing semantics.
+    """Pool positions the events reference.
 
-    Walks inspect_ai's `POOL_REF_FIELDS` registry so a new upstream `*_refs`
-    field is picked up automatically. It clamps each range to the pool rather
-    than enumerating it verbatim, which `collect_pool_ref_positions` upstream
-    does: a negative bound there collects positions counted from zero instead
-    of from the end, and a huge one enumerates the whole span where the
-    materialized path's slicing truncates at the pool.
+    Replaces upstream `collect_pool_ref_positions`, which enumerates each
+    range verbatim: a negative bound there counts from zero rather than the
+    end, and a huge one walks the whole span that slicing would truncate.
     """
+    # Walks POOL_REF_FIELDS so a new upstream `*_refs` field is picked up.
     referenced: dict[str, set[int]] = {pool: set() for pool in _POOLS}
     for event in events:
         for field in POOL_REF_FIELDS:
             value: Any = event
             for key in field.path:
                 value = value.get(key) if isinstance(value, dict) else None
-            if not isinstance(value, list):
-                continue
             pool = _POOL_FOR_FIELD[field.pool]
-            for ref in value:
-                if (
-                    isinstance(ref, (list, tuple))
-                    and len(ref) == 2
-                    and isinstance(ref[0], int)
-                    and isinstance(ref[1], int)
-                ):
-                    referenced[pool].update(
-                        slice_positions(ref[0], ref[1], pool_lens[pool])
-                    )
+            referenced[pool].update(_ref_positions(value, pool_lens[pool]))
     return referenced
 
 
@@ -272,15 +272,10 @@ def _normalize_pool_refs(
 ) -> dict[str, Any]:
     """Copy of `event` with refs rewritten to the positions slicing selects.
 
-    Two corrections, both needed before `remap_pool_refs`, which enumerates
-    each range verbatim and looks every position up in the map. First, bounds
-    are resolved the way the materialized path resolves them -- by slicing --
-    so a negative bound counts from the end of the pool and an out-of-range
-    one truncates. Second, positions the spool never held are dropped, which
-    slicing does silently but a map lookup would raise `KeyError` for.
-
-    Walks `POOL_REF_FIELDS` for the same reason `_referenced_positions`
-    does -- it stays correct when upstream adds a new `*_refs` field.
+    Both corrections are needed before `remap_pool_refs`, which enumerates
+    each range verbatim and looks every position up in the map: bounds are
+    resolved by slicing, and positions the spool never held are dropped --
+    silent under slicing, a `KeyError` under a map lookup.
     """
     pruned = event
     for field in POOL_REF_FIELDS:
@@ -311,12 +306,7 @@ def _normalize_pool_refs_at_path(
     # re-compresses them into contiguous ranges.
     kept: list[JsonValue] = [
         [position, position + 1]
-        for ref in child
-        if isinstance(ref, (list, tuple))
-        and len(ref) == 2
-        and isinstance(ref[0], int)
-        and isinstance(ref[1], int)
-        for position in slice_positions(ref[0], ref[1], pool_len)
+        for position in _ref_positions(child, pool_len)
         if position in pos_map
     ]
     return {**node, key: kept}

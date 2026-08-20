@@ -34,10 +34,6 @@ _POOLS = ("message_pool", "call_pool")
 # parsed; see `_merged_metadata`.
 _SPOOLED_SAMPLE_METADATA = object()
 
-# Longest an `attachment://<32 hex>` ref can be, less one: how much of the
-# previous chunk a scan must revisit so a ref split across chunks is still found.
-_REF_OVERLAP = len("attachment://") + 32 - 1
-
 
 def pooled_passthrough(
     info: TranscriptInfo, result: StreamParseResult
@@ -129,16 +125,13 @@ def pooled_passthrough(
         for index, (key, value) in enumerate(_merged_metadata(info, result).items()):
             emit(("," if index else "") + _dumps(key) + ":")
             if value is _SPOOLED_SAMPLE_METADATA:
-                # Scan with an overlap: unlike whole items, these chunks are
-                # arbitrary byte slices, so a ref can straddle two of them.
-                tail = b""
+                # Copied through without scanning for attachment refs: inspect_ai
+                # never writes one here. `condense_sample` updates only input,
+                # messages, events, error_retries, attachments and events_data --
+                # metadata is not walked -- and scanning it would mean a regex
+                # pass over the largest section of a metadata-heavy transcript.
                 for chunk in result.metadata_json.chunks():
                     envelope.write(chunk)
-                    attachment_ids.update(
-                        match.decode("ascii")
-                        for match in ATTACHMENT_REF_BYTES.findall(tail + chunk)
-                    )
-                    tail = chunk[-(_REF_OVERLAP):]
             else:
                 emit_bytes(to_json_bytes_compact(value))
         emit('},"messages":[')

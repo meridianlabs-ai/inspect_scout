@@ -24,7 +24,7 @@ from pydantic import JsonValue
 from ..._util._json import to_json_bytes_compact
 from ..types import Transcript, TranscriptInfo
 from .pool import slice_positions
-from .reducer import ATTACHMENT_REF_BYTES, ATTACHMENT_REF_PATTERN
+from .reducer import ATTACHMENT_REF_BYTES
 from .spool import ByteSpool
 from .stream_parse import StreamParseResult
 
@@ -69,16 +69,17 @@ def pooled_passthrough(
     # Both come from one fetched list so they cannot disagree about which
     # entries survived -- a mismatch would silently point refs at the wrong
     # pool entry. Ascending order keeps pool ordering stable.
-    pool_entries: dict[str, list[Any]] = {}
+    # Only the surviving positions are needed here; the entries themselves are
+    # streamed later, one at a time, rather than held as an object graph.
+    surviving: dict[str, list[int]] = {}
     pos_maps: dict[str, dict[int, int]] = {}
     for pool in _POOLS:
-        fetched = [
-            (position, raw)
+        surviving[pool] = [
+            position
             for position in sorted(referenced[pool])
-            if (raw := result.blobs.get((pool, position))) is not None
+            if result.blobs.has((pool, position))
         ]
-        pos_maps[pool] = {old: new for new, (old, _) in enumerate(fetched)}
-        pool_entries[pool] = [json.loads(raw) for _, raw in fetched]
+        pos_maps[pool] = {old: new for new, old in enumerate(surviving[pool])}
 
     # Pass 2: re-emit events with refs remapped onto the pruned pools.
     #
@@ -166,26 +167,65 @@ def pooled_passthrough(
     finally:
         envelope.close()
 
-    pools_json = _dumps(
-        {
-            "messages": pool_entries["message_pool"],
-            "calls": pool_entries["call_pool"],
-        }
-    )
-    attachment_ids.update(ATTACHMENT_REF_PATTERN.findall(pools_json))
-    attachments = {
-        att_id: content
-        for att_id in sorted(attachment_ids)
-        if (content := result.blobs.get(att_id)) is not None
-    }
+    return envelope_json, _emit_input_data(result, surviving, attachment_ids)
 
-    input_data: dict[str, Any] = {
-        "messages": pool_entries["message_pool"],
-        "calls": pool_entries["call_pool"],
-    }
-    if attachments:
-        input_data["attachments"] = attachments
-    return envelope_json, _dumps(input_data).encode("utf-8")
+
+def _emit_input_data(
+    result: StreamParseResult,
+    surviving: dict[str, list[int]],
+    attachment_ids: set[str],
+) -> bytes:
+    """Serialize the `input_data` column through a scratch spool.
+
+    The same bound the envelope keeps, for the same reason. Building this
+    value as objects and dumping it whole holds several copies of it at once
+    -- the parsed pool entries, a string of them, and its encoding -- and on
+    a pool-dominated transcript that value is the largest thing in the
+    process. Streaming holds one pool entry or one attachment at a time,
+    leaving the single read-back, which a parquet cell requires, as the only
+    whole-value copy.
+
+    Pool entries are parsed and re-serialized individually rather than
+    spliced verbatim, so the bytes match what dumping the whole structure
+    produced. Attachments are written last because their ids are only fully
+    known once the pool entries have been scanned.
+    """
+    spool = ByteSpool(result.spool_dir)
+    try:
+
+        def emit(text: str) -> None:
+            data = text.encode("utf-8")
+            attachment_ids.update(
+                match.decode("ascii") for match in ATTACHMENT_REF_BYTES.findall(data)
+            )
+            spool.write(data)
+
+        for pool, key in (("message_pool", "messages"), ("call_pool", "calls")):
+            emit(f'{{"{key}":[' if key == "messages" else f'],"{key}":[')
+            for index, position in enumerate(surviving[pool]):
+                raw = result.blobs.get((pool, position))
+                if raw is None:  # pragma: no cover - `surviving` checked has()
+                    continue
+                emit(("," if index else "") + _dumps(json.loads(raw)))
+        spool.write(b"]")
+
+        written = False
+        for att_id in sorted(attachment_ids):
+            if not result.blobs.has(att_id):
+                continue
+            content = result.blobs.get(att_id)
+            if content is None:  # pragma: no cover - has() just confirmed it
+                continue
+            spool.write(b',"attachments":{' if not written else b",")
+            written = True
+            spool.write((_dumps(att_id) + ":" + _dumps(content)).encode("utf-8"))
+        if written:
+            spool.write(b"}")
+
+        spool.write(b"}")
+        return spool.read()
+    finally:
+        spool.close()
 
 
 _POOL_FOR_FIELD = {"message": "message_pool", "call": "call_pool"}

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import tracemalloc
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -257,3 +258,44 @@ def test_slice_positions_matches_python_slicing(
     """
     pool = list(range(pool_len))
     assert [pool[i] for i in slice_positions(start, end, pool_len)] == pool[start:end]
+
+
+def test_input_data_streams_pool_entries_without_holding_them(
+    tmp_path: Path,
+) -> None:
+    """`input_data` must stay near the cell size, like the envelope does.
+
+    Building it as objects and dumping it whole held the parsed entries, a
+    string of them, and its encoding at once -- about 5x the cell on a
+    pool-dominated transcript. Peak is measured against the value actually
+    produced, so this fails if any of those copies comes back.
+    """
+    entry = "x" * (512 * 1024)
+    blobs = BlobSpool(tmp_path)
+    for i in range(40):  # ~20 MB of pool
+        blobs.put(("message_pool", i), json.dumps({"role": "user", "content": entry}))
+    result = StreamParseResult(
+        ItemSpool(tmp_path),
+        ItemSpool(tmp_path),
+        blobs,
+        ByteSpool(tmp_path),
+        tmp_path,
+    )
+    result.events.append({"event": "model", "input_refs": [[0, 40]]})
+
+    tracemalloc.start()
+    try:
+        _, input_data_json = pooled_passthrough(
+            TranscriptInfo(transcript_id="t1"), result
+        )
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+        result.close()
+
+    assert input_data_json is not None
+    cell = len(input_data_json)
+    assert cell > 15 * 1024 * 1024, "fixture should be big enough to be meaningful"
+    # The read-back is unavoidable; two whole copies is generous headroom and
+    # still far below the ~5x the object-graph build cost.
+    assert peak < cell * 2.5, f"peak {peak} exceeds 2.5x the {cell}-byte cell"

@@ -648,13 +648,20 @@ class ParquetTranscriptsDB(TranscriptsDB):
             return transcript_ids
 
     def _get_content_size(self, full_path: str, transcript_id: str) -> int:
-        """Get decompressed size of messages+events+events_data columns for a transcript."""
+        """Decompressed size in BYTES of the content columns for a transcript.
+
+        `strlen` (bytes) rather than `LENGTH` (characters) because this gates
+        `SPOOL_THRESHOLD_BYTES`. The two agree on today's data -- the writer
+        serializes content with non-ASCII escaped, so the stored columns are
+        pure ASCII -- but the threshold is a byte budget, and that escaping is
+        not a property this function should depend on.
+        """
         assert self._conn is not None
         try:
             result = self._conn.execute(
                 """
-                SELECT COALESCE(LENGTH(messages), 0) + COALESCE(LENGTH(events), 0)
-                     + COALESCE(LENGTH(events_data), 0)
+                SELECT COALESCE(strlen(messages), 0) + COALESCE(strlen(events), 0)
+                     + COALESCE(strlen(events_data), 0)
                 FROM read_parquet(?) WHERE transcript_id = ?
                 """,
                 [escape_duckdb_glob(full_path), transcript_id],
@@ -662,7 +669,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         except duckdb.BinderException:
             result = self._conn.execute(
                 """
-                SELECT COALESCE(LENGTH(messages), 0) + COALESCE(LENGTH(events), 0)
+                SELECT COALESCE(strlen(messages), 0) + COALESCE(strlen(events), 0)
                 FROM read_parquet(?) WHERE transcript_id = ?
                 """,
                 [escape_duckdb_glob(full_path), transcript_id],
@@ -906,9 +913,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
         above `SPOOL_THRESHOLD_BYTES`; otherwise (below threshold, timeline
         requested, or transcript not indexed) a `MaterializedTranscriptHandle`.
 
-        Peak memory during `parse()` is ~1x the combined column size: the JSON
-        cells are fetched from DuckDB as whole strings before parsing (no true
-        byte-level source here, unlike the eval-log path). This is a floor.
+        Peak memory during `parse()` is several times the combined column
+        size, not ~1x: DuckDB returns each cell as one whole Python `str`
+        (widened to UCS-2/UCS-4 if the JSON holds any non-ASCII), which is
+        then encoded to `bytes` -- two whole copies before parsing starts.
+        Measured at 2.8-3.8x the stored JSON on multi-hundred-MB transcripts.
+        Unlike the eval-log path there is no byte-level source to stream from;
+        fixing it needs a page-level reader, which is tracked separately.
         """
         assert self._conn is not None
 

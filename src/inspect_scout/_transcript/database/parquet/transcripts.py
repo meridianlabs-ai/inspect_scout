@@ -1,5 +1,6 @@
 """DuckDB/Parquet-backed transcript database implementation."""
 
+import contextlib
 import json
 import os
 import tempfile
@@ -130,7 +131,10 @@ class _PageReaderContent:
         yield b"}"
 
     def close(self) -> None:
-        self.reader.close()
+        # A close failure after a fully successful read must not fail the
+        # read (this is called from read()'s finally).
+        with contextlib.suppress(Exception):
+            self.reader.close()
 
 
 class _ParquetStreamContextManager:
@@ -297,7 +301,8 @@ class _ParquetStreamContextManager:
             yield chunk
 
     def _page_reader_chunks(self) -> Iterator[bytes]:
-        with ParquetContentReader(self._parquet_path) as reader:
+        reader = ParquetContentReader(self._parquet_path)
+        try:
             location = reader.locate(self._transcript_id)
             names = reader.column_names()
 
@@ -328,6 +333,11 @@ class _ParquetStreamContextManager:
             else:
                 yield b', "timelines": []'
             yield b"}"
+        finally:
+            # A close failure after the final byte must not raise with
+            # emitted=True.
+            with contextlib.suppress(Exception):
+                reader.close()
 
 
 class ParquetTranscriptInfo(TranscriptInfo):
@@ -814,9 +824,17 @@ class ParquetTranscriptsDB(TranscriptsDB):
             return None
         try:
             location = reader.locate(transcript_id)
+            if location is None:
+                # Uniform not-found handling: let the caller's existing
+                # `if not result: return transcript_no_content()` handle a
+                # stale-index not-found identically on both paths.
+                with contextlib.suppress(Exception):
+                    reader.close()
+                return None
             names = reader.column_names()
 
             def cell(column: str) -> Iterator[bytes] | None:
+                # location is never None here; the guard is cheap defense.
                 if location is None or column not in columns or column not in names:
                     return None
                 return reader.stream_cell(location, column)
@@ -834,7 +852,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 events_data_json=events_data_json,
             )
         except Exception as ex:
-            reader.close()
+            with contextlib.suppress(Exception):
+                reader.close()
             trace_message(
                 logger,
                 "Scout Parquet Page Reader",

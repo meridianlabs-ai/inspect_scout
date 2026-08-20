@@ -13,17 +13,17 @@ attachments table travels inside `input_data` instead.
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Iterable
 
 from inspect_ai.event._pool import (
     POOL_REF_FIELDS,
-    collect_pool_ref_positions,
     remap_pool_refs,
 )
 from pydantic import JsonValue
 
 from ..._util._json import to_json_bytes_compact
 from ..types import Transcript, TranscriptInfo
+from .pool import slice_positions
 from .reducer import ATTACHMENT_REF_BYTES, ATTACHMENT_REF_PATTERN
 from .spool import ByteSpool
 from .stream_parse import StreamParseResult
@@ -62,13 +62,8 @@ def pooled_passthrough(
         decoding would double a non-ASCII value in memory for nothing.
     """
     # Pass 1: which pool positions and attachments do the events reference?
-    # `collect_pool_ref_positions` walks inspect_ai's POOL_REF_FIELDS registry
-    # so this stays correct when upstream adds a new *_refs field.
-    positions = collect_pool_ref_positions(result.events.items())
-    referenced = {
-        "message_pool": positions.message_positions,
-        "call_pool": positions.call_positions,
-    }
+    pool_lens = {pool: result.blobs.pool_len(pool) for pool in _POOLS}
+    referenced = _referenced_positions(result.events.items(), pool_lens)
 
     # Fetch the surviving pool entries and build old -> new position maps.
     # Both come from one fetched list so they cannot disagree about which
@@ -76,7 +71,6 @@ def pooled_passthrough(
     # pool entry. Ascending order keeps pool ordering stable.
     pool_entries: dict[str, list[Any]] = {}
     pos_maps: dict[str, dict[int, int]] = {}
-    dropped = False
     for pool in _POOLS:
         fetched = [
             (position, raw)
@@ -85,7 +79,6 @@ def pooled_passthrough(
         ]
         pos_maps[pool] = {old: new for new, (old, _) in enumerate(fetched)}
         pool_entries[pool] = [json.loads(raw) for _, raw in fetched]
-        dropped = dropped or len(fetched) != len(referenced[pool])
 
     # Pass 2: re-emit events with refs remapped onto the pruned pools.
     #
@@ -161,7 +154,7 @@ def pooled_passthrough(
             emit(
                 _dumps(
                     remap_pool_refs(
-                        _drop_unmapped_refs(event, pos_maps) if dropped else event,
+                        _normalize_pool_refs(event, pos_maps, pool_lens),
                         pos_maps["message_pool"],
                         pos_maps["call_pool"],
                     )
@@ -198,37 +191,79 @@ def pooled_passthrough(
 _POOL_FOR_FIELD = {"message": "message_pool", "call": "call_pool"}
 
 
-def _drop_unmapped_refs(
-    event: dict[str, Any], pos_maps: dict[str, dict[int, int]]
+def _referenced_positions(
+    events: Iterable[dict[str, Any]], pool_lens: dict[str, int]
+) -> dict[str, set[int]]:
+    """Pool positions the events reference, under slicing semantics.
+
+    Walks inspect_ai's `POOL_REF_FIELDS` registry so a new upstream `*_refs`
+    field is picked up automatically. It clamps each range to the pool rather
+    than enumerating it verbatim, which `collect_pool_ref_positions` upstream
+    does: a negative bound there collects positions counted from zero instead
+    of from the end, and a huge one enumerates the whole span where the
+    materialized path's slicing truncates at the pool.
+    """
+    referenced: dict[str, set[int]] = {pool: set() for pool in _POOLS}
+    for event in events:
+        for field in POOL_REF_FIELDS:
+            value: Any = event
+            for key in field.path:
+                value = value.get(key) if isinstance(value, dict) else None
+            if not isinstance(value, list):
+                continue
+            pool = _POOL_FOR_FIELD[field.pool]
+            for ref in value:
+                if (
+                    isinstance(ref, (list, tuple))
+                    and len(ref) == 2
+                    and isinstance(ref[0], int)
+                    and isinstance(ref[1], int)
+                ):
+                    referenced[pool].update(
+                        slice_positions(ref[0], ref[1], pool_lens[pool])
+                    )
+    return referenced
+
+
+def _normalize_pool_refs(
+    event: dict[str, Any],
+    pos_maps: dict[str, dict[int, int]],
+    pool_lens: dict[str, int],
 ) -> dict[str, Any]:
-    """Copy of `event` with refs to positions the spool doesn't have removed.
+    """Copy of `event` with refs rewritten to the positions slicing selects.
 
-    `remap_pool_refs` looks every referenced position up in the map and would
-    raise `KeyError` for one that was never spooled. The materialized path
-    expands refs by slicing, which silently drops such positions, so drop
-    them here too: the two paths must not diverge on the same input.
+    Two corrections, both needed before `remap_pool_refs`, which enumerates
+    each range verbatim and looks every position up in the map. First, bounds
+    are resolved the way the materialized path resolves them -- by slicing --
+    so a negative bound counts from the end of the pool and an out-of-range
+    one truncates. Second, positions the spool never held are dropped, which
+    slicing does silently but a map lookup would raise `KeyError` for.
 
-    Walks `POOL_REF_FIELDS` for the same reason `collect_pool_ref_positions`
+    Walks `POOL_REF_FIELDS` for the same reason `_referenced_positions`
     does -- it stays correct when upstream adds a new `*_refs` field.
     """
     pruned = event
     for field in POOL_REF_FIELDS:
-        pruned = _drop_unmapped_refs_at_path(
-            pruned, field.path, pos_maps[_POOL_FOR_FIELD[field.pool]]
+        pool = _POOL_FOR_FIELD[field.pool]
+        pruned = _normalize_pool_refs_at_path(
+            pruned, field.path, pos_maps[pool], pool_lens[pool]
         )
     return pruned
 
 
-def _drop_unmapped_refs_at_path(
-    node: dict[str, Any], path: tuple[str, ...], pos_map: dict[int, int]
+def _normalize_pool_refs_at_path(
+    node: dict[str, Any],
+    path: tuple[str, ...],
+    pos_map: dict[int, int],
+    pool_len: int,
 ) -> dict[str, Any]:
-    """`node` with unmapped positions removed from the refs list at `path`."""
+    """`node` with the refs list at `path` rewritten to surviving positions."""
     key, rest = path[0], path[1:]
     child = node.get(key)
     if rest:
         if not isinstance(child, dict):
             return node
-        new_child = _drop_unmapped_refs_at_path(child, rest, pos_map)
+        new_child = _normalize_pool_refs_at_path(child, rest, pos_map, pool_len)
         return node if new_child is child else {**node, key: new_child}
     if not isinstance(child, list):
         return node
@@ -241,7 +276,7 @@ def _drop_unmapped_refs_at_path(
         and len(ref) == 2
         and isinstance(ref[0], int)
         and isinstance(ref[1], int)
-        for position in range(ref[0], ref[1])
+        for position in slice_positions(ref[0], ref[1], pool_len)
         if position in pos_map
     ]
     return {**node, key: kept}

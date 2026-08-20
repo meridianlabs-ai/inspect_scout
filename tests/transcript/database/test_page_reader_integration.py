@@ -13,7 +13,7 @@ import pytest
 import pytest_asyncio
 from inspect_ai.event import Timeline, TimelineSpan
 from inspect_ai.model._chat_message import ChatMessageUser
-from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
+from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB, page_reader
 from inspect_scout._transcript.database.parquet.page_reader import (
     ParquetContentReader,
 )
@@ -171,6 +171,11 @@ def rewrite_store_file(store: Path, **write_kwargs: Any) -> None:
     Simulates files from older writers (the index keeps working because
     filenames and transcript ids are unchanged). The store is multi-file
     (one file per insert batch), so all files are rewritten.
+
+    The page reader caches footers and locations by path on the assumption
+    that store files are immutable (production only ever writes new
+    uuid-suffixed names). This helper deliberately violates that to build its
+    fixture, so it must invalidate both caches for the paths it rewrites.
     """
     files = sorted(store.glob("transcripts_*.parquet"))
     assert files, "no store parquet files found"
@@ -182,6 +187,8 @@ def rewrite_store_file(store: Path, **write_kwargs: Any) -> None:
                 [column for column in drop if column in table.column_names]
             )
         pq.write_table(table, str(path), **write_kwargs)
+        page_reader._metadata_cache.pop(str(path), None)
+        page_reader._location_cache.pop(str(path), None)
 
 
 @pytest.mark.asyncio

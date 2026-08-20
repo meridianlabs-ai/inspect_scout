@@ -11,6 +11,7 @@ import zstandard
 from fsspec.implementations.memory import (  # type: ignore[import-untyped]
     MemoryFileSystem,
 )
+from inspect_scout._transcript.database.parquet import page_reader
 from inspect_scout._transcript.database.parquet.page_reader import (
     _PAGE_TYPE_DATA,
     _PAGE_TYPE_DICTIONARY,
@@ -583,6 +584,34 @@ def test_read_before_chunk_start_raises(
         assert chunk.read_at(4, 2) == b"45"
         with pytest.raises(PageReaderUnsupportedError, match="before chunk start"):
             chunk.read_at(2, 2)
+
+
+def test_second_open_reuses_cached_metadata(tmp_path: Path) -> None:
+    """A reader built from a cached footer must decode identically."""
+    path = str(tmp_path / "reopen.parquet")
+    values = sample_values()
+    write_content_file(path, values, use_dictionary=False, write_batch_size=1)
+    with ParquetContentReader(path) as first:
+        names = first.column_names()
+    assert path in page_reader._metadata_cache, "first open did not cache the footer"
+    # every subsequent open now constructs from the cached footer
+    with ParquetContentReader(path) as second:
+        assert second.column_names() == names
+    assert_reader_matches_source(path, values)
+
+
+def test_metadata_cache_is_bounded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(page_reader, "_LOCATION_CACHE_MAX_FILES", 2)
+    paths: list[str] = []
+    for i in range(3):
+        path = str(tmp_path / f"cap{i}.parquet")
+        write_content_file(path, sample_values(), use_dictionary=False)
+        paths.append(path)
+        ParquetContentReader(path).close()
+    assert len(page_reader._metadata_cache) == 2
+    assert list(page_reader._metadata_cache) == paths[1:]  # oldest evicted first
 
 
 def test_coalescing_modes_agree(tmp_path: Path) -> None:

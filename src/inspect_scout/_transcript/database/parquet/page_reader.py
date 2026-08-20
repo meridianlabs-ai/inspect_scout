@@ -57,6 +57,8 @@ class CellLocation:
 
 
 _LOCATION_CACHE_MAX_FILES = 256
+"""Cap, in files, on each of the two per-path caches below (FIFO eviction)."""
+
 _location_cache: OrderedDict[str, dict[str, CellLocation]] = OrderedDict()
 """id -> position maps, keyed by file path.
 
@@ -65,6 +67,14 @@ uuid-suffixed filename and compaction produces new files rather than
 rewriting existing ones, so a path identifies its contents for the life of
 the process. Decoding the whole transcript_id column per lookup instead made
 locate() the dominant cost of read() on files with many rows.
+"""
+
+_metadata_cache: OrderedDict[str, pq.FileMetaData] = OrderedDict()
+"""Parsed parquet footers, keyed by file path.
+
+Same immutability argument as _location_cache. Re-parsing the footer on
+every open was ~2ms on a 240-row-group store file, which dominated the cost
+of a small read once locate() stopped doing so.
 """
 
 
@@ -518,6 +528,9 @@ class ParquetContentReader:
         self._coalesce_threshold = coalesce_threshold
         raw: IO[bytes] | None = None
         meta: IO[bytes] | None = None
+        # A cached footer skips the re-parse; None means "read it from the
+        # file", which is pq.ParquetFile's own default.
+        cached_metadata = _metadata_cache.get(path)
         try:
             if "://" in path:
                 fs = filesystem(path).fs
@@ -527,11 +540,15 @@ class ParquetContentReader:
                 # correct there as well.
                 raw = fs.open(path, "rb", cache_type="none")
                 meta = fs.open(path, "rb", cache_type="none")
-                parquet_file = pq.ParquetFile(meta)
+                parquet_file = pq.ParquetFile(meta, metadata=cached_metadata)
             else:
                 raw = open(path, "rb")
-                parquet_file = pq.ParquetFile(path)
+                parquet_file = pq.ParquetFile(path, metadata=cached_metadata)
             metadata = parquet_file.metadata
+            if cached_metadata is None:
+                _metadata_cache[path] = metadata
+                while len(_metadata_cache) > _LOCATION_CACHE_MAX_FILES:
+                    _metadata_cache.popitem(last=False)
             self._column_index = {
                 metadata.schema.column(i).name: i for i in range(metadata.num_columns)
             }

@@ -27,6 +27,7 @@ from inspect_ai.model._chat_message import ChatMessage
 from pydantic import TypeAdapter
 
 from ..types import EventFilter, MessageFilter
+from .pool import slice_positions
 from .reducer import (
     ATTACHMENT_REF_PATTERN,
     ATTACHMENTS_PREFIX,
@@ -491,8 +492,9 @@ def _expand_pool_range(
     JSON), so each fetched item is resolved for attachment refs here.
     """
     result: list[Any] = []
+    pool_len = blobs.pool_len(pool_name)
     for start, end_exclusive in refs:
-        for i in range(start, end_exclusive):
+        for i in slice_positions(start, end_exclusive, pool_len):
             raw = blobs.get((pool_name, i))
             if raw is not None:
                 result.append(_resolve_strings(json.loads(raw), blobs))

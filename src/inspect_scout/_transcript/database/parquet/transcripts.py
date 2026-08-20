@@ -1474,7 +1474,22 @@ class ParquetTranscriptsDB(TranscriptsDB):
             table,
             path,
             compression="zstd",
-            use_dictionary=True,
+            # Content cells must be page-addressable for the page reader:
+            # with use_dictionary=True every content cell of a row group
+            # lands in ONE dictionary page, and parquet-cpp checks
+            # data_page_size only once per write batch (default 1024 values),
+            # so write_batch_size=1 makes the check per-value. Layout
+            # contract: a cell crossing data_page_size is always LAST in its
+            # page, may share it with up to ~data_page_size of preceding
+            # small cells, and two crossing cells never share a page. The
+            # reader does not rely on this layout for correctness (it walks
+            # whatever it finds), only for efficiency. write_batch_size is a
+            # global writer property — keep these kwargs local to this
+            # writer.
+            use_dictionary=[  # type: ignore[arg-type]
+                column for column in table.column_names if column not in CONTENT_COLUMNS
+            ],
+            write_batch_size=1,
             row_group_size=self._row_group_size,
             write_statistics=True,
         )

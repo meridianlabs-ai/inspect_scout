@@ -7,12 +7,26 @@ from typing import Any
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
+import zstandard
+from fsspec.implementations.memory import (  # type: ignore[import-untyped]
+    MemoryFileSystem,
+)
 from inspect_scout._transcript.database.parquet.page_reader import (
     _PAGE_TYPE_DATA,
     _PAGE_TYPE_DICTIONARY,
+    CellLocation,
     PageReaderUnsupported,
+    ParquetContentReader,
+    _ChunkSource,
+    _decode_rle_hybrid,
+    _decompressed_stream,
+    _PageInfo,
     _parse_page_header,
+    _read_def_levels,
+    _StreamCursor,
+    _walk_pages,
 )
+from upath import UPath
 
 
 def sample_values() -> list[str | None]:
@@ -71,14 +85,19 @@ def first_page_offset(md: pq.FileMetaData, row_group: int, column: int) -> int:
     return min(offsets)
 
 
-def test_parse_dictionary_page_header(tmp_path: Path) -> None:
-    path = str(tmp_path / "dict.parquet")
-    write_content_file(path, sample_values())
+def first_header_slice(path: str, size: int = 8 * 1024) -> tuple[bytes, int]:
+    """Raw bytes at the first page header of row group 0, column 1."""
     md = pq.ParquetFile(path).metadata
     offset = first_page_offset(md, 0, 1)
     with open(path, "rb") as f:
         f.seek(offset)
-        buf = f.read(8 * 1024)
+        return f.read(size), offset
+
+
+def test_parse_dictionary_page_header(tmp_path: Path) -> None:
+    path = str(tmp_path / "dict.parquet")
+    write_content_file(path, sample_values())
+    buf, offset = first_header_slice(path)
     page = _parse_page_header(buf, offset)
     assert page.page_type == _PAGE_TYPE_DICTIONARY
     assert page.header_offset == offset
@@ -91,11 +110,7 @@ def test_parse_dictionary_page_header(tmp_path: Path) -> None:
 def test_parse_plain_data_page_header(tmp_path: Path) -> None:
     path = str(tmp_path / "plain.parquet")
     write_content_file(path, sample_values(), use_dictionary=False)
-    md = pq.ParquetFile(path).metadata
-    offset = first_page_offset(md, 0, 1)
-    with open(path, "rb") as f:
-        f.seek(offset)
-        buf = f.read(8 * 1024)
+    buf, offset = first_header_slice(path)
     page = _parse_page_header(buf, offset)
     assert page.page_type == _PAGE_TYPE_DATA
     # a 4-row group with dictionary off = one PLAIN page holding all rows
@@ -107,11 +122,7 @@ def test_parse_v2_page_header_unsupported(tmp_path: Path) -> None:
     write_content_file(
         path, sample_values(), use_dictionary=False, data_page_version="2.0"
     )
-    md = pq.ParquetFile(path).metadata
-    offset = first_page_offset(md, 0, 1)
-    with open(path, "rb") as f:
-        f.seek(offset)
-        buf = f.read(8 * 1024)
+    buf, offset = first_header_slice(path)
     with pytest.raises(PageReaderUnsupported, match="page type"):
         _parse_page_header(buf, offset)
 
@@ -119,21 +130,12 @@ def test_parse_v2_page_header_unsupported(tmp_path: Path) -> None:
 def test_truncated_header_raises_index_error(tmp_path: Path) -> None:
     path = str(tmp_path / "trunc.parquet")
     write_content_file(path, sample_values())
-    md = pq.ParquetFile(path).metadata
-    offset = first_page_offset(md, 0, 1)
-    with open(path, "rb") as f:
-        f.seek(offset)
-        buf = f.read(3)  # far too short for any header
+    buf, offset = first_header_slice(path, size=3)  # far too short for any header
     with pytest.raises(IndexError):
         _parse_page_header(buf, offset)
 
 
-def walk_column_pages(path: str, row_group: int, column: int) -> list[Any]:
-    from inspect_scout._transcript.database.parquet.page_reader import (
-        _ChunkSource,
-        _walk_pages,
-    )
-
+def walk_column_pages(path: str, row_group: int, column: int) -> list[_PageInfo]:
     md = pq.ParquetFile(path).metadata
     cc = md.row_group(row_group).column(column)
     with open(path, "rb") as f:
@@ -145,11 +147,6 @@ def walk_column_pages(path: str, row_group: int, column: int) -> list[Any]:
 
 @pytest.mark.parametrize("coalesce", [True, False], ids=["whole-chunk", "ranged"])
 def test_walk_accounts_for_full_chunk(tmp_path: Path, coalesce: bool) -> None:
-    from inspect_scout._transcript.database.parquet.page_reader import (
-        _ChunkSource,
-        _walk_pages,
-    )
-
     path = str(tmp_path / "walk.parquet")
     write_content_file(path, sample_values(), use_dictionary=False, write_batch_size=1)
     md = pq.ParquetFile(path).metadata
@@ -189,48 +186,51 @@ def test_walk_batch1_layout_splits_pages(tmp_path: Path) -> None:
     assert sum(p.num_values for p in pages) == 4
 
 
-def test_rle_run_decodes() -> None:
-    from inspect_scout._transcript.database.parquet.page_reader import (
-        _decode_rle_hybrid,
-    )
+@pytest.mark.parametrize(
+    ("data", "bit_width", "count", "expected"),
+    [
+        # RLE run: header = count << 1, then a ceil(bit_width/8)-byte value
+        (b"\x32\x01", 1, 25, [1] * 25),
+        (b"\x08\x02", 2, 4, [2, 2, 2, 2]),
+        # bit width 0 (single dictionary entry): no bytes at all
+        (b"", 0, 3, [0, 0, 0]),
+        # bit-packed: header = (groups << 1) | 1; one group of 8, byte 0x55
+        (b"\x03\x55", 1, 8, [1, 0, 1, 0, 1, 0, 1, 0]),
+        # run of 3 zeros then the bit-packed group, truncated to count
+        (b"\x06\x00\x03\x55", 1, 11, [0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0]),
+        # multi-byte varint header: run of 100 -> header 200 -> b"\xc8\x01"
+        (b"\xc8\x01\x01", 1, 100, [1] * 100),
+        # corrupt run length (2**30) is capped to count rather than
+        # materializing 2**30 elements before truncating
+        (b"\x80\x80\x80\x80\x08\x09", 8, 5, [9] * 5),
+    ],
+    ids=[
+        "rle-run-bw1",
+        "rle-run-bw2",
+        "bit-width-0",
+        "bit-packed",
+        "mixed-runs",
+        "multibyte-varint-header",
+        "corrupt-run-capped",
+    ],
+)
+def test_rle_hybrid_decodes(
+    data: bytes, bit_width: int, count: int, expected: list[int]
+) -> None:
+    assert _decode_rle_hybrid(data, bit_width, count) == expected
 
-    # RLE run: header = count << 1; 25 values of 1 at bit width 1
-    assert _decode_rle_hybrid(b"\x32\x01", 1, 25) == [1] * 25
-    # bit width 2, run of 4 values of 2
-    assert _decode_rle_hybrid(b"\x08\x02", 2, 4) == [2, 2, 2, 2]
-    # bit width 0 (single dictionary entry): no bytes at all
-    assert _decode_rle_hybrid(b"", 0, 3) == [0, 0, 0]
 
-
-def test_rle_bitpacked_decodes() -> None:
-    from inspect_scout._transcript.database.parquet.page_reader import (
-        _decode_rle_hybrid,
-    )
-
-    # bit-packed: header = (groups << 1) | 1; one group of 8, byte 0x55
-    assert _decode_rle_hybrid(b"\x03\x55", 1, 8) == [1, 0, 1, 0, 1, 0, 1, 0]
-    # mixed: run of 3 zeros then the bit-packed group, truncated to count
-    assert _decode_rle_hybrid(b"\x06\x00\x03\x55", 1, 11) == [
-        0,
-        0,
-        0,
-        1,
-        0,
-        1,
-        0,
-        1,
-        0,
-        1,
-        0,
-    ]
+@pytest.mark.parametrize(
+    ("data", "bit_width"),
+    [(b"\x08", 2), (b"\x03", 1)],
+    ids=["run-value-missing", "group-bytes-missing"],
+)
+def test_rle_truncated_payload_raises(data: bytes, bit_width: int) -> None:
+    with pytest.raises(PageReaderUnsupported, match="truncated"):
+        _decode_rle_hybrid(data, bit_width, 8)
 
 
 def test_stream_cursor_reads_across_chunks() -> None:
-    from inspect_scout._transcript.database.parquet.page_reader import (
-        PageReaderUnsupported,
-        _StreamCursor,
-    )
-
     cursor = _StreamCursor(iter([b"ab", b"", b"cdef", b"g"]))
     assert cursor.read(3) == b"abc"
     cursor.skip(2)
@@ -241,11 +241,6 @@ def test_stream_cursor_reads_across_chunks() -> None:
 
 
 def test_decompressed_stream_zstd_roundtrip() -> None:
-    import zstandard
-    from inspect_scout._transcript.database.parquet.page_reader import (
-        _decompressed_stream,
-    )
-
     payload = ("héllo→世界😀" * 10_000).encode("utf-8")
     frame = zstandard.ZstdCompressor().compress(payload)
     pieces = [frame[i : i + 100] for i in range(0, len(frame), 100)]
@@ -254,12 +249,7 @@ def test_decompressed_stream_zstd_roundtrip() -> None:
 
 
 def test_read_def_levels() -> None:
-    from inspect_scout._transcript.database.parquet.page_reader import (
-        _read_def_levels,
-        _StreamCursor,
-    )
-
-    # 4-byte length prefix + RLE run of 25 ones (the Task-1 test vector)
+    # 4-byte length prefix + RLE run of 25 ones
     cursor = _StreamCursor(iter([b"\x02\x00\x00\x00\x32\x01"]))
     assert _read_def_levels(cursor, 25, 1) == [1] * 25
     assert cursor.bytes_read == 6
@@ -269,42 +259,18 @@ def test_read_def_levels() -> None:
     assert cursor2.bytes_read == 0
 
 
-def test_rle_multibyte_header_and_truncation() -> None:
-    from inspect_scout._transcript.database.parquet.page_reader import (
-        PageReaderUnsupported,
-        _decode_rle_hybrid,
-    )
-
-    # multi-byte varint header: run of 100 -> header 200 -> varint b"\xc8\x01"
-    assert _decode_rle_hybrid(b"\xc8\x01\x01", 1, 100) == [1] * 100
-    # RLE header present but run value byte missing
-    with pytest.raises(PageReaderUnsupported, match="truncated"):
-        _decode_rle_hybrid(b"\x08", 2, 4)
-    # bit-packed header present but group bytes missing
-    with pytest.raises(PageReaderUnsupported, match="truncated"):
-        _decode_rle_hybrid(b"\x03", 1, 8)
-
-
-def test_rle_run_capped_to_remaining_count() -> None:
-    """A corrupt/adversarial run length must not balloon the allocation.
-
-    header = (run << 1); run = 2**30 -> header = 2**31, varint-encoded below
-    as a 5-byte little-endian-group varint. With bit_width=8, one value byte
-    follows. Decoding with a small count must return exactly [value] * count
-    rather than materializing 2**30 elements before truncating.
-    """
-    from inspect_scout._transcript.database.parquet.page_reader import (
-        _decode_rle_hybrid,
-    )
-
-    payload = b"\x80\x80\x80\x80\x08" + b"\x09"
-    assert _decode_rle_hybrid(payload, 8, 5) == [9] * 5
-
-
 PLAIN_LAYOUTS: dict[str, dict[str, Any]] = {
     "plain_batch1": {"use_dictionary": False, "write_batch_size": 1},
     "plain_single_page": {"use_dictionary": False},
     "uncompressed": {"use_dictionary": False, "compression": "NONE"},
+}
+
+ALL_LAYOUTS: dict[str, dict[str, Any]] = {
+    **PLAIN_LAYOUTS,
+    # today's writer flags: one dictionary page holds every value
+    "legacy_dict": {"use_dictionary": True},
+    # dictionary overflow fallback: dict page + RLE_DICTIONARY + PLAIN pages
+    "mixed_dict_plain": {"use_dictionary": True, "write_batch_size": 1},
 }
 
 
@@ -314,10 +280,6 @@ def assert_reader_matches_source(
     *,
     coalesce_threshold: int | None = None,
 ) -> None:
-    from inspect_scout._transcript.database.parquet.page_reader import (
-        ParquetContentReader,
-    )
-
     kwargs: dict[str, int] = (
         {} if coalesce_threshold is None else {"coalesce_threshold": coalesce_threshold}
     )
@@ -336,20 +298,15 @@ def assert_reader_matches_source(
             assert reader.cell_size(location, "events") == expected_size, f"row {i}"
 
 
-@pytest.mark.parametrize("layout", sorted(PLAIN_LAYOUTS))
-def test_plain_cells_match_source(tmp_path: Path, layout: str) -> None:
+@pytest.mark.parametrize("layout", sorted(ALL_LAYOUTS))
+def test_all_layouts_match_source(tmp_path: Path, layout: str) -> None:
     path = str(tmp_path / f"{layout}.parquet")
     values = sample_values()
-    write_content_file(path, values, **PLAIN_LAYOUTS[layout])
+    write_content_file(path, values, **ALL_LAYOUTS[layout])
     assert_reader_matches_source(path, values)
 
 
 def test_locate_maps_row_groups(tmp_path: Path) -> None:
-    from inspect_scout._transcript.database.parquet.page_reader import (
-        CellLocation,
-        ParquetContentReader,
-    )
-
     path = str(tmp_path / "locate.parquet")
     write_content_file(path, sample_values(), use_dictionary=False)
     with ParquetContentReader(path) as reader:
@@ -361,10 +318,6 @@ def test_locate_maps_row_groups(tmp_path: Path) -> None:
 
 
 def test_absent_column_raises_value_error(tmp_path: Path) -> None:
-    from inspect_scout._transcript.database.parquet.page_reader import (
-        ParquetContentReader,
-    )
-
     path = str(tmp_path / "absent.parquet")
     write_content_file(path, sample_values(), use_dictionary=False)
     with ParquetContentReader(path) as reader:
@@ -377,10 +330,6 @@ def test_absent_column_raises_value_error(tmp_path: Path) -> None:
 def test_init_failure_closes_handles(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from inspect_scout._transcript.database.parquet.page_reader import (
-        ParquetContentReader,
-    )
-
     path = str(tmp_path / "garbage.parquet")
     Path(path).write_bytes(b"not a parquet file")
     opened: list[Any] = []
@@ -397,23 +346,6 @@ def test_init_failure_closes_handles(
         ParquetContentReader(path)
     assert opened, "raw handle was never opened"
     assert all(handle.closed for handle in opened)
-
-
-ALL_LAYOUTS: dict[str, dict[str, Any]] = {
-    **PLAIN_LAYOUTS,
-    # today's writer flags: one dictionary page holds every value
-    "legacy_dict": {"use_dictionary": True},
-    # dictionary overflow fallback: dict page + RLE_DICTIONARY + PLAIN pages
-    "mixed_dict_plain": {"use_dictionary": True, "write_batch_size": 1},
-}
-
-
-@pytest.mark.parametrize("layout", sorted(ALL_LAYOUTS))
-def test_all_layouts_match_source(tmp_path: Path, layout: str) -> None:
-    path = str(tmp_path / f"{layout}.parquet")
-    values = sample_values()
-    write_content_file(path, values, **ALL_LAYOUTS[layout])
-    assert_reader_matches_source(path, values)
 
 
 def test_duplicate_cells_share_dictionary_entry(tmp_path: Path) -> None:
@@ -443,11 +375,6 @@ def test_duplicate_cells_share_dictionary_entry(tmp_path: Path) -> None:
 def test_unsupported_shapes_raise(
     tmp_path: Path, write_kwargs: dict[str, Any], match: str
 ) -> None:
-    from inspect_scout._transcript.database.parquet.page_reader import (
-        PageReaderUnsupported,
-        ParquetContentReader,
-    )
-
     path = str(tmp_path / "unsupported.parquet")
     write_content_file(path, sample_values(), **write_kwargs)
     with ParquetContentReader(path) as reader:
@@ -460,8 +387,6 @@ def test_unsupported_shapes_raise(
 
 
 def test_memory_filesystem_matches_source() -> None:
-    from upath import UPath
-
     url = UPath("memory://page-reader-tests/data.parquet")
     values = sample_values()
     table = build_content_table(values)
@@ -482,14 +407,6 @@ def test_memory_filesystem_matches_source() -> None:
 
 
 def test_reader_opens_only_its_own_path(monkeypatch: pytest.MonkeyPatch) -> None:
-    from fsspec.implementations.memory import (  # type: ignore[import-untyped]
-        MemoryFileSystem,
-    )
-    from inspect_scout._transcript.database.parquet.page_reader import (
-        ParquetContentReader,
-    )
-    from upath import UPath
-
     target = UPath("memory://page-reader-spy/target.parquet")
     other = UPath("memory://page-reader-spy/other.parquet")
     for url in (target, other):
@@ -523,19 +440,8 @@ def test_reader_opens_only_its_own_path(monkeypatch: pytest.MonkeyPatch) -> None
 
 
 def test_coalescing_modes_agree(tmp_path: Path) -> None:
-    from inspect_scout._transcript.database.parquet.page_reader import (
-        ParquetContentReader,
-    )
-
     path = str(tmp_path / "coalesce.parquet")
     values = sample_values()
     write_content_file(path, values, use_dictionary=False, write_batch_size=1)
-    for threshold in (0, 2**40):
-        with ParquetContentReader(path, coalesce_threshold=threshold) as reader:
-            for i, expected in enumerate(values):
-                location = reader.locate(f"tr_{i:04d}")
-                assert location is not None
-                cell = reader.stream_cell(location, "events")
-                got = None if cell is None else b"".join(cell)
-                want = None if expected is None else expected.encode("utf-8")
-                assert got == want, f"threshold={threshold} row={i}"
+    assert_reader_matches_source(path, values, coalesce_threshold=0)
+    assert_reader_matches_source(path, values, coalesce_threshold=2**40)

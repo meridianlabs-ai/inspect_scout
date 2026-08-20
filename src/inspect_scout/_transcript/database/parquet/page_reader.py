@@ -299,9 +299,7 @@ def _decode_rle_hybrid(data: bytes, bit_width: int, count: int) -> list[int]:
                 out.append((packed >> (j * bit_width)) & mask)
         else:  # RLE run
             # Cap to what's still needed: a corrupt varint could otherwise
-            # demand a huge `[value] * run` allocation (MemoryError is not
-            # fallback-able). The trailing out[:count] truncation makes this
-            # semantically identical for valid data.
+            # demand a huge allocation, and MemoryError is not fallback-able.
             run = min(header >> 1, count - len(out))
             value_bytes = data[pos : pos + byte_width]
             if len(value_bytes) != byte_width:

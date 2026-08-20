@@ -10,6 +10,9 @@ import pytest
 import pytest_asyncio
 from inspect_ai.model._chat_message import ChatMessageUser
 from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
+from inspect_scout._transcript.database.parquet.page_reader import (
+    ParquetContentReader,
+)
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
 
 
@@ -179,3 +182,27 @@ async def test_file_missing_columns_reads_with_defaults(
         assert (
             await collect_messages_events(db, info) == via_reader[info.transcript_id]
         ), info.transcript_id
+
+
+@pytest.mark.asyncio
+async def test_stream_abandonment_closes_reader(
+    db: ParquetTranscriptsDB, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Abandoning the stream mid-way must close the page reader promptly.
+
+    The reader is closed via aclose/__aexit__, not left to GC finalization.
+    """
+    closed: list[bool] = []
+    original_close = ParquetContentReader.close
+
+    def tracking_close(self: Any) -> None:
+        closed.append(True)
+        original_close(self)
+
+    monkeypatch.setattr(ParquetContentReader, "close", tracking_close)
+    infos = [info async for info in db.select()]
+    result = await db.read_messages_events(infos[0])
+    async with result.data as data:
+        async for _chunk in data:
+            break  # abandon mid-stream with bytes already emitted
+    assert closed, "ParquetContentReader.close never ran on abandonment"

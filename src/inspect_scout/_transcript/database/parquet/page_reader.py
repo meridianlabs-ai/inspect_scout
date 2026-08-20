@@ -286,13 +286,19 @@ def _decode_rle_hybrid(data: bytes, bit_width: int, count: int) -> list[int]:
         if header & 1:  # bit-packed: (header >> 1) groups of 8 values
             n_groups = header >> 1
             n_bytes = n_groups * bit_width
-            packed = int.from_bytes(data[pos : pos + n_bytes], "little")
+            group_bytes = data[pos : pos + n_bytes]
+            if len(group_bytes) != n_bytes:
+                raise PageReaderUnsupported("truncated RLE bit-packed group")
+            packed = int.from_bytes(group_bytes, "little")
             pos += n_bytes
             for j in range(n_groups * 8):
                 out.append((packed >> (j * bit_width)) & mask)
         else:  # RLE run
             run = header >> 1
-            value = int.from_bytes(data[pos : pos + byte_width], "little")
+            value_bytes = data[pos : pos + byte_width]
+            if len(value_bytes) != byte_width:
+                raise PageReaderUnsupported("truncated RLE run value")
+            value = int.from_bytes(value_bytes, "little")
             pos += byte_width
             out.extend([value] * run)
     return out[:count]

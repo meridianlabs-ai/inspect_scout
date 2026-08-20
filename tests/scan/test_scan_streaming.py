@@ -14,17 +14,13 @@ import json
 import tempfile
 from pathlib import Path
 
-import anyio
 import pytest
 from inspect_ai.model import ModelOutput
 from inspect_scout import Scanner, llm_scanner, scan, scanner
 from inspect_scout._scanresults import scan_results_df
 from inspect_scout._transcript import handle as handle_mod
-from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
 from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._transcript.types import Transcript, TranscriptContent
-
-from tests.transcript.fixtures_agentic import agentic_transcript
 
 LOGS_DIR = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
 
@@ -183,29 +179,20 @@ def test_scan_e2e_events_through_streaming_seam(
 
     Exercises `stream_timeline_messages`'s two-pass stub skeleton and
     produces the same result as a materialized control run over the same
-    database with no threshold override.
+    log with no threshold override.
+
+    Sourced from eval logs rather than a transcript database because that is
+    the path production scans take.
     """
-    db_location = tmp_path / "transcripts_db"
-    db_location.mkdir()
-
-    async def _seed() -> None:
-        db = ParquetTranscriptsDB(str(db_location))
-        await db.connect()
-        try:
-            await db.insert([agentic_transcript()])
-        finally:
-            await db.disconnect()
-
-    anyio.run(_seed)
-
     created, close_counts = _spy_spooled_handles(monkeypatch)
     monkeypatch.setattr("inspect_scout._util.constants.SPOOL_THRESHOLD_BYTES", 0)
 
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[streaming_events_scanner_factory()],
-            transcripts=transcripts_from(str(db_location)),
+            transcripts=transcripts_from(LOGS_DIR),
             scans=tmpdir,
+            limit=1,
             max_processes=1,  # in-process so the monkeypatched spies apply
             model="mockllm/model",
             model_args={"custom_outputs": _mock_responses(4)},
@@ -229,8 +216,9 @@ def test_scan_e2e_events_through_streaming_seam(
     with tempfile.TemporaryDirectory() as tmpdir:
         control_status = scan(
             scanners=[streaming_events_scanner_factory()],
-            transcripts=transcripts_from(str(db_location)),
+            transcripts=transcripts_from(LOGS_DIR),
             scans=tmpdir,
+            limit=1,
             max_processes=1,
             model="mockllm/model",
             model_args={"custom_outputs": _mock_responses(4)},

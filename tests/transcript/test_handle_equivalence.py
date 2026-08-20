@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import io
 import json
+import zipfile
 from pathlib import Path
 from typing import Any
 
 import pytest
+from inspect_ai.event import ModelEvent
 from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
 from inspect_scout._transcript.handle import (
     MaterializedTranscriptHandle,
@@ -195,3 +197,70 @@ async def test_attachment_refs_only_inside_pool_entries_resolve(
 
     assert pooled_input(materialized) == pooled_input(streamed)
     assert pooled_input(materialized)[0]["content"] == "POOLED SYSTEM PROMPT"
+
+
+@pytest.fixture(scope="module")
+def pooled_log(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """A log whose samples carry a machine-generated `events_data` pool.
+
+    None of the checked-in fixtures have one: they predate pooling, so their
+    `events_data` is absent and the pool branches of the spool parser never
+    run against output a real `condense_sample` produced. Duplicating a
+    message across events gives the condenser something to pool, and
+    `write_eval_log` condenses on write.
+    """
+    from inspect_ai.log import read_eval_log, write_eval_log
+
+    log = read_eval_log(str(LOGS[0]))
+    samples = log.samples or []
+    assert samples, "fixture log has no samples"
+    sample = samples[0]
+
+    repeated = list(sample.messages) * 4
+    for event in sample.events:
+        if isinstance(event, ModelEvent):
+            event.input = repeated
+
+    out = tmp_path_factory.mktemp("pooled") / "pooled.eval"
+    write_eval_log(log, str(out))
+    return out
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("content", CONTENTS, ids=["m-all", "m-asst", "m+e", "e-model"])
+async def test_streamed_equals_materialized_with_a_generated_pool(
+    pooled_log: Path, content: TranscriptContent, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The same equivalence, on pool-encoded events rather than inline ones.
+
+    Pooled events reach the spool as range refs into `events_data`, so this
+    exercises the ref-resolution path that inline-event fixtures never touch.
+    """
+    monkeypatch.setattr(constants_mod, "SPOOL_THRESHOLD_BYTES", 0)
+
+    with zipfile.ZipFile(pooled_log) as z:
+        members = [i for i in z.infolist() if i.filename.startswith("samples/")]
+        assert members
+        raw = json.loads(z.read(max(members, key=lambda i: i.file_size).filename))
+    pool = (raw.get("events_data") or {}).get("messages") or []
+    assert pool, "fixture is vacuous: the writer produced no message pool"
+
+    view = EvalLogTranscriptsView(str(pooled_log))
+    await view.connect()
+    try:
+        infos = [i async for i in view.select()]
+        assert infos
+        info = infos[0]
+        materialized = await view.read(info, content)
+        async with await view.open(info, content) as h:
+            assert isinstance(h, SpooledTranscriptHandle)
+            streamed_messages = [m async for m in h.messages()]
+            streamed_events = [e async for e in h.events()]
+        assert [m.model_dump() for m in streamed_messages] == [
+            m.model_dump() for m in materialized.messages
+        ]
+        assert [e.model_dump() for e in streamed_events] == [
+            e.model_dump() for e in materialized.events
+        ]
+    finally:
+        await view.disconnect()

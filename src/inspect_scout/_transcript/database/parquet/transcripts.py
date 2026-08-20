@@ -765,19 +765,25 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
             return transcript_ids
 
+    def _reader_content_size(
+        self, reader: ParquetContentReader, transcript_id: str
+    ) -> int:
+        """UTF-8 byte size of messages+events+events_data on an open reader."""
+        location = reader.locate(transcript_id)
+        if location is None:
+            return 0
+        names = reader.column_names()
+        return sum(
+            reader.cell_size(location, column)
+            for column in ("messages", "events", "events_data")
+            if column in names
+        )
+
     def _get_content_size(self, full_path: str, transcript_id: str) -> int:
         """UTF-8 byte size of messages+events+events_data for a transcript."""
         try:
             with ParquetContentReader(full_path) as reader:
-                location = reader.locate(transcript_id)
-                if location is None:
-                    return 0
-                names = reader.column_names()
-                return sum(
-                    reader.cell_size(location, column)
-                    for column in ("messages", "events", "events_data")
-                    if column in names
-                )
+                return self._reader_content_size(reader, transcript_id)
         except Exception as ex:
             trace_message(
                 logger,
@@ -804,17 +810,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
             ).fetchone()
         return result[0] if result else 0
 
-    def _page_reader_content(
-        self, full_path: str, transcript_id: str, columns: list[str]
-    ) -> _PageReaderContent | None:
-        """Open content cell streams via the page reader.
-
-        Returns None when anything at all goes wrong; the caller then uses
-        the DuckDB path. events_data is materialized here (it is consumed as
-        a str by expand_events); the other cells stay streaming.
-        """
+    def _open_content_reader(self, full_path: str) -> ParquetContentReader | None:
+        """Open a page reader, or None (logged) if it cannot be opened."""
         try:
-            reader = ParquetContentReader(full_path)
+            return ParquetContentReader(full_path)
         except Exception as ex:
             trace_message(
                 logger,
@@ -822,6 +821,18 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 f"Falling back to DuckDB for {full_path}: {ex}",
             )
             return None
+
+    def _page_reader_content(
+        self, reader: ParquetContentReader, transcript_id: str, columns: list[str]
+    ) -> _PageReaderContent | None:
+        """Open content cell streams on an already-open page reader.
+
+        Returns None when anything at all goes wrong (closing the reader);
+        the caller then uses the DuckDB path. events_data is materialized
+        here (it is consumed as a str by expand_events); the other cells stay
+        streaming.
+        """
+        full_path = reader.path
         try:
             location = reader.locate(transcript_id)
             if location is None:
@@ -941,16 +952,41 @@ class ParquetTranscriptsDB(TranscriptsDB):
             relative_filename = filename_result[0]
             full_path = self._full_parquet_path(relative_filename)
 
+            # One reader serves both the max_bytes gate and the content, so a
+            # gated read does not open (and re-locate) the file twice.
+            reader = self._open_content_reader(full_path)
+
             # Check size limit before loading content
             if max_bytes is not None:
-                content_size = self._get_content_size(full_path, t.transcript_id)
+                content_size: int | None = None
+                if reader is not None:
+                    try:
+                        content_size = self._reader_content_size(
+                            reader, t.transcript_id
+                        )
+                    except Exception as ex:
+                        with contextlib.suppress(Exception):
+                            reader.close()
+                        reader = None
+                        trace_message(
+                            logger,
+                            "Scout Parquet Page Reader",
+                            f"Falling back to DuckDB for {full_path}: {ex}",
+                        )
+                if content_size is None:
+                    content_size = self._get_content_size(full_path, t.transcript_id)
                 if content_size > max_bytes:
+                    if reader is not None:
+                        with contextlib.suppress(Exception):
+                            reader.close()
                     raise TranscriptTooLargeError(
                         t.transcript_id, content_size, max_bytes
                     )
 
-            page_content = self._page_reader_content(
-                full_path, t.transcript_id, columns
+            page_content = (
+                None
+                if reader is None
+                else self._page_reader_content(reader, t.transcript_id, columns)
             )
             try:
                 if page_content is not None:

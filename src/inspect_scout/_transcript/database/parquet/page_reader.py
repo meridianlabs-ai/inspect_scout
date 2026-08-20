@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import contextlib
 import struct
+from collections import OrderedDict
 from collections.abc import Iterator
 from dataclasses import dataclass
 from types import TracebackType
@@ -53,6 +54,18 @@ class CellLocation:
 
     row_group: int
     row_in_group: int
+
+
+_LOCATION_CACHE_MAX_FILES = 256
+_location_cache: OrderedDict[str, dict[str, CellLocation]] = OrderedDict()
+"""id -> position maps, keyed by file path.
+
+Store files are immutable once written: every write generates a fresh
+uuid-suffixed filename and compaction produces new files rather than
+rewriting existing ones, so a path identifies its contents for the life of
+the process. Decoding the whole transcript_id column per lookup instead made
+locate() the dominant cost of read() on files with many rows.
+"""
 
 
 # --- thrift compact protocol (just enough for PageHeader) ---
@@ -537,6 +550,11 @@ class ParquetContentReader:
         self._meta_file: Any = meta
         self._parquet_file = parquet_file
 
+    @property
+    def path(self) -> str:
+        """The single file this reader was opened on."""
+        return self._path
+
     def __enter__(self) -> "ParquetContentReader":
         return self
 
@@ -558,20 +576,36 @@ class ParquetContentReader:
         return set(self._parquet_file.schema_arrow.names)
 
     def locate(self, transcript_id: str) -> CellLocation | None:
+        return self._locations().get(transcript_id)
+
+    def _locations(self) -> dict[str, CellLocation]:
+        """The file's whole id -> position map, built once and cached by path."""
+        cached = _location_cache.get(self._path)
+        if cached is not None:
+            return cached
         if "transcript_id" not in self._column_index:
             raise PageReaderUnsupportedError("file has no transcript_id column")
         ids = self._parquet_file.read(columns=["transcript_id"]).column("transcript_id")
-        try:
-            row = ids.to_pylist().index(transcript_id)
-        except ValueError:
-            return None
+        all_ids = ids.to_pylist()
         metadata = self._parquet_file.metadata
+        locations: dict[str, CellLocation] = {}
+        row = 0
         for row_group in range(metadata.num_row_groups):
             group_rows = metadata.row_group(row_group).num_rows
-            if row < group_rows:
-                return CellLocation(row_group, row)
-            row -= group_rows
-        raise PageReaderUnsupportedError("located row beyond all row groups")
+            for row_in_group in range(group_rows):
+                identifier = all_ids[row + row_in_group]
+                if identifier is not None:
+                    # first occurrence wins, matching the previous index() lookup
+                    locations.setdefault(
+                        identifier, CellLocation(row_group, row_in_group)
+                    )
+            row += group_rows
+        if row != len(all_ids):
+            raise PageReaderUnsupportedError("rows extend beyond all row groups")
+        _location_cache[self._path] = locations
+        while len(_location_cache) > _LOCATION_CACHE_MAX_FILES:
+            _location_cache.popitem(last=False)
+        return locations
 
     def stream_cell(
         self,

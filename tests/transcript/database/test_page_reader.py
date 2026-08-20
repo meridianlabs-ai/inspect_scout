@@ -455,8 +455,8 @@ def test_memory_filesystem_matches_source() -> None:
 
 
 def test_reader_opens_only_its_own_path(monkeypatch: pytest.MonkeyPatch) -> None:
-    from fsspec.implementations.memory import (
-        MemoryFileSystem,  # type: ignore[import-untyped]
+    from fsspec.implementations.memory import (  # type: ignore[import-untyped]
+        MemoryFileSystem,
     )
     from inspect_scout._transcript.database.parquet.page_reader import (
         ParquetContentReader,

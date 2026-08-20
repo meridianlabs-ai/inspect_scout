@@ -568,6 +568,10 @@ class ParquetContentReader:
         max_def_level: int,
         row_in_page: int,
     ) -> _OpenCell | None:
+        if page.encoding in _DICT_DATA_ENCODINGS:
+            return self._open_dictionary_cell(
+                chunk, codec, page, dictionary_page, max_def_level, row_in_page
+            )
         if page.encoding != _ENC_PLAIN:
             raise PageReaderUnsupported(f"data page encoding {page.encoding}")
         cursor = _StreamCursor(
@@ -580,3 +584,43 @@ class ParquetContentReader:
             return None
         values_before = sum(1 for level in def_levels[:row_in_page] if level)
         return _OpenCell(cursor=cursor, values_to_skip=values_before)
+
+    def _open_dictionary_cell(
+        self,
+        chunk: _ChunkSource,
+        codec: str,
+        page: _PageInfo,
+        dictionary_page: _PageInfo | None,
+        max_def_level: int,
+        row_in_page: int,
+    ) -> _OpenCell | None:
+        if dictionary_page is None:
+            raise PageReaderUnsupported(
+                "dictionary-encoded page without a dictionary page"
+            )
+        # The index page is small (indices, not values): decode it in memory.
+        cursor = _StreamCursor(
+            _decompressed_stream(
+                chunk.iter_range(page.data_offset, page.compressed_size), codec
+            )
+        )
+        def_levels = _read_def_levels(cursor, page.num_values, max_def_level)
+        if def_levels[row_in_page] == 0:
+            return None
+        values_before = sum(1 for level in def_levels[:row_in_page] if level)
+        bit_width = cursor.read(1)[0]
+        remaining = page.uncompressed_size - cursor.bytes_read
+        indices = _decode_rle_hybrid(
+            cursor.read(remaining), bit_width, values_before + 1
+        )
+        dictionary_index = indices[values_before]
+        # Stream the dictionary page, skipping entries before the target.
+        dictionary_cursor = _StreamCursor(
+            _decompressed_stream(
+                chunk.iter_range(
+                    dictionary_page.data_offset, dictionary_page.compressed_size
+                ),
+                codec,
+            )
+        )
+        return _OpenCell(cursor=dictionary_cursor, values_to_skip=dictionary_index)

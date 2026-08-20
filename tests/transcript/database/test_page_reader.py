@@ -373,3 +373,32 @@ def test_init_failure_closes_handles(
         ParquetContentReader(path)
     assert opened, "raw handle was never opened"
     assert all(handle.closed for handle in opened)
+
+
+ALL_LAYOUTS: dict[str, dict[str, Any]] = {
+    **PLAIN_LAYOUTS,
+    # today's writer flags: one dictionary page holds every value
+    "legacy_dict": {"use_dictionary": True},
+    # dictionary overflow fallback: dict page + RLE_DICTIONARY + PLAIN pages
+    "mixed_dict_plain": {"use_dictionary": True, "write_batch_size": 1},
+}
+
+
+@pytest.mark.parametrize("layout", sorted(ALL_LAYOUTS))
+def test_all_layouts_match_source(tmp_path: Path, layout: str) -> None:
+    path = str(tmp_path / f"{layout}.parquet")
+    values = sample_values()
+    write_content_file(path, values, **ALL_LAYOUTS[layout])
+    assert_reader_matches_source(path, values)
+
+
+def test_duplicate_cells_share_dictionary_entry(tmp_path: Path) -> None:
+    """Legacy dict pages hold DISTINCT values; rows may share an entry."""
+    path = str(tmp_path / "dup.parquet")
+    values: list[str | None] = ["[]", '{"a":1}', "[]", None, "[]", '{"a":1}']
+    write_content_file(path, values)
+    # confirm the fixture really deduplicates: dict page has 2 entries
+    pages = walk_column_pages(path, 0, 1)
+    assert pages[0].page_type == _PAGE_TYPE_DICTIONARY
+    assert pages[0].num_values == 2
+    assert_reader_matches_source(path, values)

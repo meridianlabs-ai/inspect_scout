@@ -93,6 +93,14 @@ class BlobSpool:
         offset, length = entry
         return _read_at(self._fd, self._lock, length, offset).decode("utf-8")
 
+    def has(self, key: SpoolKey) -> bool:
+        """Whether ``key`` was spooled, without reading its value.
+
+        Lets callers decide what to emit before paying to fetch it, so a
+        large value can be streamed straight out instead of being held.
+        """
+        return key in self._index
+
     def pool_len(self, pool_name: str) -> int:
         return self._pool_counts.get(pool_name, 0)
 

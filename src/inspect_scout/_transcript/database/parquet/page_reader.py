@@ -20,9 +20,12 @@ from __future__ import annotations
 import struct
 from collections.abc import Iterator
 from dataclasses import dataclass
+from types import TracebackType
 from typing import IO, Any
 
+import pyarrow.parquet as pq
 import zstandard
+from upath import UPath
 
 WHOLE_CHUNK_READ_THRESHOLD = 4 * 1024 * 1024
 """Column chunks at or below this compressed size are fetched in one read."""
@@ -379,3 +382,187 @@ def _read_def_levels(
         return [1] * num_values
     (levels_len,) = struct.unpack("<I", cursor.read(4))
     return _decode_rle_hybrid(cursor.read(levels_len), 1, num_values)
+
+
+@dataclass
+class _OpenCell:
+    """A located, validated cell.
+
+    A cursor positioned after the def levels plus the number of preceding
+    values to skip.
+    """
+
+    cursor: _StreamCursor
+    values_to_skip: int
+
+    def _seek_target(self) -> int:
+        for _ in range(self.values_to_skip):
+            (value_len,) = struct.unpack("<I", self.cursor.read(4))
+            self.cursor.skip(value_len)
+        (value_len,) = struct.unpack("<I", self.cursor.read(4))
+        return int(value_len)
+
+    def stream(self, chunk_size: int) -> Iterator[bytes]:
+        value_len = self._seek_target()
+        yield from self.cursor.iter_read(value_len, chunk_size)
+
+    def size(self) -> int:
+        return self._seek_target()
+
+
+class ParquetContentReader:
+    """Streams individual content cells from one transcript parquet file.
+
+    Opens exactly the one path it is given (local or fsspec URL). Streams
+    returned by stream_cell are only valid while the reader is open.
+    """
+
+    def __init__(
+        self, path: str, *, coalesce_threshold: int = WHOLE_CHUNK_READ_THRESHOLD
+    ) -> None:
+        self._path = path
+        self._coalesce_threshold = coalesce_threshold
+        self._meta_file: Any = None
+        if "://" in path:
+            url = UPath(path)
+            # cache_type="none": fsspec readahead would turn each ~30-byte
+            # header read into a multi-MB block fetch.
+            self._raw: Any = url.fs.open(str(url), "rb", cache_type="none")
+            self._meta_file = url.fs.open(str(url), "rb")
+            self._parquet_file = pq.ParquetFile(self._meta_file)
+        else:
+            self._raw = open(path, "rb")
+            self._parquet_file = pq.ParquetFile(path)
+        metadata = self._parquet_file.metadata
+        self._column_index = {
+            metadata.schema.column(i).name: i for i in range(metadata.num_columns)
+        }
+
+    def __enter__(self) -> "ParquetContentReader":
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        self.close()
+
+    def close(self) -> None:
+        self._parquet_file.close()
+        if self._meta_file is not None:
+            self._meta_file.close()
+        self._raw.close()
+
+    def column_names(self) -> set[str]:
+        return set(self._parquet_file.schema_arrow.names)
+
+    def locate(self, transcript_id: str) -> CellLocation | None:
+        if "transcript_id" not in self._column_index:
+            raise PageReaderUnsupported("file has no transcript_id column")
+        ids = self._parquet_file.read(columns=["transcript_id"]).column("transcript_id")
+        try:
+            row = ids.to_pylist().index(transcript_id)
+        except ValueError:
+            return None
+        metadata = self._parquet_file.metadata
+        for row_group in range(metadata.num_row_groups):
+            group_rows = metadata.row_group(row_group).num_rows
+            if row < group_rows:
+                return CellLocation(row_group, row)
+            row -= group_rows
+        raise PageReaderUnsupported("located row beyond all row groups")
+
+    def stream_cell(
+        self,
+        location: CellLocation,
+        column: str,
+        chunk_size: int = DEFAULT_STREAM_CHUNK_SIZE,
+    ) -> Iterator[bytes] | None:
+        cell = self._open_cell(location, column)
+        return None if cell is None else cell.stream(chunk_size)
+
+    def cell_size(self, location: CellLocation, column: str) -> int:
+        cell = self._open_cell(location, column)
+        return 0 if cell is None else cell.size()
+
+    def _open_cell(self, location: CellLocation, column: str) -> _OpenCell | None:
+        if column not in self._column_index:
+            raise ValueError(f"column {column!r} not in {self._path}")
+        metadata = self._parquet_file.metadata
+        column_i = self._column_index[column]
+        schema_column = metadata.schema.column(column_i)
+        if schema_column.physical_type != "BYTE_ARRAY":
+            raise PageReaderUnsupported(f"physical type {schema_column.physical_type}")
+        if (
+            schema_column.max_repetition_level != 0
+            or schema_column.max_definition_level > 1
+        ):
+            raise PageReaderUnsupported("nested or repeated column")
+        max_def_level = schema_column.max_definition_level
+        chunk_meta = metadata.row_group(location.row_group).column(column_i)
+        codec = chunk_meta.compression
+        if codec not in ("ZSTD", "UNCOMPRESSED"):
+            raise PageReaderUnsupported(f"codec {codec}")
+        starts = [
+            offset
+            for offset in (
+                chunk_meta.dictionary_page_offset,
+                chunk_meta.data_page_offset,
+            )
+            if offset is not None and offset > 0
+        ]
+        chunk = _ChunkSource(
+            self._raw,
+            min(starts),
+            chunk_meta.total_compressed_size,
+            self._coalesce_threshold,
+        )
+        dictionary_page: _PageInfo | None = None
+        rows_seen = 0
+        for page in _walk_pages(chunk):
+            if page.page_type == _PAGE_TYPE_DICTIONARY:
+                if page.encoding not in _DICT_PAGE_ENCODINGS:
+                    raise PageReaderUnsupported(
+                        f"dictionary page encoding {page.encoding}"
+                    )
+                dictionary_page = page
+                continue
+            if rows_seen + page.num_values <= location.row_in_group:
+                rows_seen += page.num_values
+                continue
+            if max_def_level > 0 and page.def_level_encoding != _ENC_RLE:
+                raise PageReaderUnsupported(
+                    f"definition level encoding {page.def_level_encoding}"
+                )
+            row_in_page = location.row_in_group - rows_seen
+            return self._open_data_page(
+                chunk, codec, page, dictionary_page, max_def_level, row_in_page
+            )
+        raise PageReaderUnsupported(
+            f"row {location.row_in_group} beyond pages of row group "
+            f"{location.row_group}"
+        )
+
+    def _open_data_page(
+        self,
+        chunk: _ChunkSource,
+        codec: str,
+        page: _PageInfo,
+        dictionary_page: _PageInfo | None,
+        max_def_level: int,
+        row_in_page: int,
+    ) -> _OpenCell | None:
+        if page.encoding != _ENC_PLAIN:
+            raise PageReaderUnsupported(f"data page encoding {page.encoding}")
+        cursor = _StreamCursor(
+            _decompressed_stream(
+                chunk.iter_range(page.data_offset, page.compressed_size), codec
+            )
+        )
+        def_levels = _read_def_levels(cursor, page.num_values, max_def_level)
+        if def_levels[row_in_page] == 0:
+            return None
+        values_before = sum(1 for level in def_levels[:row_in_page] if level)
+        return _OpenCell(cursor=cursor, values_to_skip=values_before)

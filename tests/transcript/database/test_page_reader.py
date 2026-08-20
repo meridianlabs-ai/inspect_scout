@@ -282,3 +282,68 @@ def test_rle_multibyte_header_and_truncation() -> None:
     # bit-packed header present but group bytes missing
     with pytest.raises(PageReaderUnsupported, match="truncated"):
         _decode_rle_hybrid(b"\x03", 1, 8)
+
+
+PLAIN_LAYOUTS: dict[str, dict[str, Any]] = {
+    "plain_batch1": {"use_dictionary": False, "write_batch_size": 1},
+    "plain_single_page": {"use_dictionary": False},
+    "uncompressed": {"use_dictionary": False, "compression": "NONE"},
+}
+
+
+def assert_reader_matches_source(path: str, values: list[str | None]) -> None:
+    from inspect_scout._transcript.database.parquet.page_reader import (
+        ParquetContentReader,
+    )
+
+    with ParquetContentReader(path) as reader:
+        assert reader.column_names() == {"transcript_id", "events"}
+        for i, expected in enumerate(values):
+            location = reader.locate(f"tr_{i:04d}")
+            assert location is not None, f"row {i} not located"
+            cell = reader.stream_cell(location, "events")
+            if expected is None:
+                assert cell is None, f"row {i} should be NULL"
+            else:
+                assert cell is not None, f"row {i} should not be NULL"
+                assert b"".join(cell) == expected.encode("utf-8"), f"row {i}"
+            expected_size = 0 if expected is None else len(expected.encode("utf-8"))
+            assert reader.cell_size(location, "events") == expected_size, f"row {i}"
+
+
+@pytest.mark.parametrize("layout", sorted(PLAIN_LAYOUTS))
+def test_plain_cells_match_source(tmp_path: Path, layout: str) -> None:
+    path = str(tmp_path / f"{layout}.parquet")
+    values = sample_values()
+    write_content_file(path, values, **PLAIN_LAYOUTS[layout])
+    assert_reader_matches_source(path, values)
+
+
+def test_locate_maps_row_groups(tmp_path: Path) -> None:
+    from inspect_scout._transcript.database.parquet.page_reader import (
+        CellLocation,
+        ParquetContentReader,
+    )
+
+    path = str(tmp_path / "locate.parquet")
+    write_content_file(path, sample_values(), use_dictionary=False)
+    with ParquetContentReader(path) as reader:
+        # 9 rows at row_group_size=4 -> groups of 4, 4, 1
+        assert reader.locate("tr_0000") == CellLocation(0, 0)
+        assert reader.locate("tr_0005") == CellLocation(1, 1)
+        assert reader.locate("tr_0008") == CellLocation(2, 0)
+        assert reader.locate("no-such-id") is None
+
+
+def test_absent_column_raises_value_error(tmp_path: Path) -> None:
+    from inspect_scout._transcript.database.parquet.page_reader import (
+        ParquetContentReader,
+    )
+
+    path = str(tmp_path / "absent.parquet")
+    write_content_file(path, sample_values(), use_dictionary=False)
+    with ParquetContentReader(path) as reader:
+        location = reader.locate("tr_0000")
+        assert location is not None
+        with pytest.raises(ValueError, match="messages"):
+            reader.stream_cell(location, "messages")

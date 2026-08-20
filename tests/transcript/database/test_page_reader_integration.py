@@ -13,7 +13,11 @@ from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
 from inspect_scout._transcript.database.parquet.page_reader import (
     ParquetContentReader,
 )
-from inspect_scout._transcript.types import Transcript, TranscriptInfo
+from inspect_scout._transcript.types import (
+    Transcript,
+    TranscriptContent,
+    TranscriptInfo,
+)
 
 
 def make_transcript(id: str, content_size: int) -> Transcript:
@@ -206,3 +210,50 @@ async def test_stream_abandonment_closes_reader(
         async for _chunk in data:
             break  # abandon mid-stream with bytes already emitted
     assert closed, "ParquetContentReader.close never ran on abandonment"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "content",
+    [
+        TranscriptContent(messages="all", events="all"),
+        TranscriptContent(messages=["user"], events=None),
+        TranscriptContent(messages=None, events="all"),
+        TranscriptContent(messages=None, events=None),
+    ],
+    ids=["all-all", "user-none", "none-events", "none-none"],
+)
+async def test_read_matches_duckdb(
+    db: ParquetTranscriptsDB,
+    monkeypatch: pytest.MonkeyPatch,
+    content: TranscriptContent,
+) -> None:
+    infos = [info async for info in db.select()]
+    real = [
+        info for info in infos if info.transcript_id.startswith("t-")
+    ]  # Transcript-inserted rows parse as full transcripts
+    via_reader = {
+        info.transcript_id: (await db.read(info, content)).model_dump() for info in real
+    }
+    break_page_reader(monkeypatch)
+    for info in real:
+        assert (await db.read(info, content)).model_dump() == via_reader[
+            info.transcript_id
+        ], info.transcript_id
+
+
+@pytest.mark.asyncio
+async def test_read_uses_page_reader(
+    db: ParquetTranscriptsDB, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[str] = []
+    original = transcripts_module.ParquetContentReader  # type: ignore[attr-defined]
+
+    def counting(path: str, **kwargs: Any) -> Any:
+        calls.append(path)
+        return original(path, **kwargs)
+
+    monkeypatch.setattr(transcripts_module, "ParquetContentReader", counting)
+    infos = [info async for info in db.select()]
+    await db.read(infos[0], TranscriptContent(messages="all", events="all"))
+    assert calls, "read() did not construct a ParquetContentReader"

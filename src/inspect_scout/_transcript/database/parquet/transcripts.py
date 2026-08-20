@@ -4,6 +4,7 @@ import json
 import os
 import tempfile
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from logging import getLogger
 from pathlib import Path
@@ -100,6 +101,36 @@ def _cell_or_default(cell: Iterator[bytes] | None, default: bytes) -> Iterator[b
         return
     yield first
     yield from cell
+
+
+@dataclass
+class _PageReaderContent:
+    """Resolved page-reader cell streams for one read() call."""
+
+    reader: ParquetContentReader
+    messages: Iterator[bytes] | None
+    events: Iterator[bytes] | None
+    timelines: Iterator[bytes] | None
+    events_data_json: str | None
+
+    async def stream_content_bytes(self) -> AsyncIterator[bytes]:
+        yield b'{"messages": '
+        for piece in _cell_or_default(self.messages, b"[]"):
+            yield piece
+        yield b', "events": '
+        for piece in _cell_or_default(self.events, b"[]"):
+            yield piece
+        first = next(self.timelines, None) if self.timelines is not None else None
+        if first:
+            yield b', "timelines": '
+            yield first
+            assert self.timelines is not None
+            for piece in self.timelines:
+                yield piece
+        yield b"}"
+
+    def close(self) -> None:
+        self.reader.close()
 
 
 class _ParquetStreamContextManager:
@@ -746,6 +777,54 @@ class ParquetTranscriptsDB(TranscriptsDB):
             ).fetchone()
         return result[0] if result else 0
 
+    def _page_reader_content(
+        self, full_path: str, transcript_id: str, columns: list[str]
+    ) -> _PageReaderContent | None:
+        """Open content cell streams via the page reader.
+
+        Returns None when anything at all goes wrong; the caller then uses
+        the DuckDB path. events_data is materialized here (it is consumed as
+        a str by expand_events); the other cells stay streaming.
+        """
+        try:
+            reader = ParquetContentReader(full_path)
+        except Exception as ex:
+            trace_message(
+                logger,
+                "Scout Parquet Page Reader",
+                f"Falling back to DuckDB for {full_path}: {ex}",
+            )
+            return None
+        try:
+            location = reader.locate(transcript_id)
+            names = reader.column_names()
+
+            def cell(column: str) -> Iterator[bytes] | None:
+                if location is None or column not in columns or column not in names:
+                    return None
+                return reader.stream_cell(location, column)
+
+            events_data_json: str | None = None
+            events_data_cell = cell("events_data")
+            if events_data_cell is not None:
+                data = b"".join(events_data_cell)
+                events_data_json = data.decode("utf-8") if data else None
+            return _PageReaderContent(
+                reader=reader,
+                messages=cell("messages"),
+                events=cell("events"),
+                timelines=cell("timelines"),
+                events_data_json=events_data_json,
+            )
+        except Exception as ex:
+            reader.close()
+            trace_message(
+                logger,
+                "Scout Parquet Page Reader",
+                f"Falling back to DuckDB for {full_path}: {ex}",
+            )
+            return None
+
     @override
     async def read(
         self,
@@ -837,136 +916,159 @@ class ParquetTranscriptsDB(TranscriptsDB):
                         t.transcript_id, content_size, max_bytes
                     )
 
-            # Try optimistic read first (fast path for files with all columns)
-            try:
-                sql = (
-                    "SELECT "
-                    + ", ".join(quote_identifier(column) for column in columns)
-                    + " FROM read_parquet(?, union_by_name=true) "
-                    "WHERE transcript_id = ?"
-                )
-                result = self._conn.execute(
-                    sql, [escape_duckdb_glob(full_path), t.transcript_id]
-                ).fetchone()
-                columns_read = columns  # All requested columns were available
-            except duckdb.BinderException:
-                # Column doesn't exist - check which ones are available (cached)
-                available = self._get_available_content_columns(full_path)
-                columns_read = [c for c in columns if c in available]
-
-                if not columns_read:
-                    # No content columns available - return empty content
-                    return transcript_no_content()
-
-                # Retry with only available columns
-                sql = (
-                    "SELECT "
-                    + ", ".join(quote_identifier(column) for column in columns_read)
-                    + " FROM read_parquet(?, union_by_name=true) "
-                    "WHERE transcript_id = ?"
-                )
-                result = self._conn.execute(
-                    sql, [escape_duckdb_glob(full_path), t.transcript_id]
-                ).fetchone()
-
-            if not result:
-                # Transcript not found - use model_construct to preserve LazyJSONDict
-                return transcript_no_content()
-
-            # Extract column values based on which columns were actually read
-            messages_json: str | None = None
-            events_json: str | None = None
-            timelines_json: str | None = None
-            events_data_json: str | None = None
-
-            col_idx = 0
-            if "messages" in columns_read:
-                messages_json = result[col_idx]
-                col_idx += 1
-            if "events" in columns_read:
-                events_json = result[col_idx]
-                col_idx += 1
-            if "timelines" in columns_read:
-                timelines_json = result[col_idx]
-                col_idx += 1
-            if "events_data" in columns_read:
-                events_data_json = result[col_idx]
-                col_idx += 1
-
-            # Stream combined JSON construction
-            async def stream_content_bytes() -> AsyncIterator[bytes]:
-                """Stream construction of combined JSON object."""
-                chunk_size = 64 * 1024
-
-                yield b'{"messages": '
-                if messages_json:
-                    messages_bytes = messages_json.encode("utf-8")
-                    for i in range(0, len(messages_bytes), chunk_size):
-                        yield messages_bytes[i : i + chunk_size]
-                else:
-                    yield b"[]"
-
-                yield b', "events": '
-                if events_json:
-                    events_bytes = events_json.encode("utf-8")
-                    for i in range(0, len(events_bytes), chunk_size):
-                        yield events_bytes[i : i + chunk_size]
-                else:
-                    yield b"[]"
-
-                if timelines_json:
-                    yield b', "timelines": '
-                    timelines_bytes = timelines_json.encode("utf-8")
-                    for i in range(0, len(timelines_bytes), chunk_size):
-                        yield timelines_bytes[i : i + chunk_size]
-
-                yield b"}"
-
-            # When timelines are requested, load all events so that
-            # stored timeline UUID references can be resolved (stored
-            # timelines may reference any event type, not just the
-            # filtered subset).
-            events_filter = "all" if content.timeline is not None else content.events
-            transcript = await load_filtered_transcript(
-                stream_content_bytes(),
-                t,
-                content.messages,
-                events_filter,
+            page_content = self._page_reader_content(
+                full_path, t.transcript_id, columns
             )
+            try:
+                if page_content is not None:
+                    events_data_json = page_content.events_data_json
+                    content_stream: AsyncIterator[bytes] = (
+                        page_content.stream_content_bytes()
+                    )
+                else:
+                    # Try optimistic read first (fast path for files with all columns)
+                    try:
+                        sql = (
+                            "SELECT "
+                            + ", ".join(quote_identifier(column) for column in columns)
+                            + " FROM read_parquet(?, union_by_name=true) "
+                            "WHERE transcript_id = ?"
+                        )
+                        result = self._conn.execute(
+                            sql, [escape_duckdb_glob(full_path), t.transcript_id]
+                        ).fetchone()
+                        columns_read = columns  # All requested columns were available
+                    except duckdb.BinderException:
+                        # Column doesn't exist - check which ones are available (cached)
+                        available = self._get_available_content_columns(full_path)
+                        columns_read = [c for c in columns if c in available]
 
-            # Resolve pool references back to full messages/calls
-            if events_data_json:
-                resolved_events = expand_events(transcript.events, events_data_json)
-                transcript = transcript.model_copy(update={"events": resolved_events})
+                        if not columns_read:
+                            # No content columns available - return empty content
+                            return transcript_no_content()
 
-            # Fallback: if timelines were requested but not stored, build from events
-            if (
-                content.timeline is not None
-                and not transcript.timelines
-                and transcript.events
-            ):
-                from inspect_ai.event import timeline_build
+                        # Retry with only available columns
+                        sql = (
+                            "SELECT "
+                            + ", ".join(
+                                quote_identifier(column) for column in columns_read
+                            )
+                            + " FROM read_parquet(?, union_by_name=true) "
+                            "WHERE transcript_id = ?"
+                        )
+                        result = self._conn.execute(
+                            sql, [escape_duckdb_glob(full_path), t.transcript_id]
+                        ).fetchone()
 
-                from ...util import filter_timelines
+                    if not result:
+                        # Transcript not found - use model_construct to preserve LazyJSONDict
+                        return transcript_no_content()
 
-                raw_timeline = timeline_build(transcript.events)
-                timelines = filter_timelines([raw_timeline], content.timeline)
-                transcript = transcript.model_copy(update={"timelines": timelines})
+                    # Extract column values based on which columns were actually read
+                    messages_json: str | None = None
+                    events_json: str | None = None
+                    timelines_json: str | None = None
+                    events_data_json = None
 
-            # Filter events back down to what the scanner requested
-            # (we loaded "all" above only for timeline resolution).
-            if (
-                content.timeline is not None
-                and content.events is not None
-                and content.events != "all"
-            ):
-                from ...util import filter_list
+                    col_idx = 0
+                    if "messages" in columns_read:
+                        messages_json = result[col_idx]
+                        col_idx += 1
+                    if "events" in columns_read:
+                        events_json = result[col_idx]
+                        col_idx += 1
+                    if "timelines" in columns_read:
+                        timelines_json = result[col_idx]
+                        col_idx += 1
+                    if "events_data" in columns_read:
+                        events_data_json = result[col_idx]
+                        col_idx += 1
 
-                transcript = transcript.model_copy(
-                    update={"events": filter_list(transcript.events, content.events)}
+                    # Stream combined JSON construction
+                    async def stream_content_bytes() -> AsyncIterator[bytes]:
+                        """Stream construction of combined JSON object."""
+                        chunk_size = 64 * 1024
+
+                        yield b'{"messages": '
+                        if messages_json:
+                            messages_bytes = messages_json.encode("utf-8")
+                            for i in range(0, len(messages_bytes), chunk_size):
+                                yield messages_bytes[i : i + chunk_size]
+                        else:
+                            yield b"[]"
+
+                        yield b', "events": '
+                        if events_json:
+                            events_bytes = events_json.encode("utf-8")
+                            for i in range(0, len(events_bytes), chunk_size):
+                                yield events_bytes[i : i + chunk_size]
+                        else:
+                            yield b"[]"
+
+                        if timelines_json:
+                            yield b', "timelines": '
+                            timelines_bytes = timelines_json.encode("utf-8")
+                            for i in range(0, len(timelines_bytes), chunk_size):
+                                yield timelines_bytes[i : i + chunk_size]
+
+                        yield b"}"
+
+                    content_stream = stream_content_bytes()
+
+                # When timelines are requested, load all events so that
+                # stored timeline UUID references can be resolved (stored
+                # timelines may reference any event type, not just the
+                # filtered subset).
+                events_filter = (
+                    "all" if content.timeline is not None else content.events
+                )
+                transcript = await load_filtered_transcript(
+                    content_stream,
+                    t,
+                    content.messages,
+                    events_filter,
                 )
 
-            return transcript
+                # Resolve pool references back to full messages/calls
+                if events_data_json:
+                    resolved_events = expand_events(transcript.events, events_data_json)
+                    transcript = transcript.model_copy(
+                        update={"events": resolved_events}
+                    )
+
+                # Fallback: if timelines were requested but not stored, build from events
+                if (
+                    content.timeline is not None
+                    and not transcript.timelines
+                    and transcript.events
+                ):
+                    from inspect_ai.event import timeline_build
+
+                    from ...util import filter_timelines
+
+                    raw_timeline = timeline_build(transcript.events)
+                    timelines = filter_timelines([raw_timeline], content.timeline)
+                    transcript = transcript.model_copy(update={"timelines": timelines})
+
+                # Filter events back down to what the scanner requested
+                # (we loaded "all" above only for timeline resolution).
+                if (
+                    content.timeline is not None
+                    and content.events is not None
+                    and content.events != "all"
+                ):
+                    from ...util import filter_list
+
+                    transcript = transcript.model_copy(
+                        update={
+                            "events": filter_list(transcript.events, content.events)
+                        }
+                    )
+
+                return transcript
+            finally:
+                if page_content is not None:
+                    page_content.close()
 
     @override
     async def read_messages_events(

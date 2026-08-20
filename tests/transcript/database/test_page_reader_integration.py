@@ -144,7 +144,7 @@ async def test_unsupported_file_falls_back_byte_identically(
 ) -> None:
     """A SNAPPY store triggers organic fallback and matches DuckDB byte-for-byte.
 
-    The reader raises PageReaderUnsupported internally — proven at unit
+    The reader raises PageReaderUnsupportedError internally — proven at unit
     level in test_page_reader.py — and the output is byte-identical to a
     forced DuckDB-only run.
     """

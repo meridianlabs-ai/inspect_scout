@@ -11,7 +11,7 @@ Supported shapes (everything Scout's writer produces):
 - v1 data pages with PLAIN, RLE_DICTIONARY, or PLAIN_DICTIONARY encoding
 - flat optional BYTE_ARRAY columns (no repetition, max definition level <= 1)
 
-Anything else raises :class:`PageReaderUnsupported`; callers fall back to the
+Anything else raises :class:`PageReaderUnsupportedError`; callers fall back to the
 DuckDB read path.
 """
 
@@ -43,7 +43,7 @@ _DICT_DATA_ENCODINGS = frozenset({_ENC_PLAIN_DICTIONARY, _ENC_RLE_DICTIONARY})
 _DICT_PAGE_ENCODINGS = frozenset({_ENC_PLAIN, _ENC_PLAIN_DICTIONARY})
 
 
-class PageReaderUnsupported(Exception):
+class PageReaderUnsupportedError(Exception):
     """A parquet shape the page reader does not support; callers fall back."""
 
 
@@ -128,7 +128,7 @@ def _parse_value(r: _ThriftReader, ftype: int) -> Any:
         return result
     if ftype == 12:
         return _parse_struct(r)
-    raise PageReaderUnsupported(f"unknown thrift compact type {ftype}")
+    raise PageReaderUnsupportedError(f"unknown thrift compact type {ftype}")
 
 
 def _parse_struct(r: _ThriftReader) -> dict[int, Any]:
@@ -166,7 +166,7 @@ def _parse_page_header(buf: bytes, header_offset: int) -> _PageInfo:
     """Parse one PageHeader from buf.
 
     Raises IndexError when buf is too short (callers re-read with a larger
-    slice) and PageReaderUnsupported for page types the reader cannot decode
+    slice) and PageReaderUnsupportedError for page types the reader cannot decode
     (DATA_PAGE_V2, INDEX_PAGE, ...).
     """
     r = _ThriftReader(buf)
@@ -183,7 +183,7 @@ def _parse_page_header(buf: bytes, header_offset: int) -> _PageInfo:
         encoding = header[2]
         def_level_encoding = _ENC_RLE
     else:
-        raise PageReaderUnsupported(f"unsupported page type {page_type}")
+        raise PageReaderUnsupportedError(f"unsupported page type {page_type}")
     return _PageInfo(
         header_offset=header_offset,
         data_offset=header_offset + r.pos,
@@ -243,7 +243,7 @@ class _ChunkSource:
         while remaining > 0:
             piece = self.read_at(position, min(chunk_size, remaining))
             if not piece:
-                raise PageReaderUnsupported("truncated column chunk")
+                raise PageReaderUnsupportedError("truncated column chunk")
             yield piece
             position += len(piece)
             remaining -= len(piece)
@@ -261,7 +261,7 @@ def _walk_pages(chunk: _ChunkSource) -> Iterator[_PageInfo]:
                 break
             except (IndexError, struct.error):
                 if slice_size >= chunk.end - position:
-                    raise PageReaderUnsupported(
+                    raise PageReaderUnsupportedError(
                         "page header parse ran past column chunk end"
                     ) from None
                 slice_size *= 4
@@ -292,7 +292,7 @@ def _decode_rle_hybrid(data: bytes, bit_width: int, count: int) -> list[int]:
             n_bytes = n_groups * bit_width
             group_bytes = data[pos : pos + n_bytes]
             if len(group_bytes) != n_bytes:
-                raise PageReaderUnsupported("truncated RLE bit-packed group")
+                raise PageReaderUnsupportedError("truncated RLE bit-packed group")
             packed = int.from_bytes(group_bytes, "little")
             pos += n_bytes
             for j in range(n_groups * 8):
@@ -303,7 +303,7 @@ def _decode_rle_hybrid(data: bytes, bit_width: int, count: int) -> list[int]:
             run = min(header >> 1, count - len(out))
             value_bytes = data[pos : pos + byte_width]
             if len(value_bytes) != byte_width:
-                raise PageReaderUnsupported("truncated RLE run value")
+                raise PageReaderUnsupportedError("truncated RLE run value")
             value = int.from_bytes(value_bytes, "little")
             pos += byte_width
             out.extend([value] * run)
@@ -327,7 +327,7 @@ class _StreamCursor:
         try:
             self._current = next(self._chunks)
         except StopIteration:
-            raise PageReaderUnsupported("unexpected end of page data") from None
+            raise PageReaderUnsupportedError("unexpected end of page data") from None
         self._pos = 0
 
     def read(self, n: int) -> bytes:
@@ -478,7 +478,7 @@ class ParquetContentReader:
 
     def locate(self, transcript_id: str) -> CellLocation | None:
         if "transcript_id" not in self._column_index:
-            raise PageReaderUnsupported("file has no transcript_id column")
+            raise PageReaderUnsupportedError("file has no transcript_id column")
         ids = self._parquet_file.read(columns=["transcript_id"]).column("transcript_id")
         try:
             row = ids.to_pylist().index(transcript_id)
@@ -490,7 +490,7 @@ class ParquetContentReader:
             if row < group_rows:
                 return CellLocation(row_group, row)
             row -= group_rows
-        raise PageReaderUnsupported("located row beyond all row groups")
+        raise PageReaderUnsupportedError("located row beyond all row groups")
 
     def stream_cell(
         self,
@@ -512,17 +512,19 @@ class ParquetContentReader:
         column_i = self._column_index[column]
         schema_column = metadata.schema.column(column_i)
         if schema_column.physical_type != "BYTE_ARRAY":
-            raise PageReaderUnsupported(f"physical type {schema_column.physical_type}")
+            raise PageReaderUnsupportedError(
+                f"physical type {schema_column.physical_type}"
+            )
         if (
             schema_column.max_repetition_level != 0
             or schema_column.max_definition_level > 1
         ):
-            raise PageReaderUnsupported("nested or repeated column")
+            raise PageReaderUnsupportedError("nested or repeated column")
         max_def_level = schema_column.max_definition_level
         chunk_meta = metadata.row_group(location.row_group).column(column_i)
         codec = chunk_meta.compression
         if codec not in ("ZSTD", "UNCOMPRESSED"):
-            raise PageReaderUnsupported(f"codec {codec}")
+            raise PageReaderUnsupportedError(f"codec {codec}")
         starts = [
             offset
             for offset in (
@@ -542,7 +544,7 @@ class ParquetContentReader:
         for page in _walk_pages(chunk):
             if page.page_type == _PAGE_TYPE_DICTIONARY:
                 if page.encoding not in _DICT_PAGE_ENCODINGS:
-                    raise PageReaderUnsupported(
+                    raise PageReaderUnsupportedError(
                         f"dictionary page encoding {page.encoding}"
                     )
                 dictionary_page = page
@@ -551,14 +553,14 @@ class ParquetContentReader:
                 rows_seen += page.num_values
                 continue
             if max_def_level > 0 and page.def_level_encoding != _ENC_RLE:
-                raise PageReaderUnsupported(
+                raise PageReaderUnsupportedError(
                     f"definition level encoding {page.def_level_encoding}"
                 )
             row_in_page = location.row_in_group - rows_seen
             return self._open_data_page(
                 chunk, codec, page, dictionary_page, max_def_level, row_in_page
             )
-        raise PageReaderUnsupported(
+        raise PageReaderUnsupportedError(
             f"row {location.row_in_group} beyond pages of row group "
             f"{location.row_group}"
         )
@@ -577,7 +579,7 @@ class ParquetContentReader:
                 chunk, codec, page, dictionary_page, max_def_level, row_in_page
             )
         if page.encoding != _ENC_PLAIN:
-            raise PageReaderUnsupported(f"data page encoding {page.encoding}")
+            raise PageReaderUnsupportedError(f"data page encoding {page.encoding}")
         cursor = _StreamCursor(
             _decompressed_stream(
                 chunk.iter_range(page.data_offset, page.compressed_size), codec
@@ -599,7 +601,7 @@ class ParquetContentReader:
         row_in_page: int,
     ) -> _OpenCell | None:
         if dictionary_page is None:
-            raise PageReaderUnsupported(
+            raise PageReaderUnsupportedError(
                 "dictionary-encoded page without a dictionary page"
             )
         # The index page is small (indices, not values): decode it in memory.

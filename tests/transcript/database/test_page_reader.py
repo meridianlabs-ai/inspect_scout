@@ -15,7 +15,7 @@ from inspect_scout._transcript.database.parquet.page_reader import (
     _PAGE_TYPE_DATA,
     _PAGE_TYPE_DICTIONARY,
     CellLocation,
-    PageReaderUnsupported,
+    PageReaderUnsupportedError,
     ParquetContentReader,
     _ChunkSource,
     _decode_rle_hybrid,
@@ -123,7 +123,7 @@ def test_parse_v2_page_header_unsupported(tmp_path: Path) -> None:
         path, sample_values(), use_dictionary=False, data_page_version="2.0"
     )
     buf, offset = first_header_slice(path)
-    with pytest.raises(PageReaderUnsupported, match="page type"):
+    with pytest.raises(PageReaderUnsupportedError, match="page type"):
         _parse_page_header(buf, offset)
 
 
@@ -226,7 +226,7 @@ def test_rle_hybrid_decodes(
     ids=["run-value-missing", "group-bytes-missing"],
 )
 def test_rle_truncated_payload_raises(data: bytes, bit_width: int) -> None:
-    with pytest.raises(PageReaderUnsupported, match="truncated"):
+    with pytest.raises(PageReaderUnsupportedError, match="truncated"):
         _decode_rle_hybrid(data, bit_width, 8)
 
 
@@ -236,7 +236,7 @@ def test_stream_cursor_reads_across_chunks() -> None:
     cursor.skip(2)
     assert cursor.bytes_read == 5
     assert b"".join(cursor.iter_read(2, chunk_size=1)) == b"fg"
-    with pytest.raises(PageReaderUnsupported, match="end of page"):
+    with pytest.raises(PageReaderUnsupportedError, match="end of page"):
         cursor.read(1)
 
 
@@ -380,9 +380,9 @@ def test_unsupported_shapes_raise(
     with ParquetContentReader(path) as reader:
         location = reader.locate("tr_0000")
         assert location is not None
-        with pytest.raises(PageReaderUnsupported, match=match):
+        with pytest.raises(PageReaderUnsupportedError, match=match):
             reader.stream_cell(location, "events")
-        with pytest.raises(PageReaderUnsupported, match=match):
+        with pytest.raises(PageReaderUnsupportedError, match=match):
             reader.cell_size(location, "events")
 
 

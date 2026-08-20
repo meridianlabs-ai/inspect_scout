@@ -37,7 +37,7 @@ _SPOOLED_SAMPLE_METADATA = object()
 
 def pooled_passthrough(
     info: TranscriptInfo, result: StreamParseResult
-) -> tuple[bytes, bytes | None]:
+) -> tuple[bytearray, bytearray]:
     """Build `(input_json, input_data_json)` from a spooled parse.
 
     The envelope is emitted incrementally: each message and event is
@@ -165,7 +165,7 @@ def _emit_input_data(
     result: StreamParseResult,
     surviving: dict[str, list[int]],
     attachment_ids: set[str],
-) -> bytes:
+) -> bytearray:
     """Serialize the `input_data` column through a scratch spool.
 
     Holds one pool entry or attachment at a time, leaving the single

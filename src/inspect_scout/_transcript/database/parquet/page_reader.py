@@ -22,6 +22,8 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import IO, Any
 
+import zstandard
+
 WHOLE_CHUNK_READ_THRESHOLD = 4 * 1024 * 1024
 """Column chunks at or below this compressed size are fetched in one read."""
 
@@ -261,3 +263,113 @@ def _walk_pages(chunk: _ChunkSource) -> Iterator[_PageInfo]:
                 slice_size *= 4
         yield page
         position = page.data_offset + page.compressed_size
+
+
+def _decode_rle_hybrid(data: bytes, bit_width: int, count: int) -> list[int]:
+    """Decode a parquet RLE/bit-packed hybrid run of `count` values."""
+    if bit_width == 0:
+        return [0] * count
+    byte_width = (bit_width + 7) // 8
+    mask = (1 << bit_width) - 1
+    out: list[int] = []
+    pos = 0
+    while pos < len(data) and len(out) < count:
+        header = 0
+        shift = 0
+        while True:
+            b = data[pos]
+            pos += 1
+            header |= (b & 0x7F) << shift
+            if not (b & 0x80):
+                break
+            shift += 7
+        if header & 1:  # bit-packed: (header >> 1) groups of 8 values
+            n_groups = header >> 1
+            n_bytes = n_groups * bit_width
+            packed = int.from_bytes(data[pos : pos + n_bytes], "little")
+            pos += n_bytes
+            for j in range(n_groups * 8):
+                out.append((packed >> (j * bit_width)) & mask)
+        else:  # RLE run
+            run = header >> 1
+            value = int.from_bytes(data[pos : pos + byte_width], "little")
+            pos += byte_width
+            out.extend([value] * run)
+    return out[:count]
+
+
+class _StreamCursor:
+    """Pull-based reader over an iterator of byte chunks.
+
+    read() accumulates, skip() discards, iter_read() re-yields — the three
+    verbs the page decoders need, none of which hold more than one chunk.
+    """
+
+    def __init__(self, chunks: Iterator[bytes]) -> None:
+        self._chunks = chunks
+        self._current = b""
+        self._pos = 0
+        self.bytes_read = 0
+
+    def _refill(self) -> None:
+        try:
+            self._current = next(self._chunks)
+        except StopIteration:
+            raise PageReaderUnsupported("unexpected end of page data") from None
+        self._pos = 0
+
+    def read(self, n: int) -> bytes:
+        parts: list[bytes] = []
+        need = n
+        while need > 0:
+            available = len(self._current) - self._pos
+            if available == 0:
+                self._refill()
+                continue
+            take = min(available, need)
+            parts.append(self._current[self._pos : self._pos + take])
+            self._pos += take
+            need -= take
+        self.bytes_read += n
+        return b"".join(parts)
+
+    def skip(self, n: int) -> None:
+        remaining = n
+        while remaining > 0:
+            available = len(self._current) - self._pos
+            if available == 0:
+                self._refill()
+                continue
+            take = min(available, remaining)
+            self._pos += take
+            remaining -= take
+        self.bytes_read += n
+
+    def iter_read(self, n: int, chunk_size: int) -> Iterator[bytes]:
+        remaining = n
+        while remaining > 0:
+            piece = self.read(min(chunk_size, remaining))
+            remaining -= len(piece)
+            yield piece
+
+
+def _decompressed_stream(compressed: Iterator[bytes], codec: str) -> Iterator[bytes]:
+    """Stream-decompress one page. Codec is pre-validated by the caller."""
+    if codec == "UNCOMPRESSED":
+        yield from compressed
+        return
+    decompressor = zstandard.ZstdDecompressor().decompressobj()
+    for piece in compressed:
+        out = decompressor.decompress(piece)
+        if out:
+            yield out
+
+
+def _read_def_levels(
+    cursor: _StreamCursor, num_values: int, max_def_level: int
+) -> list[int]:
+    """Read a v1 data page's definition levels (RLE, 4-byte length prefix)."""
+    if max_def_level == 0:
+        return [1] * num_values
+    (levels_len,) = struct.unpack("<I", cursor.read(4))
+    return _decode_rle_hybrid(cursor.read(levels_len), 1, num_values)

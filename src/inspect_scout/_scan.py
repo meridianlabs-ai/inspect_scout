@@ -698,6 +698,7 @@ async def _scan_async_inner(
                         job,
                         validation=scan.validation,
                         fail_on_error=fail_on_error,
+                        record_input=scan.spec.options.record_input,
                     )
 
                 prefetch_multiple = 1.0
@@ -1142,6 +1143,7 @@ async def _scan_one(
     *,
     validation: dict[str, ValidationSet] | None = None,
     fail_on_error: bool = False,
+    record_input: Literal["copy", "reference"] = "copy",
 ) -> list[ResultReport]:
     """Run a single scanner against a single transcript.
 
@@ -1156,6 +1158,12 @@ async def _scan_one(
     iteration are contained per-transcript as Error reports. `job.on_complete`,
     if set, is awaited exactly once in a finally block to close the shared
     handle after the last job.
+
+    `record_input="reference"` short-circuits the record path: a handle
+    input never serializes (it's recorded via `_reference_for_record`
+    instead of `_transcript_for_record`), and a materialized `Transcript`
+    loader input is recorded as a `ReferenceTranscript` with no content_json.
+    Non-transcript loader inputs (events/messages) are unaffected.
     """
     from inspect_ai.log._transcript import (
         Transcript as InspectTranscript,
@@ -1270,12 +1278,10 @@ async def _scan_one(
                 )
                 else None
             )
-            report_input: ReportInput
             loader_input: ScannerInput | None = None
             if handle_input is None:
                 # mypy can't subtract the protocol, so cast the narrowed value.
                 loader_input = cast(ScannerInput, loader_result)
-                report_input = loader_input
 
             # Reset per iteration and before the `try`: the error path below
             # reads this, so a raise inside the `try` must not leave it holding
@@ -1334,10 +1340,31 @@ async def _scan_one(
             # parquet cell is an atomic value, so the transcript has to exist
             # in full at write time. Doing it here -- after the scan, success
             # or error -- keeps it out of memory for the scan itself.
+            #
+            # `record_input="reference"` short-circuits this: a handle never
+            # serializes (straight to `_reference_for_record`), and a
+            # materialized `Transcript` loader input records a reference with
+            # no content_json (no content filters are available for an
+            # already-materialized input; resolution defaults to full
+            # content). Non-transcript loader inputs (events/messages) fall
+            # through unchanged in both modes.
+            report_input: ReportInput
             if handle_input is not None:
-                report_input = await _transcript_for_record(
-                    handle_input, fail_on_error=fail_on_error
+                if record_input == "reference":
+                    report_input = _reference_for_record(handle_input)
+                else:
+                    report_input = await _transcript_for_record(
+                        handle_input, fail_on_error=fail_on_error
+                    )
+            elif record_input == "reference" and isinstance(loader_input, Transcript):
+                report_input = ReferenceTranscript(
+                    source_uri=loader_input.source_uri,
+                    transcript_id=loader_input.transcript_id,
+                    content_json=None,
                 )
+            else:
+                assert loader_input is not None
+                report_input = loader_input
 
             # always append a result (success or error) if we have type_and_ids
             if type_and_ids is not None:

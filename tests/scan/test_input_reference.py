@@ -136,3 +136,133 @@ def test_record_input_persists_in_scan_options() -> None:
     assert ScanOptions().record_input == "copy"
     assert ScanOptions(record_input="reference").record_input == "reference"
     assert ScanOptions.model_validate({"max_transcripts": 5}).record_input == "copy"
+
+
+def test_reference_mode_handle_path_records_reference() -> None:
+    """`record_input="reference"` short-circuits a handle-capable scan.
+
+    `llm_scanner` is handle-capable (mirrors the streaming pattern used by
+    `test_oversized_transcript_records_reference_and_scan_completes`), so the
+    job is streaming-eligible and its `TranscriptHandle` input reaches the
+    record site directly. This is mode-by-choice (`record_input="reference"`),
+    not the oversized-cell degrade, so no cap monkeypatching: the handle
+    should short-circuit straight to `_reference_for_record` -- with real
+    content filters -- rather than materializing.
+    """
+
+    @scanner(name="probe", messages="all", events="all")
+    def probe() -> Scanner[Transcript]:
+        return llm_scanner(
+            question="Is this conversation helpful?",
+            answer="boolean",
+            content=TranscriptContent(messages="all", events="all"),
+        )
+
+    logs_dir = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
+    with tempfile.TemporaryDirectory() as scans:
+        status = scan(
+            scanners=[probe()],
+            transcripts=transcripts_from(logs_dir),
+            scans=scans,
+            limit=1,
+            max_processes=1,  # in-process, streaming-eligible
+            model="mockllm/model",
+            model_args={"custom_outputs": _mock_yes_responses(40)},
+            record_input="reference",
+            display="none",
+        )
+        assert status.complete
+        assert status.location is not None
+
+        files = list(Path(status.location).rglob("*.parquet"))
+        assert files
+        rows = (
+            duckdb.connect()
+            .execute(
+                "SELECT input, input_storage, input_content, transcript_source_uri, "
+                "transcript_id FROM read_parquet(?)",
+                [files[0].as_posix()],
+            )
+            .fetchall()
+        )
+        assert len(rows) == 1
+        input_cell, storage, content, source_uri, transcript_id = rows[0]
+        assert input_cell is None
+        assert storage == "reference"
+        assert content is not None and "messages" in content
+        assert source_uri and transcript_id
+
+
+def test_reference_mode_materialized_path_records_reference() -> None:
+    """`record_input="reference"` also covers a materialized `Transcript` input.
+
+    A plain `Transcript`-typed scanner is not streaming-eligible -- the
+    pipeline materializes it up front via `reader.read()` -- so this exercises
+    the `isinstance(loader_input, Transcript)` branch at the record site,
+    which has no content filters available and always records
+    `input_content=None`.
+    """
+    from inspect_scout._scanner.result import Result
+
+    @scanner(messages="all")
+    def probe() -> Scanner[Transcript]:
+        async def scan_fn(t: Transcript) -> Result:
+            return Result(value=len(t.messages))
+
+        # This module's `from __future__ import annotations` makes
+        # `scan_fn`'s parameter annotation a string at runtime, but
+        # `create_implicit_loader` reads `inspect.signature(...).annotation`
+        # directly (no `get_type_hints`); restore the real class so it
+        # recognizes the identity (materializing) loader.
+        scan_fn.__annotations__["t"] = Transcript
+        return scan_fn
+
+    logs_dir = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
+    with tempfile.TemporaryDirectory() as scans:
+        status = scan(
+            scanners=[probe()],
+            transcripts=transcripts_from(logs_dir),
+            scans=scans,
+            limit=1,
+            max_processes=1,
+            record_input="reference",
+            display="none",
+        )
+        assert status.complete
+        assert status.location is not None
+
+        files = list(Path(status.location).rglob("*.parquet"))
+        assert files
+        rows = (
+            duckdb.connect()
+            .execute(
+                "SELECT input, input_storage, input_content FROM read_parquet(?)",
+                [files[0].as_posix()],
+            )
+            .fetchall()
+        )
+        assert len(rows) == 1
+        input_cell, storage, content = rows[0]
+        assert input_cell is None
+        assert storage == "reference"
+        assert content is None
+
+
+def test_reference_report_pickles_small() -> None:
+    import pickle
+
+    from inspect_scout._scanner.result import Result, ResultReport
+
+    report = ResultReport(
+        input_type="transcript",
+        input_ids=["t"],
+        input=ReferenceTranscript(
+            source_uri="s3://b/l.eval", transcript_id="t", content_json="{}"
+        ),
+        result=Result(value=True),
+        validation=None,
+        error=None,
+        events=[],
+        model_usage={},
+    )
+    assert len(pickle.dumps(report)) < 50_000

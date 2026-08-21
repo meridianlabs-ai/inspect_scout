@@ -427,3 +427,23 @@ async def test_types_filters(
         evts = [e async for e in handle.events(types=event_types)]
         assert [m.id for m in msgs] == expected_message_ids
         assert [e.event for e in evts] == expected_event_kinds
+
+
+def test_content_round_trips_through_json() -> None:
+    from inspect_scout._transcript.types import TranscriptContent
+
+    content = TranscriptContent(messages="all", events=["model"], timeline=None)
+    assert TranscriptContent.from_json(content.to_json()) == content
+
+
+def test_handles_expose_the_content_they_were_opened_with() -> None:
+    from inspect_scout._transcript.handle import MaterializedTranscriptHandle
+    from inspect_scout._transcript.types import TranscriptContent, TranscriptInfo
+
+    content = TranscriptContent(messages="all", events=None, timeline=None)
+
+    async def _load():  # type: ignore[no-untyped-def]
+        raise AssertionError("not loaded in this test")
+
+    h = MaterializedTranscriptHandle(_load, TranscriptInfo(transcript_id="t"), content)
+    assert h.content == content

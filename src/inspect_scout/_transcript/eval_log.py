@@ -583,7 +583,9 @@ class EvalLogTranscriptsView(TranscriptsView):
             raise ValueError("source_uri must be set")
         if recorder_type_for_location(t.source_uri) is not EvalRecorder:
             # JSON format not yet supported for streaming reads.
-            return MaterializedTranscriptHandle(lambda: self.read(t, content), t)
+            return MaterializedTranscriptHandle(
+                lambda: self.read(t, content), t, content
+            )
 
         zip_reader, entry = await self._get_zip_reader_and_entry(t)
 
@@ -594,7 +596,9 @@ class EvalLogTranscriptsView(TranscriptsView):
             entry.uncompressed_size <= constants_mod.SPOOL_THRESHOLD_BYTES
             or content.timeline is not None
         ):
-            return MaterializedTranscriptHandle(lambda: self.read(t, content), t)
+            return MaterializedTranscriptHandle(
+                lambda: self.read(t, content), t, content
+            )
 
         spool_dir = (
             self._files_cache.cache_dir
@@ -611,7 +615,7 @@ class EvalLogTranscriptsView(TranscriptsView):
         async def load_fallback() -> Transcript:
             return await self.read(t, content)
 
-        return SpooledTranscriptHandle(t, parse, load_fallback)
+        return SpooledTranscriptHandle(t, parse, load_fallback, content)
 
     @override
     async def read_messages_events(

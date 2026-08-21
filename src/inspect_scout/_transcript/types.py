@@ -1,3 +1,4 @@
+import json
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from os import PathLike
@@ -103,6 +104,25 @@ class TranscriptContent:
 
     timeline: TimelineFilter = field(default=None)
     """Filter for which timeline events to include."""
+
+    def to_json(self) -> str:
+        """Filters as JSON, for the results `input_content` column."""
+        return json.dumps(
+            {
+                "messages": self.messages,
+                "events": self.events,
+                "timeline": self.timeline,
+            }
+        )
+
+    @classmethod
+    def from_json(cls, s: str) -> "TranscriptContent":
+        d = json.loads(s)
+        return cls(
+            messages=d.get("messages"),
+            events=d.get("events"),
+            timeline=d.get("timeline"),
+        )
 
 
 class BytesContextManager:

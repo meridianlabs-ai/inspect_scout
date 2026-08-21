@@ -645,11 +645,9 @@ async def test_events_scope_search_reaches_the_model(
 ) -> None:
     """An events-scope LLM search must actually scan the events.
 
-    Deliberately does NOT patch `llm_scanner`: the endpoint has to pass the
-    request scope through as a content override, or the scanner falls back to
-    its declared messages="all", asks the handle for messages it was not
-    opened with, and synthesizes an answer over zero segments -- returning 200
-    with content the model invented.
+    Deliberately does not patch `llm_scanner`: without the scope passed as a
+    content override the scanner falls back to its declared messages="all",
+    scans zero segments, and still returns 200 with an invented answer.
     """
     location = tmp_path / "transcripts"
     location.mkdir(parents=True, exist_ok=True)

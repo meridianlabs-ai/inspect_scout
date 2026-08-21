@@ -1124,6 +1124,56 @@ async def test_pool_resolution_events_data_schema() -> None:
 
 
 @pytest.mark.asyncio
+async def test_pool_resolution_resolves_event_message_attachments() -> None:
+    """Attachments referenced only by the later event pool are retained."""
+    attachment_id = "0123456789abcdef0123456789abcdef"
+    sample_data = {
+        "id": "test-pool-attachment",
+        "target": "expected",
+        "messages": [],
+        "scores": {},
+        "metadata": {},
+        "events": [
+            {
+                "span_id": "s1",
+                "timestamp": "2022-01-01T00:00:00+00:00",
+                "event": "model",
+                "model": "test-model",
+                "input": [],
+                "input_refs": [[0, 1]],
+                "output": {"model": "test-model", "choices": []},
+                "tools": [],
+                "tool_choice": "auto",
+                "config": {},
+            },
+        ],
+        # Eval logs store attachments before events_data, so the streaming loader
+        # encounters this value before it sees the reference below.
+        "attachments": {attachment_id: "resolved pooled prompt"},
+        "events_data": {
+            "messages": [{"role": "user", "content": f"attachment://{attachment_id}"}],
+            "calls": [],
+        },
+    }
+    result = await load_filtered_transcript(
+        create_json_stream(sample_data),
+        TranscriptInfo(
+            transcript_id="test-pool-attachment",
+            source_type="test",
+            source_id="source-pool-attachment",
+            source_uri="/test-pool-attachment.json",
+            metadata={},
+        ),
+        "all",
+        "all",
+    )
+    assert len(result.events) == 1
+    model_event = result.events[0]
+    assert isinstance(model_event, ModelEvent)
+    assert model_event.input[0].content == "resolved pooled prompt"
+
+
+@pytest.mark.asyncio
 async def test_pool_resolution_events_data_json5_fallback() -> None:
     """events_data pools resolve through the json5 fallback path too."""
     # A bare NaN value is invalid JSON but accepted by the json5 fallback,

@@ -15,3 +15,12 @@ DEFAULT_SCANS_DIR = "./scans"
 
 TRANSCRIPT_SOURCE_EVAL_LOG: Literal["eval_log", "database"] = "eval_log"
 TRANSCRIPT_SOURCE_DATABASE: Literal["eval_log", "database"] = "database"
+
+SPOOL_THRESHOLD_BYTES: int = 64 * 1024 * 1024
+"""Byte-size threshold above which transcript reads stream via disk spool instead of materializing."""
+
+# A parquet cell is one value inside one data page, and page sizes are thrift
+# i32. The empirical ceiling for a writable+readable cell is 2,147,480,000
+# bytes; this constant leaves headroom. Access via the module (like
+# SPOOL_THRESHOLD_BYTES) so tests can monkeypatch it.
+RECORD_CELL_MAX_BYTES: int = 2_000_000_000

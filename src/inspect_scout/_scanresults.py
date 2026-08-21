@@ -1,5 +1,5 @@
 import json
-from typing import Any, Literal
+from typing import Any, Literal, Mapping
 
 import pandas as pd
 from inspect_ai._util._async import run_coroutine
@@ -15,7 +15,55 @@ from ._recorder.recorder import (
     ScanResultsDF,
     Status,
 )
+from ._transcript.factory import transcripts_from
+from ._transcript.json.reducer import ATTACHMENT_PREFIX, ATTACHMENT_REF_PATTERN
+from ._transcript.types import Transcript, TranscriptContent
 from ._validation.validate import is_positive_value
+
+
+async def resolve_input_reference(row: Mapping[str, Any]) -> Transcript:
+    """Resolve a reference result row back into the transcript the scanner saw.
+
+    Rows with `input_storage == "reference"` carry no transcript content;
+    this re-reads it from the source named by `transcript_source_uri`,
+    selecting the sample by `transcript_id` (the sample uuid) and applying
+    the content filters recorded in `input_content`. A NULL/absent
+    `input_content` means the filters were unavailable when the row was
+    recorded, so it resolves to full content (`messages="all",
+    events="all"`). An `input_content` whose filters are all `null`
+    reproduces a scan that requested no content and resolves to an empty
+    transcript -- it does not fall back to full content.
+
+    Raises:
+        ValueError: If `row` is not a reference row (`input_storage !=
+            "reference"`), the row has no `transcript_id` or
+            `transcript_source_uri` to resolve from, or `transcript_id` is
+            not found in the source (e.g. the source was replaced since the
+            scan ran). Genuine read errors from the source (missing file,
+            credentials, etc.) propagate as themselves.
+    """
+    if row.get("input_storage") != "reference":
+        raise ValueError("row is not a reference (input_storage != 'reference')")
+    source_uri = row.get("transcript_source_uri")
+    if not source_uri:
+        raise ValueError("reference row has no transcript_source_uri to resolve from")
+    transcript_id = row.get("transcript_id")
+    if not transcript_id:
+        raise ValueError("reference row has no transcript_id to resolve from")
+    content_json = row.get("input_content")
+    content = (
+        TranscriptContent.from_json(content_json)
+        if isinstance(content_json, str) and content_json
+        else TranscriptContent(messages="all", events="all", timeline=None)
+    )
+    async with transcripts_from(str(source_uri)).reader() as reader:
+        async for info in reader.index():
+            if info.transcript_id == transcript_id:
+                return await reader.read(info, content)
+    raise ValueError(
+        f"transcript {transcript_id} not found in {source_uri} "
+        "(the source may have been replaced)"
+    )
 
 
 def scan_status(scan_location: str) -> Status:
@@ -343,18 +391,61 @@ def _expand_events_in_df(df: pd.DataFrame) -> pd.DataFrame:
         input_json = str(df.at[idx, "input"])
         input_data_json = str(df.at[idx, "input_data"])
         input_type = str(df.at[idx, "input_type"])
+        attachments = _input_data_attachments(input_data_json)
 
         if input_type == "transcript":
             transcript = json.loads(input_json)
             events_json = json.dumps(transcript.get("events", []))
             expanded = expand_events(events_json, input_data_json)
             transcript["events"] = [e.model_dump() for e in expanded]
-            df.at[idx, "input"] = json.dumps(transcript)
+            df.at[idx, "input"] = json.dumps(
+                _resolve_attachment_refs(transcript, attachments)
+            )
         elif input_type == "events":
             expanded = expand_events(input_json, input_data_json)
-            df.at[idx, "input"] = json.dumps([e.model_dump() for e in expanded])
+            df.at[idx, "input"] = json.dumps(
+                _resolve_attachment_refs(
+                    [e.model_dump() for e in expanded], attachments
+                )
+            )
 
     return df.drop(columns=["input_data"])
+
+
+def _input_data_attachments(input_data_json: str) -> dict[str, str]:
+    """The `attachments` lookup table carried inside an `input_data` value.
+
+    The pooled-passthrough record path leaves `attachment://<hash>` refs in
+    `input` and ships their contents here. `expand_events` reads only
+    `messages`/`calls`, so the refs have to be resolved separately or every
+    value inspect_ai chose to externalize (any text over 100 chars) reaches
+    the caller as a dangling hash.
+    """
+    data = json.loads(input_data_json)
+    attachments = data.get("attachments") if isinstance(data, dict) else None
+    if not isinstance(attachments, dict):
+        return {}
+    return {k: v for k, v in attachments.items() if isinstance(v, str)}
+
+
+def _resolve_attachment_refs(value: Any, attachments: dict[str, str]) -> Any:
+    """Recursively replace `attachment://<id>` refs with their content.
+
+    Mirrors the viewer's `resolveAttachments`: unknown ids are left as-is.
+    """
+    if not attachments:
+        return value
+    if isinstance(value, str):
+        if ATTACHMENT_PREFIX not in value:
+            return value
+        return ATTACHMENT_REF_PATTERN.sub(
+            lambda m: attachments.get(m.group(1), m.group(0)), value
+        )
+    if isinstance(value, dict):
+        return {k: _resolve_attachment_refs(v, attachments) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_resolve_attachment_refs(v, attachments) for v in value]
+    return value
 
 
 def _expand_resultset_rows(df: pd.DataFrame) -> pd.DataFrame:

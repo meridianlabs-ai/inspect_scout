@@ -21,5 +21,11 @@ ScannerInput = Union[
 """Union of all valid scanner input types."""
 
 ScannerInputNames = Literal[
-    "transcript", "event", "events", "message", "messages", "timeline", "timelines"
+    "transcript",
+    "event",
+    "events",
+    "message",
+    "messages",
+    "timeline",
+    "timelines",
 ]

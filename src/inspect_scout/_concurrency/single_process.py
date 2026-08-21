@@ -16,7 +16,7 @@ from inspect_ai.util._anyio import inner_exception
 from .._display import display
 from .._scanner.result import ResultReport
 from .._transcript.transcripts import TranscriptsReader
-from .._transcript.types import TranscriptInfo
+from .._transcript.types import Transcript, TranscriptInfo
 from ._iterator import SerializedAsyncIterator
 from .common import (
     ConcurrencyStrategy,
@@ -29,6 +29,17 @@ from .common import (
 
 # Module-level counter for assigning unique worker IDs
 worker_id_counter: int = 0
+
+
+def _scanner_job_transcript_info(job: ScannerJob) -> TranscriptInfo:
+    """Derive the `TranscriptInfo` for a job's union transcript.
+
+    The union transcript is a materialized `Transcript` (itself a
+    `TranscriptInfo`) for legacy scanners, or a `TranscriptHandle` (whose
+    `info` is a `TranscriptInfo`) on the streaming path.
+    """
+    union = job.union_transcript
+    return union if isinstance(union, Transcript) else union.info
 
 
 def single_process_strategy(
@@ -134,7 +145,8 @@ def single_process_strategy(
                 )
 
         def _scanner_job_info(item: ScannerJob) -> str:
-            return f"{item.union_transcript.transcript_id, item.scanner_name}"
+            transcript_id = _scanner_job_transcript_info(item).transcript_id
+            return f"{transcript_id, item.scanner_name}"
 
         @throttle(1)
         def _update_metrics() -> None:
@@ -251,7 +263,7 @@ def single_process_strategy(
 
             try:
                 await record_results(
-                    scanner_job.union_transcript,
+                    _scanner_job_transcript_info(scanner_job),
                     scanner_job.scanner_name,
                     await scan_function(scanner_job),
                 )

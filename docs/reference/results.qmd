@@ -14,6 +14,7 @@ reference: inspect_scout
 ### ScanResultsDF
 ### scan_results_arrow
 ### ScanResultsArrow
+### resolve_input_reference
 
 ## Validation
 

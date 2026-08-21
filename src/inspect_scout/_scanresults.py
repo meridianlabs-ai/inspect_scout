@@ -27,14 +27,12 @@ async def resolve_input_reference(row: Mapping[str, Any]) -> Transcript:
     Rows with `input_storage == "reference"` carry no transcript content;
     this re-reads it from the source named by `transcript_source_uri`,
     selecting the sample by `transcript_id` (the sample uuid) and applying
-    the content filters recorded in `input_content`. `input_content` of
-    NULL/absent means the content filters were unavailable when the row was
+    the content filters recorded in `input_content`. A NULL/absent
+    `input_content` means the filters were unavailable when the row was
     recorded, so it resolves to full content (`messages="all",
-    events="all"`); a present `input_content` is decoded via
-    `TranscriptContent.from_json`, including the (correct) edge case where
-    every filter in it is `null` -- that reproduces a scan that requested no
-    content, and resolves to an empty transcript rather than falling back to
-    full content.
+    events="all"`). An `input_content` whose filters are all `null`
+    reproduces a scan that requested no content and resolves to an empty
+    transcript -- it does not fall back to full content.
 
     Raises:
         ValueError: If `row` is not a reference row (`input_storage !=

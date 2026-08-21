@@ -293,10 +293,8 @@ def test_oversized_envelope_raises_before_read_back(
     from inspect_scout._transcript.types import TranscriptTooLargeToRecordError
     from inspect_scout._util import constants as constants_mod
 
-    # This fixture's envelope serializes to ~115 bytes (a single small event,
-    # no messages, empty metadata) -- the cap has to sit below that for the
-    # guard to fire, so it is set well under the real cap (2 GB) rather than
-    # to a round number like 1000 that this fixture would never reach.
+    # The fixture's envelope serializes to ~115 bytes; the cap must sit
+    # below that for the guard to fire.
     monkeypatch.setattr(constants_mod, "RECORD_CELL_MAX_BYTES", 100)
     result = _result(tmp_path, [{"event": "model", "input_refs": [[0, 3]]}])
     try:

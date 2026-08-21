@@ -1200,11 +1200,8 @@ async def _scan_one(
         union = job.union_transcript
         report_input: ReportInput
         if record_input == "reference":
-            # Reference mode never inlines a full copy or a placeholder
-            # here: a materialized `Transcript` union records a reference
-            # with no content filters (resolution defaults to full
-            # content, matching the other reference-mode call sites
-            # above); a handle union records a reference to its source.
+            # No content filters exist for a materialized union; content_json
+            # None makes resolution default to full content.
             if isinstance(union, Transcript):
                 report_input = ReferenceTranscript(
                     source_uri=union.source_uri,
@@ -1354,14 +1351,7 @@ async def _scan_one(
             # parquet cell is an atomic value, so the transcript has to exist
             # in full at write time. Doing it here -- after the scan, success
             # or error -- keeps it out of memory for the scan itself.
-            #
-            # `record_input="reference"` short-circuits this: a handle never
-            # serializes (straight to `_reference_for_record`), and a
-            # materialized `Transcript` loader input records a reference with
-            # no content_json (no content filters are available for an
-            # already-materialized input; resolution defaults to full
-            # content). Non-transcript loader inputs (events/messages) fall
-            # through unchanged in both modes.
+            # `record_input="reference"` skips all of that (see the docstring).
             report_input: ReportInput
             if handle_input is not None:
                 if record_input == "reference":
@@ -1377,12 +1367,10 @@ async def _scan_one(
                     content_json=None,
                 )
             else:
-                # Not an `assert loader_input is not None`: a loader
-                # yielding `None` must stay a contained per-transcript
-                # condition (caught above, `type_and_ids` left `None`, so
-                # `report_input` here goes unused -- see the `if
-                # type_and_ids is not None` guard below), not an
-                # AssertionError escaping past this function's containment.
+                # A cast, not `assert loader_input is not None`: a loader
+                # yielding None is contained above (`type_and_ids` stays None,
+                # so this value goes unused) and must not become an
+                # AssertionError escaping this function's containment.
                 report_input = cast(ScannerInput, loader_result)
 
             # always append a result (success or error) if we have type_and_ids

@@ -151,9 +151,7 @@ async def test_scan_one_stream_error_reference_mode_materialized_union() -> None
 
     When the union transcript is already materialized and the loader raises
     mid-iteration, copy mode records the full `Transcript` as-is; reference
-    mode must instead record a `ReferenceTranscript` with no content filters
-    (resolution defaults to full content, matching the other reference-mode
-    call sites in `_scan_one`).
+    mode must instead record a `ReferenceTranscript` with no content filters.
     """
 
     async def _raising_loader(transcript: Transcript) -> Any:

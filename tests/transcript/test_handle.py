@@ -447,3 +447,27 @@ def test_handles_expose_the_content_they_were_opened_with() -> None:
 
     h = MaterializedTranscriptHandle(_load, TranscriptInfo(transcript_id="t"), content)
     assert h.content == content
+
+
+@pytest.mark.asyncio
+async def test_open_warns_when_sample_may_exceed_record_cap(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
+    from inspect_scout._transcript.types import TranscriptContent
+    from inspect_scout._util import constants as constants_mod
+
+    monkeypatch.setattr(constants_mod, "RECORD_CELL_MAX_BYTES", 10)
+    log = sorted((Path(__file__).parent.parent / "recorder" / "logs").glob("*.eval"))[0]
+    view = EvalLogTranscriptsView(str(log))
+    await view.connect()
+    try:
+        infos = [i async for i in view.select()]
+        with caplog.at_level("WARNING"):
+            h = await view.open(
+                infos[0], TranscriptContent(messages="all", events=None, timeline=None)
+            )
+            await h.aclose()
+    finally:
+        await view.disconnect()
+    assert any("may exceed" in r.getMessage() for r in caplog.records)

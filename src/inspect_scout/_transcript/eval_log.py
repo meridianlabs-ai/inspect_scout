@@ -589,6 +589,16 @@ class EvalLogTranscriptsView(TranscriptsView):
 
         zip_reader, entry = await self._get_zip_reader_and_entry(t)
 
+        if entry.uncompressed_size > constants_mod.RECORD_CELL_MAX_BYTES:
+            logger.warning(
+                "Transcript %s: raw sample is %d bytes and its recorded input "
+                "may exceed the parquet cell cap (%d); if it does, the result "
+                "row will reference the source instead of copying it.",
+                t.transcript_id,
+                entry.uncompressed_size,
+                constants_mod.RECORD_CELL_MAX_BYTES,
+            )
+
         # Small files, or timeline requests (which need the full in-memory
         # event set to resolve stored timeline UUID references), use the
         # existing materialized read path unchanged.

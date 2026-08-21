@@ -13,7 +13,7 @@ end-to-end happy path is covered by ``test_observe_providers.py``.
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Callable, Iterator
 
-import httpx
+import httpx2
 import pytest
 
 
@@ -87,7 +87,7 @@ def _anthropic_error() -> Exception:
     import anthropic
 
     return anthropic.APIConnectionError(
-        message="overloaded_error", request=httpx.Request("POST", "http://test")
+        message="overloaded_error", request=httpx2.Request("POST", "http://test")
     )
 
 
@@ -133,7 +133,7 @@ def _openai_error() -> Exception:
     import openai
 
     return openai.APIConnectionError(
-        message="connection reset", request=httpx.Request("POST", "http://test")
+        message="connection reset", request=httpx2.Request("POST", "http://test")
     )
 
 
@@ -667,7 +667,7 @@ def _openai_moderation_error() -> Exception:
 
     err = openai.APIError(
         "limited access for safety reasons",
-        request=httpx.Request("POST", "http://test"),
+        request=httpx2.Request("POST", "http://test"),
         body={
             "type": "invalid_request_error",
             "code": "invalid_prompt",
@@ -759,7 +759,7 @@ def _openai_bad_request_error() -> Exception:
 
     err = openai.BadRequestError(
         message="blocked by content policy",
-        response=httpx.Response(400, request=httpx.Request("POST", "http://test")),
+        response=httpx2.Response(400, request=httpx2.Request("POST", "http://test")),
         body={
             "type": "invalid_request_error",
             "code": "content_policy_violation",

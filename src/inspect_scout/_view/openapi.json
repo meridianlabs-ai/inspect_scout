@@ -392,6 +392,17 @@
             ],
             "title": "Results"
           },
+          "results_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results Buffer"
+          },
           "scanners": {
             "anyOf": [
               {
@@ -1994,6 +2005,11 @@
       "ContentDocument": {
         "description": "Document content (e.g. a PDF).",
         "properties": {
+          "citations": {
+            "default": false,
+            "title": "Citations",
+            "type": "boolean"
+          },
           "document": {
             "title": "Document",
             "type": "string"
@@ -2027,7 +2043,8 @@
           "type",
           "document",
           "filename",
-          "mime_type"
+          "mime_type",
+          "citations"
         ],
         "title": "ContentDocument",
         "type": "object"
@@ -6192,6 +6209,17 @@
             ],
             "title": "Results"
           },
+          "results_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results Buffer"
+          },
           "scanners": {
             "anyOf": [
               {
@@ -6477,6 +6505,17 @@
               }
             ],
             "title": "Results"
+          },
+          "results_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results Buffer"
           },
           "scanners": {
             "anyOf": [
@@ -7519,6 +7558,17 @@
             ],
             "title": "Results"
           },
+          "results_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results Buffer"
+          },
           "scanners": {
             "anyOf": [
               {
@@ -7740,6 +7790,17 @@
             "default": 25,
             "title": "Max Transcripts",
             "type": "integer"
+          },
+          "results_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results Buffer"
           },
           "shuffle": {
             "anyOf": [
@@ -10283,6 +10344,7 @@
               "limit",
               "approval",
               "cancelled",
+              "sandbox_unavailable",
               "unknown",
               "output_limit"
             ],

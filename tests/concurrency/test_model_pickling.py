@@ -9,6 +9,7 @@ the cloudpickle roundtrip intact.
 from __future__ import annotations
 
 import base64
+import copy
 import copyreg
 import json
 import subprocess
@@ -16,11 +17,11 @@ import sys
 from pathlib import Path
 
 import cloudpickle  # type: ignore[import-untyped]
-import inspect_scout._concurrency._mp_common  # noqa: F401 — registers copyreg reducer
 from inspect_ai.model import ModelOutput, get_model
 from inspect_ai.model._model import Model
 from inspect_ai.model._model_config import model_roles_to_model_roles_config
 from inspect_scout import llm_scanner
+from inspect_scout._concurrency._mp_common import scout_dumps
 
 # Scanner file whose grading class contains a ModelEvent field.  Loaded via
 # load_module (exactly as inspect_ai loads user-authored scanner files).
@@ -30,13 +31,28 @@ _SCANNER_WITH_MODEL_EVENT = (
 
 
 # ---------------------------------------------------------------------------
-# copyreg reducer for Model
+# Model reducer must be scoped to pickling, not global copy semantics (#537)
 # ---------------------------------------------------------------------------
 
 
-def test_copyreg_reducer_is_registered() -> None:
-    """Importing _mp_common registers a copyreg reducer for Model."""
-    assert Model in copyreg.dispatch_table
+def test_importing_scout_does_not_hijack_copy() -> None:
+    """Importing scout must not change process-wide copy semantics for Model.
+
+    Registering a reducer via copyreg.pickle() pollutes the global
+    copyreg.dispatch_table, which copy.copy()/copy.deepcopy() also consult.
+    That makes copy(model) round-trip through get_model() (which memoizes),
+    aliasing instances instead of producing distinct copies and breaking
+    inspect_ai's role stamping / role-scoped config overrides. The reducer
+    must be scoped to Scout's own pickler instead.
+    """
+    # The global dispatch table must not be polluted with a Model reducer.
+    assert Model not in copyreg.dispatch_table
+
+    # copy.copy() must produce a genuinely distinct instance, not a memoized
+    # alias returned by get_model().
+    model = get_model("mockllm/model")
+    copied = copy.copy(model)
+    assert copied is not model
 
 
 def test_model_survives_cloudpickle_roundtrip_in_subprocess() -> None:
@@ -46,7 +62,7 @@ def test_model_survives_cloudpickle_roundtrip_in_subprocess() -> None:
     shortcuts, so we must verify in a subprocess to be a valid test.
     """
     model = get_model("mockllm/model")
-    pickled = cloudpickle.dumps(model)
+    pickled = scout_dumps(model)
 
     # Verify in subprocess
     model_b64 = base64.b64encode(pickled).decode()
@@ -100,7 +116,7 @@ def test_llm_scanner_with_model_instance_is_picklable() -> None:
         name="test_scanner",
     )
     # This is what DillCallable.__init__ does
-    pickled = cloudpickle.dumps(scan_fn)
+    pickled = scout_dumps(scan_fn)
     # Verify in a subprocess where cloudpickle can't use identity shortcuts
     assert _unpickle_callable_in_subprocess(pickled)
 

@@ -20,9 +20,11 @@ JSONL, one event per line. Payload-bearing events:
 - ``tool.start`` / ``tool.end`` are individual tool calls (the only place
   schema-B sub-agent activity is recorded).
 - ``sessionKey`` is ``agent:<...>:<kind>:<uuid>`` with ``kind`` one of ``main``,
-  ``telegram``, ``dashboard`` (orchestrator surfaces) or ``subagent``
-  (delegated work). Any other kind on a consumed event fails the import
-  loudly rather than silently dropping that session's activity.
+  ``telegram``, ``dashboard``, ``explicit`` (orchestrator surfaces — ``explicit``
+  is an explicitly-created session on the orchestrator agent, e.g. OpenClaw's
+  gateway-fallback path) or ``subagent`` (delegated work). Any other kind on a
+  consumed event fails the import loudly rather than silently dropping that
+  session's activity.
 
 Intentionally NOT consumed: ``message.in`` / ``message.sending`` /
 ``message.out`` (channel I/O). A sub-agent's final report is auto-announced as a

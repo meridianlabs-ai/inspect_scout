@@ -20,27 +20,29 @@ from typing import IO, Any, Iterator
 SpoolKey = tuple[str, int] | str
 
 
-# Linux caps a single read(2) at 0x7ffff000, so any value larger than this
-# comes back short no matter what is asked for -- which is the normal case for
-# the transcripts this spool exists to bound.
-_READ_CAP = 0x7FFFF000
-
-
 def _read_at(fd: int, lock: threading.Lock, length: int, offset: int) -> bytearray:
-    """Read up to ``length`` bytes from ``offset`` (portable ``os.pread``).
+    """Read up to ``length`` bytes from ``offset``.
 
-    Fills one preallocated buffer rather than concatenating what each read
-    returns. Above `_READ_CAP` every read is short, and appending would both
-    reallocate the whole accumulated value per iteration -- quadratic, and
-    briefly holding two copies of a multi-GB cell -- and defeat the bound this
-    spool exists to keep.
-
-    Returns a `bytearray` so the caller owns the buffer with no final copy;
-    converting to `bytes` here would reintroduce the doubling.
+    Returns a `bytearray`: the caller owns the buffer, and converting it to
+    `bytes` here would copy a value that can be gigabytes.
     """
+    # Linux caps a single read(2) at 0x7ffff000, so anything larger comes back
+    # short. Filling one preallocated buffer keeps that linear -- appending
+    # each read instead reallocates the whole accumulated value per iteration,
+    # briefly holding two copies of a multi-GB cell.
     buffer = bytearray(length)
-    if length == 0:
-        return buffer
+    view = memoryview(buffer)
+    filled = 0
+    with lock:
+        while filled < length:
+            got = os.preadv(fd, [view[filled:]], offset + filled)
+            if not got:
+                break
+            filled += got
+    if filled < length:
+        del view  # a live view blocks resizing the bytearray
+        del buffer[filled:]
+    return buffer
     view = memoryview(buffer)
     filled = 0
     with lock:

@@ -564,10 +564,9 @@ def _records_to_arrow(records: list[dict[str, Any]]) -> "pa.Table":
         for record in norm:
             for key, value in record.items():
                 if value is not None:
-                    # str, bytes and bytearray are all text for a string
-                    # column, so a column mixing them is not "mixed":
-                    # stringifying here would write b'...' or bytearray(b'...')
-                    # into the cell.
+                    # str and buffers are all text for a string column, so a
+                    # column mixing them is not "mixed": stringifying here
+                    # would write b'...' into the cell.
                     val_type = (
                         "str"
                         if isinstance(value, (bytes, bytearray))

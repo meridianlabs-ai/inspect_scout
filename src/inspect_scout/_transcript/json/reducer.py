@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
+import re
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Generator, Literal, cast
+from typing import Any, Generator, Literal, Protocol, cast
 
 from ijson import ObjectBuilder  # type: ignore
 from ijson.utils import coroutine as _ijson_coroutine  # type: ignore
@@ -9,6 +12,10 @@ from ijson.utils import coroutine as _ijson_coroutine  # type: ignore
 # Public constants / prefixes
 ATTACHMENT_PREFIX = "attachment://"
 ATTACHMENT_PREFIX_LEN = len(ATTACHMENT_PREFIX)
+ATTACHMENT_REF_PATTERN = re.compile(r"attachment://([a-f0-9]{32})")
+ATTACHMENT_REF_BYTES = re.compile(rb"attachment://([a-f0-9]{32})")
+"""``ATTACHMENT_REF_PATTERN`` over UTF-8 bytes, for scanning serialized JSON
+without decoding it first. Refs are ASCII, so the two always agree."""
 ATTACHMENTS_PREFIX = "attachments."
 MESSAGES_ITEM_PREFIX = "messages.item"
 EVENTS_ITEM_PREFIX = "events.item"
@@ -24,7 +31,7 @@ METADATA_PREFIX = "metadata."
 
 
 def _should_skip(
-    filter_field_value: str, filter_list: None | Literal["all"] | list[str]
+    filter_field_value: str, filter_list: None | Literal["all"] | Sequence[str]
 ) -> bool:
     if filter_list is None:
         return True
@@ -37,7 +44,7 @@ def _should_skip(
 class ListProcessingConfig:
     array_item_prefix: str
     filter_field: str
-    filter_list: None | Literal["all"] | list[str]
+    filter_list: None | Literal["all"] | Sequence[str]
     filter_prefix: str = field(init=False)
 
     def __post_init__(self) -> None:
@@ -68,9 +75,20 @@ EventTuple = tuple[str, str, Any]
 CoroutineGen = Generator[None, EventTuple, None]
 
 
+class ItemSink(Protocol):
+    """Structural target for parsed items: anything with a list-like `append`.
+
+    `list[dict[str, Any]]` (used by `ParseState` fields) satisfies this
+    structurally; spooling sinks (see stream_parse.py) can implement it
+    directly without inheriting from `list`.
+    """
+
+    def append(self, item: dict[str, Any], /) -> None: ...
+
+
 @_ijson_coroutine  # type: ignore
 def _item_coroutine(
-    target_list: list[dict[str, Any]],
+    target_list: ItemSink,
     attachment_refs: set[str],
     config: ListProcessingConfig,
 ) -> CoroutineGen:  # pragma: no cover
@@ -100,10 +118,15 @@ def _item_coroutine(
                 try:
                     builder.event(event, value)
                     item = builder.value
+                except Exception:
+                    pass  # malformed item: drop it and keep parsing
+                else:
+                    # Deliberately outside the guard. `target_list` is a spool
+                    # sink, so an append failure means ENOSPC or a closed fd --
+                    # data loss, not a malformed item. Swallowing it would drop
+                    # the item while the parse went on to report success.
                     target_list.append(item)
                     attachment_refs.update(attachments)
-                except Exception:
-                    pass
             builder = None
             skip = False
             attachments.clear()
@@ -115,9 +138,12 @@ def _item_coroutine(
         except Exception:
             builder = None
             continue
-        if event == "string" and isinstance(value, str):
+        if event == "string" and isinstance(value, str) and ATTACHMENT_PREFIX in value:
             if len(value) == 45 and value.startswith(ATTACHMENT_PREFIX):
                 attachments.add(value[ATTACHMENT_PREFIX_LEN:])
+            else:
+                for m in ATTACHMENT_REF_PATTERN.finditer(value):
+                    attachments.add(m.group(1))
 
 
 def message_item_coroutine(
@@ -138,7 +164,7 @@ def event_item_coroutine(
 
 @_ijson_coroutine  # type: ignore
 def _unfiltered_item_coroutine(
-    target_list: list[dict[str, Any]],
+    target_list: ItemSink,
     item_prefix: str,
 ) -> CoroutineGen:  # pragma: no cover
     """Collect items from the JSON stream without filtering."""
@@ -154,9 +180,13 @@ def _unfiltered_item_coroutine(
         if prefix == item_prefix and event == "end_map":
             try:
                 builder.event(event, value)
-                target_list.append(builder.value)
+                item = builder.value
             except Exception:
-                pass
+                pass  # malformed item: drop it and keep parsing
+            else:
+                # Outside the guard: see `_item_coroutine` -- an append failure
+                # is a spool write failure, and must not be silently dropped.
+                target_list.append(item)
             builder = None
             continue
         try:
@@ -185,6 +215,15 @@ def call_pool_item_coroutine(state: ParseState, item_prefix: str) -> CoroutineGe
 
 @_ijson_coroutine  # type: ignore
 def attachments_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
+    """Collect the attachments table.
+
+    Keeps every attachment rather than only those already referenced. Pool
+    entries under ``events_data`` can carry refs too, and that section follows
+    ``attachments`` in the file, so a membership test here cannot know about
+    them yet -- it silently dropped exactly the attachments a pooled system
+    prompt needs. ``state.attachment_refs`` is still collected, because the
+    early exit in ``load_filtered`` keys off it.
+    """
     attachments_prefix_len = len(ATTACHMENTS_PREFIX)
     while True:
         prefix, event, value = yield
@@ -198,8 +237,7 @@ def attachments_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cove
             if end == -1
             else prefix[attachments_prefix_len:end]
         )
-        if attachment_id in state.attachment_refs:
-            state.attachments[attachment_id] = value
+        state.attachments[attachment_id] = value
 
 
 @_ijson_coroutine  # type: ignore
@@ -230,6 +268,85 @@ def metadata_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
         except Exception:
             builder = None
             continue
+
+
+class JsonTextWriter:
+    """Re-serialize a stream of ijson events as JSON text.
+
+    The inverse of ``ijson.parse``: feed it the events for one value and it
+    writes that value back out, byte for byte as
+    ``json.dumps(value, ensure_ascii=False, separators=(",", ":"))`` would --
+    without ever building the value as Python objects. Use it for a subtree
+    large enough that the object graph is the problem.
+
+    Assumes numbers arrive as ``int``/``float`` (ijson's ``use_float=True``);
+    ``Decimal`` would raise, as it would from ``json.dumps``.
+    """
+
+    _ENCODER = json.JSONEncoder(ensure_ascii=False, separators=(",", ":"))
+
+    def __init__(self, write: Callable[[bytes], Any]) -> None:
+        self._write = write
+        self._nonempty: list[bool] = []  # per open container: has an item yet
+        self._after_key = False
+
+    def _separator(self) -> None:
+        """Write the comma between siblings, if this is not the first."""
+        if self._after_key:  # a value right after "key": never takes one
+            self._after_key = False
+            return
+        if self._nonempty:
+            if self._nonempty[-1]:
+                self._write(b",")
+            self._nonempty[-1] = True
+
+    def event(self, event: str, value: Any) -> None:
+        if event == "map_key":
+            if self._nonempty and self._nonempty[-1]:
+                self._write(b",")
+            if self._nonempty:
+                self._nonempty[-1] = True
+            self._write(self._ENCODER.encode(value).encode("utf-8") + b":")
+            self._after_key = True
+            return
+        if event in ("start_map", "start_array"):
+            self._separator()
+            self._write(b"{" if event == "start_map" else b"[")
+            self._nonempty.append(False)
+            return
+        if event in ("end_map", "end_array"):
+            self._nonempty.pop()
+            self._write(b"}" if event == "end_map" else b"]")
+            return
+        self._separator()
+        self._write(self._ENCODER.encode(value).encode("utf-8"))
+
+
+@_ijson_coroutine  # type: ignore
+def spooling_metadata_coroutine(
+    write: Callable[[bytes], Any],
+) -> CoroutineGen:  # pragma: no cover
+    """``metadata_coroutine`` that writes JSON text instead of building objects.
+
+    Sample metadata can be most of a transcript (measured at 1,377 MB of a
+    3,223 MB sample), and as an object graph it costs roughly twice that,
+    retained for the lifetime of the handle. Written as text it stays on disk
+    until something actually needs it.
+    """
+    writer: JsonTextWriter | None = None
+    while True:
+        prefix, event, value = yield
+        if not (prefix == "metadata" or prefix.startswith(METADATA_PREFIX)):
+            continue
+        if prefix == "metadata" and event == "start_map":
+            writer = JsonTextWriter(write)
+            writer.event(event, value)
+            continue
+        if writer is None:
+            continue
+        writer.event(event, value)
+        if prefix == "metadata" and event == "end_map":
+            writer = None
 
 
 SCORES_PREFIX = "scores."
@@ -304,6 +421,10 @@ __all__ = [
     "TARGET_PREFIX",
     "ATTACHMENT_PREFIX",
     "ATTACHMENT_PREFIX_LEN",
+    "ATTACHMENT_REF_BYTES",
+    "JsonTextWriter",
+    "spooling_metadata_coroutine",
+    "ATTACHMENT_REF_PATTERN",
     "ATTACHMENTS_PREFIX",
     "MESSAGES_ITEM_PREFIX",
     "EVENTS_ITEM_PREFIX",
@@ -313,4 +434,5 @@ __all__ = [
     "EVENTS_DATA_MESSAGES_ITEM_PREFIX",
     "EVENTS_DATA_CALLS_ITEM_PREFIX",
     "METADATA_PREFIX",
+    "ItemSink",
 ]

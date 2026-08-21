@@ -11,7 +11,8 @@ from shortuuid import uuid
 
 from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
 from inspect_scout._transcript.types import Transcript
-from inspect_scout._util._json import to_json_str_compact
+from inspect_scout._util import constants as constants_mod
+from inspect_scout._util._json import to_json_bytes_compact, to_json_str_compact
 
 logger = getLogger(__name__)
 
@@ -92,6 +93,57 @@ class ResultValidation(BaseModel):
     """The split the validation case belongs to (e.g., 'dev', 'test')."""
 
 
+class SerializedTranscript(BaseModel):
+    """Recorder column values for an already-serialized transcript.
+
+    Produced by the spooled pooled-passthrough path, which emits the compact
+    (pool-condensed, attachment-ref) form straight from the transcript spool
+    rather than building a `Transcript` and re-condensing it.
+    `_serialize_input` passes these values through unchanged.
+
+    Carried as a UTF-8 buffer, not `str`: the values go straight into a
+    parquet column, which pyarrow encodes as UTF-8 regardless, and a `str` of
+    non-ASCII text costs two bytes per character in memory.
+    """
+
+    # `bytearray`, and not a `bytes | bytearray` union: pydantic copies the
+    # buffer to satisfy a `bytes` member, which for a union it does while
+    # deciding which one matches. arbitrary_types_allowed because pydantic has
+    # no bytearray schema.
+    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
+
+    input_json: bytearray
+    """Value for the `input` column: transcript JSON, events pool-condensed."""
+
+    input_data_json: bytearray | None = None
+    """Value for the `input_data` column: `{messages, calls, attachments}`,
+    or None when nothing is pooled and there are no attachments."""
+
+
+class ReferenceTranscript(BaseModel):
+    """Recorder column values for a transcript stored by reference.
+
+    The row carries identity in existing columns (`transcript_id`,
+    `transcript_source_uri`); this adds only the content filters needed to
+    reproduce what the scanner saw. `content_json` None means the filters
+    were unavailable (parent-side degrade) and resolution defaults to full
+    content.
+    """
+
+    source_uri: str | None
+    transcript_id: str
+    content_json: str | None
+
+
+ReportInput = ScannerInput | SerializedTranscript | ReferenceTranscript
+"""What a `ResultReport` may carry: a live scanner input, or -- for spooled
+transcript handles -- pre-serialized column values.
+
+Deliberately NOT part of `ScannerInput`: that alias is public API, bounds
+`Loader[T]` and the `@scanner` type parameter, and drives the OpenAPI schema.
+"""
+
+
 class ResultReport(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
@@ -99,7 +151,7 @@ class ResultReport(BaseModel):
 
     input_ids: list[str]
 
-    input: ScannerInput
+    input: ReportInput
 
     result: Result | None
 
@@ -113,15 +165,47 @@ class ResultReport(BaseModel):
 
     def to_df_columns(
         self, *, pool_dedup: bool = True
-    ) -> dict[str, str | bool | int | float | None]:
-        columns: dict[str, str | bool | int | float | None] = {}
+    ) -> dict[str, str | bytes | bytearray | bool | int | float | None]:
+        # `input`/`input_data` are UTF-8 bytes: see `_serialize_input`.
+        columns: dict[str, str | bytes | bytearray | bool | int | float | None] = {}
 
         # input (transcript, event, or message)
         columns["input_type"] = self.input_type
         columns["input_ids"] = json.dumps(self.input_ids)
-        columns["input"], columns["input_data"] = _serialize_input(
-            self.input, self.input_type, pool_dedup=pool_dedup
-        )
+        if isinstance(self.input, ReferenceTranscript):
+            columns["input"] = None
+            columns["input_data"] = None
+            columns["input_storage"] = "reference"
+            columns["input_content"] = self.input.content_json
+        else:
+            input_bytes, data_bytes = _serialize_input(
+                self.input, self.input_type, pool_dedup=pool_dedup
+            )
+            oversized = max(
+                len(input_bytes) if isinstance(input_bytes, (bytes, bytearray)) else 0,
+                len(data_bytes) if isinstance(data_bytes, (bytes, bytearray)) else 0,
+            )
+            if oversized > constants_mod.RECORD_CELL_MAX_BYTES and isinstance(
+                self.input, Transcript
+            ):
+                # Serialized in the parent (materialized sources), so the
+                # spool-side guard never saw it. Content filters are not
+                # available here; resolution defaults to full content.
+                logger.warning(
+                    "Transcript %s: serialized input is %d bytes, over the "
+                    "parquet cell cap; recording a reference to the source.",
+                    self.input.transcript_id,
+                    oversized,
+                )
+                columns["input"] = None
+                columns["input_data"] = None
+                columns["input_storage"] = "reference"
+                columns["input_content"] = None
+            else:
+                columns["input"] = input_bytes
+                columns["input_data"] = data_bytes
+                columns["input_storage"] = "inline"
+                columns["input_content"] = None
 
         if self.result is not None:
             # result
@@ -211,27 +295,37 @@ class ResultReport(BaseModel):
 
 
 def _serialize_input(
-    input: ScannerInput,
+    input: ReportInput,
     input_type: ScannerInputNames,
     *,
     pool_dedup: bool,
-) -> tuple[str, str | None]:
+) -> tuple[bytes | bytearray, bytes | bytearray | None]:
     """Serialize scanner input, optionally condensing events.
+
+    Only "transcript" input pools events separately (second tuple element);
+    all other input types return None there. A `SerializedTranscript` is
+    already in column form and is passed through unchanged.
+
+    Every branch returns UTF-8 bytes so the `input` column holds one type
+    regardless of which path produced it.
 
     Returns:
         (input_json, input_data_json | None)
     """
+    if isinstance(input, SerializedTranscript):
+        return input.input_json, input.input_data_json
+
     if not pool_dedup or input_type not in ("transcript", "events"):
-        return to_json_str_compact(input), None
+        return to_json_bytes_compact(input), None
 
     if input_type == "transcript":
         assert isinstance(input, Transcript)
         condensed_events, events_data = condense_events(input.events)
         condensed = input.model_copy(update={"events": condensed_events})
-        return to_json_str_compact(condensed), to_json_str_compact(events_data)
+        return to_json_bytes_compact(condensed), to_json_bytes_compact(events_data)
 
     # input_type == "events"
     assert isinstance(input, Sequence)
     events = cast(Sequence[Event], input)
     condensed_events, events_data = condense_events(events)
-    return to_json_str_compact(condensed_events), to_json_str_compact(events_data)
+    return to_json_bytes_compact(condensed_events), to_json_bytes_compact(events_data)

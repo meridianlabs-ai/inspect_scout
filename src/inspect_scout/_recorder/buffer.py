@@ -404,11 +404,16 @@ def scanner_table(
     # 1. Promote null-type columns to string (unknown type)
     # 2. Force 'value' and 'transcript_score' columns to string since they can have
     #    mixed types across different result reports / transcripts
-    corrected_fields = []
+    corrected_fields: list[pa.Field[Any]] = []
     for field in schema:
         if pa.types.is_null(field.type):
-            # Promote null type to string
-            corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))
+            # Promote null type to large_string: every string column
+            # `_records_to_arrow` writes is large_string, and a plain
+            # `pa.string()` here would force later casts of large inline
+            # fragments to overflow 2 GiB offsets.
+            corrected_fields.append(
+                pa.field(field.name, pa.large_string(), nullable=True)
+            )
         elif field.name in {"value", "transcript_score"}:
             # Force mixed-type columns to string
             corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))
@@ -527,6 +532,11 @@ def _normalize_scalar(v: Any) -> Any:
         return v
     if isinstance(v, (str, int, float)):
         return v
+    # Pre-serialized UTF-8 JSON (the `input`/`input_data` columns). Passed
+    # through rather than JSON-encoded below, which would wrap it in quotes.
+    # `bytearray` because the spool hands its buffer over without copying it.
+    if isinstance(v, (bytes, bytearray)):
+        return v
     # datetime/date
     try:
         from datetime import date, datetime
@@ -559,7 +569,14 @@ def _records_to_arrow(records: list[dict[str, Any]]) -> "pa.Table":
         for record in norm:
             for key, value in record.items():
                 if value is not None:
-                    val_type = type(value).__name__
+                    # str and buffers are all text for a string column, so a
+                    # column mixing them is not "mixed": stringifying here
+                    # would write b'...' into the cell.
+                    val_type = (
+                        "str"
+                        if isinstance(value, (bytes, bytearray))
+                        else type(value).__name__
+                    )
                     if key not in columns_types:
                         columns_types[key] = set()
                     columns_types[key].add(val_type)
@@ -586,7 +603,10 @@ def _records_to_arrow(records: list[dict[str, Any]]) -> "pa.Table":
     for column in columns:
         values = [record.get(column) for record in norm]
         non_null_values = [value for value in values if value is not None]
-        if non_null_values and all(isinstance(value, str) for value in non_null_values):
+        if non_null_values and all(
+            isinstance(value, (str, bytes, bytearray)) for value in non_null_values
+        ):
+            # pyarrow decodes UTF-8 bytes into a string column directly
             arrays[column] = pa.array(values, type=pa.large_string())
         else:
             arrays[column] = pa.array(values)

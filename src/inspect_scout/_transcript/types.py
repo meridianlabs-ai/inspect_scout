@@ -1,3 +1,4 @@
+import json
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from os import PathLike
@@ -43,6 +44,25 @@ class TranscriptTooLargeError(Exception):
         super().__init__(f"Transcript {transcript_id}: {size} bytes exceeds {max_size}")
 
 
+class TranscriptTooLargeToRecordError(Exception):
+    """A serialized input cell exceeds what a parquet cell can store.
+
+    Raised at record-value construction; callers degrade the row to a
+    reference rather than treating this as a scan failure.
+    """
+
+    def __init__(self, transcript_id: str, cell: str, size: int):
+        from .._util import constants
+
+        self.transcript_id = transcript_id
+        self.cell = cell
+        self.size = size
+        super().__init__(
+            f"Transcript {transcript_id}: serialized '{cell}' is {size} bytes, "
+            f"over the {constants.RECORD_CELL_MAX_BYTES} byte parquet cell cap"
+        )
+
+
 EventType = Literal[
     "model",
     "tool",
@@ -84,6 +104,25 @@ class TranscriptContent:
 
     timeline: TimelineFilter = field(default=None)
     """Filter for which timeline events to include."""
+
+    def to_json(self) -> str:
+        """Filters as JSON, for the results `input_content` column."""
+        return json.dumps(
+            {
+                "messages": self.messages,
+                "events": self.events,
+                "timeline": self.timeline,
+            }
+        )
+
+    @classmethod
+    def from_json(cls, s: str) -> "TranscriptContent":
+        d = json.loads(s)
+        return cls(
+            messages=d.get("messages"),
+            events=d.get("events"),
+            timeline=d.get("timeline"),
+        )
 
 
 class BytesContextManager:

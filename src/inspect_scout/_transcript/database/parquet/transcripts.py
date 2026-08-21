@@ -640,13 +640,20 @@ class ParquetTranscriptsDB(TranscriptsDB):
             return transcript_ids
 
     def _get_content_size(self, full_path: str, transcript_id: str) -> int:
-        """Get decompressed size of messages+events+events_data columns for a transcript."""
+        """Decompressed size in BYTES of the content columns for a transcript.
+
+        `strlen` (bytes) rather than `LENGTH` (characters) because this gates
+        `SPOOL_THRESHOLD_BYTES`. The two agree on today's data -- the writer
+        serializes content with non-ASCII escaped, so the stored columns are
+        pure ASCII -- but the threshold is a byte budget, and that escaping is
+        not a property this function should depend on.
+        """
         assert self._conn is not None
         try:
             result = self._conn.execute(
                 """
-                SELECT COALESCE(LENGTH(messages), 0) + COALESCE(LENGTH(events), 0)
-                     + COALESCE(LENGTH(events_data), 0)
+                SELECT COALESCE(strlen(messages), 0) + COALESCE(strlen(events), 0)
+                     + COALESCE(strlen(events_data), 0)
                 FROM read_parquet(?) WHERE transcript_id = ?
                 """,
                 [escape_duckdb_glob(full_path), transcript_id],
@@ -654,7 +661,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         except duckdb.BinderException:
             result = self._conn.execute(
                 """
-                SELECT COALESCE(LENGTH(messages), 0) + COALESCE(LENGTH(events), 0)
+                SELECT COALESCE(strlen(messages), 0) + COALESCE(strlen(events), 0)
                 FROM read_parquet(?) WHERE transcript_id = ?
                 """,
                 [escape_duckdb_glob(full_path), transcript_id],

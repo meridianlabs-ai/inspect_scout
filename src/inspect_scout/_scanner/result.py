@@ -11,6 +11,7 @@ from shortuuid import uuid
 
 from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
 from inspect_scout._transcript.types import Transcript
+from inspect_scout._util import constants as constants_mod
 from inspect_scout._util._json import to_json_bytes_compact, to_json_str_compact
 
 logger = getLogger(__name__)
@@ -177,11 +178,34 @@ class ResultReport(BaseModel):
             columns["input_storage"] = "reference"
             columns["input_content"] = self.input.content_json
         else:
-            columns["input"], columns["input_data"] = _serialize_input(
+            input_bytes, data_bytes = _serialize_input(
                 self.input, self.input_type, pool_dedup=pool_dedup
             )
-            columns["input_storage"] = "inline"
-            columns["input_content"] = None
+            oversized = max(
+                len(input_bytes) if isinstance(input_bytes, (bytes, bytearray)) else 0,
+                len(data_bytes) if isinstance(data_bytes, (bytes, bytearray)) else 0,
+            )
+            if oversized > constants_mod.RECORD_CELL_MAX_BYTES and isinstance(
+                self.input, Transcript
+            ):
+                # Serialized in the parent (materialized sources), so the
+                # spool-side guard never saw it. Content filters are not
+                # available here; resolution defaults to full content.
+                logger.warning(
+                    "Transcript %s: serialized input is %d bytes, over the "
+                    "parquet cell cap; recording a reference to the source.",
+                    self.input.transcript_id,
+                    oversized,
+                )
+                columns["input"] = None
+                columns["input_data"] = None
+                columns["input_storage"] = "reference"
+                columns["input_content"] = None
+            else:
+                columns["input"] = input_bytes
+                columns["input_data"] = data_bytes
+                columns["input_storage"] = "inline"
+                columns["input_content"] = None
 
         if self.result is not None:
             # result

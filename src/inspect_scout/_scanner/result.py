@@ -139,7 +139,22 @@ class SerializedTranscript(BaseModel):
     `input` whose row carries an `input_data`."""
 
 
-ReportInput = ScannerInput | SerializedTranscript
+class ReferenceTranscript(BaseModel):
+    """Recorder column values for a transcript stored by reference.
+
+    The row carries identity in existing columns (`transcript_id`,
+    `transcript_source_uri`); this adds only the content filters needed to
+    reproduce what the scanner saw. `content_json` None means the filters
+    were unavailable (parent-side degrade) and resolution defaults to full
+    content.
+    """
+
+    source_uri: str | None
+    transcript_id: str
+    content_json: str | None
+
+
+ReportInput = ScannerInput | SerializedTranscript | ReferenceTranscript
 """What a `ResultReport` may carry: a live scanner input, or -- for spooled
 transcript handles -- pre-serialized column values.
 
@@ -176,9 +191,17 @@ class ResultReport(BaseModel):
         # input (transcript, event, or message)
         columns["input_type"] = self.input_type
         columns["input_ids"] = json.dumps(self.input_ids)
-        columns["input"], columns["input_data"] = _serialize_input(
-            self.input, self.input_type, pool_dedup=pool_dedup
-        )
+        if isinstance(self.input, ReferenceTranscript):
+            columns["input"] = None
+            columns["input_data"] = None
+            columns["input_storage"] = "reference"
+            columns["input_content"] = self.input.content_json
+        else:
+            columns["input"], columns["input_data"] = _serialize_input(
+                self.input, self.input_type, pool_dedup=pool_dedup
+            )
+            columns["input_storage"] = "inline"
+            columns["input_content"] = None
 
         if self.result is not None:
             # result

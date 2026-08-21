@@ -87,3 +87,38 @@ The data frame includes the following fields (note that some fields included emb
 | `scan_model_usage` | dict \[str, ModelUsage\]<br/><small>JSON</small> | Token usage by model for scan (only included when `rows = "transcripts"`). |
 
 : {tbl-colwidths=\[20,20,60\]}
+
+#### Referenced Input
+
+By default (`record_input="copy"`, the default `scan()` option) each result row is a self-contained copy of the scanner's input. Passing `record_input="reference"` instead records a pointer back to the source transcript, which keeps result files small when scanning large transcripts:
+
+``` python
+status = scan(
+    transcripts=transcripts_from("./logs"),
+    scanners=[ctf_environment(), java_tool_calls()],
+    record_input="reference",
+)
+```
+
+Whether a row is a copy or a reference is visible in the `input_storage` column, and the two other input columns are populated accordingly:
+
+| Column | Inline row (`input_storage = "inline"`) | Reference row (`input_storage = "reference"`) |
+|---|---|---|
+| `input` | Serialized scanner input | NULL |
+| `input_data` | Pools/attachments, or NULL | NULL |
+| `input_content` | NULL | Content filters used to produce the input, as one JSON string (e.g. `{"messages": "all", "events": ["model"], "timeline": null}`), or NULL |
+
+A NULL `input_content` on a reference row means the filters weren't available when the row was recorded, and resolving the reference falls back to full content (`messages="all", events="all"`).
+
+Even a `record_input="copy"` scan can produce reference rows: when a transcript's serialized input is too large to store inline, or otherwise can't be read, Scout degrades that row to a reference rather than failing the scan. Filter by `input_storage == "reference"` to find these rows regardless of the scan's `record_input` setting.
+
+Use `resolve_input_reference()` to turn a reference row back into the `Transcript` the scanner saw. It re-reads the source named by `transcript_source_uri`, selects the sample by `transcript_id`, and applies the recorded `input_content` filters. It's an `async` function, and it accepts any mapping of column name to value — for example a row obtained from the `duckdb` connection returned by `scan_results_db()`, or from a record batch returned by `scan_results_arrow()`:
+
+``` python
+from inspect_scout import resolve_input_reference
+
+if row["input_storage"] == "reference":
+    transcript = await resolve_input_reference(row)
+```
+
+Result files written before these columns existed have no `input_storage` column at all; reading such a file, every row is treated as inline.

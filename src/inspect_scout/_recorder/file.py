@@ -7,7 +7,7 @@ import tempfile
 from collections.abc import Iterator, Mapping
 from logging import getLogger
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence, cast
+from typing import TYPE_CHECKING, Any, Callable, Literal, NamedTuple, Sequence, cast
 
 import anyio
 import anyio.to_thread
@@ -46,6 +46,7 @@ from .._util.duckdb import create_parquet_view, restrict_external_access
 from .recorder import (
     ScanRecorder,
     ScanResultsArrow,
+    ScanResultsBatches,
     ScanResultsDB,
     ScanResultsDF,
     Status,
@@ -414,22 +415,13 @@ class FileRecorder(ScanRecorder):
                 streaming_batch_size: int = 1024,
                 exclude_columns: list[str] | None = None,
             ) -> pa.RecordBatchReader:
-                pa_path, pa_fs = self._resolve_parquet_source(scanner)
-
-                if pa_fs is not None:
-                    # Use pre_buffer=True to coalesce HTTP range requests,
-                    # then read() + to_reader() instead of iter_batches()
-                    # which doesn't support pre_buffer.
-                    parquet = pq.ParquetFile(pa_path, filesystem=pa_fs, pre_buffer=True)
-                else:
-                    parquet = pq.ParquetFile(pa_path)
+                # iter_batches() streams lazily for both local files and
+                # PyArrow cloud filesystems (which do ranged reads on demand),
+                # keeping memory bounded by streaming_batch_size.
+                parquet = _open_scanner_parquet(scan_path, scanner)
 
                 exclude = set(exclude_columns) if exclude_columns else set()
                 columns = [c for c in parquet.schema.names if c not in exclude]
-
-                if pa_fs is not None:
-                    table = parquet.read(columns=columns)
-                    return table.to_reader(max_chunksize=streaming_batch_size)
 
                 fields_by_name = {f.name: f for f in parquet.schema_arrow}
                 arrow_schema = pa.schema([fields_by_name[name] for name in columns])
@@ -457,7 +449,10 @@ class FileRecorder(ScanRecorder):
                 pa_path, pa_fs = self._resolve_parquet_source(scanner)
 
                 if pa_fs is not None:
-                    pf = pq.ParquetFile(pa_path, filesystem=pa_fs)
+                    # pre_buffer coalesces each row group's column-chunk range
+                    # requests; memory stays bounded by the row group size
+                    # (explicit since the default changed in pyarrow 25).
+                    pf = pq.ParquetFile(pa_path, filesystem=pa_fs, pre_buffer=True)
                     for i in range(pf.metadata.num_row_groups):
                         rg_ids = pf.read_row_group(i, columns=[id_column])
                         mask = pc.equal(rg_ids[id_column], id_value)
@@ -587,6 +582,39 @@ class FileRecorder(ScanRecorder):
             summary=status.summary,
             errors=status.errors,
             scanners=scanners,
+        )
+
+    @override
+    @staticmethod
+    def results_batches(
+        scan_location: str,
+        scanner: str,
+        *,
+        batch_size: int = 1024,
+        exclude_columns: list[str] | None = None,
+    ) -> ScanResultsBatches:
+        parquet = _open_scanner_parquet(UPath(scan_location), scanner)
+
+        exclude = set(exclude_columns) if exclude_columns else set()
+        columns = [c for c in parquet.schema.names if c not in exclude]
+
+        # The single-DataFrame path makes its value-cast decisions over the
+        # whole frame; compute them over the whole file up front (with a
+        # memory-bounded pre-pass) so per-batch transforms are identical.
+        prepass = _results_batches_prepass(parquet, columns)
+
+        def batches() -> Iterator[pd.DataFrame]:
+            for batch in parquet.iter_batches(batch_size=batch_size, columns=columns):
+                df = pa.Table.from_batches([batch]).to_pandas(
+                    types_mapper=pd.ArrowDtype
+                )
+                if prepass.value_type_uniform:
+                    df = _cast_value_column(df)
+                yield df
+
+        return ScanResultsBatches(
+            batches=batches(),
+            resultset_value_types_uniform=prepass.resultset_value_types_uniform,
         )
 
     @override
@@ -1130,6 +1158,138 @@ def _parquet_source(
             return io.BytesIO(f.read()), None
 
     return path_str, None
+
+
+class _ResultsBatchesPrepass(NamedTuple):
+    """File-scoped cast decisions for streamed result batches."""
+
+    value_type_uniform: bool
+    """Whether the top-level value_type column has one distinct non-null value."""
+
+    resultset_value_types_uniform: bool
+    """Whether the expanded resultset result value types are uniform."""
+
+
+def _results_batches_prepass(
+    parquet: pq.ParquetFile, columns: list[str]
+) -> _ResultsBatchesPrepass:
+    """Compute the file-scoped decisions that per-batch transforms depend on.
+
+    The single-DataFrame path decides value casting over the whole frame:
+    `_cast_value_column()` keys off the distinct value_type values it sees,
+    and resultset expansion applies the same logic to the *expanded* result
+    value types. Streamed batches are subsets of the file, so both decisions
+    are computed here over the whole file instead.
+
+    Reads one row group at a time, keeping only the distinct types seen so
+    far, so the pre-pass stays memory-bounded like the main read. The value
+    column is only read for row groups that contain resultset rows.
+
+    `columns` is the post-exclusion column list: decisions must reflect the
+    same columns the single-DataFrame path would see after exclusions.
+    """
+    if "value_type" not in columns:
+        return _ResultsBatchesPrepass(
+            value_type_uniform=False, resultset_value_types_uniform=False
+        )
+    has_value = "value" in columns
+
+    top_level_types: set[str] = set()
+    expanded_types: set[str] = set()
+
+    for row_group in range(parquet.metadata.num_row_groups):
+        value_type_column = parquet.read_row_group(
+            row_group, columns=["value_type"]
+        ).column("value_type")
+        top_level_types.update(
+            str(v)
+            for v in pc.unique(value_type_column.drop_null()).to_pylist()
+            if v is not None
+        )
+
+        # both decisions are "mixed" for good once two distinct types are
+        # seen, so stop reading row groups we can no longer learn from
+        if len(top_level_types) > 1 and (not has_value or len(expanded_types) > 1):
+            break
+
+        # expanded types are only needed until two distinct values are seen
+        if not has_value or len(expanded_types) > 1:
+            continue
+        resultset_mask = pc.equal(value_type_column, pa.scalar("resultset"))
+        if not pc.any(resultset_mask).as_py():
+            continue
+        values = (
+            parquet.read_row_group(row_group, columns=["value"])
+            .filter(resultset_mask)
+            .column("value")
+            .to_pylist()
+        )
+        for raw in values:
+            for result in _parse_resultset_value(raw):
+                if isinstance(result, dict):
+                    expanded_types.add(_result_value_type(result))
+
+    return _ResultsBatchesPrepass(
+        value_type_uniform=len(top_level_types) == 1,
+        resultset_value_types_uniform=len(expanded_types) == 1,
+    )
+
+
+def _parse_resultset_value(raw: Any) -> list[Any]:
+    """Parse a resultset row's raw value into its non-null Result dicts.
+
+    Mirrors how `_expand_resultset_rows()` treats the value column: JSON
+    strings are parsed (anything else yields no results), non-list payloads
+    are treated as a single result, and null elements are dropped (explode +
+    notna upstream).
+    """
+    parsed = json.loads(raw) if isinstance(raw, str) and raw else []
+    if not isinstance(parsed, list):
+        parsed = [parsed]
+    return [result for result in parsed if result is not None]
+
+
+def _result_value_type(result: dict[str, Any]) -> str:
+    """Value type of a raw Result dict, mirroring expansion's inference.
+
+    Mirrors `infer_value_type()` inside `_expand_resultset_rows()`, which
+    takes the value straight from the parsed Result dict just as this does,
+    so dict-valued results infer "object" on both paths.
+    Used by the file-level pre-pass to decide expanded value-type uniformity.
+    """
+    vtype = result.get("type")
+    if vtype is not None:
+        return str(vtype)
+    value = result.get("value")
+    if isinstance(value, bool):
+        return "boolean"
+    elif isinstance(value, (int, float)):
+        return "number"
+    elif isinstance(value, str):
+        return "string"
+    elif isinstance(value, list):
+        return "array"
+    elif isinstance(value, dict):
+        return "object"
+    else:
+        return "null"
+
+
+def _open_scanner_parquet(scan_dir: UPath, scanner: str) -> pq.ParquetFile:
+    """Open a scanner's parquet file for streaming reads.
+
+    Uses `_parquet_source()` scheme dispatch so cloud sources are read
+    lazily via HTTP range requests where PyArrow supports them. `pre_buffer`
+    is disabled explicitly (pyarrow >= 25 defaults it to True) because its
+    read-range cache retains every buffered range for the lifetime of the
+    read, so memory for a full `iter_batches()` pass grows to roughly the
+    file size rather than staying bounded by the batch size; we prefer
+    bounded memory over coalesced range requests here.
+    """
+    pa_path, pa_fs = _parquet_source(scan_dir / f"{scanner}.parquet")
+    if pa_fs is not None:
+        return pq.ParquetFile(pa_path, filesystem=pa_fs, pre_buffer=False)
+    return pq.ParquetFile(pa_path, pre_buffer=False)
 
 
 def _load_scanner_df(

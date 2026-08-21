@@ -1,4 +1,5 @@
 import abc
+from collections.abc import Iterator
 from dataclasses import dataclass
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Literal, Mapping, Sequence
@@ -83,6 +84,24 @@ class ScanResultsArrow(Status):
         id_value: Any,
         target_columns: list[str],
     ) -> dict[str, Any]: ...
+
+
+@dataclass
+class ScanResultsBatches:
+    """Streamed scanner result batches plus file-scoped facts about them."""
+
+    batches: Iterator[pd.DataFrame]
+    """Raw result DataFrame batches (top-level value column already cast)."""
+
+    resultset_value_types_uniform: bool
+    """Whether the value types of results inside resultset rows are uniform
+    across the entire file.
+
+    Resultset expansion casts the expanded value column based on whole-frame
+    type uniformity, so batch consumers must apply this file-level decision
+    to match the single-DataFrame path (a batch is a subset of the file, so
+    deciding per batch could cast where the whole-file path would not).
+    """
 
 
 @dataclass
@@ -280,6 +299,28 @@ class ScanRecorder(abc.ABC):
         scanner: str | None = None,
         exclude_columns: list[str] | None = None,
     ) -> ScanResultsDF: ...
+
+    @staticmethod
+    @abc.abstractmethod
+    def results_batches(
+        scan_location: str,
+        scanner: str,
+        *,
+        batch_size: int = 1024,
+        exclude_columns: list[str] | None = None,
+    ) -> ScanResultsBatches:
+        """Stream a scanner's results as raw DataFrame batches.
+
+        The returned `batches` iterator yields the same rows as the scanner's
+        `results_df()` DataFrame (value column cast appropriately) but in
+        batches of `batch_size` rows, with memory bounded by `batch_size`
+        rather than the size of the results. File-scoped facts that per-batch
+        transformations depend on are provided alongside the iterator.
+
+        Note that batches are read with synchronous I/O (unlike the other
+        recorder methods, which are async).
+        """
+        ...
 
     @staticmethod
     @abc.abstractmethod

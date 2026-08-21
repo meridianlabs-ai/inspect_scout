@@ -206,25 +206,20 @@ async def test_scanner_table_promotes_null_input_to_large_string(
 ) -> None:
     """An all-NULL `input` fragment must not downgrade a large_string column.
 
-    A per-transcript buffer file for a reference row has `input=None` for
-    every result, so its Arrow column is null-typed (`_records_to_arrow`
-    only picks `large_string` when a column has at least one non-null
-    value). `ds.dataset([...])` adopts the schema of the FIRST fragment in
-    `inputs`, so when that null-typed fragment comes first, the schema-
-    correction loop must promote it to `pa.large_string()` -- not
-    `pa.string()` -- since every other fragment's `input` column (e.g. a
-    large inline transcript) is already `large_string`, and casting it down
-    to `pa.string()` risks overflowing the 32-bit offset type.
+    A reference row's buffer file has `input=None` for every result, so its
+    Arrow column is null-typed. `ds.dataset([...])` adopts the FIRST
+    fragment's schema, so when the null-typed fragment comes first, the
+    schema-correction loop must promote it to `pa.large_string()` -- a
+    `pa.string()` cast of another fragment's large inline cells risks
+    overflowing the 32-bit offset type.
     """
     from upath import UPath
 
     scanner_name = "test_scanner"
 
-    # Build a standalone fragment with a non-null (large_string-typed)
-    # `input` column, compacted on its own so it can be fed back in via
-    # `extra_inputs` -- this pins its position in `scanner_table`'s
-    # `inputs = buffer_inputs + extra_paths` list to AFTER the buffer's
-    # fragment, deterministically, regardless of filesystem glob order.
+    # A fragment with a non-null (large_string) `input` column, compacted
+    # on its own so `extra_inputs` can pin it AFTER the buffer's fragment,
+    # deterministically, regardless of filesystem glob order.
     await recorder_buffer.record(
         TranscriptInfo(
             transcript_id="big-transcript",
@@ -243,8 +238,8 @@ async def test_scanner_table_promotes_null_input_to_large_string(
     large_string_table = pq.read_table(large_string_path)
     assert large_string_table.schema.field("input").type == pa.large_string()
 
-    # clear the buffer and write the reference row -- the only file left in
-    # the buffer dir, so it is unambiguously `buffer_inputs[0]`.
+    # the reference row becomes the only buffer file, so it is
+    # unambiguously `buffer_inputs[0]`
     sdir = recorder_buffer._buffer_dir / f"scanner={scanner_name}"
     for f in sdir.glob("*.parquet"):
         f.unlink()

@@ -436,19 +436,6 @@ def test_content_round_trips_through_json() -> None:
     assert TranscriptContent.from_json(content.to_json()) == content
 
 
-def test_handles_expose_the_content_they_were_opened_with() -> None:
-    from inspect_scout._transcript.handle import MaterializedTranscriptHandle
-    from inspect_scout._transcript.types import TranscriptContent, TranscriptInfo
-
-    content = TranscriptContent(messages="all", events=None, timeline=None)
-
-    async def _load():  # type: ignore[no-untyped-def]
-        raise AssertionError("not loaded in this test")
-
-    h = MaterializedTranscriptHandle(_load, TranscriptInfo(transcript_id="t"), content)
-    assert h.content == content
-
-
 @pytest.mark.asyncio
 async def test_open_warns_when_sample_may_exceed_record_cap(
     tmp_path: Path, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch

@@ -317,6 +317,18 @@ def assistant_refusals() -> Scanner[list[ChatMessage]]:
     return scan
 ```
 
+### Item Metadata
+
+Loaders that yield synthetic per-item `Transcript` objects can attach per-item context (e.g. input provenance) via `Transcript.metadata`. Loader-authored metadata is automatically merged into the `metadata` of results produced for that item, with scanner-authored keys taking precedence.
+
+The item's metadata must be a new dict — don't mutate the source transcript's metadata in place (the source transcript is shared with other scanners, and metadata passed through from it unchanged is not merged). For example:
+
+``` python
+yield transcript.model_copy(
+    update={"metadata": {"provenance": provenance}}
+)
+```
+
 ## Packaging {#packaging}
 
 A convenient way to distribute scanners is to include them in a Python package. This makes it very easy for others to use your scanner and ensure they have all of the required dependencies.

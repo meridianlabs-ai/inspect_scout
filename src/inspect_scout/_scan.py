@@ -1049,6 +1049,20 @@ async def _scan_one(
             async with span("scan"):
                 result = await job.scanner(loader_result)
 
+            # merge loader-authored item metadata into results (scanner keys
+            # win); skip metadata passed through from the source transcript
+            if (
+                result is not None
+                and isinstance(loader_result, Transcript)
+                and loader_result.metadata
+                and loader_result.metadata is not job.union_transcript.metadata
+            ):
+                for r in result if isinstance(result, list) else [result]:
+                    r.metadata = {
+                        **loader_result.metadata,
+                        **(r.metadata or {}),
+                    }
+
             # handle lists
             final_result = as_resultset(result) if isinstance(result, list) else result
 

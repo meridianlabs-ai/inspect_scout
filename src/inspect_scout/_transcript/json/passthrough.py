@@ -21,8 +21,9 @@ from inspect_ai.event._pool import (
 )
 from pydantic import JsonValue
 
+from ..._util import constants as constants_mod
 from ..._util._json import to_json_bytes_compact
-from ..types import Transcript, TranscriptInfo
+from ..types import Transcript, TranscriptInfo, TranscriptTooLargeToRecordError
 from .pool import slice_positions
 from .reducer import ATTACHMENT_REF_BYTES
 from .spool import ByteSpool
@@ -154,14 +155,22 @@ def pooled_passthrough(
             )
         emit('],"timelines":[]}')
 
+        if len(envelope) > constants_mod.RECORD_CELL_MAX_BYTES:
+            raise TranscriptTooLargeToRecordError(
+                info.transcript_id, "input", len(envelope)
+            )
+
         envelope_json = envelope.read()
     finally:
         envelope.close()
 
-    return envelope_json, _emit_input_data(result, surviving, attachment_ids)
+    return envelope_json, _emit_input_data(
+        info.transcript_id, result, surviving, attachment_ids
+    )
 
 
 def _emit_input_data(
+    transcript_id: str,
     result: StreamParseResult,
     surviving: dict[str, list[int]],
     attachment_ids: set[str],
@@ -215,6 +224,12 @@ def _emit_input_data(
             spool.write(b"}")
 
         spool.write(b"}")
+
+        if len(spool) > constants_mod.RECORD_CELL_MAX_BYTES:
+            raise TranscriptTooLargeToRecordError(
+                transcript_id, "input_data", len(spool)
+            )
+
         return spool.read()
     finally:
         spool.close()

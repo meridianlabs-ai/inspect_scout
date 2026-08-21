@@ -4,6 +4,7 @@ import secrets
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
+from unittest.mock import patch
 
 from inspect_ai._util.kvstore import inspect_kvstore
 
@@ -19,6 +20,18 @@ def temp_kvstore() -> Iterator[str]:
     try:
         yield name
     finally:
-        with inspect_kvstore(name) as kvstore:
-            path = kvstore.filename
-        Path(path).unlink()
+        # filename is computed at construction; no need to open the store
+        # (which would create the file) just to delete it
+        Path(inspect_kvstore(name).filename).unlink(missing_ok=True)
+
+
+@contextmanager
+def temp_active_scans_store() -> Iterator[str]:
+    """Redirect the active-scans store to a temp kvstore, cleaned up on exit.
+
+    Keeps scan-running tests out of the developer's live scout_active_scans
+    store. Yields the temporary kvstore name.
+    """
+    with temp_kvstore() as name:
+        with patch("inspect_scout._recorder.active_scans_store._STORE_NAME", name):
+            yield name

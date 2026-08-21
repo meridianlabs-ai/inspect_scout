@@ -318,16 +318,31 @@ class FileRecorder(ScanRecorder):
         async with AsyncFilesystem() as fs:
             for scanner in sorted(scan_spec.scanners.keys()):
                 output_path = _scanner_parquet_file(scan_dir, scanner)
-                parquet_bytes = await _compact_with_prior(
-                    fs, scan_buffer_dir, scanner, prior=UPath(output_path)
-                )
-                if parquet_bytes is not None:
-                    if remote:
-                        await fs.write_file(output_path, parquet_bytes)
-                    else:
-                        tmp_path = f"{output_path}.tmp"
-                        await fs.write_file(tmp_path, parquet_bytes)
-                        filesystem(scan_dir.as_posix()).mv(tmp_path, output_path)
+                if remote:
+                    tmp_fd, compact_file = tempfile.mkstemp(suffix=".parquet")
+                    os.close(tmp_fd)
+                else:
+                    compact_file = f"{output_path}.tmp"
+                try:
+                    if await _compact_with_prior(
+                        fs,
+                        scan_buffer_dir,
+                        scanner,
+                        prior=UPath(output_path),
+                        output_file=compact_file,
+                    ):
+                        if remote:
+                            with open(compact_file, "rb") as f:
+                                await fs.write_file_streaming(output_path, f)
+                        else:
+                            filesystem(scan_dir.as_posix()).mv(
+                                compact_file, output_path
+                            )
+                finally:
+                    # remove leftovers: the remote-upload temp file, or a
+                    # partially-written local `.tmp` after a failure (after
+                    # a successful local rename the path no longer exists)
+                    UPath(compact_file).unlink(missing_ok=True)
 
             # sync summary and errors
             await _sync_status_files(fs, scan_dir, scan_buffer_dir, scan_spec, complete)
@@ -752,9 +767,17 @@ def _clear_prior_parquet_cache(scan_location: str) -> None:
 
 
 async def _compact_with_prior(
-    fs: AsyncFilesystem, scan_buffer_dir: UPath, scanner: str, *, prior: UPath
-) -> bytes | None:
+    fs: AsyncFilesystem,
+    scan_buffer_dir: UPath,
+    scanner: str,
+    *,
+    prior: UPath,
+    output_file: str,
+) -> bool:
     """Compact buffer parquets, merging in a prior compacted output (if any).
+
+    The compacted result is streamed to `output_file` (a local path);
+    returns True if it was written (False when there was nothing to compact).
 
     `scanner_table` requires uniform local paths and does blocking CPU +
     local file work, so remote priors are downloaded through the async
@@ -778,7 +801,9 @@ async def _compact_with_prior(
             cache[scanner] = None
         extra = [UPath(local_prior)] if local_prior is not None else None
     return await anyio.to_thread.run_sync(
-        functools.partial(scanner_table, scan_buffer_dir, scanner, extra_inputs=extra)
+        functools.partial(
+            scanner_table, scan_buffer_dir, scanner, output_file, extra_inputs=extra
+        )
     )
 
 

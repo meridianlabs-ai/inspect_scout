@@ -316,9 +316,20 @@ def resolve_success_value(value: bool | None, score: JsonValue | None) -> bool |
 def scanner_table(
     buffer_dir: UPath,
     scanner: str,
+    output_file: str,
     *,
     extra_inputs: list[UPath] | None = None,
-) -> bytes | None:
+) -> bool:
+    """Compact per-transcript buffer parquets into a single parquet file.
+
+    Streams batches from the buffer (and any `extra_inputs`) directly into
+    `output_file` (a local path), so peak memory stays bounded regardless of
+    the total size of the compacted output.
+
+    Returns:
+        True if `output_file` was written, False if there was nothing to
+        compact (in which case no file is created).
+    """
     import pyarrow as pa
     import pyarrow.dataset as ds
     import pyarrow.parquet as pq
@@ -369,7 +380,7 @@ def scanner_table(
         # avoid creating a schema-less empty parquet when there's nothing to
         # compact. If you *must* emit a file in that case, you need a known
         # schema.
-        return None
+        return False
     # set of paths whose batches need transcript_id filtering against
     # `buffer_tids` (paths NOT in the buffer dir → from extra_inputs)
     extra_paths_set: set[str] = set(extra_paths)
@@ -418,69 +429,63 @@ def scanner_table(
         accumulated.clear()
         accumulated_bytes = 0
 
-    # Create an in-memory buffer (use PyArrow's native type for efficiency)
-    buffer = pa.BufferOutputStream()
-    writer = pq.ParquetWriter(
-        buffer,
+    with pq.ParquetWriter(
+        output_file,
         schema,
         compression="zstd",
         use_dictionary=True,
-    )
+    ) as writer:
+        # iterate materialized batches; to keep memory in check we use a small batch_size.
+        # We iterate fragments and manually cast to handle schema inconsistencies
+        for fragment in dataset.get_fragments():
+            # batches from `extra_inputs` get filtered against buffer_tids
+            # so a transcript represented in the buffer doesn't double-count
+            is_extra = fragment.path in extra_paths_set
+            for batch in fragment.to_batches(
+                batch_size=DEFAULT_BATCH_ROWS,
+                use_threads=False,
+            ):
+                # Cast batch to corrected schema to handle type mismatches
+                # (e.g., null columns promoted to string, or missing columns)
+                try:
+                    arrays = []
+                    for field in schema:
+                        if field.name in batch.schema.names:
+                            # Column exists - cast it to target type
+                            col = batch.column(field.name)
+                            arrays.append(col.cast(field.type))
+                        else:
+                            # Column missing - create null array
+                            arrays.append(
+                                pa.array([None] * len(batch), type=field.type)
+                            )
 
-    # iterate materialized batches; to keep memory in check we use a small batch_size.
-    # We iterate fragments and manually cast to handle schema inconsistencies
-    for fragment in dataset.get_fragments():
-        # batches from `extra_inputs` get filtered against buffer_tids
-        # so a transcript represented in the buffer doesn't double-count
-        is_extra = fragment.path in extra_paths_set
-        for batch in fragment.to_batches(
-            batch_size=DEFAULT_BATCH_ROWS,
-            use_threads=False,
-        ):
-            # Cast batch to corrected schema to handle type mismatches
-            # (e.g., null columns promoted to string, or missing columns)
-            try:
-                arrays = []
-                for field in schema:
-                    if field.name in batch.schema.names:
-                        # Column exists - cast it to target type
-                        col = batch.column(field.name)
-                        arrays.append(col.cast(field.type))
-                    else:
-                        # Column missing - create null array
-                        arrays.append(pa.array([None] * len(batch), type=field.type))
+                    batch = pa.RecordBatch.from_arrays(arrays, schema=schema)
+                except Exception as e:
+                    raise RuntimeError(f"Failed to cast batch to schema: {e}") from e
 
-                batch = pa.RecordBatch.from_arrays(arrays, schema=schema)
-            except Exception as e:
-                raise RuntimeError(f"Failed to cast batch to schema: {e}") from e
+                # drop rows whose transcript_id is already covered by a
+                # buffer file (the buffer is authoritative for those tids)
+                if is_extra and buffer_tid_array is not None:
+                    mask = pc.invert(
+                        pc.is_in(
+                            batch.column("transcript_id"), value_set=buffer_tid_array
+                        )
+                    )
+                    batch = batch.filter(mask)
+                    if batch.num_rows == 0:
+                        continue
 
-            # drop rows whose transcript_id is already covered by a
-            # buffer file (the buffer is authoritative for those tids)
-            if is_extra and buffer_tid_array is not None:
-                mask = pc.invert(
-                    pc.is_in(batch.column("transcript_id"), value_set=buffer_tid_array)
-                )
-                batch = batch.filter(mask)
-                if batch.num_rows == 0:
-                    continue
+                size = batch.nbytes
+                if accumulated_bytes and accumulated_bytes + size > MAX_BYTES:
+                    flush_accumulated(writer)
+                accumulated.append(batch)
+                accumulated_bytes += size
 
-            size = batch.nbytes
-            if accumulated_bytes and accumulated_bytes + size > MAX_BYTES:
-                flush_accumulated(writer)
-            accumulated.append(batch)
-            accumulated_bytes += size
+        # Final flush. If no rows were seen, this still leaves us with an empty file (schema only).
+        flush_accumulated(writer)
 
-    # Final flush. If no rows were seen, this still leaves us with an empty file (schema only).
-    flush_accumulated(writer)
-    writer.close()
-
-    # TODO: If we changed the signature of this function from:
-    #   bytes | None
-    #     to
-    #   pa.Buffer | None
-    # We could avoid the copy (that to_pybytes does) altogether.
-    # Keep in mind that the previous BytesIO.getvalue() made a copy too.
-    return buffer.getvalue().to_pybytes()
+    return True
 
 
 def _persist_scan_summary(buffer_dir: UPath, summary: Summary) -> None:

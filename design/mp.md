@@ -25,7 +25,7 @@ The architecture coordinates processes through three mechanisms (see `_mp_common
 A dataclass containing immutable configuration (parse/scan functions, task counts, IPC primitives, semaphore registry). Serialized and passed to workers at spawn time. Never mutated after initialization.
 
 ### 2. Multiprocessing Queues
-Two unbounded queues handle data flow:
+Two bounded queues handle data flow:
 - **parse_job_queue** (Main → Workers): Lightweight ParseJob metadata with `None` sentinels for completion
 - **upstream_queue** (Workers → Main): Multiplexed stream of results, metrics, semaphore requests, and control messages (using strongly-typed dataclasses: `ResultItem`, `MetricsItem`, `SemaphoreRequest`, `WorkerComplete`, `ShutdownSentinel`, `Exception`). Main uses pattern matching to discriminate message types.
 

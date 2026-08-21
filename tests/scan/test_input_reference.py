@@ -92,24 +92,18 @@ def test_oversized_transcript_records_reference_and_scan_completes(
 ) -> None:
     """A real scan over an oversized transcript must complete, not abort.
 
-    Regression baseline: before this branch, one oversized transcript ended
-    the scan `complete: false` with an empty `_errors.jsonl` (verified on a
-    real 6-sample log -- 5 recorded, the scan uncompletable). With the cap
-    monkeypatched to make every cell "oversized", the scan must still
-    complete, the scanner's real result must be preserved, and the row must
-    degrade to a `reference` input row instead of an inline one.
+    Regression baseline: an oversized transcript used to end the scan
+    `complete: false` with an empty `_errors.jsonl` and an unresumable
+    location. With the cap monkeypatched so every cell is "oversized", the
+    scan must complete, the scanner's real result must be preserved, and
+    the row must degrade to a `reference` input row instead of an inline one.
 
-    The scanner must be handle-capable (`llm_scanner`, like the streaming
-    tests in `test_scan_streaming.py`) so the job is streaming-eligible and
-    actually runs through `SpooledTranscriptHandle` -> `pooled_passthrough`
-    -> `TranscriptTooLargeToRecordError` -> `_transcript_for_record`'s
-    degrade path (Tasks 4-5). A plain `Transcript`-typed scanner is not
-    streaming-eligible: the pipeline materializes it up front via
-    `reader.read()`, which never reaches that guard at all -- it would
-    instead (accidentally) hit the pre-existing, unrelated oversized-cell
-    fallback inside `ResultReport.to_df_columns` (which has no content
-    filters available and always records `input_content=None`), so it
-    would not actually exercise -- or guard -- this PR's mechanism.
+    The scanner must be handle-capable (`llm_scanner`) so the job is
+    streaming-eligible and runs the spool-side guard
+    (`pooled_passthrough` -> `TranscriptTooLargeToRecordError` ->
+    `_scan_one`'s record-path degrade). A plain `Transcript`-typed scanner
+    materializes up front and would only exercise the separate parent-side
+    backstop in `ResultReport.to_df_columns`.
     """
     monkeypatch.setattr(constants_mod, "SPOOL_THRESHOLD_BYTES", 0)  # force spooled
     monkeypatch.setattr(

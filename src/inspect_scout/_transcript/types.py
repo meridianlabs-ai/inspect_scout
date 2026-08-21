@@ -1,3 +1,4 @@
+import json
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from os import PathLike
@@ -115,6 +116,27 @@ class TranscriptContent:
     honored when every scanner in the scan declines; a scanner sharing a
     read with one that wants metadata receives it anyway.
     """
+
+    def to_json(self) -> str:
+        """Filters as JSON, for the results `input_content` column."""
+        return json.dumps(
+            {
+                "messages": self.messages,
+                "events": self.events,
+                "timeline": self.timeline,
+                "metadata": self.metadata,
+            }
+        )
+
+    @classmethod
+    def from_json(cls, s: str) -> "TranscriptContent":
+        d = json.loads(s)
+        return cls(
+            messages=d.get("messages"),
+            events=d.get("events"),
+            timeline=d.get("timeline"),
+            metadata=d.get("metadata"),
+        )
 
 
 class BytesContextManager:

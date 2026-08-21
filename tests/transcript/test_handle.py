@@ -271,3 +271,23 @@ async def test_spooled_handle_cancel_mid_stream_releases_fds(tmp_path: Path) -> 
         result.blobs.get("x")
     with pytest.raises(RuntimeError, match="closed"):
         await handle.load()
+
+
+def test_content_round_trips_through_json() -> None:
+    from inspect_scout._transcript.types import TranscriptContent
+
+    content = TranscriptContent(messages="all", events=["model"], timeline=None)
+    assert TranscriptContent.from_json(content.to_json()) == content
+
+
+def test_handles_expose_the_content_they_were_opened_with() -> None:
+    from inspect_scout._transcript.handle import MaterializedTranscriptHandle
+    from inspect_scout._transcript.types import TranscriptContent, TranscriptInfo
+
+    content = TranscriptContent(messages="all", events=None, timeline=None)
+
+    async def _load():  # type: ignore[no-untyped-def]
+        raise AssertionError("not loaded in this test")
+
+    h = MaterializedTranscriptHandle(_load, TranscriptInfo(transcript_id="t"), content)
+    assert h.content == content

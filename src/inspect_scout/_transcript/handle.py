@@ -22,9 +22,12 @@ from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 
 from .json.stream_parse import StreamParseResult, replay_events, replay_messages
-from .types import Transcript, TranscriptInfo
+from .types import Transcript, TranscriptContent, TranscriptInfo
 
 _CHECKPOINT_INTERVAL = 64
+
+_DEFAULT_CONTENT = TranscriptContent(None, None, None)
+"""Fallback for handles constructed without an explicit content filter (tests)."""
 
 
 class TranscriptHandle(Protocol):
@@ -44,6 +47,11 @@ class TranscriptHandle(Protocol):
         ``sample_metadata``/``target``/``scores`` from the spool only in
         ``load()``, so those fields can differ from the loaded transcript's.
         """
+        ...
+
+    @property
+    def content(self) -> TranscriptContent:
+        """Content filters the handle was opened with."""
         ...
 
     def messages(self) -> AsyncIterator[ChatMessage]:
@@ -76,10 +84,14 @@ class MaterializedTranscriptHandle:
     """Handle that loads a whole Transcript on first use (small-file path)."""
 
     def __init__(
-        self, load_fn: Callable[[], Awaitable[Transcript]], info: TranscriptInfo
+        self,
+        load_fn: Callable[[], Awaitable[Transcript]],
+        info: TranscriptInfo,
+        content: TranscriptContent = _DEFAULT_CONTENT,
     ) -> None:
         self._load_fn = load_fn
         self._info = info
+        self.content = content
         self._transcript: Transcript | None = None
         self._closed = False
         self._lock = anyio.Lock()
@@ -138,10 +150,12 @@ class SpooledTranscriptHandle:
         info: TranscriptInfo,
         parse: Callable[[], Awaitable[StreamParseResult]],
         load_fallback: Callable[[], Awaitable[Transcript]],
+        content: TranscriptContent = _DEFAULT_CONTENT,
     ) -> None:
         self._info = info
         self._parse = parse
         self._load_fallback = load_fallback
+        self.content = content
         self._result: StreamParseResult | None = None
         self._fallback_transcript: Transcript | None = None
         self._transcript: Transcript | None = None

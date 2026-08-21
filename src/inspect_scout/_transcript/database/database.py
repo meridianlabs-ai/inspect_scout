@@ -117,7 +117,7 @@ class TranscriptsView(abc.ABC):
         async def load_fn() -> Transcript:
             return await self.read(t, content)
 
-        return MaterializedTranscriptHandle(load_fn, t)
+        return MaterializedTranscriptHandle(load_fn, t, content)
 
     @abc.abstractmethod
     async def read_messages_events(

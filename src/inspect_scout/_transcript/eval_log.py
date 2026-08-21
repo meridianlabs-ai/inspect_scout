@@ -603,7 +603,7 @@ class EvalLogTranscriptsView(TranscriptsView):
 
         if recorder_type_for_location(t.source_uri) is not EvalRecorder:
             # JSON format not yet supported for streaming reads.
-            return MaterializedTranscriptHandle(load, t)
+            return MaterializedTranscriptHandle(load, t, content)
 
         zip_reader, entry = await self._get_zip_reader_and_entry(t)
 
@@ -614,7 +614,7 @@ class EvalLogTranscriptsView(TranscriptsView):
             entry.uncompressed_size <= constants_mod.SPOOL_THRESHOLD_BYTES
             or content.timeline is not None
         ):
-            return MaterializedTranscriptHandle(load, t)
+            return MaterializedTranscriptHandle(load, t, content)
 
         # A subdirectory of the files cache, not the cache root: on Windows
         # the spool files stay listed until their fds close, and the cache's
@@ -637,7 +637,7 @@ class EvalLogTranscriptsView(TranscriptsView):
                     metadata=content.metadata is not False,
                 )
 
-        return SpooledTranscriptHandle(t, parse, load)
+        return SpooledTranscriptHandle(t, parse, load, content)
 
     @override
     async def read_messages_events(

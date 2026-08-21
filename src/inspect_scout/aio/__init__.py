@@ -6,6 +6,7 @@ from .._scan import (
 from .._scanlist import scan_list_async
 from .._scanresults import (
     scan_results_arrow_async,
+    scan_results_batches_async,
     scan_results_df_async,
     scan_status_async,
 )
@@ -18,4 +19,5 @@ __all__ = [
     "scan_status_async",
     "scan_results_df_async",
     "scan_results_arrow_async",
+    "scan_results_batches_async",
 ]

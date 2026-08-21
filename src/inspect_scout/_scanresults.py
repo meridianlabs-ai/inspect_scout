@@ -1,4 +1,6 @@
+import asyncio
 import json
+from collections.abc import AsyncIterator, Iterator
 from typing import Any, Literal
 
 import pandas as pd
@@ -145,6 +147,103 @@ async def scan_results_df_async(
         errors=results.errors,
         scanners=scanners,
     )
+
+
+def scan_results_batches(
+    scan_location: str,
+    scanner: str,
+    *,
+    batch_size: int = 1024,
+    exclude_columns: list[str] | None = None,
+    rows: Literal["results", "transcripts"] = "results",
+) -> Iterator[pd.DataFrame]:
+    """Stream a scanner's results as pandas DataFrame batches.
+
+    Concatenating all batches yields the same rows as
+    `scan_results_df(scan_location, scanner=scanner, rows=rows)`, but memory
+    remains bounded by `batch_size` rather than scaling with the size of the
+    scanner's results. This holds for local paths and for cloud locations
+    PyArrow can read natively (`s3://`, `gs://`, `abfs://`), which are read
+    with HTTP range requests. Remote protocols PyArrow has no native
+    filesystem for (e.g. `az://`) are the exception: the parquet file is
+    downloaded in full before batching, so memory scales with file size.
+
+    Note that batches are produced with synchronous parquet I/O. To consume
+    from async code, drive the iterator from a worker thread or use
+    `scan_results_batches_async()`.
+
+    Args:
+        scan_location: Location of scan (e.g. directory or s3 bucket).
+        scanner: Scanner name.
+        batch_size: Maximum number of parquet rows read per batch (note that
+            resultset expansion can yield more than `batch_size` rows per batch).
+        exclude_columns: List of column names to exclude when reading parquet files.
+            Useful for reducing memory usage by skipping large unused columns.
+        rows: Row granularity. Specify "results" to yield a row for each scanner result
+            (potentially multiple per transcript); Specify "transcript" to yield a row
+            for each transcript (in which case multiple results will be packed
+            into the `value` field as a JSON list of `Result`).
+
+    Yields:
+        DataFrames of (up to expansion) `batch_size` result rows.
+    """
+    recorder = scan_recorder_type_for_location(scan_location)
+    results = recorder.results_batches(
+        scan_location, scanner, batch_size=batch_size, exclude_columns=exclude_columns
+    )
+
+    # same transformations (and order) as scan_results_df(), with file-scoped
+    # decisions supplied by the recorder's pre-pass
+    for df in results.batches:
+        df = _expand_events_in_df(df)
+        if rows == "results":
+            df = _expand_resultset_rows(
+                df, value_types_uniform=results.resultset_value_types_uniform
+            )
+        yield df
+
+
+async def scan_results_batches_async(
+    scan_location: str,
+    scanner: str,
+    *,
+    batch_size: int = 1024,
+    exclude_columns: list[str] | None = None,
+    rows: Literal["results", "transcripts"] = "results",
+) -> AsyncIterator[pd.DataFrame]:
+    """Stream a scanner's results as pandas DataFrame batches.
+
+    Async variant of `scan_results_batches()`: each batch (synchronous parquet
+    I/O and pandas conversion) is pulled in a worker thread so the event loop
+    is not blocked.
+
+    Args:
+        scan_location: Location of scan (e.g. directory or s3 bucket).
+        scanner: Scanner name.
+        batch_size: Maximum number of parquet rows read per batch (note that
+            resultset expansion can yield more than `batch_size` rows per batch).
+        exclude_columns: List of column names to exclude when reading parquet files.
+            Useful for reducing memory usage by skipping large unused columns.
+        rows: Row granularity. Specify "results" to yield a row for each scanner result
+            (potentially multiple per transcript); Specify "transcript" to yield a row
+            for each transcript (in which case multiple results will be packed
+            into the `value` field as a JSON list of `Result`).
+
+    Yields:
+        DataFrames of (up to expansion) `batch_size` result rows.
+    """
+    batches = scan_results_batches(
+        scan_location,
+        scanner,
+        batch_size=batch_size,
+        exclude_columns=exclude_columns,
+        rows=rows,
+    )
+    while True:
+        batch = await asyncio.to_thread(next, batches, None)
+        if batch is None:
+            return
+        yield batch
 
 
 def scan_results_db(
@@ -357,7 +456,9 @@ def _expand_events_in_df(df: pd.DataFrame) -> pd.DataFrame:
     return df.drop(columns=["input_data"])
 
 
-def _expand_resultset_rows(df: pd.DataFrame) -> pd.DataFrame:
+def _expand_resultset_rows(
+    df: pd.DataFrame, *, value_types_uniform: bool | None = None
+) -> pd.DataFrame:
     """
     Expand rows where value_type == "resultset" into multiple rows.
 
@@ -370,6 +471,11 @@ def _expand_resultset_rows(df: pd.DataFrame) -> pd.DataFrame:
 
     Args:
         df: DataFrame potentially containing resultset rows
+        value_types_uniform: Whether the expanded result value types are
+            uniform. Streaming callers supply this as a file-level decision
+            (a batch is a subset of the file, so deciding per batch could
+            cast where the whole-file path would not). None (the default)
+            decides from this DataFrame.
 
     Returns:
         DataFrame with resultset rows expanded
@@ -416,27 +522,21 @@ def _expand_resultset_rows(df: pd.DataFrame) -> pd.DataFrame:
     # Use max_level=1 to prevent deep flattening of nested structures within value
     result_fields = pd.json_normalize(expanded["value"].tolist(), max_level=1)
 
-    # Handle case where value field is an object/dict that got flattened
+    # Handle case where value field is an object/dict that got flattened.
     # Even with max_level=1, pd.json_normalize flattens first-level dicts,
-    # creating columns like value.confidence, value.message_numbers
-    # We need to reconstruct the value column from these flattened columns
+    # creating columns like value.confidence, value.message_numbers. Take the
+    # value column straight from the parsed Result dicts instead: normalize
+    # only reliably produces a plain "value" column when no result in the
+    # frame is dict-valued, and when results mix dict and scalar values it
+    # leaves the dict rows' "value" as NaN (their contents stranded in the
+    # flattened columns), which would otherwise be inferred as "number".
     value_cols = [col for col in result_fields.columns if col.startswith("value.")]
-    if value_cols and "value" not in result_fields.columns:
-        # Reconstruct value column as a dict from the flattened columns
-        def reconstruct_value(row: pd.Series) -> dict[str, Any]:
-            """Reconstruct the value dict from flattened value.* columns."""
-            value_dict = {}
-            for col in value_cols:
-                # Remove 'value.' prefix to get the field name
-                field_name = col.replace("value.", "")
-                val = row[col]
-                # Only include non-NA values (handles mixed schemas)
-                if not (isinstance(val, float) and pd.isna(val)):
-                    value_dict[field_name] = val
-            return value_dict
-
-        result_fields["value"] = result_fields.apply(reconstruct_value, axis=1)
-        # Drop the flattened columns now that we've reconstructed value
+    if value_cols:
+        result_fields["value"] = [
+            result.get("value") if isinstance(result, dict) else None
+            for result in expanded["value"]
+        ]
+        # Drop the flattened columns now that we've restored value
         result_fields = result_fields.drop(columns=value_cols)
 
     # Drop the old result-related columns from expanded dataframe
@@ -533,8 +633,11 @@ def _expand_resultset_rows(df: pd.DataFrame) -> pd.DataFrame:
         expanded["message_references"] = "[]"
         expanded["event_references"] = "[]"
 
-    # Apply type casting to the value column based on value_type
-    expanded = _cast_value_column(expanded)
+    # Apply type casting to the value column based on value_type (skipped
+    # when a file-level decision says types are mixed overall; when uniform,
+    # this frame is a uniform subset so the cast is identical)
+    if value_types_uniform is not False:
+        expanded = _cast_value_column(expanded)
 
     # NULL out scan execution fields to avoid incorrect aggregation
     # (these represent the scan execution, not individual results)

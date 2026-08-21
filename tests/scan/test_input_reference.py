@@ -1,5 +1,7 @@
 """Degrade-to-reference behavior of the record path."""
 
+from __future__ import annotations
+
 import tempfile
 from pathlib import Path
 

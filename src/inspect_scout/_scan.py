@@ -81,6 +81,7 @@ from ._scanjob_config import ScanJobConfig
 from ._scanner.loader import config_for_loader
 from ._scanner.result import (
     Error,
+    ReferenceTranscript,
     ReportInput,
     Result,
     ResultReport,
@@ -105,6 +106,7 @@ from ._transcript.types import (
     Transcript,
     TranscriptContent,
     TranscriptInfo,
+    TranscriptTooLargeToRecordError,
 )
 from ._transcript.util import union_transcript_contents
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
@@ -1105,6 +1107,14 @@ async def _transcript_for_record(handle: TranscriptHandle) -> ReportInput:
     return await handle.load()
 
 
+def _reference_for_record(handle: TranscriptHandle) -> ReferenceTranscript:
+    return ReferenceTranscript(
+        source_uri=handle.info.source_uri,
+        transcript_id=handle.info.transcript_id,
+        content_json=handle.content.to_json(),
+    )
+
+
 async def _scan_one(
     job: ScannerJob,
     *,
@@ -1310,17 +1320,32 @@ async def _scan_one(
                     report_input = await _transcript_for_record(handle_input)
                 except PrerequisiteError:
                     raise
+                except TranscriptTooLargeToRecordError as ex:
+                    if fail_on_error:
+                        raise
+                    # Readable, just over the parquet cell cap: record a
+                    # reference to the source rather than failing the row.
+                    logger.warning(
+                        "Transcript %s: serialized '%s' is %d bytes, over the "
+                        "parquet cell cap; recording a reference to the source "
+                        "instead.",
+                        ex.transcript_id,
+                        ex.cell,
+                        ex.size,
+                    )
+                    report_input = _reference_for_record(handle_input)
                 except Exception as ex:  # pylint: disable=W0718
                     if fail_on_error:
                         raise
                     # The scan ran, but its transcript can't be read back for
-                    # the record. Keep whatever the scan produced and surface
-                    # the read failure as this row's error -- never a clean
-                    # result over an info-only placeholder.
-                    report_input = _info_placeholder_transcript(handle_input.info)
+                    # the record. Keep whatever the scan produced, record a
+                    # reference to the source (identity plus content filters),
+                    # and surface the read failure as this row's error --
+                    # never a clean result over unreadable content.
+                    report_input = _reference_for_record(handle_input)
                     logger.warning(
                         "Unable to read transcript %s for the result record; "
-                        "recording metadata only.",
+                        "recording a reference to the source instead.",
                         job.transcript_info.transcript_id,
                         exc_info=True,
                     )

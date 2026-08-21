@@ -16,7 +16,11 @@ from inspect_scout._scan import (
     _streaming_eligible,
     _transcript_for_record,
 )
-from inspect_scout._scanner.result import Result, SerializedTranscript
+from inspect_scout._scanner.result import (
+    ReferenceTranscript,
+    Result,
+    SerializedTranscript,
+)
 from inspect_scout._scanner.scanner import SCANNER_SUPPORTS_STREAMING_ATTR, Scanner
 from inspect_scout._transcript.handle import (
     MaterializedTranscriptHandle,
@@ -371,6 +375,5 @@ async def test_transcript_for_record_error_propagation(
             await _transcript_for_record(handle, fail_on_error=fail_on_error)
     else:
         recorded = await _transcript_for_record(handle, fail_on_error=fail_on_error)
-        assert isinstance(recorded, Transcript)
-        assert recorded.messages == []
-        assert recorded.events == []
+        assert isinstance(recorded, ReferenceTranscript)
+        assert recorded.transcript_id == "t1"

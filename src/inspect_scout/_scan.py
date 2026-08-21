@@ -74,6 +74,7 @@ from ._scanjob_config import ScanJobConfig
 from ._scanner.loader import config_for_loader
 from ._scanner.result import (
     Error,
+    ReferenceTranscript,
     ReportInput,
     Result,
     ResultReport,
@@ -98,6 +99,7 @@ from ._transcript.types import (
     Transcript,
     TranscriptContent,
     TranscriptInfo,
+    TranscriptTooLargeToRecordError,
 )
 from ._transcript.util import union_transcript_contents
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
@@ -1069,10 +1071,11 @@ async def _transcript_for_record(
     """Produce the record value for `handle`.
 
     A spooled handle emits its column strings straight from the spool. Any
-    other handle materializes. Falls back to an info-only placeholder if the
-    content can't be read: a result (or error) that was already produced
-    should still be recorded. `fail_on_error` opts out of that containment so
-    a defect here surfaces instead of emptying every transcript in the scan.
+    other handle materializes. Falls back to a reference row -- identity plus
+    content filters, not the content itself -- if the content can't be read
+    or recorded: a result (or error) that was already produced should still
+    be recorded. `fail_on_error` opts out of that containment so a defect
+    here surfaces instead of emptying every transcript in the scan.
     """
     try:
         if isinstance(handle, SpooledTranscriptHandle):
@@ -1088,16 +1091,36 @@ async def _transcript_for_record(
     except PrerequisiteError:
         raise
 
+    except TranscriptTooLargeToRecordError as ex:
+        if fail_on_error:
+            raise
+        logger.warning(
+            "Transcript %s: serialized '%s' is %d bytes, over the parquet cell "
+            "cap; recording a reference to the source instead.",
+            ex.transcript_id,
+            ex.cell,
+            ex.size,
+        )
+        return _reference_for_record(handle)
+
     except Exception:  # pylint: disable=W0718
         if fail_on_error:
             raise
         logger.warning(
-            "Unable to materialize transcript %s for the result record; "
-            "recording metadata only.",
+            "Unable to serialize transcript %s for the result record; "
+            "recording a reference to the source instead.",
             handle.info.transcript_id,
             exc_info=True,
         )
-        return _info_placeholder_transcript(handle.info)
+        return _reference_for_record(handle)
+
+
+def _reference_for_record(handle: TranscriptHandle) -> ReferenceTranscript:
+    return ReferenceTranscript(
+        source_uri=handle.info.source_uri,
+        transcript_id=handle.info.transcript_id,
+        content_json=handle.content.to_json(),
+    )
 
 
 async def _scan_one(

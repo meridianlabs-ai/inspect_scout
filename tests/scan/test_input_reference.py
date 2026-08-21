@@ -126,24 +126,19 @@ def test_oversized_transcript_records_reference_and_scan_completes(
         assert content is not None and "messages" in content
 
 
-def test_record_input_persists_in_scan_options() -> None:
+def test_scan_options_without_record_input_default_to_copy() -> None:
+    """Specs written before the field existed must still parse (resume)."""
     from inspect_scout._scanspec import ScanOptions
 
-    assert ScanOptions().record_input == "copy"
-    assert ScanOptions(record_input="reference").record_input == "reference"
     assert ScanOptions.model_validate({"max_transcripts": 5}).record_input == "copy"
 
 
 def test_reference_mode_handle_path_records_reference() -> None:
     """`record_input="reference"` short-circuits a handle-capable scan.
 
-    `llm_scanner` is handle-capable (mirrors the streaming pattern used by
-    `test_oversized_transcript_records_reference_and_scan_completes`), so the
-    job is streaming-eligible and its `TranscriptHandle` input reaches the
-    record site directly. This is mode-by-choice (`record_input="reference"`),
-    not the oversized-cell degrade, so no cap monkeypatching: the handle
-    should short-circuit straight to `_reference_for_record` -- with real
-    content filters -- rather than materializing.
+    No cap monkeypatching -- this is mode-by-choice, not the oversized-cell
+    degrade. The streaming-eligible handle must go straight to
+    `_reference_for_record` with real content filters, never materializing.
     """
 
     @scanner(name="probe", messages="all", events="all")
@@ -192,11 +187,9 @@ def test_reference_mode_handle_path_records_reference() -> None:
 def test_reference_mode_materialized_path_records_reference() -> None:
     """`record_input="reference"` also covers a materialized `Transcript` input.
 
-    A plain `Transcript`-typed scanner is not streaming-eligible -- the
-    pipeline materializes it up front via `reader.read()` -- so this exercises
-    the `isinstance(loader_input, Transcript)` branch at the record site,
-    which has no content filters available and always records
-    `input_content=None`.
+    A plain `Transcript`-typed scanner is not streaming-eligible, so this
+    exercises the record site's materialized branch, which has no content
+    filters available and records `input_content=None`.
     """
     from inspect_scout._scanner.result import Result
 
@@ -265,7 +258,7 @@ def test_reference_report_pickles_small() -> None:
 
 
 @pytest.mark.asyncio
-async def test_resolve_round_trips_what_the_scanner_saw(tmp_path: Path) -> None:
+async def test_resolve_round_trips_what_the_scanner_saw() -> None:
     from inspect_scout import resolve_input_reference
     from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
 
@@ -294,7 +287,7 @@ async def test_resolve_round_trips_what_the_scanner_saw(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_resolve_treats_nan_input_content_as_absent(tmp_path: Path) -> None:
+async def test_resolve_treats_nan_input_content_as_absent() -> None:
     """A pandas row's NULL `input_content` surfaces as `float('nan')`, not `None`.
 
     `bool(float('nan'))` is `True`, so a plain truthiness check on

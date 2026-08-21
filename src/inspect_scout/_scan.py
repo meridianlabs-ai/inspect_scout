@@ -4,7 +4,16 @@ import traceback
 from contextlib import asynccontextmanager
 from logging import getLogger
 from pathlib import Path
-from typing import Any, AsyncIterator, Awaitable, Callable, Mapping, Sequence, cast
+from typing import (
+    Any,
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Literal,
+    Mapping,
+    Sequence,
+    cast,
+)
 
 import anyio
 import yaml
@@ -131,6 +140,7 @@ def scan(
     log_level: str | None = None,
     fail_on_error: bool = False,
     dry_run: bool = False,
+    record_input: Literal["copy", "reference"] = "copy",
     **deprecated: Unpack[ScanDeprecatedArgs],
 ) -> Status:
     """Scan transcripts.
@@ -167,6 +177,7 @@ def scan(
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
         fail_on_error: Re-raise exceptions instead of capturing them in results. Defaults to False.
         dry_run: Don't actually run the scan, just print the spec and return the status. Defaults to False.
+        record_input: How scanner input is recorded in results: a self-contained copy (default), or a reference to the source transcript resolved on read.
         deprecated: Deprecated arguments.
 
     Returns:
@@ -196,6 +207,7 @@ def scan(
             log_level=log_level,
             fail_on_error=fail_on_error,
             dry_run=dry_run,
+            record_input=record_input,
             **deprecated,
         )
     )
@@ -222,6 +234,7 @@ async def scan_async(
     log_level: str | None = None,
     fail_on_error: bool = False,
     dry_run: bool = False,
+    record_input: Literal["copy", "reference"] = "copy",
     **deprecated: Unpack[ScanDeprecatedArgs],
 ) -> Status:
     """Scan transcripts.
@@ -257,6 +270,7 @@ async def scan_async(
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
         fail_on_error: Re-raise exceptions instead of capturing them in results. Defaults to False.
         dry_run: Don't actually run the scan, just print the spec and return the status. Defaults to False.
+        record_input: How scanner input is recorded in results: a self-contained copy (default), or a reference to the source transcript resolved on read.
         deprecated: Deprecated arguments.
 
     Returns:
@@ -350,7 +364,7 @@ async def scan_async(
     scanjob._model_args = resolved_model_args
     scanjob._model_roles = resolved_model_roles
 
-    scan = await create_scan(scanjob)
+    scan = await create_scan(scanjob, record_input=record_input)
     if dry_run:
         return await _scan_dry_run(scan)
 

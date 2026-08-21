@@ -128,3 +128,11 @@ def test_oversized_transcript_records_reference_and_scan_completes(
         assert input_cell is None  # nothing inline
         assert storage == "reference"
         assert content is not None and "messages" in content
+
+
+def test_record_input_persists_in_scan_options() -> None:
+    from inspect_scout._scanspec import ScanOptions
+
+    assert ScanOptions().record_input == "copy"
+    assert ScanOptions(record_input="reference").record_input == "reference"
+    assert ScanOptions.model_validate({"max_transcripts": 5}).record_input == "copy"

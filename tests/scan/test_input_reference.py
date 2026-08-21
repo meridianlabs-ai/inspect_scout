@@ -266,3 +266,59 @@ def test_reference_report_pickles_small() -> None:
         model_usage={},
     )
     assert len(pickle.dumps(report)) < 50_000
+
+
+@pytest.mark.asyncio
+async def test_resolve_round_trips_what_the_scanner_saw(tmp_path: Path) -> None:
+    from inspect_scout import resolve_input_reference
+    from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
+
+    logs_dir = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
+    log = sorted(logs_dir.glob("*.eval"))[0]
+    content = TranscriptContent(messages="all", events=None, timeline=None)
+
+    view = EvalLogTranscriptsView(str(log))
+    await view.connect()
+    try:
+        infos = [i async for i in view.select()]
+        expected = await view.read(infos[0], content)
+    finally:
+        await view.disconnect()
+
+    row = {
+        "input_storage": "reference",
+        "transcript_source_uri": str(log),
+        "transcript_id": infos[0].transcript_id,
+        "input_content": content.to_json(),
+    }
+    resolved = await resolve_input_reference(row)
+    assert [m.model_dump() for m in resolved.messages] == [
+        m.model_dump() for m in expected.messages
+    ]
+
+
+@pytest.mark.asyncio
+async def test_resolve_failures_are_loud() -> None:
+    from inspect_scout import resolve_input_reference
+
+    with pytest.raises(ValueError, match="not a reference"):
+        await resolve_input_reference({"input_storage": "inline"})
+    with pytest.raises(ValueError, match="source_uri"):
+        await resolve_input_reference(
+            {
+                "input_storage": "reference",
+                "transcript_source_uri": None,
+                "transcript_id": "t",
+            }
+        )
+    logs_dir = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
+    log = sorted(logs_dir.glob("*.eval"))[0]
+    with pytest.raises(ValueError, match="not found"):
+        await resolve_input_reference(
+            {
+                "input_storage": "reference",
+                "transcript_source_uri": str(log),
+                "transcript_id": "does-not-exist",
+                "input_content": None,
+            }
+        )

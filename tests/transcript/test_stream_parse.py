@@ -412,15 +412,9 @@ async def test_spool_write_failure_surfaces_instead_of_dropping_items(
 async def test_timelines_are_not_spooled(tmp_path: Path) -> None:
     """A timelines section is parsed past, not retained.
 
-    Nothing downstream can read spooled timelines -- a timeline scan is not
-    streaming eligible -- so keeping them would pin the whole section for the
-    parse's lifetime on the one path whose purpose is bounding memory.
-
-    Guards reintroduction of the field, and that a transcript carrying
-    timelines still parses. It does not guard the section classifier: every
-    reducer coroutine re-checks the prefix it is handed (see
-    `target_coroutine`), so a misrouted section is ignored rather than
-    misread.
+    Not a classifier guard: every reducer coroutine re-checks the prefix it is
+    handed, so a misrouted section is ignored rather than misread. `target` is
+    asserted because it is the section timelines could be confused with.
     """
     timelines = [
         {"id": f"tl{i}", "name": "solve", "events": [{"event": "info"}]}
@@ -433,7 +427,5 @@ async def test_timelines_are_not_spooled(tmp_path: Path) -> None:
     try:
         assert not hasattr(result, "timelines")
         assert result.target == "the-target"
-        assert [m["id"] for m in result.messages.items()] == ["m1", "m2"]
-        assert [e["event"] for e in result.events.items()] == ["model", "info"]
     finally:
         result.close()

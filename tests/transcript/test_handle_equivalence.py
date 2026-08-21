@@ -10,6 +10,7 @@ from typing import Any
 
 import pytest
 from inspect_ai.event import ModelEvent
+from inspect_ai.log import read_eval_log, write_eval_log
 from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
 from inspect_scout._transcript.handle import (
     MaterializedTranscriptHandle,
@@ -38,23 +39,10 @@ CONTENTS = [
 ]
 
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize("log", LOGS, ids=[log.name for log in LOGS])
-@pytest.mark.parametrize(
-    "content",
-    CONTENTS,
-    ids=[
-        "messages-all",
-        "messages-assistant",
-        "messages-and-events-all",
-        "events-model",
-    ],
-)
-async def test_streamed_equals_materialized(
-    log: Path, content: TranscriptContent, monkeypatch: pytest.MonkeyPatch
+async def _assert_streamed_equals_materialized(
+    log: Path, content: TranscriptContent
 ) -> None:
-    # Force the spooled path regardless of file size
-    monkeypatch.setattr(constants_mod, "SPOOL_THRESHOLD_BYTES", 0)
+    """Streamed handle and materialized read agree on the first transcript."""
     view = EvalLogTranscriptsView(str(log))
     await view.connect()
     try:
@@ -76,6 +64,26 @@ async def test_streamed_equals_materialized(
         assert loaded.metadata == materialized.metadata
     finally:
         await view.disconnect()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("log", LOGS, ids=[log.name for log in LOGS])
+@pytest.mark.parametrize(
+    "content",
+    CONTENTS,
+    ids=[
+        "messages-all",
+        "messages-assistant",
+        "messages-and-events-all",
+        "events-model",
+    ],
+)
+async def test_streamed_equals_materialized(
+    log: Path, content: TranscriptContent, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Force the spooled path regardless of file size
+    monkeypatch.setattr(constants_mod, "SPOOL_THRESHOLD_BYTES", 0)
+    await _assert_streamed_equals_materialized(log, content)
 
 
 @pytest.mark.asyncio
@@ -203,14 +211,10 @@ async def test_attachment_refs_only_inside_pool_entries_resolve(
 def pooled_log(tmp_path_factory: pytest.TempPathFactory) -> Path:
     """A log whose samples carry a machine-generated `events_data` pool.
 
-    None of the checked-in fixtures have one: they predate pooling, so their
-    `events_data` is absent and the pool branches of the spool parser never
-    run against output a real `condense_sample` produced. Duplicating a
-    message across events gives the condenser something to pool, and
-    `write_eval_log` condenses on write.
+    The checked-in fixtures predate pooling, so nothing else exercises the
+    spool's pool branches against real `condense_sample` output. Repeating a
+    message gives the condenser something to pool; `write_eval_log` condenses.
     """
-    from inspect_ai.log import read_eval_log, write_eval_log
-
     log = read_eval_log(str(LOGS[0]))
     samples = log.samples or []
     assert samples, "fixture log has no samples"
@@ -227,7 +231,16 @@ def pooled_log(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("content", CONTENTS, ids=["m-all", "m-asst", "m+e", "e-model"])
+@pytest.mark.parametrize(
+    "content",
+    CONTENTS,
+    ids=[
+        "messages-all",
+        "messages-assistant",
+        "messages-and-events-all",
+        "events-model",
+    ],
+)
 async def test_streamed_equals_materialized_with_a_generated_pool(
     pooled_log: Path, content: TranscriptContent, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -245,22 +258,4 @@ async def test_streamed_equals_materialized_with_a_generated_pool(
     pool = (raw.get("events_data") or {}).get("messages") or []
     assert pool, "fixture is vacuous: the writer produced no message pool"
 
-    view = EvalLogTranscriptsView(str(pooled_log))
-    await view.connect()
-    try:
-        infos = [i async for i in view.select()]
-        assert infos
-        info = infos[0]
-        materialized = await view.read(info, content)
-        async with await view.open(info, content) as h:
-            assert isinstance(h, SpooledTranscriptHandle)
-            streamed_messages = [m async for m in h.messages()]
-            streamed_events = [e async for e in h.events()]
-        assert [m.model_dump() for m in streamed_messages] == [
-            m.model_dump() for m in materialized.messages
-        ]
-        assert [e.model_dump() for e in streamed_events] == [
-            e.model_dump() for e in materialized.events
-        ]
-    finally:
-        await view.disconnect()
+    await _assert_streamed_equals_materialized(pooled_log, content)

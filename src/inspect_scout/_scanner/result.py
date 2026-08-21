@@ -100,16 +100,15 @@ class SerializedTranscript(BaseModel):
     rather than building a `Transcript` and re-condensing it.
     `_serialize_input` passes these values through unchanged.
 
-    Carried as UTF-8 bytes, not `str`: the values go straight into a parquet
-    column, which pyarrow encodes as UTF-8 regardless, and a `str` of
+    Carried as a UTF-8 buffer, not `str`: the values go straight into a
+    parquet column, which pyarrow encodes as UTF-8 regardless, and a `str` of
     non-ASCII text costs two bytes per character in memory.
     """
 
-    # `bytearray`, not `bytes` and not a union of the two. `bytes` would make
-    # pydantic copy the buffer the spool handed over, and a `bytes | bytearray`
-    # union makes it build a coerced `bytes` copy while deciding which member
-    # matches -- transient, but a whole extra copy of a multi-GB cell.
-    # It needs arbitrary_types_allowed because pydantic has no bytearray schema.
+    # `bytearray`, and not a `bytes | bytearray` union: pydantic copies the
+    # buffer to satisfy a `bytes` member, which for a union it does while
+    # deciding which one matches. arbitrary_types_allowed because pydantic has
+    # no bytearray schema.
     model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
     input_json: bytearray

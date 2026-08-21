@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.4.47](https://github.com/meridianlabs-ai/inspect_scout/compare/0.4.46...0.4.47) (2026-08-21)
+
+
+### Features
+
+* add scan_results_batches() — scan_results_df() semantics without loading everything in memory ([#541](https://github.com/meridianlabs-ai/inspect_scout/issues/541)) ([b332c1e](https://github.com/meridianlabs-ai/inspect_scout/commit/b332c1e46b9d5f7cfe79dd0232d4dc53034ae940))
+
+
+### Bug Fixes
+
+* bound the multiprocess results queue ([#555](https://github.com/meridianlabs-ai/inspect_scout/issues/555)) ([3985b81](https://github.com/meridianlabs-ai/inspect_scout/commit/3985b81f10c7740e5c064d973a6a91b6955a2ee1))
+* bump openai to &gt;=3.0.0; pass allow_remote_mcp to inspect_ai bridge tool converters ([#562](https://github.com/meridianlabs-ai/inspect_scout/issues/562)) ([e799945](https://github.com/meridianlabs-ai/inspect_scout/commit/e79994514349d740e7b914fd5fdd2b9dc0b25619))
+* **examples/openclaw_telemetry_hal:** accept 'explicit' session kind as an orchestrator surface ([#565](https://github.com/meridianlabs-ai/inspect_scout/issues/565)) ([6563d39](https://github.com/meridianlabs-ai/inspect_scout/commit/6563d39346b8d5ea09a71c7b5c5a87583e158157))
+* prevent deferred metrics write to closed active scans store ([#564](https://github.com/meridianlabs-ai/inspect_scout/issues/564)) ([bbacfbb](https://github.com/meridianlabs-ai/inspect_scout/commit/bbacfbb2200fdcc53ee716a326f2905002796871))
+* stream scan result compaction to disk ([#554](https://github.com/meridianlabs-ai/inspect_scout/issues/554)) ([5234d59](https://github.com/meridianlabs-ai/inspect_scout/commit/5234d5938dc9f05ea541c9e5f9c7d33f84565f96))
+
+
+### Performance Improvements
+
+* fix quadratic `_expand_events_in_df` ([#538](https://github.com/meridianlabs-ai/inspect_scout/issues/538)) ([63b481d](https://github.com/meridianlabs-ai/inspect_scout/commit/63b481d64db14b98fb476b0071827f1d41b3c96d))
+
 ## [0.4.46](https://github.com/meridianlabs-ai/inspect_scout/compare/0.4.45...0.4.46) (2026-08-05)
 
 

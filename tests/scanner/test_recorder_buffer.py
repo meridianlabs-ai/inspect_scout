@@ -10,7 +10,12 @@ import pyarrow.parquet as pq
 import pytest
 from inspect_ai.model import ChatMessageUser
 from inspect_scout._recorder.buffer import RecorderBuffer, scanner_table
-from inspect_scout._scanner.result import Reference, Result, ResultReport
+from inspect_scout._scanner.result import (
+    Reference,
+    ReferenceTranscript,
+    Result,
+    ResultReport,
+)
 from inspect_scout._scanspec import ScannerSpec, ScanSpec
 from inspect_scout._transcript.types import TranscriptInfo
 
@@ -191,6 +196,98 @@ async def test_scanner_table_casts_mixed_transcript_score_to_string(
 
     table = pq.read_table(out_path)
     assert table.schema.field("transcript_score").type == pa.string()
+
+
+@pytest.mark.asyncio
+async def test_scanner_table_promotes_null_input_to_large_string(
+    recorder_buffer: RecorderBuffer,
+    sample_results: list[ResultReport],
+    tmp_path: Path,
+) -> None:
+    """An all-NULL `input` fragment must not downgrade a large_string column.
+
+    A per-transcript buffer file for a reference row has `input=None` for
+    every result, so its Arrow column is null-typed (`_records_to_arrow`
+    only picks `large_string` when a column has at least one non-null
+    value). `ds.dataset([...])` adopts the schema of the FIRST fragment in
+    `inputs`, so when that null-typed fragment comes first, the schema-
+    correction loop must promote it to `pa.large_string()` -- not
+    `pa.string()` -- since every other fragment's `input` column (e.g. a
+    large inline transcript) is already `large_string`, and casting it down
+    to `pa.string()` risks overflowing the 32-bit offset type.
+    """
+    from upath import UPath
+
+    scanner_name = "test_scanner"
+
+    # Build a standalone fragment with a non-null (large_string-typed)
+    # `input` column, compacted on its own so it can be fed back in via
+    # `extra_inputs` -- this pins its position in `scanner_table`'s
+    # `inputs = buffer_inputs + extra_paths` list to AFTER the buffer's
+    # fragment, deterministically, regardless of filesystem glob order.
+    await recorder_buffer.record(
+        TranscriptInfo(
+            transcript_id="big-transcript",
+            source_type="test",
+            source_id="src-big",
+            source_uri="/path/big.log",
+        ),
+        scanner_name,
+        sample_results,
+        None,
+    )
+    large_string_path = tmp_path / "large_string_fragment.parquet"
+    assert scanner_table(
+        recorder_buffer._buffer_dir, scanner_name, str(large_string_path)
+    )
+    large_string_table = pq.read_table(large_string_path)
+    assert large_string_table.schema.field("input").type == pa.large_string()
+
+    # clear the buffer and write the reference row -- the only file left in
+    # the buffer dir, so it is unambiguously `buffer_inputs[0]`.
+    sdir = recorder_buffer._buffer_dir / f"scanner={scanner_name}"
+    for f in sdir.glob("*.parquet"):
+        f.unlink()
+    reference_result = ResultReport(
+        input_type="transcript",
+        input_ids=[],
+        input=ReferenceTranscript(
+            source_uri="/path/ref.log",
+            transcript_id="ref-transcript",
+            content_json=None,
+        ),
+        result=Result(value="ok", references=[]),
+        validation=None,
+        error=None,
+        events=[],
+        model_usage={},
+    )
+    await recorder_buffer.record(
+        TranscriptInfo(
+            transcript_id="ref-transcript",
+            source_type="test",
+            source_id="src-ref",
+            source_uri="/path/ref.log",
+        ),
+        scanner_name,
+        [reference_result],
+        None,
+    )
+
+    out_path = tmp_path / "out.parquet"
+    assert scanner_table(
+        recorder_buffer._buffer_dir,
+        scanner_name,
+        str(out_path),
+        extra_inputs=[UPath(large_string_path)],
+    )
+
+    table = pq.read_table(out_path)
+    assert table.schema.field("input").type == pa.large_string()
+    assert set(table.column("transcript_id").to_pylist()) == {
+        "ref-transcript",
+        "big-transcript",
+    }
 
 
 def test_buffer_dir_respects_env_var(

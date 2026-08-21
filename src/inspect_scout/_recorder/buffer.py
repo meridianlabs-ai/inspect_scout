@@ -404,11 +404,16 @@ def scanner_table(
     # 1. Promote null-type columns to string (unknown type)
     # 2. Force 'value' and 'transcript_score' columns to string since they can have
     #    mixed types across different result reports / transcripts
-    corrected_fields = []
+    corrected_fields: list[pa.Field[Any]] = []
     for field in schema:
         if pa.types.is_null(field.type):
-            # Promote null type to string
-            corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))
+            # Promote null type to large_string: every string column
+            # `_records_to_arrow` writes is large_string, and a plain
+            # `pa.string()` here would force later casts of large inline
+            # fragments to overflow 2 GiB offsets.
+            corrected_fields.append(
+                pa.field(field.name, pa.large_string(), nullable=True)
+            )
         elif field.name in {"value", "transcript_score"}:
             # Force mixed-type columns to string
             corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))

@@ -66,6 +66,7 @@ The data frame includes the following fields (note that some fields included emb
 | `input_type` | transcript \| message \| messages \| event \| events | Input type received by scanner. |
 | `input_ids` | list\[str\]<br/><small>JSON</small> | Unique ids of scanner input. |
 | `input` | ScannerInput<br/><small>JSON</small> | Scanner input value. |
+| `input_storage` | inline \| reference | Whether `input` is a self-contained copy or a reference to the source transcript (see [Referenced Input](#referenced-input)). |
 | `uuid` | str | Globally unique id for scan result. |
 | `label` | str | Label for the origin of the result (optional). |
 | `value` | JsonValue<br/><small>JSON</small> | Value returned by scanner. |
@@ -117,8 +118,8 @@ Use `resolve_input_reference()` to turn a reference row back into the `Transcrip
 ``` python
 from inspect_scout import resolve_input_reference
 
-if row["input_storage"] == "reference":
+if row.get("input_storage") == "reference":
     transcript = await resolve_input_reference(row)
 ```
 
-Result files written before these columns existed have no `input_storage` column at all; reading such a file, every row is treated as inline.
+Result files written before these columns existed have no `input_storage` column at all; reading such a file, rows are treated as non-references.

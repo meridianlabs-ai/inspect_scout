@@ -1199,7 +1199,21 @@ async def _scan_one(
         """
         union = job.union_transcript
         report_input: ReportInput
-        if isinstance(union, Transcript):
+        if record_input == "reference":
+            # Reference mode never inlines a full copy or a placeholder
+            # here: a materialized `Transcript` union records a reference
+            # with no content filters (resolution defaults to full
+            # content, matching the other reference-mode call sites
+            # above); a handle union records a reference to its source.
+            if isinstance(union, Transcript):
+                report_input = ReferenceTranscript(
+                    source_uri=union.source_uri,
+                    transcript_id=union.transcript_id,
+                    content_json=None,
+                )
+            else:
+                report_input = _reference_for_record(union)
+        elif isinstance(union, Transcript):
             report_input = union
         else:
             # The stream raised, so the content is unreadable; record an
@@ -1363,8 +1377,13 @@ async def _scan_one(
                     content_json=None,
                 )
             else:
-                assert loader_input is not None
-                report_input = loader_input
+                # Not an `assert loader_input is not None`: a loader
+                # yielding `None` must stay a contained per-transcript
+                # condition (caught above, `type_and_ids` left `None`, so
+                # `report_input` here goes unused -- see the `if
+                # type_and_ids is not None` guard below), not an
+                # AssertionError escaping past this function's containment.
+                report_input = cast(ScannerInput, loader_result)
 
             # always append a result (success or error) if we have type_and_ids
             if type_and_ids is not None:

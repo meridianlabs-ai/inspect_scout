@@ -28,31 +28,34 @@ async def resolve_input_reference(row: Mapping[str, Any]) -> Transcript:
     this re-reads it from the source named by `transcript_source_uri`,
     selecting the sample by `transcript_id` (the sample uuid) and applying
     the content filters recorded in `input_content`. `input_content` of
-    NULL/absent means the source was unavailable when the row was recorded,
-    so it resolves to full content (`messages="all", events="all"`); a
-    present `input_content` is decoded via `TranscriptContent.from_json`,
-    including the (correct) edge case where every filter in it is `null` --
-    that reproduces a scan that requested no content, and resolves to an
-    empty transcript rather than falling back to full content.
+    NULL/absent means the content filters were unavailable when the row was
+    recorded, so it resolves to full content (`messages="all",
+    events="all"`); a present `input_content` is decoded via
+    `TranscriptContent.from_json`, including the (correct) edge case where
+    every filter in it is `null` -- that reproduces a scan that requested no
+    content, and resolves to an empty transcript rather than falling back to
+    full content.
 
     Raises:
         ValueError: If `row` is not a reference row (`input_storage !=
-            "reference"`), the row has no `transcript_source_uri` to
-            resolve from, or `transcript_id` is not found in the source
-            (e.g. the source was replaced since the scan ran). Genuine
-            read errors from the source (missing file, credentials, etc.)
-            propagate as themselves.
+            "reference"`), the row has no `transcript_id` or
+            `transcript_source_uri` to resolve from, or `transcript_id` is
+            not found in the source (e.g. the source was replaced since the
+            scan ran). Genuine read errors from the source (missing file,
+            credentials, etc.) propagate as themselves.
     """
     if row.get("input_storage") != "reference":
         raise ValueError("row is not a reference (input_storage != 'reference')")
     source_uri = row.get("transcript_source_uri")
     if not source_uri:
         raise ValueError("reference row has no transcript_source_uri to resolve from")
-    transcript_id = row["transcript_id"]
+    transcript_id = row.get("transcript_id")
+    if not transcript_id:
+        raise ValueError("reference row has no transcript_id to resolve from")
     content_json = row.get("input_content")
     content = (
         TranscriptContent.from_json(content_json)
-        if content_json
+        if isinstance(content_json, str) and content_json
         else TranscriptContent(messages="all", events="all", timeline=None)
     )
     async with transcripts_from(str(source_uri)).reader() as reader:

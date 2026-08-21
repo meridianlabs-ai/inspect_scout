@@ -298,6 +298,39 @@ async def test_resolve_round_trips_what_the_scanner_saw(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_resolve_treats_nan_input_content_as_absent(tmp_path: Path) -> None:
+    """A pandas row's NULL `input_content` surfaces as `float('nan')`, not `None`.
+
+    `bool(float('nan'))` is `True`, so a plain truthiness check on
+    `input_content` would send NaN into `TranscriptContent.from_json` instead
+    of falling back to full content. Guard it like a DataFrame row would
+    actually look.
+    """
+    from inspect_scout import resolve_input_reference
+
+    logs_dir = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
+    log = sorted(logs_dir.glob("*.eval"))[0]
+
+    from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
+
+    view = EvalLogTranscriptsView(str(log))
+    await view.connect()
+    try:
+        infos = [i async for i in view.select()]
+    finally:
+        await view.disconnect()
+
+    row = {
+        "input_storage": "reference",
+        "transcript_source_uri": str(log),
+        "transcript_id": infos[0].transcript_id,
+        "input_content": float("nan"),
+    }
+    resolved = await resolve_input_reference(row)
+    assert resolved.messages
+
+
+@pytest.mark.asyncio
 async def test_resolve_failures_are_loud() -> None:
     from inspect_scout import resolve_input_reference
 
@@ -309,6 +342,13 @@ async def test_resolve_failures_are_loud() -> None:
                 "input_storage": "reference",
                 "transcript_source_uri": None,
                 "transcript_id": "t",
+            }
+        )
+    with pytest.raises(ValueError, match="transcript_id"):
+        await resolve_input_reference(
+            {
+                "input_storage": "reference",
+                "transcript_source_uri": "file:///log.eval",
             }
         )
     logs_dir = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"

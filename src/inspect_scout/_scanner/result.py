@@ -136,8 +136,10 @@ class ReferenceTranscript(BaseModel):
 
 
 ReportInput = ScannerInput | SerializedTranscript | ReferenceTranscript
-"""What a `ResultReport` may carry: a live scanner input, or -- for spooled
-transcript handles -- pre-serialized column values.
+"""What a `ResultReport` may carry: a live scanner input; pre-serialized
+column values for a spooled transcript handle (`SerializedTranscript`); or a
+reference to the transcript's source, recorded instead of its content
+(`ReferenceTranscript`).
 
 Deliberately NOT part of `ScannerInput`: that alias is public API, bounds
 `Loader[T]` and the `@scanner` type parameter, and drives the OpenAPI schema.

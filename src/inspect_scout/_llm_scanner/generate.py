@@ -31,7 +31,7 @@ from .types import (
     AnswerMultiLabel,
     AnswerSpec,
     AnswerStructured,
-    StructuredT,
+    StructuredAnswerT,
     _TextualAnswerSpec,
 )
 
@@ -39,10 +39,10 @@ from .types import (
 @overload
 def parse_answer(
     output: ModelOutput,
-    answer: AnswerStructured[StructuredT],
+    answer: AnswerStructured[StructuredAnswerT],
     extract_refs: Callable[[str], list[Reference]],
     value_to_float: ValueToFloat | None = None,
-) -> Result[StructuredT]: ...
+) -> Result[StructuredAnswerT]: ...
 
 
 @overload
@@ -126,7 +126,7 @@ def parse_answer(
 @overload
 async def generate_answer(
     prompt: str | list[ChatMessage],
-    answer: AnswerStructured[StructuredT],
+    answer: AnswerStructured[StructuredAnswerT],
     *,
     model: str | Model | None = None,
     config: GenerateConfig | None = None,
@@ -135,7 +135,7 @@ async def generate_answer(
     parse: Literal[True] = True,
     extract_refs: Callable[[str], list[Reference]] | None = None,
     value_to_float: ValueToFloat | None = None,
-) -> Result[StructuredT]: ...
+) -> Result[StructuredAnswerT]: ...
 
 
 @overload

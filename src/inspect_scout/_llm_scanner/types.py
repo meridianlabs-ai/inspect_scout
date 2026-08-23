@@ -6,7 +6,9 @@ from pydantic import BaseModel
 # stdlib NamedTuple only supports Generic from Python 3.11
 from typing_extensions import NamedTuple
 
-StructuredT = TypeVar("StructuredT", bound="BaseModel | Sequence[BaseModel]")
+StructuredAnswerT = TypeVar(
+    "StructuredAnswerT", bound="BaseModel | Sequence[BaseModel]"
+)
 """Type of a structured answer: a Pydantic model or a list of Pydantic models."""
 
 
@@ -23,7 +25,7 @@ class AnswerMultiLabel(NamedTuple):
     """Allow the model to respond with NONE when no labels apply."""
 
 
-class AnswerStructured(NamedTuple, Generic[StructuredT]):
+class AnswerStructured(NamedTuple, Generic[StructuredAnswerT]):
     """Answer with structured output.
 
     Structured answers are objects that conform to a JSON Schema.
@@ -35,7 +37,7 @@ class AnswerStructured(NamedTuple, Generic[StructuredT]):
     ``parse_answer()``.
     """
 
-    type: type[StructuredT]
+    type: type[StructuredAnswerT]
     """Pydantic BaseModel that defines the type of the answer.
 
     Can be a single Pydantic model result or a list of results.

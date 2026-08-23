@@ -273,13 +273,15 @@ def structured_result(
         When the type was augmented with an explanation field, re-validate
         into the declared type: the explanation is carried on
         ``Result.explanation``, and augmented types are created dynamically
-        so their instances are not picklable.
+        so their instances are not picklable. Validation is from the
+        already-validated field values (not ``model_dump()``, whose custom
+        field serializers and excluded fields need not round-trip).
         """
         if type(obj) is answer_type:
             return obj
-        return answer_type.model_validate(
-            obj.model_dump(exclude={"explanation"}), by_name=True
-        )
+        fields = dict(obj)
+        fields.pop("explanation", None)
+        return answer_type.model_validate(fields, by_name=True)
 
     # For single results, parse directly into the type
     # For result sets, we need to extract the list from the synthesized wrapper
@@ -398,7 +400,7 @@ def structured_result(
 
         # Return as a result set
         resultset = as_resultset(results)
-        resultset.parsed = [as_declared_type(item) for item in parsed_items]
+        resultset.parsed = [result.parsed for result in results]
         return resultset
     else:
         # Handle single result

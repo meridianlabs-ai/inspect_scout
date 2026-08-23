@@ -75,10 +75,13 @@ class Result(BaseModel, Generic[ParsedT]):
     parsed: SkipJsonSchema[ParsedT | None] = Field(default=None, exclude=True)
     """The typed parsed answer (optional; set by ``generate_answer()`` and
     ``parse_answer()``): ``bool`` for "boolean" answers, ``float`` for
-    "numeric", ``str`` for "string" and single-label answers, ``list[str]``
-    for multi-label answers, and the validated instance(s) of the answer
-    type for ``AnswerStructured`` answers — prior to any ``value_to_float``
-    conversion. ``None`` when the model's response could not be parsed.
+    "numeric", ``str`` for "string" answers, the label text for
+    single-label answers, ``list[str]`` of label texts for multi-label
+    answers, and the validated instance(s) of the answer type for
+    ``AnswerStructured`` answers. Unaffected by ``value_to_float``, which
+    converts ``value`` only. ``None`` when the model's response could not
+    be parsed, and on results not built by these functions (e.g.
+    aggregated or reduced multi-segment scan results).
 
     In-memory only: excluded from serialization and the JSON schema, so it
     does not survive storage of results. Extract and store it separately if

@@ -5,6 +5,7 @@ extraction): here we verify the typed ``parsed`` answer, its absence on
 parse failures, and that it never leaks into serialized output.
 """
 
+import datetime
 import pickle
 from typing import Any
 
@@ -12,7 +13,7 @@ import pytest
 from inspect_ai.model import ModelOutput
 from inspect_scout import AnswerMultiLabel, AnswerSpec, AnswerStructured, parse_answer
 from inspect_scout._scanner.result import Reference, Result
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 
 def _no_refs(_text: str) -> list[Reference]:
@@ -100,6 +101,44 @@ def test_parsed_structured_is_declared_type() -> None:
     assert result.explanation == "e"
     roundtripped = pickle.loads(pickle.dumps(result))
     assert roundtripped.parsed == result.parsed
+
+
+def test_parsed_structured_with_non_roundtripping_serializer() -> None:
+    """``parsed`` construction must not go through a serialization round trip.
+
+    Custom field serializers whose output does not re-validate (and
+    required excluded fields, below) would break a model_dump() ->
+    model_validate() round trip even though the completion is valid.
+    """
+
+    class WithSerializer(BaseModel):
+        when: datetime.date = Field(description="when it happened")
+
+        @field_serializer("when")
+        def _format_when(self, value: datetime.date) -> str:
+            return value.strftime("%B %d, %Y")
+
+    result = parse_answer(
+        _output('{"when": "2026-01-02", "explanation": "e"}'),
+        AnswerStructured(WithSerializer),
+        _no_refs,
+    )
+    assert type(result.parsed) is WithSerializer
+    assert result.parsed.when == datetime.date(2026, 1, 2)
+
+
+def test_parsed_structured_with_required_excluded_field() -> None:
+    class WithExcluded(BaseModel):
+        shown: str = Field(description="shown")
+        hidden: str = Field(exclude=True, description="hidden")
+
+    result = parse_answer(
+        _output('{"shown": "s", "hidden": "h", "explanation": "e"}'),
+        AnswerStructured(WithExcluded),
+        _no_refs,
+    )
+    assert type(result.parsed) is WithExcluded
+    assert result.parsed.hidden == "h"
 
 
 def test_parsed_structured_keeps_own_explanation_type() -> None:

@@ -257,8 +257,10 @@ Scanners produce results which ultimately carry a specific `value`. There are tw
     class ToolErrors(BaseModel):
         tool_errors: int = Field(alias="value", description="The number of tool errors encountered.")
 
-        causes: str = Field(description="What were the most common causes of tool errors.") 
+        causes: str = Field(description="What were the most common causes of tool errors.")
     ```
+
+In addition to the serialized `value`, results carry an in-memory `parsed` field with the validated instance of your `BaseModel` type — useful when working with `generate_answer()` directly in a custom scanner (see [Scanner Tools](scanner_tools.qmd#answer-generation)). Note that `parsed` is not stored in the results database.
 
 ### Labels and Explanations
 

@@ -209,7 +209,7 @@ result = await generate_answer(
 
 : {tbl-colwidths=\[25,75\]}
 
-In addition to the serialized `value`, the returned `Result` carries an in-memory `parsed` field with the typed parsed answer — `bool` for `"boolean"`, `float` for `"numeric"`, `str` for `"string"` and single-label answers, `list[str]` for multi-label answers, and validated instances of your Pydantic type for `AnswerStructured` (where the return type is inferred from the answer specification, e.g. `Result[Detection]` from `AnswerStructured(Detection)`). It is `None` whenever the response could not be parsed, and is excluded from serialization, so it does not survive storage of results.
+In addition to the serialized `value`, the returned `Result` carries an in-memory `parsed` field with the typed parsed answer — `bool` for `"boolean"`, `float` for `"numeric"`, `str` for `"string"` and single-label answers, `list[str]` for multi-label answers, and validated instances of your Pydantic type for `AnswerStructured` (where the return type is inferred from the answer specification, e.g. `Result[Detection]` from `AnswerStructured(Detection)`). It is `None` whenever the response could not be parsed, and is excluded from serialization and pickling, so it does not survive storage of results or crossing process boundaries.
 
 ## Answer Parsing
 
@@ -240,7 +240,7 @@ result = parse_answer(
 
 : {tbl-colwidths=\[25,75\]}
 
-Like `generate_answer()`, the returned `Result` carries the typed parsed answer in its in-memory `parsed` field (see [Answer Generation](#answer-generation)).
+Like `generate_answer()`, the returned `Result` carries the typed parsed answer in its in-memory `parsed` field (see [Answer Generation](#answer-generation)). One difference: for `AnswerStructured` answers, `parse_answer()` raises `ValidationError` on output that does not conform to the answer type, rather than returning `parsed=None`.
 
 ## Answer Types {#answer-types}
 

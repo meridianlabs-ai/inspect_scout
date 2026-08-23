@@ -34,15 +34,9 @@ class Reference(BaseModel):
     """Reference id (message or event id)"""
 
 
-ParsedT = TypeVar(
-    "ParsedT",
-    bound="bool | float | str | list[str] | BaseModel | Sequence[BaseModel]",
-    default=Any,
-)
-"""Type of a parsed answer: ``bool`` ("boolean"), ``float`` ("numeric"),
-``str`` ("string" and single-label), ``list[str]`` (multi-label), or the
-structured answer type. Defaults to ``Any`` so that bare ``Result``
-annotations remain valid."""
+ParsedT = TypeVar("ParsedT", default=Any)
+"""Type of the parsed answer carried by ``Result.parsed``. Defaults to
+``Any`` so that bare ``Result`` annotations remain valid."""
 
 
 class Result(BaseModel, Generic[ParsedT]):
@@ -83,9 +77,19 @@ class Result(BaseModel, Generic[ParsedT]):
     be parsed, and on results not built by these functions (e.g.
     aggregated or reduced multi-segment scan results).
 
-    In-memory only: excluded from serialization and the JSON schema, so it
-    does not survive storage of results. Extract and store it separately if
-    you need it beyond the scan."""
+    In-memory only: excluded from serialization and the JSON schema, and
+    dropped when pickled (so results that cross process boundaries — e.g.
+    multiprocess scans — carry ``parsed=None``). Extract and store it
+    separately if you need it beyond the scan."""
+
+    def __getstate__(self) -> dict[Any, Any]:
+        # parsed is in-memory only and may hold instances of classes that
+        # pickle cannot resolve by reference (e.g. defined in __main__ or in
+        # a function body). Drop it so results always survive pickling —
+        # notably the multiprocess scan queues, whose feeder threads would
+        # otherwise silently discard the whole result.
+        state = super().__getstate__()
+        return {**state, "__dict__": {**state["__dict__"], "parsed": None}}
 
 
 def as_resultset(results: list[Result]) -> Result:

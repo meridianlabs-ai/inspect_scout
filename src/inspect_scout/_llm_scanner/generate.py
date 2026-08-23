@@ -117,7 +117,10 @@ def parse_answer(
         for ``"string"`` and single-label answers, ``list[str]`` for
         multi-label answers, and the validated instance(s) of the answer
         type for :class:`AnswerStructured` — or ``None`` when the
-        response could not be parsed.
+        response could not be parsed. Note that for
+        :class:`AnswerStructured` answers, output that does not conform
+        to the answer type raises ``ValidationError`` rather than
+        returning ``parsed=None``.
     """
     resolved = answer_from_argument(answer)
     return resolved.result_for_answer(output, extract_refs, value_to_float)

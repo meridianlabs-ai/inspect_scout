@@ -231,12 +231,20 @@ def structured_schema(answer: AnswerStructured[Any]) -> JSONSchema:
 def structured_answer_type(
     answer: AnswerStructured[Any],
 ) -> tuple[type[BaseModel], bool]:
-    if get_origin(answer.type) is list:
+    origin = get_origin(answer.type)
+    if origin is list:
         args = get_args(answer.type)
         if not args or not issubclass(args[0], BaseModel):
             raise ValueError("List must be parameterized with BaseModel subclass")
         answer_type = args[0]
         result_set = True
+    elif origin is not None:
+        # e.g. tuple[Model, ...] — statically admitted by the Sequence bound
+        # but only list is supported
+        raise ValueError(
+            f"AnswerStructured type must be a BaseModel subclass or a "
+            f"list of BaseModel, not {answer.type}"
+        )
     else:
         answer_type = answer.type
         result_set = False
@@ -264,46 +272,9 @@ def structured_result(
     # parse out type info
     answer_type, result_set = structured_answer_type(answer)
 
-    # Augment the type with an explanation field if it doesn't have one
-    augmented_type = augment_type_with_explanation(answer_type)
-
-    def as_declared_type(obj: BaseModel) -> BaseModel:
-        """Return ``obj`` as an instance of the declared answer type.
-
-        When the type was augmented with an explanation field, re-validate
-        into the declared type: the explanation is carried on
-        ``Result.explanation``, and augmented types are created dynamically
-        so their instances are not picklable. Validation is from the
-        already-validated field values (not ``model_dump()``, whose custom
-        field serializers and excluded fields need not round-trip).
-        """
-        if type(obj) is answer_type:
-            return obj
-        fields = dict(obj)
-        fields.pop("explanation", None)
-        return answer_type.model_validate(fields, by_name=True)
-
-    # For single results, parse directly into the type
-    # For result sets, we need to extract the list from the synthesized wrapper
-    if result_set is False:
-        parsed = augmented_type.model_validate_json(output.completion, by_name=True)
-    else:
-        # Parse as a generic dict first to extract the list
-        wrapper_data = json.loads(output.completion)
-
-        # Determine the field name
-        field_name = "results" if result_set is True else result_set
-
-        # Extract the list from the wrapper
-        if field_name not in wrapper_data:
-            raise ValueError(f"Expected field '{field_name}' in result set wrapper")
-
-        list_data = wrapper_data[field_name]
-        if not isinstance(list_data, list):
-            raise ValueError(f"Field '{field_name}' must be a list")
-
-        # We'll handle this list below, so set parsed to None for now
-        parsed = None
+    # Whether an explanation field was injected into the generation schema
+    # (i.e. the declared type has none of its own)
+    augmented = augment_type_with_explanation(answer_type) is not answer_type
 
     # Helper: Find field value by name or alias
     def get_field_by_name_or_alias(
@@ -327,28 +298,50 @@ def structured_result(
 
         return None, None
 
+    # Helper: Validate one answer object into the declared type.
+    def parse_answer_data(data: Any) -> tuple[BaseModel, Any]:
+        """Validate answer data, returning the instance and its explanation.
+
+        Validation runs exactly once, on the wire-format data, so field
+        validators (e.g. ``mode="before"`` parsers) see the input they
+        expect and side effects like ``model_post_init`` happen once. When
+        the explanation field was injected into the generation schema, it
+        is lifted out before validation (the declared type may forbid
+        extra fields); otherwise it is read from the validated instance.
+        """
+        if augmented:
+            if not isinstance(data, dict) or "explanation" not in data:
+                raise ValueError("Missing required 'explanation' field")
+            data = dict(data)
+            explanation = data.pop("explanation")
+            if not isinstance(explanation, str):
+                raise ValueError("'explanation' field must be a string")
+            return answer_type.model_validate(data, by_name=True), explanation
+        else:
+            instance = answer_type.model_validate(data, by_name=True)
+            _, explanation = get_field_by_name_or_alias(instance, "explanation")
+            return instance, explanation
+
     # Helper: Create a Result from a parsed object
-    def create_result_from_parsed(obj: BaseModel) -> Result:
-        """Create a Result from a parsed BaseModel object.
+    def create_result_from_parsed(obj: BaseModel, explanation_value: Any) -> Result:
+        """Create a Result from a validated answer instance.
 
         Args:
-            obj: The parsed BaseModel instance.
+            obj: The validated instance of the declared answer type.
+            explanation_value: The explanation extracted by ``parse_answer_data``.
 
         Returns:
             A Result object.
         """
-        # Extract explanation (required)
-        explanation_field, explanation_value = get_field_by_name_or_alias(
-            obj, "explanation"
-        )
-        if explanation_field is None:
-            raise ValueError("Missing required 'explanation' field")
+        # Fields lifted out of value/metadata: the declared type's own
+        # explanation field (when present), label, and any value-aliased field
+        exclude_from_metadata: set[str] = set()
+        explanation_field, _ = get_field_by_name_or_alias(obj, "explanation")
+        if explanation_field:
+            exclude_from_metadata.add(explanation_field)
 
         # Extract label (optional - can be used to distinguish results in a result set)
         label_field, label_value = get_field_by_name_or_alias(obj, "label")
-
-        # Determine the value
-        exclude_from_metadata = {explanation_field}
         if label_field:
             exclude_from_metadata.add(label_field)
 
@@ -379,7 +372,7 @@ def structured_result(
 
         return Result(
             value=value,
-            parsed=as_declared_type(obj),
+            parsed=obj,
             explanation=explanation_value,
             label=label_value,
             metadata=metadata if metadata else None,
@@ -390,13 +383,19 @@ def structured_result(
 
     # Handle result set (multiple results)
     if result_set is not False:
-        # Parse each item in the list as an instance of the augmented type
-        parsed_items = [
-            augmented_type.model_validate(item, by_name=True) for item in list_data
-        ]
+        # Extract the list of answer objects from the synthesized wrapper
+        wrapper_data = json.loads(output.completion)
+        field_name = "results" if result_set is True else result_set
+        if field_name not in wrapper_data:
+            raise ValueError(f"Expected field '{field_name}' in result set wrapper")
+        list_data = wrapper_data[field_name]
+        if not isinstance(list_data, list):
+            raise ValueError(f"Field '{field_name}' must be a list")
 
-        # Create a Result for each parsed item
-        results = [create_result_from_parsed(item) for item in parsed_items]
+        # Create a Result for each answer object
+        results = [
+            create_result_from_parsed(*parse_answer_data(item)) for item in list_data
+        ]
 
         # Return as a result set
         resultset = as_resultset(results)
@@ -404,8 +403,9 @@ def structured_result(
         return resultset
     else:
         # Handle single result
-        assert parsed is not None  # parsed is always set for single results
-        return create_result_from_parsed(parsed)
+        return create_result_from_parsed(
+            *parse_answer_data(json.loads(output.completion))
+        )
 
 
 def extract_references(

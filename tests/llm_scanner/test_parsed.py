@@ -13,7 +13,7 @@ import pytest
 from inspect_ai.model import ModelOutput
 from inspect_scout import AnswerMultiLabel, AnswerSpec, AnswerStructured, parse_answer
 from inspect_scout._scanner.result import Reference, Result
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import BaseModel, Field, field_serializer, field_validator
 
 
 def _no_refs(_text: str) -> list[Reference]:
@@ -61,6 +61,8 @@ def test_parsed_textual(
 ) -> None:
     result = parse_answer(_output(completion), answer_spec, _no_refs)
     assert result.parsed == expected_parsed
+    # pin the type too: bool/float and int/float compare equal in python
+    assert type(result.parsed) is type(expected_parsed)
 
 
 @pytest.mark.parametrize(
@@ -70,6 +72,17 @@ def test_parsed_textual(
         pytest.param("numeric", "ANSWER: not-a-number", id="numeric"),
         pytest.param("string", "nothing", id="string"),
         pytest.param(["cat", "dog"], "Hmm.\n\nANSWER: Z", id="label-single"),
+        pytest.param(
+            AnswerMultiLabel(["cat", "dog"]),
+            "Hmm.\n\nANSWER: Z",
+            id="label-multi-invalid",
+        ),
+        pytest.param(
+            # NONE is only a valid answer with allow_none
+            AnswerMultiLabel(["cat", "dog"]),
+            "Hmm.\n\nANSWER: NONE",
+            id="label-multi-none-disallowed",
+        ),
     ],
 )
 def test_parsed_none_on_parse_failure(answer_spec: AnswerSpec, completion: str) -> None:
@@ -77,7 +90,7 @@ def test_parsed_none_on_parse_failure(answer_spec: AnswerSpec, completion: str) 
     assert result.parsed is None
 
 
-def test_parsed_precedes_value_to_float() -> None:
+def test_parsed_unaffected_by_value_to_float() -> None:
     result = parse_answer(
         _output("Reason.\n\nANSWER: Yes"),
         "boolean",
@@ -94,13 +107,10 @@ def test_parsed_structured_is_declared_type() -> None:
         AnswerStructured(Detection),
         _no_refs,
     )
-    # exactly the declared type (not the augmented explanation subclass),
-    # so instances are picklable for multiprocess scanning
+    # exactly the declared type (not the augmented explanation subclass)
     assert type(result.parsed) is Detection
     assert result.parsed.confidence == 0.9
     assert result.explanation == "e"
-    roundtripped = pickle.loads(pickle.dumps(result))
-    assert roundtripped.parsed == result.parsed
 
 
 def test_parsed_structured_with_non_roundtripping_serializer() -> None:
@@ -166,6 +176,86 @@ def test_parsed_structured_resultset() -> None:
     assert [item.behavior for item in result.parsed or []] == ["a", "b"]
 
 
+def test_parsed_structured_validators_run_once() -> None:
+    """Field validators see wire-format input exactly once.
+
+    A mode="before" validator that parses a wire format is not idempotent:
+    constructing ``parsed`` from a second validation pass would crash it.
+    """
+
+    class Coords(BaseModel):
+        point: list[int] = Field(description="comma separated x,y")
+
+        @field_validator("point", mode="before")
+        @classmethod
+        def _parse_point(cls, value: str) -> list[int]:
+            return [int(part) for part in value.split(",")]
+
+    result = parse_answer(
+        _output('{"point": "1,2", "explanation": "e"}'),
+        AnswerStructured(Coords),
+        _no_refs,
+    )
+    assert type(result.parsed) is Coords
+    assert result.parsed.point == [1, 2]
+    assert result.value == {"point": [1, 2]}
+
+
+def test_parsed_structured_non_idempotent_validator_consistency() -> None:
+    """An after-validator runs once, so parsed and value agree."""
+
+    class Tagged(BaseModel):
+        name: str = Field(description="name")
+
+        @field_validator("name")
+        @classmethod
+        def _prefix(cls, value: str) -> str:
+            return "prefix:" + value
+
+    result = parse_answer(
+        _output('{"name": "x", "explanation": "e"}'),
+        AnswerStructured(Tagged),
+        _no_refs,
+    )
+    assert result.parsed is not None
+    assert result.parsed.name == "prefix:x"
+    assert result.value == {"name": "prefix:x"}
+
+
+def test_parsed_structured_post_init_runs_once_per_item() -> None:
+    calls: list[int] = []
+
+    class Counted(BaseModel):
+        x: int = Field(description="x")
+
+        def model_post_init(self, context: Any) -> None:
+            calls.append(self.x)
+
+    parse_answer(
+        _output('{"x": 1, "explanation": "e"}'), AnswerStructured(Counted), _no_refs
+    )
+    assert calls == [1]
+
+    calls.clear()
+    parse_answer(
+        _output(
+            '{"results": [{"x": 1, "explanation": "a"}, {"x": 2, "explanation": "b"}]}'
+        ),
+        AnswerStructured(list[Counted]),
+        _no_refs,
+    )
+    assert calls == [1, 2]
+
+
+def test_structured_rejects_non_list_generic_alias() -> None:
+    with pytest.raises(ValueError, match="list of BaseModel"):
+        parse_answer(
+            _output('{"behavior": "b", "confidence": 0.9, "explanation": "e"}'),
+            AnswerStructured(tuple[Detection, ...]),
+            _no_refs,
+        )
+
+
 def test_parsed_excluded_from_serialization() -> None:
     result = parse_answer(
         _output('{"behavior": "b", "confidence": 0.9, "explanation": "e"}'),
@@ -177,3 +267,24 @@ def test_parsed_excluded_from_serialization() -> None:
     assert "parsed" not in Result.model_json_schema()["properties"]
     # absent on deserialization (in-memory only)
     assert Result.model_validate(result.model_dump()).parsed is None
+
+
+def test_parsed_dropped_when_pickled() -> None:
+    """Pickling drops parsed so results always cross process boundaries.
+
+    Answer models are commonly defined in __main__ or a function body,
+    where pickle cannot resolve their class by reference; carrying such an
+    instance through the multiprocess scan queues would otherwise silently
+    discard the whole result.
+    """
+
+    class LocalAnswer(BaseModel):  # not resolvable by pickle by reference
+        x: int = Field(description="x")
+
+    result = Result(value=1, answer="one", parsed=LocalAnswer(x=1))
+    roundtripped = pickle.loads(pickle.dumps(result))
+    assert roundtripped.parsed is None
+    assert roundtripped.value == 1
+    assert roundtripped.answer == "one"
+    # the original is untouched
+    assert result.parsed is not None

@@ -225,7 +225,7 @@ if result.parsed is not None:
     print(result.parsed.confidence)
 ```
 
-Note that `parsed` is in-memory only: it is `None` when the response could not be parsed, and it is not stored with results.
+Note that `parsed` is `None` when the response could not be parsed. It is also dropped whenever the `Result` is serialized, so it does not appear in stored results.
 
 ## Answer Parsing
 

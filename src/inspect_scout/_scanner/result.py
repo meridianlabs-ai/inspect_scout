@@ -1,13 +1,15 @@
 import json
 from logging import getLogger
-from typing import Any, Literal, Sequence, cast
+from typing import Any, Generic, Literal, Sequence, cast
 
 from inspect_ai._util.json import jsonable_python
 from inspect_ai.event._event import Event
 from inspect_ai.log import condense_events
 from inspect_ai.model import ModelUsage
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from pydantic.json_schema import SkipJsonSchema
 from shortuuid import uuid
+from typing_extensions import TypeVar
 
 from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
 from inspect_scout._transcript.types import Transcript
@@ -32,7 +34,18 @@ class Reference(BaseModel):
     """Reference id (message or event id)"""
 
 
-class Result(BaseModel):
+ParsedT = TypeVar(
+    "ParsedT",
+    bound="bool | float | str | list[str] | BaseModel | Sequence[BaseModel]",
+    default=Any,
+)
+"""Type of a parsed answer: ``bool`` ("boolean"), ``float`` ("numeric"),
+``str`` ("string" and single-label), ``list[str]`` (multi-label), or the
+structured answer type. Defaults to ``Any`` so that bare ``Result``
+annotations remain valid."""
+
+
+class Result(BaseModel, Generic[ParsedT]):
     """Scan result."""
 
     uuid: str | None = Field(default_factory=uuid)
@@ -58,6 +71,18 @@ class Result(BaseModel):
 
     type: str | None = Field(default=None)
     """Type to designate contents of 'value' (used in `value_type` field in result data frames)."""
+
+    parsed: SkipJsonSchema[ParsedT | None] = Field(default=None, exclude=True)
+    """The typed parsed answer (optional; set by ``generate_answer()`` and
+    ``parse_answer()``): ``bool`` for "boolean" answers, ``float`` for
+    "numeric", ``str`` for "string" and single-label answers, ``list[str]``
+    for multi-label answers, and the validated instance(s) of the answer
+    type for ``AnswerStructured`` answers — prior to any ``value_to_float``
+    conversion. ``None`` when the model's response could not be parsed.
+
+    In-memory only: excluded from serialization and the JSON schema, so it
+    does not survive storage of results. Extract and store it separately if
+    you need it beyond the scan."""
 
 
 def as_resultset(results: list[Result]) -> Result:

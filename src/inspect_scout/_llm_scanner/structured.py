@@ -184,7 +184,7 @@ def _context_tool_stub(
 ST = TypeVar("ST", bound=BaseModel)
 
 
-def structured_schema(answer: AnswerStructured) -> JSONSchema:
+def structured_schema(answer: AnswerStructured[Any]) -> JSONSchema:
     # Augment the type with an explanation field if it doesn't have one
     answer_type, result_set = structured_answer_type(answer)
     augmented_type = augment_type_with_explanation(answer_type)
@@ -228,7 +228,9 @@ def structured_schema(answer: AnswerStructured) -> JSONSchema:
         return JSONSchema.model_validate(item_schema)
 
 
-def structured_answer_type(answer: AnswerStructured) -> tuple[type[BaseModel], bool]:
+def structured_answer_type(
+    answer: AnswerStructured[Any],
+) -> tuple[type[BaseModel], bool]:
     if get_origin(answer.type) is list:
         args = get_args(answer.type)
         if not args or not issubclass(args[0], BaseModel):
@@ -242,7 +244,7 @@ def structured_answer_type(answer: AnswerStructured) -> tuple[type[BaseModel], b
 
 
 def structured_result(
-    answer: AnswerStructured,
+    answer: AnswerStructured[Any],
     output: ModelOutput,
     extract_references_fn: Callable[[str], list[Reference]],
     value_to_float: ValueToFloat | None = None,
@@ -256,13 +258,28 @@ def structured_result(
         value_to_float: Optional function to convert result values to float
 
     Returns:
-        A Result object
+        A Result whose ``parsed`` field carries the validated answer
+        instance(s), typed by the declared answer type.
     """
     # parse out type info
     answer_type, result_set = structured_answer_type(answer)
 
     # Augment the type with an explanation field if it doesn't have one
     augmented_type = augment_type_with_explanation(answer_type)
+
+    def as_declared_type(obj: BaseModel) -> BaseModel:
+        """Return ``obj`` as an instance of the declared answer type.
+
+        When the type was augmented with an explanation field, re-validate
+        into the declared type: the explanation is carried on
+        ``Result.explanation``, and augmented types are created dynamically
+        so their instances are not picklable.
+        """
+        if type(obj) is answer_type:
+            return obj
+        return answer_type.model_validate(
+            obj.model_dump(exclude={"explanation"}), by_name=True
+        )
 
     # For single results, parse directly into the type
     # For result sets, we need to extract the list from the synthesized wrapper
@@ -360,6 +377,7 @@ def structured_result(
 
         return Result(
             value=value,
+            parsed=as_declared_type(obj),
             explanation=explanation_value,
             label=label_value,
             metadata=metadata if metadata else None,
@@ -379,7 +397,9 @@ def structured_result(
         results = [create_result_from_parsed(item) for item in parsed_items]
 
         # Return as a result set
-        return as_resultset(results)
+        resultset = as_resultset(results)
+        resultset.parsed = [as_declared_type(item) for item in parsed_items]
+        return resultset
     else:
         # Handle single result
         assert parsed is not None  # parsed is always set for single results

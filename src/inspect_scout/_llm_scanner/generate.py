@@ -26,8 +26,68 @@ from .._util.jinja import StrictOnUseUndefined
 from .._util.refusal import generate_retry_refusals
 from .answer import Answer, answer_from_argument
 from .prompt import DEFAULT_SCANNER_TEMPLATE
-from .structured import structured_generate, structured_schema
-from .types import AnswerSpec, AnswerStructured, _TextualAnswerSpec
+from .structured import structured_generate, structured_result, structured_schema
+from .types import (
+    AnswerMultiLabel,
+    AnswerSpec,
+    AnswerStructured,
+    StructuredT,
+    _TextualAnswerSpec,
+)
+
+
+@overload
+def parse_answer(
+    output: ModelOutput,
+    answer: AnswerStructured[StructuredT],
+    extract_refs: Callable[[str], list[Reference]],
+    value_to_float: ValueToFloat | None = None,
+) -> Result[StructuredT]: ...
+
+
+@overload
+def parse_answer(
+    output: ModelOutput,
+    answer: Literal["boolean"],
+    extract_refs: Callable[[str], list[Reference]],
+    value_to_float: ValueToFloat | None = None,
+) -> Result[bool]: ...
+
+
+@overload
+def parse_answer(
+    output: ModelOutput,
+    answer: Literal["numeric"],
+    extract_refs: Callable[[str], list[Reference]],
+    value_to_float: ValueToFloat | None = None,
+) -> Result[float]: ...
+
+
+@overload
+def parse_answer(
+    output: ModelOutput,
+    answer: Literal["string"] | list[str],
+    extract_refs: Callable[[str], list[Reference]],
+    value_to_float: ValueToFloat | None = None,
+) -> Result[str]: ...
+
+
+@overload
+def parse_answer(
+    output: ModelOutput,
+    answer: AnswerMultiLabel,
+    extract_refs: Callable[[str], list[Reference]],
+    value_to_float: ValueToFloat | None = None,
+) -> Result[list[str]]: ...
+
+
+@overload
+def parse_answer(
+    output: ModelOutput,
+    answer: AnswerSpec,
+    extract_refs: Callable[[str], list[Reference]],
+    value_to_float: ValueToFloat | None = None,
+) -> Result: ...
 
 
 def parse_answer(
@@ -51,10 +111,91 @@ def parse_answer(
             to a float.
 
     Returns:
-        A Result with value, answer, explanation, and references.
+        A Result with value, answer, explanation, and references. The
+        result's ``parsed`` field carries the typed parsed answer —
+        ``bool`` for ``"boolean"``, ``float`` for ``"numeric"``, ``str``
+        for ``"string"`` and single-label answers, ``list[str]`` for
+        multi-label answers, and the validated instance(s) of the answer
+        type for :class:`AnswerStructured` — or ``None`` when the
+        response could not be parsed.
     """
     resolved = answer_from_argument(answer)
     return resolved.result_for_answer(output, extract_refs, value_to_float)
+
+
+@overload
+async def generate_answer(
+    prompt: str | list[ChatMessage],
+    answer: AnswerStructured[StructuredT],
+    *,
+    model: str | Model | None = None,
+    config: GenerateConfig | None = None,
+    context_tools: Sequence[Tool | ToolDef | ToolInfo | ToolSource] = (),
+    retry_refusals: int = 3,
+    parse: Literal[True] = True,
+    extract_refs: Callable[[str], list[Reference]] | None = None,
+    value_to_float: ValueToFloat | None = None,
+) -> Result[StructuredT]: ...
+
+
+@overload
+async def generate_answer(
+    prompt: str | list[ChatMessage],
+    answer: Literal["boolean"],
+    *,
+    model: str | Model | None = None,
+    config: GenerateConfig | None = None,
+    context_tools: Sequence[Tool | ToolDef | ToolInfo | ToolSource] = (),
+    retry_refusals: int = 3,
+    parse: Literal[True] = True,
+    extract_refs: Callable[[str], list[Reference]] | None = None,
+    value_to_float: ValueToFloat | None = None,
+) -> Result[bool]: ...
+
+
+@overload
+async def generate_answer(
+    prompt: str | list[ChatMessage],
+    answer: Literal["numeric"],
+    *,
+    model: str | Model | None = None,
+    config: GenerateConfig | None = None,
+    context_tools: Sequence[Tool | ToolDef | ToolInfo | ToolSource] = (),
+    retry_refusals: int = 3,
+    parse: Literal[True] = True,
+    extract_refs: Callable[[str], list[Reference]] | None = None,
+    value_to_float: ValueToFloat | None = None,
+) -> Result[float]: ...
+
+
+@overload
+async def generate_answer(
+    prompt: str | list[ChatMessage],
+    answer: Literal["string"] | list[str],
+    *,
+    model: str | Model | None = None,
+    config: GenerateConfig | None = None,
+    context_tools: Sequence[Tool | ToolDef | ToolInfo | ToolSource] = (),
+    retry_refusals: int = 3,
+    parse: Literal[True] = True,
+    extract_refs: Callable[[str], list[Reference]] | None = None,
+    value_to_float: ValueToFloat | None = None,
+) -> Result[str]: ...
+
+
+@overload
+async def generate_answer(
+    prompt: str | list[ChatMessage],
+    answer: AnswerMultiLabel,
+    *,
+    model: str | Model | None = None,
+    config: GenerateConfig | None = None,
+    context_tools: Sequence[Tool | ToolDef | ToolInfo | ToolSource] = (),
+    retry_refusals: int = 3,
+    parse: Literal[True] = True,
+    extract_refs: Callable[[str], list[Reference]] | None = None,
+    value_to_float: ValueToFloat | None = None,
+) -> Result[list[str]]: ...
 
 
 @overload
@@ -134,10 +275,13 @@ async def generate_answer(
 
     Returns:
         A :class:`Result` when ``parse=True``, or a :class:`ModelOutput`
-        when ``parse=False``.
+        when ``parse=False``. The result's ``parsed`` field carries the
+        typed parsed answer — ``bool`` for ``"boolean"``, ``float`` for
+        ``"numeric"``, ``str`` for ``"string"`` and single-label answers,
+        ``list[str]`` for multi-label answers, and the validated
+        instance(s) of the answer type for :class:`AnswerStructured` —
+        or ``None`` when the model's response could not be parsed.
     """
-    resolved_answer = answer_from_argument(answer)
-
     if isinstance(answer, AnswerStructured):
         value, _, model_output = await structured_generate(
             input=prompt,
@@ -156,9 +300,7 @@ async def generate_answer(
                 metadata={"stop_reason": model_output.stop_reason},
             )
         refs_fn = extract_refs or _no_references
-        result = resolved_answer.result_for_answer(
-            model_output, refs_fn, value_to_float
-        )
+        result = structured_result(answer, model_output, refs_fn, value_to_float)
         result.metadata = {
             **(result.metadata or {}),
             "stop_reason": model_output.stop_reason,
@@ -169,7 +311,7 @@ async def generate_answer(
         return await _text_generate(
             get_model(model),
             prompt,
-            resolved_answer,
+            answer_from_argument(answer),
             config,
             context_tools,
             retry_refusals,

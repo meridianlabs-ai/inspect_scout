@@ -111,16 +111,11 @@ def parse_answer(
             to a float.
 
     Returns:
-        A Result with value, answer, explanation, and references. The
-        result's ``parsed`` field carries the typed parsed answer —
-        ``bool`` for ``"boolean"``, ``float`` for ``"numeric"``, ``str``
-        for ``"string"`` and single-label answers, ``list[str]`` for
-        multi-label answers, and the validated instance(s) of the answer
-        type for :class:`AnswerStructured` — or ``None`` when the
-        response could not be parsed. Note that for
-        :class:`AnswerStructured` answers, output that does not conform
-        to the answer type raises ``ValidationError`` rather than
-        returning ``parsed=None``.
+        A Result with value, answer, explanation, and references. Its
+        ``parsed`` field carries the typed parsed answer, or ``None`` if
+        the output could not be parsed (except for
+        :class:`AnswerStructured`, where non-conforming output raises
+        ``ValidationError`` instead).
     """
     resolved = answer_from_argument(answer)
     return resolved.result_for_answer(output, extract_refs, value_to_float)
@@ -279,11 +274,8 @@ async def generate_answer(
     Returns:
         A :class:`Result` when ``parse=True``, or a :class:`ModelOutput`
         when ``parse=False``. The result's ``parsed`` field carries the
-        typed parsed answer — ``bool`` for ``"boolean"``, ``float`` for
-        ``"numeric"``, ``str`` for ``"string"`` and single-label answers,
-        ``list[str]`` for multi-label answers, and the validated
-        instance(s) of the answer type for :class:`AnswerStructured` —
-        or ``None`` when the model's response could not be parsed.
+        typed parsed answer, or ``None`` when the response could not be
+        parsed.
     """
     if isinstance(answer, AnswerStructured):
         value, _, model_output = await structured_generate(

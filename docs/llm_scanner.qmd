@@ -260,8 +260,6 @@ Scanners produce results which ultimately carry a specific `value`. There are tw
         causes: str = Field(description="What were the most common causes of tool errors.")
     ```
 
-In addition to the serialized `value`, results carry an in-memory `parsed` field with the validated instance of your `BaseModel` type — useful when working with `generate_answer()` directly in a custom scanner (see [Scanner Tools](scanner_tools.qmd#answer-generation)). Note that `parsed` is not stored in the results database.
-
 ### Labels and Explanations
 
 We've noted the special `alias="value"` field annotation that promotes one of your `BaseModel` fields to be the main `value` for the returned result. In addition, there are two other special field annotations:

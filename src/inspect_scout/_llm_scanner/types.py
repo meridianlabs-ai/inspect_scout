@@ -28,13 +28,9 @@ class AnswerMultiLabel(NamedTuple):
 class AnswerStructured(NamedTuple, Generic[StructuredAnswerT]):
     """Answer with structured output.
 
-    Structured answers are objects that conform to a JSON Schema.
-
-    Generic in the answer type: ``AnswerStructured(MyModel)`` is an
-    ``AnswerStructured[MyModel]`` and ``AnswerStructured(list[MyModel])``
-    is an ``AnswerStructured[list[MyModel]]``, which types the ``parsed``
-    field of the :class:`Result` returned by ``generate_answer()`` and
-    ``parse_answer()``.
+    Structured answers are objects that conform to a JSON Schema. The answer
+    type parameter flows through to the type of ``Result.parsed`` in
+    ``generate_answer()`` and ``parse_answer()``.
     """
 
     type: type[StructuredAnswerT]

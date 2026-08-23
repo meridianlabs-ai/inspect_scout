@@ -35,8 +35,7 @@ class Reference(BaseModel):
 
 
 ParsedT = TypeVar("ParsedT", default=Any)
-"""Type of the parsed answer carried by ``Result.parsed``. Defaults to
-``Any`` so that bare ``Result`` annotations remain valid."""
+"""Type of `Result.parsed` (defaults to `Any` so bare `Result` annotations remain valid)."""
 
 
 class Result(BaseModel, Generic[ParsedT]):
@@ -67,20 +66,10 @@ class Result(BaseModel, Generic[ParsedT]):
     """Type to designate contents of 'value' (used in `value_type` field in result data frames)."""
 
     parsed: SkipJsonSchema[ParsedT | None] = Field(default=None, exclude=True)
-    """The typed parsed answer (optional; set by ``generate_answer()`` and
-    ``parse_answer()``): ``bool`` for "boolean" answers, ``float`` for
-    "numeric", ``str`` for "string" answers, the label text for
-    single-label answers, ``list[str]`` of label texts for multi-label
-    answers, and the validated instance(s) of the answer type for
-    ``AnswerStructured`` answers. Unaffected by ``value_to_float``, which
-    converts ``value`` only. ``None`` when the model's response could not
-    be parsed, and on results not built by these functions (e.g.
-    aggregated or reduced multi-segment scan results).
-
-    In-memory only: excluded from serialization and the JSON schema, and
-    dropped when pickled (so results that cross process boundaries — e.g.
-    multiprocess scans — carry ``parsed=None``). Extract and store it
-    separately if you need it beyond the scan."""
+    """Typed parsed answer set by `generate_answer()`/`parse_answer()`
+    (unaffected by `value_to_float`; `None` when parsing failed or the result
+    was built elsewhere). In-memory only: excluded from serialization and
+    dropped when pickled, so it survives neither storage nor process boundaries."""
 
     def __getstate__(self) -> dict[Any, Any]:
         # parsed is in-memory only and may hold instances of classes that

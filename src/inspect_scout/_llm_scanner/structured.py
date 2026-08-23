@@ -266,8 +266,7 @@ def structured_result(
         value_to_float: Optional function to convert result values to float
 
     Returns:
-        A Result whose ``parsed`` field carries the validated answer
-        instance(s), typed by the declared answer type.
+        A Result with ``parsed`` set to the validated answer instance(s).
     """
     # parse out type info
     answer_type, result_set = structured_answer_type(answer)
@@ -302,12 +301,10 @@ def structured_result(
     def parse_answer_data(data: Any) -> tuple[BaseModel, Any]:
         """Validate answer data, returning the instance and its explanation.
 
-        Validation runs exactly once, on the wire-format data, so field
-        validators (e.g. ``mode="before"`` parsers) see the input they
-        expect and side effects like ``model_post_init`` happen once. When
-        the explanation field was injected into the generation schema, it
-        is lifted out before validation (the declared type may forbid
-        extra fields); otherwise it is read from the validated instance.
+        Validation runs exactly once, on the wire-format data, so
+        ``mode="before"`` validators and ``model_post_init`` see it exactly
+        once. An injected explanation field is lifted out before validation
+        (the declared type may forbid extra fields).
         """
         if augmented:
             if not isinstance(data, dict) or "explanation" not in data:
@@ -324,15 +321,7 @@ def structured_result(
 
     # Helper: Create a Result from a parsed object
     def create_result_from_parsed(obj: BaseModel, explanation_value: Any) -> Result:
-        """Create a Result from a validated answer instance.
-
-        Args:
-            obj: The validated instance of the declared answer type.
-            explanation_value: The explanation extracted by ``parse_answer_data``.
-
-        Returns:
-            A Result object.
-        """
+        """Create a Result from a validated answer instance and its explanation."""
         # Fields lifted out of value/metadata: the declared type's own
         # explanation field (when present), label, and any value-aliased field
         exclude_from_metadata: set[str] = set()

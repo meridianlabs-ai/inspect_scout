@@ -156,6 +156,9 @@ pnpm install
 - Strict mode enabled; no `any`, no type assertions
 - ESLint + Prettier
 
+### Architecture
+- Panels that initiate an async query own its `AsyncData` lifecycle and render loading/error states at that boundary; components rendered only after data is ready take required data props rather than reading query/loading state themselves
+
 ### Common Pitfalls
 - Use pnpm, not npm—this project uses pnpm exclusively
 - Hook tests don't need JSX—use `.test.ts` not `.test.tsx`; see `useMapAsyncData.test.ts`

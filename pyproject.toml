@@ -58,7 +58,9 @@ dev = [
     # zipfile-zstd patches zipfile to support zstd compression (for creating test fixtures)
     "zipfile-zstd>=0.0.4; python_version < '3.14'",
     "pytest-xdist",
-    "anthropic>=0.80.0",
+    # >=1.0.0: anthropic 1.x types its exceptions against httpx2, which the
+    # tests construct directly (httpx2 arrives transitively via anthropic)
+    "anthropic>=1.0.0",
     "arize-phoenix-client",
     "google-genai>=1.69.0",
     # harbor (for the atif source tests): >=0.6.0 is the first release with the
@@ -97,7 +99,9 @@ dev = [
     "ruff",
     "pytest",
     "pytest-xdist",
-    "anthropic",
+    # >=1.0.0: anthropic 1.x types its exceptions against httpx2, which the
+    # tests construct directly (httpx2 arrives transitively via anthropic)
+    "anthropic>=1.0.0",
     "arize-phoenix-client",
     "google-genai",
     # harbor (for the atif source tests): >=0.6.0 is the first release with the

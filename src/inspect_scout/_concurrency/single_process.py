@@ -342,6 +342,7 @@ def single_process_strategy(
             raise inner_exception(ex) from None
         finally:
             set_batch_status_callback(None)
+            set_batch_log_callback(None)
             metrics.process_count = 0
             metrics.tasks_parsing = 0
             metrics.tasks_scanning = 0

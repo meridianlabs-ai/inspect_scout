@@ -1,12 +1,7 @@
 """Tests for the active scans KV store."""
 
 import os
-import secrets
 import time
-from contextlib import contextmanager
-from pathlib import Path
-from typing import Iterator
-from unittest.mock import patch
 
 from inspect_ai._util.kvstore import inspect_kvstore
 from inspect_scout._concurrency.common import ScanMetrics
@@ -19,6 +14,8 @@ from inspect_scout._recorder.active_scans_store import (
 from inspect_scout._recorder.summary import Summary
 from inspect_scout._scanspec import ScannerSpec, ScanSpec
 
+from tests.helpers import temp_active_scans_store
+
 
 def _make_spec(scan_id: str) -> ScanSpec:
     """Create minimal ScanSpec for testing."""
@@ -29,22 +26,9 @@ def _make_spec(scan_id: str) -> ScanSpec:
     )
 
 
-@contextmanager
-def _temp_store_name() -> Iterator[str]:
-    """Override store name for isolated testing."""
-    name = f"__testing_active_scans_{secrets.token_hex(4)}__"
-    with patch("inspect_scout._recorder.active_scans_store._STORE_NAME", name):
-        try:
-            yield name
-        finally:
-            with inspect_kvstore(name) as kvstore:
-                path = kvstore.filename
-            Path(path).unlink(missing_ok=True)
-
-
 def test_put_and_read_all() -> None:
     """Store metrics and verify read returns them."""
-    with _temp_store_name():
+    with temp_active_scans_store():
         metrics = ScanMetrics(process_count=2, task_count=4, completed_scans=10)
         scan_id = "test-scan-123"
 
@@ -64,7 +48,7 @@ def test_put_and_read_all() -> None:
 
 def test_delete_current() -> None:
     """Store metrics, delete, verify empty."""
-    with _temp_store_name():
+    with temp_active_scans_store():
         metrics = ScanMetrics(completed_scans=5)
         scan_id = "delete-test"
 
@@ -78,7 +62,7 @@ def test_delete_current() -> None:
 
 def test_multiple_scans_same_process() -> None:
     """Put twice replaces entry since keyed by PID."""
-    with _temp_store_name():
+    with temp_active_scans_store():
         scan_id_1 = "scan-1"
         scan_id_2 = "scan-2"
 
@@ -101,7 +85,7 @@ def test_multiple_scans_same_process() -> None:
 
 def test_overwrite_updates_metrics_and_timestamp() -> None:
     """Put twice with same scan_id updates metrics and timestamp."""
-    with _temp_store_name():
+    with temp_active_scans_store():
         scan_id = "update-test"
 
         with active_scans_store() as store:
@@ -120,7 +104,7 @@ def test_overwrite_updates_metrics_and_timestamp() -> None:
 
 def test_stale_pid_cleanup() -> None:
     """Dead PIDs get cleaned on store access."""
-    with _temp_store_name() as name:
+    with temp_active_scans_store() as name:
         # Manually insert entry with fake dead PID
         fake_pid = 99999999  # Unlikely to exist
         with inspect_kvstore(name) as kvstore:
@@ -139,7 +123,7 @@ def test_stale_pid_cleanup() -> None:
 
 def test_version_migration_clears_store() -> None:
     """Store clears when version mismatches."""
-    with _temp_store_name() as name:
+    with temp_active_scans_store() as name:
         # Pre-populate with old version
         with inspect_kvstore(name) as kvstore:
             kvstore.put(_VERSION_KEY, "0")  # Old version
@@ -157,7 +141,7 @@ def test_version_migration_clears_store() -> None:
 
 def test_read_all_returns_empty_when_no_entries() -> None:
     """Fresh store returns empty dict."""
-    with _temp_store_name():
+    with temp_active_scans_store():
         with active_scans_store() as store:
             result = store.read_all()
 

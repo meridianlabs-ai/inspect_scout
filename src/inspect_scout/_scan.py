@@ -756,7 +756,14 @@ async def _scan_async_inner(
                         )
                         maybe_start_results_sync()
 
+                    # the store ignores writes once closed (see _Store); this
+                    # guard additionally keeps a late trailing-edge fire away
+                    # from the finished display.
+                    scan_finished = False
+
                     def update_metrics(metrics: ScanMetrics) -> None:
+                        if scan_finished:
+                            return
                         active_store.put_metrics(scan.spec.scan_id, metrics)
                         scan_display.metrics(metrics)
 
@@ -792,6 +799,7 @@ async def _scan_async_inner(
                             await recorder.location(), complete=len(errors) == 0
                         )
                     finally:
+                        scan_finished = True
                         active_store.delete_current()
 
         # report scan complete

@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import logging
 from collections import Counter
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -50,6 +51,7 @@ from ..extraction import (
 )
 from ..parse import (
     OpenClawTelemetry,
+    SubagentSpan,
     parse_telemetry,
 )
 
@@ -242,7 +244,7 @@ class TestParse:
     def test_unrecognized_session_kind_fails_with_meaningful_error(
         self, event: dict[str, Any], expected_kind: str
     ) -> None:
-        # A kind outside main/telegram/dashboard/subagent on a consumed event
+        # A kind outside main/telegram/dashboard/cron/subagent on a consumed event
         # means a session whose turns would otherwise be silently discarded
         # (classified as neither orchestrator nor sub-agent), so the import
         # must fail loudly, naming the kind and the sessionKey.
@@ -297,16 +299,18 @@ class TestParse:
         assert [t["responseId"] for t in parse.orchestrator_turns] == ["r1", "r2"]
         assert parse.subagents == []
 
-    def test_message_events_without_session_key_are_ignored(self) -> None:
-        # message.* events carry no sessionKey and are intentionally not
-        # consumed; their missing kind must NOT trip the unrecognized-kind
-        # check.
+    def test_message_events_without_session_key_do_not_trip_kind_check(self) -> None:
+        # message.* events carry no sessionKey; their missing kind must NOT
+        # trip the unrecognized-kind check. message.in is consumed as the
+        # inbound operator channel; message.out stays unconsumed.
         raw = [
             {"type": "message.in", "channel": "telegram", "content": "hi"},
             *self._orch_raw("agent:main:main:s1"),
             {"type": "message.out", "channel": "telegram", "content": "bye"},
         ]
-        assert len(parse_telemetry(raw).orchestrator_turns) == 1
+        parse = parse_telemetry(raw)
+        assert len(parse.orchestrator_turns) == 1
+        assert [m["content"] for m in parse.operator_messages] == ["hi"]
 
     def _orch_raw(self, session_key: str) -> list[dict[str, Any]]:
         return [
@@ -351,14 +355,18 @@ class TestParse:
             "agent:main:main:s1",
             "agent:main:telegram:default:direct:5912046256",
             "agent:main:dashboard:e6746281-f3cd-4be5-9d0c-633772cdcace",
+            "agent:main:cron:5b3f2a10-9c7e-4d21-8e6a-2f1d0c9b8a76",
         ],
     )
     def test_orchestrator_kinds_yield_orchestrator_turns(
         self, session_key: str
     ) -> None:
-        # Every orchestrator surface (terminal, Telegram, web dashboard) must
-        # have its assistant turns classified as orchestrator turns; otherwise
-        # the transcript is silently dropped for having no turns.
+        # Every orchestrator surface (terminal, Telegram, web dashboard, and
+        # the cron scheduler — a cron-scheduled run's orchestrator session
+        # carries the ``cron`` kind) must have its assistant turns classified
+        # as orchestrator turns; otherwise the import fails on the
+        # unrecognized-kind check (or, if it were lenient, the transcript
+        # would be silently dropped for having no turns).
         parse = parse_telemetry(self._orch_raw(session_key))
         assert len(parse.orchestrator_turns) == 1
 
@@ -430,6 +438,131 @@ class TestParse:
         # One agent span, and no stray root-level spawn event from the twin.
         assert sum(1 for e in events if isinstance(e, SpanBeginEvent)) == 1
         assert not [e for e in events if isinstance(e, ToolEvent) and e.span_id is None]
+
+    def test_keyless_turns_do_not_collapse_across_sessions(self) -> None:
+        # The keyless fallback exists to collapse a session's own cumulative
+        # re-dumps, which always share their sessionKey. Two GENUINE turns
+        # from two different sessions that coincide on (timestamp, content) —
+        # reachable on rid-less captures with many concurrent same-kind
+        # sessions — are distinct turns and must both survive.
+        def session(sk: str) -> dict[str, Any]:
+            return {
+                "type": "agent.start",
+                "sessionKey": sk,
+                "messages": [
+                    {
+                        "role": "assistant",
+                        "timestamp": 1000,
+                        "model": "m",
+                        "stopReason": "stop",
+                        "usage": {"input": 1, "output": 4, "totalTokens": 5},
+                        "content": [{"type": "text", "text": "on it"}],
+                    }
+                ],
+            }
+
+        parse = parse_telemetry(
+            [
+                session("agent:main:telegram:chat-1"),
+                session("agent:main:telegram:chat-2"),
+            ]
+        )
+        assert len(parse.orchestrator_turns) == 2
+
+    def test_equal_ts_ties_keep_file_order(self) -> None:
+        # Turns from different surfaces sharing a timestamp must merge in file
+        # order (the pre-grouping behavior), not surface-first-seen order —
+        # _primary_model's tie-break reads first-seen from this ordering.
+        def turn(rid: str, text: str) -> dict[str, Any]:
+            return {
+                "role": "assistant",
+                "responseId": rid,
+                "timestamp": 1000,
+                "model": "m",
+                "content": [{"type": "text", "text": text}],
+            }
+
+        parse = parse_telemetry(
+            [
+                {
+                    "type": "agent.start",
+                    "sessionKey": "agent:main:main:s1",
+                    "messages": [turn("r1", "M1")],
+                },
+                {
+                    "type": "agent.start",
+                    "sessionKey": "agent:main:telegram:chat-1",
+                    "messages": [turn("t1", "T1")],
+                },
+                {
+                    "type": "agent.end",
+                    "sessionKey": "agent:main:main:s1",
+                    "messages": [turn("r1", "M1"), turn("r2", "M2")],
+                },
+            ]
+        )
+        texts = [content_to_text(t.get("content")) for t in parse.orchestrator_turns]
+        assert texts == ["M1", "T1", "M2"]
+
+    def test_keyless_user_turns_do_not_collapse_across_sessions(self) -> None:
+        # Same rationale as the assistant-side key: re-dumps always come from
+        # the turn's own session, so two genuine keyless prompts from two
+        # concurrent sessions coinciding on (timestamp, content) — e.g.
+        # scheduler-stamped injections across cron sessions — are distinct
+        # turns and must both survive.
+        def session(sk: str) -> dict[str, Any]:
+            return {
+                "type": "agent.start",
+                "sessionKey": sk,
+                "messages": [
+                    {
+                        "role": "user",
+                        "timestamp": 60000,
+                        "content": "Run the scheduled sweep",
+                    },
+                    {
+                        "role": "assistant",
+                        "responseId": f"r-{sk[-1]}",
+                        "timestamp": 61000,
+                        "model": "m",
+                        "content": [{"type": "text", "text": "ok"}],
+                    },
+                ],
+            }
+
+        parse = parse_telemetry(
+            [session("agent:main:cron:job-1"), session("agent:main:cron:job-2")]
+        )
+        assert len(parse.user_turns) == 2
+
+    def test_transient_twin_drop_is_session_scoped(self) -> None:
+        # The transient/settled collapse concerns one session re-serializing
+        # its OWN prompt. A genuinely keyless prompt in another session that
+        # happens to share text with a keyed prompt elsewhere is a separate
+        # turn and must not be text-dropped against it.
+        raw = [
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:main:main:s1",
+                "messages": [
+                    {
+                        "role": "user",
+                        "timestamp": 1000,
+                        "idempotencyKey": "m1",
+                        "content": "check the queue",
+                    },
+                ],
+            },
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:main:cron:job-1",
+                "messages": [
+                    {"role": "user", "timestamp": 5000, "content": "check the queue"},
+                ],
+            },
+        ]
+        parse = parse_telemetry(raw)
+        assert len(parse.user_turns) == 2
 
     def test_user_prompt_transient_and_settled_collapse(self) -> None:
         # OpenClaw re-serializes a human prompt across snapshots: a transient
@@ -1107,13 +1240,14 @@ class TestSchemaASubagents:
         assert len(exec_events) == 1
         assert exec_events[0].result == "file.txt"
 
-    def test_unlinked_subagent_dropped_with_warning(
+    def test_unlinked_subagent_placed_not_dropped(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         # A sub-agent whose spawn cannot be linked to a tool call (no
-        # childSessionKey resolvable to a spawn call) cannot be placed in the
-        # timeline, so it is dropped with a warning rather than guessed at. Not
-        # observed in the CRUX1 captures; this locks the fallback behaviour.
+        # childSessionKey resolvable to a spawn call) is placed by its
+        # file-order anchor with an info log, not dropped — cron/system-spawned
+        # sessions have no spawn call at all. Placement order and the
+        # no-fabricated-spawn invariant are locked in TestSpawnlessSubagents.
         child = "agent:run:subagent:orphan-1"
         raw = [
             {
@@ -1147,12 +1281,13 @@ class TestSchemaASubagents:
         parse = parse_telemetry(raw)
         assert len(parse.subagents) == 1
         assert parse.subagents[0].spawn_tool_call_id is None
-        with caplog.at_level(logging.WARNING):
+        with caplog.at_level(logging.INFO):
             events = build_events(parse)
-        # No span is emitted for the unlinked sub-agent, and it is reported.
-        assert not any(isinstance(e, SpanBeginEvent) for e in events)
+        # The unlinked sub-agent still gets its agent span, and is reported.
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        assert span.id == child
         assert any(
-            "no linkable spawn call" in r.getMessage() and child in r.getMessage()
+            "file-order anchor" in r.getMessage() and child in r.getMessage()
             for r in caplog.records
         )
 
@@ -1244,12 +1379,41 @@ class TestSchemaBSubagents:
         span_end = next(e for e in events if isinstance(e, SpanEndEvent))
         assert span_end.timestamp >= tool.completed
 
-    def test_schema_b_missing_ts_falls_back_to_spawn_time(self) -> None:
-        # Bare captures carry no ``ts``; the call is stamped with the spawn time
-        # (zero duration) rather than failing.
+    def test_schema_b_missing_ts_derives_width_from_duration_ms(self) -> None:
+        # Bare captures carry no ``ts``: the call is stamped at the spawn time,
+        # and ``durationMs`` (from tool.end) still gives it a real start->end
+        # width — downstream busy-time sums rely on it.
         events = build_events(parse_telemetry(self._raw(success=True, ts=False)))
         tool = self._tool_event(events)
+        assert tool.completed is not None
+        assert (tool.completed - tool.timestamp).total_seconds() == 0.25
+        # The agent span still ends at the call's derived end time.
+        span_end = next(e for e in events if isinstance(e, SpanEndEvent))
+        assert span_end.timestamp >= tool.completed
+
+    def test_schema_b_missing_ts_and_duration_collapses_to_zero(self) -> None:
+        # Only a call with neither ``ts`` nor ``durationMs`` collapses to the
+        # spawn time (zero duration) rather than failing.
+        raw = self._raw(success=True, ts=False)
+        end = next(e for e in raw if e.get("type") == "tool.end")
+        del end["durationMs"]
+        events = build_events(parse_telemetry(raw))
+        tool = self._tool_event(events)
         assert tool.completed == tool.timestamp
+
+    def test_schema_b_malformed_duration_ms_survives(self) -> None:
+        # ``durationMs`` comes verbatim out of json.loads: a numeric string
+        # still yields a width; a non-numeric or negative value degrades to
+        # zero width — never a TypeError that aborts the whole import (and a
+        # negative never places ``completed`` before ``timestamp``).
+        for bad, width in (("250", 0.25), ("bogus", 0.0), (-500, 0.0)):
+            raw = self._raw(success=True, ts=False)
+            end = next(e for e in raw if e.get("type") == "tool.end")
+            end["durationMs"] = bad
+            events = build_events(parse_telemetry(raw))
+            tool = self._tool_event(events)
+            assert tool.completed is not None
+            assert (tool.completed - tool.timestamp).total_seconds() == width
 
     def test_schema_b_tool_failure_surfaced(self) -> None:
         # A tool.end with success=false is a real failure: the standard
@@ -1267,6 +1431,722 @@ class TestSchemaBSubagents:
         tool = self._tool_event(events)
         assert tool.failed is False
         assert tool.error is None
+
+
+class TestSpawnlessSubagents:
+    """Sub-agent sessions with no linkable ``sessions_spawn`` call.
+
+    Cron/system-spawned sessions (a normal OpenClaw pattern on scheduled runs;
+    46 of 101 sub-agent sessions on a real cron-scheduled CRUX capture) appear
+    in the telemetry with no spawn tool call at all. They are placed at their
+    file-order anchor — the latest orchestrator turn seen before the session's
+    first event — with no spawn call fabricated, instead of being dropped.
+    """
+
+    CHILD = "agent:main:subagent:cron-child-1"
+    PROMPT = (
+        "[Subagent Context] You are a subagent spawned by the main agent.\n"
+        "You are running as a subagent. Report back when done.\n"
+        "Run the ablation sweep for setting X.\n"
+        "Include the smaller grids first."
+    )
+
+    def _turn(self, rid: str, ts: int, text: str) -> dict[str, Any]:
+        return {
+            "role": "assistant",
+            "responseId": rid,
+            "timestamp": ts,
+            "model": "m",
+            "content": [{"type": "text", "text": text}],
+        }
+
+    def _raw(self) -> list[dict[str, Any]]:
+        orch = "agent:main:cron:orchestrator"
+        a1, a2, a3 = (
+            self._turn("r1", 1000, "A1"),
+            self._turn("r2", 2000, "A2"),
+            self._turn("r3", 3000, "A3"),
+        )
+        return [
+            # First snapshot: A1 + A2 precede the sub-agent in file order.
+            {"type": "agent.start", "sessionKey": orch, "messages": [a1, a2]},
+            {"type": "agent.start", "sessionKey": self.CHILD, "prompt": self.PROMPT},
+            {
+                "type": "tool.start",
+                "sessionKey": self.CHILD,
+                "toolName": "exec",
+                "params": {"command": "run sweep"},
+            },
+            {
+                "type": "tool.end",
+                "sessionKey": self.CHILD,
+                "toolName": "exec",
+                "durationMs": 100,
+                "success": True,
+            },
+            # Later cumulative snapshot appends A3 after the sub-agent appeared.
+            {"type": "agent.end", "sessionKey": orch, "messages": [a1, a2, a3]},
+        ]
+
+    def test_placed_at_file_order_anchor(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        parse = parse_telemetry(self._raw())
+        assert len(parse.subagents) == 1
+        assert parse.subagents[0].spawn_tool_call_id is None
+        # The anchor is A2's timestamp: the latest orchestrator turn seen (in
+        # file order) before the session's first event.
+        assert parse.subagents[0].anchor_ts == 2000
+        with caplog.at_level(logging.INFO):
+            events = build_events(parse)
+        # Placed immediately AFTER its anchor turn A2 (the latest orchestrator
+        # turn seen, in file order, before the session's first event): the
+        # orchestrator had already produced A2 when the session appeared, so
+        # the span belongs on A2's far side. Reported at info level.
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        roots = [e for e in events if isinstance(e, ModelEvent)]
+        assert events.index(span) == events.index(roots[1]) + 1
+        # ...and STAMPED at the anchor's time, not the next timeline item's:
+        # the span (and its ts-less schema-B call, which falls back to the
+        # span time) must not report activity as starting at A3.
+        anchor_dt = datetime.fromtimestamp(2.0, tz=timezone.utc)  # A2 @ 2000ms
+        assert span.timestamp == anchor_dt
+        inner = next(
+            e for e in events if isinstance(e, ToolEvent) and e.span_id == self.CHILD
+        )
+        assert inner.timestamp == anchor_dt
+        assert any(
+            "file-order anchor" in r.getMessage() and self.CHILD in r.getMessage()
+            for r in caplog.records
+        )
+
+    def test_no_spawn_tool_call_fabricated(self) -> None:
+        events = build_events(parse_telemetry(self._raw()))
+        # No spawn call was recorded, so none is folded into the span — but the
+        # session's own activity is still reconstructed inside it.
+        folded = [
+            e
+            for e in events
+            if isinstance(e, ToolEvent) and e.agent_span_id == self.CHILD
+        ]
+        assert folded == []
+        inner = [
+            e for e in events if isinstance(e, ToolEvent) and e.span_id == self.CHILD
+        ]
+        assert [e.function for e in inner] == ["exec"]
+
+    def test_span_named_from_prompt_task_line(self) -> None:
+        # No spawn label exists, so the span is named from the first
+        # task-bearing line of the session's own prompt, skipping OpenClaw's
+        # "[Subagent Context] …" / "You are running as a subagent…" preamble.
+        events = build_events(parse_telemetry(self._raw()))
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        assert span.name == "Run the ablation sweep for setting X."
+
+    def test_anchor_at_run_start_places_before_first_turn(self) -> None:
+        # A session first seen before ANY orchestrator turn anchors at 0 and is
+        # emitted ahead of the first turn rather than lost.
+        raw = self._raw()
+        raw.insert(0, raw.pop(1))  # move the sub-agent's agent.start first
+        parse = parse_telemetry(raw)
+        assert parse.subagents[0].anchor_ts == 0
+        events = build_events(parse)
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        first_model = next(e for e in events if isinstance(e, ModelEvent))
+        assert events.index(span) < events.index(first_model)
+
+    def test_trailing_anchor_span_stamped_at_anchor(self) -> None:
+        # A session anchored at (or past) the last orchestrator turn is
+        # emitted by the trailing flush — it must stamp at the anchor time
+        # too, not at the last item's.
+        raw = self._raw()
+        raw.pop()  # drop the agent.end snapshot that appends A3
+        events = build_events(parse_telemetry(raw))
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        assert span.timestamp == datetime.fromtimestamp(2.0, tz=timezone.utc)
+
+    def test_anchor_flush_precedes_interleaved_compaction(self) -> None:
+        # The anchor flush runs on every timeline item, so a span anchored
+        # before a compaction is emitted before that compaction, not swept
+        # past it to the next assistant turn.
+        orch = "agent:main:cron:orchestrator"
+        raw: list[dict[str, Any]] = [
+            {
+                "type": "agent.start",
+                "sessionKey": orch,
+                "messages": [self._turn("r1", 1000, "A1")],
+            },
+            {"type": "agent.start", "sessionKey": self.CHILD, "prompt": self.PROMPT},
+            {
+                "type": "tool.start",
+                "sessionKey": self.CHILD,
+                "toolName": "exec",
+                "params": {},
+            },
+            {
+                "type": "agent.end",
+                "sessionKey": orch,
+                "messages": [
+                    self._turn("r1", 1000, "A1"),
+                    {
+                        "role": "compactionSummary",
+                        "timestamp": 1500,
+                        "tokensBefore": 100,
+                    },
+                    self._turn("r2", 2000, "A2"),
+                ],
+            },
+        ]
+        events = build_events(parse_telemetry(raw))
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        compaction = next(e for e in events if isinstance(e, CompactionEvent))
+        assert events.index(span) < events.index(compaction)
+
+    def test_span_named_from_inline_subagent_task_tag(self) -> None:
+        # The fixture-shaped prompt announces the task INLINE after the
+        # "[Subagent Task]:" tag. The tag is authoritative — it must not be
+        # skipped as bracket boilerplate (which named the span from the later
+        # report-back line instead).
+        raw = self._raw()
+        raw[1] = dict(
+            raw[1],
+            prompt=(
+                "[Fri 2026-03-06 13:08 PST] [Subagent Context] You are running "
+                "as a subagent (depth 1/1). Results auto-announce to your "
+                "requester; do not busy-poll for status.\n"
+                "\n"
+                "[Subagent Task]: Check the unread queue\n"
+                "\n"
+                "Report back with anything unread."
+            ),
+        )
+        events = build_events(parse_telemetry(raw))
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        assert span.name == "Check the unread queue"
+
+    def test_span_named_from_line_after_bare_task_tag(self) -> None:
+        # The tag alone on its line: the task is the next non-empty line.
+        raw = self._raw()
+        raw[1] = dict(
+            raw[1],
+            prompt=(
+                "[Subagent Context] You are running as a subagent.\n"
+                "[Subagent Task]\n"
+                "Run the smaller grids first.\n"
+                "Then report back."
+            ),
+        )
+        events = build_events(parse_telemetry(raw))
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        assert span.name == "Run the smaller grids first."
+
+    def test_mid_line_task_tag_detected(self) -> None:
+        # The tag can share its line with the timestamp preamble; prefix-only
+        # detection would skip the whole line as bracket boilerplate and name
+        # the span from a later body line.
+        raw = self._raw()
+        raw[1] = dict(
+            raw[1],
+            prompt=(
+                "[Fri 2026-03-06 13:08 PST] [Subagent Task]: Check the unread queue\n"
+                "\n"
+                "Report back with anything unread."
+            ),
+        )
+        events = build_events(parse_telemetry(raw))
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        assert span.name == "Check the unread queue"
+
+    def test_bare_tag_lookahead_skips_bracketed_lines(self) -> None:
+        # The task-on-next-line lookahead applies the same bracket/boilerplate
+        # skip as the fallback: an unrecognized bracket line (workspace tags,
+        # template placeholders) never becomes a span name.
+        raw = self._raw()
+        raw[1] = dict(
+            raw[1],
+            prompt=(
+                "[Subagent Task]\n"
+                "[workspace: /tmp/run-42]\n"
+                "Run the smaller grids first.\n"
+            ),
+        )
+        events = build_events(parse_telemetry(raw))
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        assert span.name == "Run the smaller grids first."
+
+    def test_bare_tag_defers_to_later_inline_tag(self) -> None:
+        # Real prompts repeat the tag — a bare heading first, the
+        # task-carrying tag line after (the dominant shape on both real
+        # captures). The bare tag's lookahead must stop at the next tag line
+        # and defer to it, not skip it as bracket noise and name the span
+        # from later body text.
+        raw = self._raw()
+        raw[1] = dict(
+            raw[1],
+            prompt=(
+                "[Subagent Context] You are running as a subagent.\n"
+                "\n"
+                "[Subagent Task]\n"
+                "\n"
+                "[Subagent Task]: Sweep the smaller grids\n"
+                "\n"
+                "Report back when done."
+            ),
+        )
+        events = build_events(parse_telemetry(raw))
+        span = next(e for e in events if isinstance(e, SpanBeginEvent))
+        assert span.name == "Sweep the smaller grids"
+
+    def test_duplicate_spawn_claim_warns_and_places_by_anchor(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        # A second session claiming an already-claimed spawn call violates the
+        # documented 1:1 spawn->session mapping (corrupt/ambiguous linkage).
+        # It is anchor-placed like a spawn-less session, but the anomaly must
+        # surface at WARNING level — the normal cron pattern stays at info.
+        turn = {
+            "role": "assistant",
+            "responseId": "r1",
+            "timestamp": 1000,
+            "model": "m",
+            "content": [
+                {"type": "text", "text": "spawning"},
+                {
+                    "type": "toolCall",
+                    "id": "tc1",
+                    "name": "sessions_spawn",
+                    "arguments": {"label": "one"},
+                },
+            ],
+        }
+
+        def span_for(key: str) -> SubagentSpan:
+            return SubagentSpan(
+                session_key=key,
+                prompt=None,
+                n_tool_calls=0,
+                n_assistant_turns=0,
+                spawn_tool_call_id="tc1",
+                spawn_label="one",
+                spawn_task=None,
+                turns=[],
+                tool_calls=[],
+                anchor_ts=1000,
+            )
+
+        parse = OpenClawTelemetry(
+            orchestrator_turns=[turn],
+            user_turns=[],
+            compactions=[],
+            result_by_callid={},
+            model_name="m",
+            subagents=[
+                span_for("agent:main:subagent:claim-1"),
+                span_for("agent:main:subagent:claim-2"),
+            ],
+            session_id="s",
+        )
+        with caplog.at_level(logging.WARNING):
+            events = build_events(parse)
+        spans = {e.id for e in events if isinstance(e, SpanBeginEvent)}
+        assert spans == {
+            "agent:main:subagent:claim-1",
+            "agent:main:subagent:claim-2",
+        }
+        assert any(
+            r.levelno == logging.WARNING
+            and "already claimed" in r.getMessage()
+            and "agent:main:subagent:claim-2" in r.getMessage()
+            for r in caplog.records
+        )
+
+
+class TestRollupAggregates:
+    """Scaffold roll-up aggregate records are dropped, not double-counted.
+
+    OpenClaw's turn-finalization bookkeeping appends an aggregate assistant
+    record after a block of per-call records: no ``responseId``, stopReason
+    ``stop``, no toolCalls, ``totalTokens`` frozen at the previous record's
+    value, and usage components that SUM the block (breaking the per-call
+    identity ``input + output + cacheRead + cacheWrite == totalTokens``).
+    Keeping it double-counts every usage field (~23M phantom cache-read tokens
+    on one real CRUX capture). The filter runs per session — each orchestrator
+    session and each sub-agent session — so interleaving cannot mask the
+    comparison.
+    """
+
+    ORCH = "agent:main:cron:orchestrator"
+
+    def _turn(
+        self,
+        *,
+        rid: str | None,
+        ts: int,
+        text: str,
+        usage: dict[str, Any],
+        stop: str = "stop",
+        tool_call: bool = False,
+    ) -> dict[str, Any]:
+        content: list[dict[str, Any]] = [{"type": "text", "text": text}]
+        if tool_call:
+            content.append(
+                {"type": "toolCall", "id": "tc1", "name": "exec", "arguments": {}}
+            )
+        turn: dict[str, Any] = {
+            "role": "assistant",
+            "timestamp": ts,
+            "model": "m",
+            "stopReason": stop,
+            "content": content,
+            "usage": usage,
+        }
+        if rid is not None:
+            turn["responseId"] = rid
+        return turn
+
+    def _parse(self, turns: list[dict[str, Any]]) -> OpenClawTelemetry:
+        return parse_telemetry(
+            [{"type": "agent.start", "sessionKey": self.ORCH, "messages": turns}]
+        )
+
+    def test_rollup_dropped_and_usage_not_double_counted(self) -> None:
+        parse = self._parse(
+            [
+                self._turn(
+                    rid="r1",
+                    ts=1000,
+                    text="A1",
+                    usage={
+                        "input": 100,
+                        "output": 50,
+                        "cacheRead": 800,
+                        "totalTokens": 950,
+                    },
+                ),
+                # The roll-up: rid-less, tool-less 'stop' record whose
+                # totalTokens is frozen at A1's value while its components sum
+                # the block it closes (the shape observed on real captures).
+                self._turn(
+                    rid=None,
+                    ts=1500,
+                    text="A1",
+                    usage={
+                        "input": 105,
+                        "output": 220,
+                        "cacheRead": 1600,
+                        "cacheWrite": 40,
+                        "totalTokens": 950,
+                    },
+                ),
+                self._turn(
+                    rid="r2",
+                    ts=2000,
+                    text="A2",
+                    usage={"input": 10, "output": 5, "totalTokens": 15},
+                ),
+            ]
+        )
+        assert len(parse.orchestrator_turns) == 2
+        events = build_events(parse)
+        usages = [
+            e.output.usage
+            for e in events
+            if isinstance(e, ModelEvent) and e.output.usage is not None
+        ]
+        assert len(usages) == 2
+        # Without the drop these would be 2400 / 1915.
+        assert sum(u.input_tokens_cache_read or 0 for u in usages) == 800
+        assert sum(u.total_tokens for u in usages) == 965
+
+    def test_genuine_turns_with_equal_totals_are_kept(self) -> None:
+        # On rid-less (service-sink) captures two consecutive genuine text-only
+        # replies can repeat a totalTokens value. A genuine per-call record is
+        # self-consistent (input + output + cacheRead + cacheWrite ==
+        # totalTokens), which a roll-up never is — so the frozen total alone
+        # must not delete the second real turn.
+        usage = {"input": 10, "output": 40, "cacheRead": 900, "totalTokens": 950}
+        parse = self._parse(
+            [
+                self._turn(rid=None, ts=1000, text="A1", usage=dict(usage)),
+                self._turn(rid=None, ts=1500, text="A2", usage=dict(usage)),
+            ]
+        )
+        assert len(parse.orchestrator_turns) == 2
+
+    def test_adjacent_zero_usage_placeholders_are_kept(self) -> None:
+        # Adjacent provider-failure placeholders share totalTokens=0 but are
+        # self-consistent (0 == 0+0+0+0): both must survive the filter.
+        zero = {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "totalTokens": 0,
+        }
+        parse = self._parse(
+            [
+                self._turn(
+                    rid=None, ts=1000, text="[assistant turn failed]", usage=dict(zero)
+                ),
+                self._turn(
+                    rid=None, ts=1500, text="[assistant turn failed]", usage=dict(zero)
+                ),
+            ]
+        )
+        assert len(parse.orchestrator_turns) == 2
+
+    def test_rollup_detected_across_interleaved_surfaces(self) -> None:
+        # A turn from another orchestrator surface lands between a block's
+        # closing per-call record and its roll-up (multi-surface captures are
+        # real). The filter runs per surface, so the interleaving must not
+        # mask the frozen-total comparison — and the other surface's genuine
+        # turn must survive.
+        telegram_turn = {
+            "role": "assistant",
+            "responseId": "t1",
+            "timestamp": 1200,
+            "model": "m",
+            "stopReason": "stop",
+            "content": [{"type": "text", "text": "T1"}],
+            "usage": {"input": 5, "output": 10, "cacheRead": 485, "totalTokens": 500},
+        }
+        parse = parse_telemetry(
+            [
+                {
+                    "type": "agent.start",
+                    "sessionKey": self.ORCH,
+                    "messages": [
+                        self._turn(
+                            rid="r1",
+                            ts=1000,
+                            text="A1",
+                            usage={
+                                "input": 100,
+                                "output": 50,
+                                "cacheRead": 800,
+                                "totalTokens": 950,
+                            },
+                        ),
+                        self._turn(
+                            rid=None,
+                            ts=1500,
+                            text="A1",
+                            usage={
+                                "input": 104,
+                                "output": 210,
+                                "cacheRead": 1650,
+                                "cacheWrite": 30,
+                                "totalTokens": 950,
+                            },
+                        ),
+                    ],
+                },
+                {
+                    "type": "agent.start",
+                    "sessionKey": "agent:main:telegram:chat-1",
+                    "messages": [telegram_turn],
+                },
+            ]
+        )
+        texts = [content_to_text(t.get("content")) for t in parse.orchestrator_turns]
+        assert texts == ["A1", "T1"]
+
+    def test_rollup_detected_across_same_kind_sessions(self) -> None:
+        # Two concurrent sessions of the SAME kind (e.g. two telegram chats,
+        # or two cron runs — one real capture carries 419 orchestrator
+        # sessions): chat-2's turn interleaving between chat-1's closing
+        # record and its roll-up must not mask the comparison, so the filter
+        # groups by full sessionKey, not by kind.
+        def snapshot(sk: str, turns: list[dict[str, Any]]) -> dict[str, Any]:
+            return {"type": "agent.start", "sessionKey": sk, "messages": turns}
+
+        def turn(
+            rid: str | None, ts: int, text: str, usage: dict[str, int]
+        ) -> dict[str, Any]:
+            return {
+                "role": "assistant",
+                "responseId": rid,
+                "timestamp": ts,
+                "model": "m",
+                "stopReason": "stop",
+                "content": [{"type": "text", "text": text}],
+                "usage": usage,
+            }
+
+        chat1 = [
+            turn(
+                "r1",
+                1000,
+                "C1-A",
+                {"input": 100, "output": 50, "cacheRead": 800, "totalTokens": 950},
+            ),
+            # chat-1's roll-up (block-sum usage, frozen total)
+            {
+                "role": "assistant",
+                "timestamp": 1500,
+                "model": "m",
+                "stopReason": "stop",
+                "content": [{"type": "text", "text": "C1-A"}],
+                "usage": {
+                    "input": 104,
+                    "output": 210,
+                    "cacheRead": 1650,
+                    "cacheWrite": 30,
+                    "totalTokens": 950,
+                },
+            },
+        ]
+        chat2 = [
+            turn(
+                "r2",
+                1200,
+                "C2-A",
+                {"input": 5, "output": 10, "cacheRead": 485, "totalTokens": 500},
+            )
+        ]
+        parse = parse_telemetry(
+            [
+                snapshot("agent:main:telegram:chat-1", chat1),
+                snapshot("agent:main:telegram:chat-2", chat2),
+            ]
+        )
+        texts = [content_to_text(t.get("content")) for t in parse.orchestrator_turns]
+        assert texts == ["C1-A", "C2-A"]
+
+    def test_subagent_schema_a_rollup_dropped(self) -> None:
+        # Sub-agent sessions are finalized by the same scaffold, so a
+        # roll-up-shaped record inside a session's messages[] must not double
+        # the span's usage either.
+        sub = "agent:main:subagent:sub-roll"
+        per_call = {
+            "role": "assistant",
+            "responseId": "s1",
+            "timestamp": 1000,
+            "model": "m",
+            "stopReason": "stop",
+            "content": [{"type": "text", "text": "S1"}],
+            "usage": {"input": 20, "output": 40, "cacheRead": 890, "totalTokens": 950},
+        }
+        rollup = {
+            "role": "assistant",
+            "timestamp": 1500,
+            "model": "m",
+            "stopReason": "stop",
+            "content": [{"type": "text", "text": "S1"}],
+            "usage": {
+                "input": 22,
+                "output": 55,
+                "cacheRead": 1780,
+                "cacheWrite": 10,
+                "totalTokens": 950,
+            },
+        }
+        parse = parse_telemetry(
+            [
+                {
+                    "type": "agent.start",
+                    "sessionKey": self.ORCH,
+                    "messages": [
+                        self._turn(
+                            rid="r1",
+                            ts=500,
+                            text="A1",
+                            usage={"input": 1, "output": 4, "totalTokens": 5},
+                        )
+                    ],
+                },
+                {
+                    "type": "agent.start",
+                    "sessionKey": sub,
+                    "prompt": "do the thing",
+                    "messages": [per_call, rollup],
+                },
+            ]
+        )
+        assert len(parse.subagents) == 1
+        assert len(parse.subagents[0].turns) == 1
+        assert parse.subagents[0].n_assistant_turns == 1
+        events = build_events(parse)
+        sub_usages = [
+            e.output.usage
+            for e in events
+            if isinstance(e, ModelEvent) and e.span_id == sub
+        ]
+        assert len(sub_usages) == 1
+        sub_usage = sub_usages[0]
+        assert sub_usage is not None
+        assert sub_usage.total_tokens == 950
+
+    def test_string_total_tokens_coerced_not_identity_broken(self) -> None:
+        # totalTokens as a numeric string (raw-JSON hazard): "950" == "950"
+        # passes the frozen-total gate, and an un-coerced identity comparison
+        # (int sum != str total) would delete the second GENUINE turn. Totals
+        # are coerced before comparing, so the self-consistent turn is kept —
+        # while a real block-sum roll-up with string totals is still dropped.
+        genuine = {"input": 10, "output": 40, "cacheRead": 900, "totalTokens": "950"}
+        parse = self._parse(
+            [
+                self._turn(rid=None, ts=1000, text="A1", usage=dict(genuine)),
+                self._turn(rid=None, ts=1500, text="A2", usage=dict(genuine)),
+                self._turn(
+                    rid=None,
+                    ts=2000,
+                    text="A2",
+                    usage={
+                        "input": 20,
+                        "output": 80,
+                        "cacheRead": 1800,
+                        "totalTokens": "950",
+                    },
+                ),
+            ]
+        )
+        texts = [content_to_text(t.get("content")) for t in parse.orchestrator_turns]
+        assert texts == ["A1", "A2"]
+
+    def test_component_less_usage_is_unclassifiable_and_kept(self) -> None:
+        # A usage carrying ONLY totalTokens gives the identity nothing to
+        # classify (components sum to 0 on genuine turns of that shape too),
+        # so the record is kept rather than treated as identity-broken.
+        parse = self._parse(
+            [
+                self._turn(rid=None, ts=1000, text="A1", usage={"totalTokens": 950}),
+                self._turn(rid=None, ts=1500, text="A2", usage={"totalTokens": 950}),
+            ]
+        )
+        assert len(parse.orchestrator_turns) == 2
+
+    def test_moving_total_tokens_is_kept(self) -> None:
+        # A rid-less 'stop' record whose totalTokens MOVED is a real turn
+        # (service-sink captures have no responseId at all) — never dropped.
+        parse = self._parse(
+            [
+                self._turn(rid=None, ts=1000, text="A1", usage={"totalTokens": 950}),
+                self._turn(rid=None, ts=1500, text="A2", usage={"totalTokens": 990}),
+            ]
+        )
+        assert len(parse.orchestrator_turns) == 2
+
+    def test_response_id_or_tool_calls_disqualify(self) -> None:
+        # The signature is conjunctive: a responseId, a toolCall, or a
+        # non-'stop' stopReason each mark a genuine turn even with frozen
+        # totals.
+        usage = {"totalTokens": 950}
+        parse = self._parse(
+            [
+                self._turn(rid="r1", ts=1000, text="A1", usage=dict(usage)),
+                self._turn(rid="r2", ts=1500, text="A2", usage=dict(usage)),
+                self._turn(
+                    rid=None,
+                    ts=2000,
+                    text="A3",
+                    usage=dict(usage),
+                    tool_call=True,
+                    stop="toolUse",
+                ),
+            ]
+        )
+        assert len(parse.orchestrator_turns) == 3
 
 
 class TestMessages:
@@ -1306,6 +2186,315 @@ class TestMessages:
         }
         # Every tool message corresponds to an assistant tool call.
         assert tool_msg_ids <= tool_call_ids
+
+
+class TestOperatorChannel:
+    """Inbound operator messages (``message.in``) carry provenance.
+
+    A ``message.in`` whose text matches a user turn marks THAT turn
+    ``source="operator"`` (no duplicate message); one with no matching user
+    turn (it never entered the session thread, e.g. delivered while the agent
+    was busy) becomes its own operator-sourced user message, placed by its
+    timestamp.
+    """
+
+    def _raw(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "please check the baselines",
+                "timestamp": 900,
+            },
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:main:main:s1",
+                "messages": [
+                    {
+                        "role": "user",
+                        "timestamp": 1000,
+                        "idempotencyKey": "m1",
+                        "content": "please check the baselines",
+                    },
+                    {
+                        "role": "user",
+                        "timestamp": 1500,
+                        "content": "[runtime context]",
+                    },
+                    {
+                        "role": "assistant",
+                        "responseId": "r1",
+                        "timestamp": 2000,
+                        "model": "m",
+                        "content": [{"type": "text", "text": "on it"}],
+                    },
+                ],
+            },
+            # Delivered mid-run but never re-entered the session thread as a
+            # user turn: must become its own operator-sourced message.
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "actually, prioritise the ablation",
+                "timestamp": 2500,
+            },
+        ]
+
+    def test_matched_message_in_marks_user_turn_operator(self) -> None:
+        messages = build_messages(parse_telemetry(self._raw()))
+        by_text = {m.text: m for m in messages if m.role == "user"}
+        # The operator-delivered prompt is stamped; no duplicate is added.
+        assert by_text["please check the baselines"].source == "operator"
+        assert sum(1 for m in messages if m.text == "please check the baselines") == 1
+        # A user turn that did not arrive via the operator channel (runtime
+        # context) carries no source.
+        assert by_text["[runtime context]"].source is None
+
+    def test_unmatched_message_in_becomes_operator_message(self) -> None:
+        messages = build_messages(parse_telemetry(self._raw()))
+        unmatched = [
+            m
+            for m in messages
+            if m.role == "user" and m.text == "actually, prioritise the ablation"
+        ]
+        assert len(unmatched) == 1
+        assert unmatched[0].source == "operator"
+        # Placed by timestamp: after the assistant turn it interrupted.
+        roles = [m.role for m in messages]
+        assert roles.index("assistant") < messages.index(unmatched[0])
+
+    def test_repeated_operator_send_not_lost(self) -> None:
+        # The operator sends the same text twice; only one instance re-entered
+        # the thread as a user turn. Occurrence-based reconciliation must
+        # surface the second send as its own operator message — set-of-texts
+        # semantics silently dropped it once the first occurrence matched.
+        raw: list[dict[str, Any]] = [
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "status?",
+                "timestamp": 900,
+            },
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:main:main:s1",
+                "messages": [
+                    {"role": "user", "timestamp": 1000, "content": "status?"},
+                    {
+                        "role": "assistant",
+                        "responseId": "r1",
+                        "timestamp": 2000,
+                        "model": "m",
+                        "content": [{"type": "text", "text": "working"}],
+                    },
+                ],
+            },
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "status?",
+                "timestamp": 2500,
+            },
+        ]
+        messages = build_messages(parse_telemetry(raw))
+        status = [m for m in messages if m.role == "user" and m.text == "status?"]
+        assert len(status) == 2
+        assert all(m.source == "operator" for m in status)
+        # The unmatched second send is placed by its timestamp, after the
+        # assistant turn it followed.
+        roles = [m.role for m in messages]
+        assert roles.index("assistant") < messages.index(status[1])
+
+    def test_twin_text_matches_turn_at_or_after_send(self) -> None:
+        # Two user turns share the operator text; the send precedes only the
+        # second. A message can only enter the thread at-or-after it arrives,
+        # so the LATER twin is stamped and the earlier one left untouched.
+        raw: list[dict[str, Any]] = [
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:main:main:s1",
+                "messages": [
+                    {"role": "user", "timestamp": 500, "content": "ok"},
+                    {"role": "user", "timestamp": 1500, "content": "ok"},
+                ],
+            },
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "ok",
+                "timestamp": 1000,
+            },
+        ]
+        messages = build_messages(parse_telemetry(raw))
+        users = [m for m in messages if m.role == "user"]
+        assert len(users) == 2  # matched: no standalone duplicate added
+        assert [m.source for m in users] == [None, "operator"]
+
+    def test_multiline_send_matches_block_content_turn(self) -> None:
+        # A multi-line send re-enters the thread as a content-block list; both
+        # sides must flatten identically (content_to_text) or the turn is left
+        # unstamped AND the send duplicated as a standalone message.
+        raw: list[dict[str, Any]] = [
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "line1\nline2",
+                "timestamp": 900,
+            },
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:main:main:s1",
+                "messages": [
+                    {
+                        "role": "user",
+                        "timestamp": 1000,
+                        "content": [
+                            {"type": "text", "text": "line1"},
+                            {"type": "text", "text": "line2"},
+                        ],
+                    },
+                ],
+            },
+        ]
+        messages = build_messages(parse_telemetry(raw))
+        users = [m for m in messages if m.role == "user"]
+        assert len(users) == 1
+        assert users[0].source == "operator"
+
+    def test_unmatched_send_not_in_later_model_input(self) -> None:
+        # An unmatched inbound message never entered the session thread — the
+        # model never saw it. It belongs in the final message thread, but NOT
+        # in later ModelEvents' input (the conversation the model was shown).
+        raw: list[dict[str, Any]] = [
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:main:main:s1",
+                "messages": [
+                    {"role": "user", "timestamp": 1000, "content": "start"},
+                    {
+                        "role": "assistant",
+                        "responseId": "r1",
+                        "timestamp": 2000,
+                        "model": "m",
+                        "content": [{"type": "text", "text": "A1"}],
+                    },
+                    {
+                        "role": "assistant",
+                        "responseId": "r2",
+                        "timestamp": 3000,
+                        "model": "m",
+                        "content": [{"type": "text", "text": "A2"}],
+                    },
+                ],
+            },
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "secret aside",
+                "timestamp": 2500,
+            },
+        ]
+        events, messages = build_content(parse_telemetry(raw))
+        models = [e for e in events if isinstance(e, ModelEvent)]
+        assert len(models) == 2
+        assert not any(m.text == "secret aside" for m in models[1].input)
+        aside = [m for m in messages if m.role == "user" and m.text == "secret aside"]
+        assert len(aside) == 1
+        assert aside[0].source == "operator"
+
+    def test_empty_send_does_not_stamp_media_only_turn(self) -> None:
+        # A content-less message.in (media-only send) flattens to "" — as
+        # does an image-only user turn. Empty text must not participate in
+        # the pairing join: the turn stays unstamped and the send surfaces
+        # standalone.
+        raw: list[dict[str, Any]] = [
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "",
+                "timestamp": 900,
+            },
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:main:main:s1",
+                "messages": [
+                    {
+                        "role": "user",
+                        "timestamp": 1000,
+                        "content": [{"type": "image", "data": "iVBORw0KGgo="}],
+                    },
+                ],
+            },
+        ]
+        messages = build_messages(parse_telemetry(raw))
+        users = [m for m in messages if m.role == "user"]
+        assert len(users) == 2
+        assert [m.source for m in users] == ["operator", None]
+
+    def test_ts_less_turn_still_matched_by_text(self) -> None:
+        # A user turn with no timestamp cannot fail the at-or-after check: it
+        # is always eligible (the pre-pairing set semantics matched it, and a
+        # standalone duplicate would be worse than a loose match).
+        raw: list[dict[str, Any]] = [
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "hello",
+                "timestamp": 900,
+            },
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:main:main:s1",
+                "messages": [{"role": "user", "content": "hello"}],
+            },
+        ]
+        messages = build_messages(parse_telemetry(raw))
+        users = [m for m in messages if m.role == "user"]
+        assert len(users) == 1
+        assert users[0].source == "operator"
+
+    def test_ts_less_turn_does_not_steal_at_or_after_match(self) -> None:
+        # A ts-less turn is always-ELIGIBLE, not always-PREFERRED: when a turn
+        # satisfying at-or-after exists, it wins, and the ts-less turn is left
+        # for a send that has no such match — otherwise the greedy pick
+        # manufactures exactly the standalone duplicate it exists to avoid.
+        raw: list[dict[str, Any]] = [
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "status?",
+                "timestamp": 1000,
+            },
+            {
+                "type": "agent.start",
+                "sessionKey": "agent:main:main:s1",
+                "messages": [
+                    {"role": "user", "content": "status?"},
+                    {"role": "user", "timestamp": 2000, "content": "status?"},
+                ],
+            },
+            {
+                "type": "message.in",
+                "channel": "telegram",
+                "content": "status?",
+                "timestamp": 3000,
+            },
+        ]
+        messages = build_messages(parse_telemetry(raw))
+        users = [m for m in messages if m.role == "user"]
+        assert len(users) == 2  # both sends matched: no standalone duplicate
+        assert all(m.source == "operator" for m in users)
+
+    def test_fixture_prompts_carry_operator_source(
+        self, raw_events: list[dict[str, Any]]
+    ) -> None:
+        # The bundled fixture's three human Telegram prompts each arrive as a
+        # message.in and re-enter the thread as user turns: all three must be
+        # stamped, and no extra user message may appear.
+        messages = build_messages(parse_telemetry(raw_events))
+        users = [m for m in messages if m.role == "user"]
+        assert len(users) == 3
+        assert all(m.source == "operator" for m in users)
 
 
 class TestTranscript:

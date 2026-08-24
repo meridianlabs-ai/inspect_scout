@@ -13,13 +13,15 @@ You can populate a transcript database in a variety of ways depending on where y
 
 3. [Claude Code](#claude-code): Read transcript data from local Claude Code sessions.
 
-4. [Harbor](#harbor): Read transcript data from Harbor agent trajectory (ATIF) files.
+4. [Antigravity CLI](#antigravity-cli): Read transcript data from local Antigravity CLI conversations.
 
-5. [Transcript API](#transcript-api): Python API for creating and inserting transcripts.
+5. [Harbor](#harbor): Read transcript data from Harbor agent trajectory (ATIF) files.
 
-6. [Arrow Import](#arrow-import): Efficient direct insertion using `RecordBatchReader`.
+6. [Transcript API](#transcript-api): Python API for creating and inserting transcripts.
 
-7. [Parquet Data Lake](#parquet-data-lake): Use an existing data lake not created using Inspect Scout.
+7. [Arrow Import](#arrow-import): Efficient direct insertion using `RecordBatchReader`.
+
+8. [Parquet Data Lake](#parquet-data-lake): Use an existing data lake not created using Inspect Scout.
 
 
 We'll cover each of these in turn below. Before proceeding though you should be sure to familiarize yourself with the [Database Schema](db_schema.qmd) and make a plan for how you want to map your data into it.
@@ -276,6 +278,56 @@ Claude Code transcripts are mapped to the database schema as follows:
 | `task_set` | Project directory path |
 | `task_id` | Session slug (conversation summary) |
 | `agent` | `"claude-code"` |
+
+
+## Antigravity CLI
+
+[Antigravity CLI](https://antigravity.google/docs/cli/overview/) (`agy`) is Google's agentic coding tool. Scout can import transcripts directly from Antigravity's conversation files, which are normally stored at `~/.gemini/antigravity-cli`.
+
+Use the `antigravity()` transcript source to import conversations:
+
+```python
+from inspect_scout import transcripts_db
+from inspect_scout.sources import antigravity
+
+async with transcripts_db("s3://my-transcript-db/") as db:
+    await db.insert(antigravity())
+```
+
+By default, all conversations in the data directory are imported. You can point `path` at a copied data directory, a `brain` directory, or a single conversation directory, and narrow the import by conversation ID, time range, or limit:
+
+```python
+# Import a specific conversation by ID
+await db.insert(antigravity(conversation_id="abc123-def456"))
+
+# Import conversations from a time range
+from datetime import datetime
+await db.insert(antigravity(
+    from_time=datetime(2026, 8, 1),
+    to_time=datetime(2026, 9, 1),
+))
+
+# Limit the number of transcripts
+await db.insert(antigravity(limit=100))
+```
+
+Note that `from_time`/`to_time` filter on each transcript's file modification time (`st_mtime`), not the conversation's run time — mtime is reset by `cp`, `git checkout`, rsync, etc., so it can diverge from when the conversation actually occurred.
+
+Sub-agent conversations are inlined into their parent as agent spans and are not yielded at the top level (pass their `conversation_id` explicitly to import one standalone). A parent and its sub-agents should be imported together in one pass (the default when reading a whole data directory) — importing them across separate passes, e.g. incremental time-windowed imports, can store a sub-agent's events twice, once standalone and once inlined.
+
+Two limitations follow from Antigravity's own recording format: token usage is decoded best-effort from an undocumented store and may be absent, and tool calls the user declined (as well as the true cause of stream errors) are omitted from Antigravity's transcripts entirely.
+
+Antigravity conversations are mapped to the database schema as follows:
+
+| Field | Value |
+|-------|-------|
+| `source_type` | `"antigravity"` |
+| `agent` | `"antigravity"` |
+| `model` | Wire model id (e.g. `claude-sonnet-4-6`), falling back to the display name from session settings |
+| `total_tokens` | Sum of per-generation usage (best-effort) |
+| `metadata.title` | Conversation title (set via `/rename`) |
+| `metadata.subagent_conversation_ids` | Inlined sub-agent conversations |
+| `metadata.compaction_count` | Number of compaction checkpoints |
 
 
 ## Harbor

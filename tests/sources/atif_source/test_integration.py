@@ -509,6 +509,9 @@ async def test_synthesized_event_timestamp_comes_from_step(tmp_path: Path) -> No
     assert model_events[0].timestamp == datetime(
         2026, 1, 1, 0, 0, 5, tzinfo=timezone.utc
     )
+    # working_start is normalized to the offset from the first event, not the
+    # monotonic-clock default
+    assert model_events[0].working_start < 10_000
 
 
 @pytest.mark.asyncio
@@ -718,12 +721,15 @@ async def test_real_terminus_2_fixture_emits_compaction_event(
     assert len(transcripts) == 1
     [transcript] = transcripts
 
-    compactions = [e for e in transcript.events if isinstance(e, CompactionEvent)]
-    assert len(compactions) == 1
-    assert compactions[0].type == "summary"
-    assert compactions[0].source == "atif"
+    compaction_events = [e for e in transcript.events if isinstance(e, CompactionEvent)]
+    assert len(compaction_events) == 1
+    assert compaction_events[0].type == "summary"
+    assert compaction_events[0].source == "atif"
     # ATIF type/boundary preserved verbatim (not mapped onto inspect_ai's enum).
-    assert compactions[0].metadata == {"type": "compaction", "boundary": "replace"}
+    assert compaction_events[0].metadata == {
+        "type": "compaction",
+        "boundary": "replace",
+    }
 
 
 @pytest.mark.parametrize(

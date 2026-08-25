@@ -184,14 +184,12 @@ class ChildSemaphoreRegistry(ConcurrencySemaphoreRegistry):
 
         def wait_for_semaphore() -> PicklableMPSemaphore:
             """Synchronous function to run in thread."""
-            with self.condition:
-                if name not in self.registry:
-                    # Send IPC request to parent
-                    self.upstream_queue.put(
-                        SemaphoreRequest(name, concurrency, visible)
-                    )
+            if name not in self.registry:
+                # Send IPC request to parent
+                self.upstream_queue.put(SemaphoreRequest(name, concurrency, visible))
 
-                # Wait for parent to create it
+            # Wait for parent to create it
+            with self.condition:
                 while name not in self.registry:
                     self.condition.wait(timeout=1.0)
 

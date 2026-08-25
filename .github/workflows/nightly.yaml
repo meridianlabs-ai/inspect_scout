@@ -5,9 +5,10 @@ name: Nightly
 # check-schema-and-types validates against it), so there is deliberately no
 # skip-if-unchanged check: re-testing an unchanged commit is the point.
 #
-# Reports to Slack only on failure (same channel as the inspect_ai slow
-# tests). Requires the SLACK_BOT_TOKEN and SLACK_CHANNEL_ID secrets, and the
-# Slack bot must be a member of the channel.
+# Reports every run to Slack (same channel and message format as the
+# inspect_ai slow tests in meridianlabs-ai/actions): ✅ on success, 🚨 with
+# <!channel> on failure. Requires the SLACK_BOT_TOKEN and SLACK_CHANNEL_ID
+# secrets, and the Slack bot must be a member of the channel.
 
 on:
   schedule:
@@ -21,14 +22,14 @@ jobs:
 
   report:
     needs: ci
-    if: always() && needs.ci.result == 'failure'
+    if: always() && needs.ci.result != 'cancelled'
     runs-on: ubuntu-latest
     steps:
       - name: Get short SHA
         id: commit
         run: echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
-      - name: Report failure to Slack
+      - name: Report results to Slack
         uses: slackapi/slack-github-action@v3.0.1
         with:
           method: chat.postMessage
@@ -36,18 +37,22 @@ jobs:
           payload: |
             {
               "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
-              "text": "🚨 Inspect Scout Nightly CI Failed",
+              "text": "${{ needs.ci.result == 'success' && '✅ Inspect Scout Nightly CI Passed' || '🚨 Inspect Scout Nightly CI Failed' }}",
               "blocks": [
                 {
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "🚨 Inspect Scout Nightly CI Failed"
+                    "text": "${{ needs.ci.result == 'success' && '✅ Inspect Scout Nightly CI Passed' || '🚨 Inspect Scout Nightly CI Failed' }}"
                   }
                 },
                 {
                   "type": "section",
                   "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Repository:*\n${{ github.repository }}"
+                    },
                     {
                       "type": "mrkdwn",
                       "text": "*Trigger:*\n${{ github.event_name }}"
@@ -59,6 +64,10 @@ jobs:
                     {
                       "type": "mrkdwn",
                       "text": "*Tested:*\n<https://github.com/${{ github.repository }}/commit/${{ github.sha }}|inspect_scout@${{ github.ref_name }}#${{ steps.commit.outputs.short_sha }}> against inspect_ai main"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*CI:*\n${{ needs.ci.result == 'success' && '✅' || '❌' }} ${{ needs.ci.result }}"
                     }
                   ]
                 },
@@ -66,7 +75,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "<!channel> The nightly CI run has failed. Please investigate."
+                    "text": "${{ needs.ci.result == 'success' && 'All checks completed successfully! 🎉' || '<!channel> The nightly CI run has failed. Please investigate.' }}"
                   }
                 },
                 {

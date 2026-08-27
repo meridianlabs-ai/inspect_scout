@@ -892,7 +892,12 @@ def init_scan_model_context(
 async def handle_scan_interrupted(
     message_or_exc: str | Exception, spec: ScanSpec, recorder: ScanRecorder
 ) -> Status:
-    scan_status = await recorder.sync(await recorder.location(), complete=False)
+    # on interrupt this runs inside an already-cancelled scope, where an
+    # unshielded await re-raises the cancellation before the sync can
+    # complete (#578) -- shield it so the interrupted status gets written
+    # and reported rather than tripping the not-None assert upstream
+    with anyio.CancelScope(shield=True):
+        scan_status = await recorder.sync(await recorder.location(), complete=False)
     display().scan_interrupted(message_or_exc, scan_status)
     return scan_status
 

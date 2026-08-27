@@ -179,7 +179,13 @@ convention = "google"
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
-addopts = "-n auto"
+# -n logical, not auto: auto means physical cores when psutil is importable
+# (it always is — an inspect_ai runtime dependency), which uses only 2 of the
+# 4 vCPUs on ubuntu-latest CI runners. --dist worksteal lets an idle worker
+# take pending tests off a straggler (xdist's default load hands out large
+# contiguous slices, so slow e2e files can strand one worker). Both measured
+# in inspect_ai (design/ci-perf/report.md there).
+addopts = "-n logical --dist worksteal"
 
 [tool.mypy]
 strict = true

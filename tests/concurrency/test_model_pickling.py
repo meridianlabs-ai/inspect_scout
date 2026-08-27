@@ -127,7 +127,7 @@ def test_model_roles_config_is_picklable() -> None:
         "mockllm/model",
         custom_outputs=[ModelOutput.from_content("mockllm/model", content="hello")],
     )
-    roles = {"scanner": model}
+    roles: dict[str, Model | list[Model]] = {"scanner": model}
     roles_config = model_roles_to_model_roles_config(roles)
     # This is what happens when IPCContext crosses process boundary
     pickled = cloudpickle.dumps(roles_config)

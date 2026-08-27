@@ -89,7 +89,11 @@ def scan_results_df(
             for each transcript (in which case multiple results will be packed
             into the `value` field as a JSON list of `Result`).
         exclude_columns: List of column names to exclude when reading parquet files.
-            Useful for reducing memory usage by skipping large unused columns.
+            Defaults to `None`, which excludes the heavy columns (`input`,
+            `input_data`, and `scan_events`) that dominate file size and memory
+            usage. Pass `[]` to include all columns, or an explicit list to
+            exclude exactly those columns. Use `scan_results_arrow()` field
+            accessors for per-row access to heavy columns.
 
     Returns:
          ScanResults: Results as pandas data frames.
@@ -118,7 +122,11 @@ async def scan_results_df_async(
             for each transcript (in which case multiple results will be packed
             into the `value` field as a JSON list of `Result`).
         exclude_columns: List of column names to exclude when reading parquet files.
-            Useful for reducing memory usage by skipping large unused columns.
+            Defaults to `None`, which excludes the heavy columns (`input`,
+            `input_data`, and `scan_events`) that dominate file size and memory
+            usage. Pass `[]` to include all columns, or an explicit list to
+            exclude exactly those columns. Use `scan_results_arrow()` field
+            accessors for per-row access to heavy columns.
 
     Returns:
          ScanResults: Results as Pandas data frames.
@@ -178,7 +186,11 @@ def scan_results_batches(
         batch_size: Maximum number of parquet rows read per batch (note that
             resultset expansion can yield more than `batch_size` rows per batch).
         exclude_columns: List of column names to exclude when reading parquet files.
-            Useful for reducing memory usage by skipping large unused columns.
+            Defaults to `None`, which excludes the heavy columns (`input`,
+            `input_data`, and `scan_events`) that dominate file size and memory
+            usage. Pass `[]` to include all columns, or an explicit list to
+            exclude exactly those columns. Use `scan_results_arrow()` field
+            accessors for per-row access to heavy columns.
         rows: Row granularity. Specify "results" to yield a row for each scanner result
             (potentially multiple per transcript); Specify "transcript" to yield a row
             for each transcript (in which case multiple results will be packed
@@ -223,7 +235,11 @@ async def scan_results_batches_async(
         batch_size: Maximum number of parquet rows read per batch (note that
             resultset expansion can yield more than `batch_size` rows per batch).
         exclude_columns: List of column names to exclude when reading parquet files.
-            Useful for reducing memory usage by skipping large unused columns.
+            Defaults to `None`, which excludes the heavy columns (`input`,
+            `input_data`, and `scan_events`) that dominate file size and memory
+            usage. Pass `[]` to include all columns, or an explicit list to
+            exclude exactly those columns. Use `scan_results_arrow()` field
+            accessors for per-row access to heavy columns.
         rows: Row granularity. Specify "results" to yield a row for each scanner result
             (potentially multiple per transcript); Specify "transcript" to yield a row
             for each transcript (in which case multiple results will be packed

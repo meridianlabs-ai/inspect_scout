@@ -44,6 +44,7 @@ from .._scanspec import ScanSpec, ScanTranscripts
 from .._transcript.types import TranscriptInfo
 from .._util.duckdb import create_parquet_view, restrict_external_access
 from .recorder import (
+    HEAVY_COLUMNS,
     ScanRecorder,
     ScanResultsArrow,
     ScanResultsBatches,
@@ -420,7 +421,9 @@ class FileRecorder(ScanRecorder):
                 # keeping memory bounded by streaming_batch_size.
                 parquet = _open_scanner_parquet(scan_path, scanner)
 
-                exclude = set(exclude_columns) if exclude_columns else set()
+                exclude = set(
+                    HEAVY_COLUMNS if exclude_columns is None else exclude_columns
+                )
                 columns = [c for c in parquet.schema.names if c not in exclude]
 
                 fields_by_name = {f.name: f for f in parquet.schema_arrow}
@@ -557,6 +560,10 @@ class FileRecorder(ScanRecorder):
         scan_dir = UPath(scan_location)
         status = await FileRecorder.status(scan_location)
 
+        # None means "exclude the heavy columns" (pass [] to include all)
+        if exclude_columns is None:
+            exclude_columns = HEAVY_COLUMNS
+
         # Determine available scanner names
         if scanner is not None:
             scanner_names = [scanner]
@@ -595,7 +602,7 @@ class FileRecorder(ScanRecorder):
     ) -> ScanResultsBatches:
         parquet = _open_scanner_parquet(UPath(scan_location), scanner)
 
-        exclude = set(exclude_columns) if exclude_columns else set()
+        exclude = set(HEAVY_COLUMNS if exclude_columns is None else exclude_columns)
         columns = [c for c in parquet.schema.names if c not in exclude]
 
         # The single-DataFrame path makes its value-cast decisions over the

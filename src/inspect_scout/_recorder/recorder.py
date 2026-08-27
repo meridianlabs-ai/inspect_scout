@@ -18,6 +18,15 @@ from .._transcript.types import TranscriptInfo
 from .._util.duckdb import generated_identifier
 from .summary import Summary
 
+HEAVY_COLUMNS: list[str] = ["input", "input_data", "scan_events"]
+"""Large JSON columns excluded by default when reading scan results.
+
+These columns (full serialized scanner input, deduplicated message/call
+pools, and scanner execution events) dominate parquet file size and memory
+usage, and the common case (analysis over values/scores/metadata) never
+needs them. Pass `exclude_columns=[]` to include all columns.
+"""
+
 
 @dataclass
 class Status:
@@ -68,6 +77,10 @@ class ScanResultsArrow(Status):
         """Acquire a reader for the specified scanner.
 
         The return reader is a context manager that should be acquired before reading.
+
+        `exclude_columns=None` (the default) excludes the heavy columns
+        (`HEAVY_COLUMNS`); pass `[]` to include all columns, or an explicit
+        list to exclude exactly those columns.
         """
         ...
 
@@ -298,7 +311,14 @@ class ScanRecorder(abc.ABC):
         *,
         scanner: str | None = None,
         exclude_columns: list[str] | None = None,
-    ) -> ScanResultsDF: ...
+    ) -> ScanResultsDF:
+        """Read scan results as pandas DataFrames.
+
+        `exclude_columns=None` (the default) excludes the heavy columns
+        (`HEAVY_COLUMNS`); pass `[]` to include all columns, or an explicit
+        list to exclude exactly those columns.
+        """
+        ...
 
     @staticmethod
     @abc.abstractmethod
@@ -316,6 +336,10 @@ class ScanRecorder(abc.ABC):
         batches of `batch_size` rows, with memory bounded by `batch_size`
         rather than the size of the results. File-scoped facts that per-batch
         transformations depend on are provided alongside the iterator.
+
+        `exclude_columns=None` (the default) excludes the heavy columns
+        (`HEAVY_COLUMNS`); pass `[]` to include all columns, or an explicit
+        list to exclude exactly those columns.
 
         Note that batches are read with synchronous I/O (unlike the other
         recorder methods, which are async).

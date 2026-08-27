@@ -1,7 +1,6 @@
 import time
-from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Callable, Iterator
+from typing import Any, Callable
 
 import anyio
 import inspect_scout._scan as scan_module
@@ -17,7 +16,7 @@ from inspect_scout._recorder.file import FileRecorder
 from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._transcript.types import Transcript
 
-from tests.helpers import temp_active_scans_store
+from tests.helpers import active_scans_store_spy, temp_active_scans_store
 
 LOGS_DIR = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
 
@@ -92,19 +91,14 @@ def test_interrupted_scan_survives_a_late_metrics_write(
     # record when the scan deletes its active-scans entry
     deleted_at: list[float] = []
 
-    @contextmanager
-    def tracking_store() -> Iterator[ActiveScansStore]:
-        with active_scans_store() as store:
-            real_delete = store.delete_current
+    def record_delete(store: ActiveScansStore) -> None:
+        deleted_at.append(time.monotonic())
 
-            def tracked_delete() -> None:
-                deleted_at.append(time.monotonic())
-                real_delete()
-
-            store.delete_current = tracked_delete  # type: ignore[method-assign]
-            yield store
-
-    monkeypatch.setattr(scan_module, "active_scans_store", tracking_store)
+    monkeypatch.setattr(
+        scan_module,
+        "active_scans_store",
+        active_scans_store_spy("delete_current", record_delete),
+    )
 
     # hold the interrupted-path sync open past the throttle window
     real_sync = FileRecorder.sync

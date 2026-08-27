@@ -79,7 +79,9 @@ def test_model_survives_cloudpickle_roundtrip_in_subprocess() -> None:
         [sys.executable, "-c", script],
         capture_output=True,
         text=True,
-        timeout=15,
+        # Hang guard only. The subprocess cold-imports inspect_ai/inspect_scout,
+        # which can take >15s on a CI runner whose cores are saturated by xdist.
+        timeout=60,
         check=False,
     )
     if result.returncode != 0:
@@ -127,7 +129,7 @@ def test_model_roles_config_is_picklable() -> None:
         "mockllm/model",
         custom_outputs=[ModelOutput.from_content("mockllm/model", content="hello")],
     )
-    roles = {"scanner": model}
+    roles: dict[str, Model | list[Model]] = {"scanner": model}
     roles_config = model_roles_to_model_roles_config(roles)
     # This is what happens when IPCContext crosses process boundary
     pickled = cloudpickle.dumps(roles_config)
@@ -165,7 +167,9 @@ def _unpickle_callable_in_subprocess(pickled: bytes) -> bool:
         [sys.executable, "-c", script],
         capture_output=True,
         text=True,
-        timeout=15,
+        # Hang guard only. The subprocess cold-imports inspect_ai/inspect_scout,
+        # which can take >15s on a CI runner whose cores are saturated by xdist.
+        timeout=60,
         check=False,
     )
     if result.returncode != 0:

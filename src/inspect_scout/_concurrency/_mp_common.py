@@ -319,7 +319,7 @@ class IPCContext:
     model_config: ModelConfig
     """Configuration specifying which model provider and settings to use."""
 
-    model_roles: dict[str, ModelConfig] | None
+    model_roles: dict[str, ModelConfig | list[ModelConfig]] | None
     """Optional mapping of role names to serializable ModelConfig instances."""
 
     generate_config: GenerateConfig

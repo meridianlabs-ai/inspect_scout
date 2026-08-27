@@ -13,7 +13,6 @@ end-to-end happy path is covered by ``test_observe_providers.py``.
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Callable, Iterator
 
-import httpx
 import httpx2
 import pytest
 
@@ -88,7 +87,7 @@ def _anthropic_error() -> Exception:
     import anthropic
 
     return anthropic.APIConnectionError(
-        message="overloaded_error", request=httpx.Request("POST", "http://test")
+        message="overloaded_error", request=httpx2.Request("POST", "http://test")
     )
 
 

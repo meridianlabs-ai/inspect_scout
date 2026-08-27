@@ -58,7 +58,12 @@ PRs prepared by AI coding agents must disclose agent involvement in the descript
 
 ### Submodule pointer
 
-Never change the ts-mono submodule gitlink (`src/inspect_scout/_view/ts-mono`) unless the task is about the frontend. After any merge or rebase, check `git status`; if it shows the submodule modified, reset the pointer and commit: `git checkout origin/main -- src/inspect_scout/_view/ts-mono`. (`git submodule update` will NOT fix this—it syncs the working tree to the already-recorded pointer, not the reverse.) When a change legitimately requires a coordinated ts-mono update (e.g. regenerated types), follow [.claude/skills/land-ts-mono/SKILL.md](.claude/skills/land-ts-mono/SKILL.md).
+Never change the ts-mono submodule gitlink (`src/inspect_scout/_view/ts-mono`) unless the task is about the frontend. After any merge or rebase, if `git status` shows the submodule modified, check `git diff HEAD -- src/inspect_scout/_view/ts-mono` to tell two look-alike states apart:
+
+- **No gitlink change** (the diff is empty; only the local submodule worktree is stale): run `git submodule update`.
+- **Gitlink changed** (the recorded pointer was bumped incidentally): reset it and commit: `git checkout origin/main -- src/inspect_scout/_view/ts-mono`. `git submodule update` will NOT fix this—it syncs the working tree to the already-recorded pointer, not the reverse. Never `git add` the submodule path in this state—that stages the wrong pointer.
+
+When a change legitimately requires a coordinated ts-mono update (e.g. regenerated types), follow [.claude/skills/land-ts-mono/SKILL.md](.claude/skills/land-ts-mono/SKILL.md).
 
 ## Documentation
 

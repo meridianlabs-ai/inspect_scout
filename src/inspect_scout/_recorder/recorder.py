@@ -28,6 +28,16 @@ needs them. Pass `exclude_columns=[]` to include all columns.
 """
 
 
+def resolve_exclude_columns(exclude_columns: list[str] | None) -> list[str]:
+    """Resolve an `exclude_columns` argument to the columns to exclude.
+
+    `None` (the default everywhere) means "exclude the heavy columns"
+    (`HEAVY_COLUMNS`); an explicit list (including `[]`) excludes exactly
+    those columns.
+    """
+    return list(HEAVY_COLUMNS) if exclude_columns is None else exclude_columns
+
+
 @dataclass
 class Status:
     """Status of scan job."""
@@ -79,8 +89,9 @@ class ScanResultsArrow(Status):
         The return reader is a context manager that should be acquired before reading.
 
         `exclude_columns=None` (the default) excludes the heavy columns
-        (`input`, `input_data`, and `scan_events`); pass `[]` to include all
-        columns, or an explicit list to exclude exactly those columns.
+        (`input`, `input_data`, and `scan_events`, available as
+        `HEAVY_COLUMNS`); pass `[]` to include all columns, or an explicit
+        list to exclude exactly those columns.
         """
         ...
 
@@ -315,8 +326,9 @@ class ScanRecorder(abc.ABC):
         """Read scan results as pandas DataFrames.
 
         `exclude_columns=None` (the default) excludes the heavy columns
-        (`input`, `input_data`, and `scan_events`); pass `[]` to include all
-        columns, or an explicit list to exclude exactly those columns.
+        (`input`, `input_data`, and `scan_events`, available as
+        `HEAVY_COLUMNS`); pass `[]` to include all columns, or an explicit
+        list to exclude exactly those columns.
         """
         ...
 
@@ -338,8 +350,9 @@ class ScanRecorder(abc.ABC):
         transformations depend on are provided alongside the iterator.
 
         `exclude_columns=None` (the default) excludes the heavy columns
-        (`input`, `input_data`, and `scan_events`); pass `[]` to include all
-        columns, or an explicit list to exclude exactly those columns.
+        (`input`, `input_data`, and `scan_events`, available as
+        `HEAVY_COLUMNS`); pass `[]` to include all columns, or an explicit
+        list to exclude exactly those columns.
 
         Note that batches are read with synchronous I/O (unlike the other
         recorder methods, which are async).

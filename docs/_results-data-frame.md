@@ -29,7 +29,7 @@ Note that by default the results data frame will include an individual row for e
 
 The data frame includes the following fields (note that some fields included embedded JSON data, these are all noted below).
 
-Note that the heavy JSON columns (`input` and `scan_events`) are excluded by default as they dominate file size and memory usage—pass `exclude_columns=[]` to include all columns, or an explicit list to exclude exactly those columns.
+Note that the heavy JSON columns (`input` and `scan_events`) are excluded by default as they dominate file size and memory usage—pass `exclude_columns=[]` to include all columns, or an explicit list to exclude exactly those columns (the default exclusions are available as the `HEAVY_COLUMNS` constant, e.g. `exclude_columns=[*HEAVY_COLUMNS, "metadata"]`).
 
 | Field | Type | Description |
 |-------------------|-------------------|----------------------------------|

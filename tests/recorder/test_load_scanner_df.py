@@ -13,8 +13,8 @@ from pathlib import Path
 import pandas as pd
 import pyarrow.parquet as pq
 import pytest
+from inspect_scout import HEAVY_COLUMNS
 from inspect_scout._recorder.file import _load_scanner_df, _parquet_source
-from inspect_scout._recorder.recorder import HEAVY_COLUMNS
 from inspect_scout._scanresults import scan_results_df
 from upath import UPath
 

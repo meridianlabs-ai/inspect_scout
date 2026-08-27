@@ -12,6 +12,7 @@ import pyarrow.parquet as pq
 import pytest
 from fsspec.implementations.local import LocalFileSystem  # type: ignore[import-untyped]
 from inspect_scout import (
+    HEAVY_COLUMNS,
     Result,
     Scanner,
     scan,
@@ -20,7 +21,6 @@ from inspect_scout import (
     scan_results_df,
     scanner,
 )
-from inspect_scout._recorder.recorder import HEAVY_COLUMNS
 from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._transcript.types import Transcript
 from inspect_scout.aio import scan_results_batches_async

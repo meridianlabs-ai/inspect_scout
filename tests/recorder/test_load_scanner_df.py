@@ -13,6 +13,7 @@ from pathlib import Path
 import pandas as pd
 import pyarrow.parquet as pq
 import pytest
+from inspect_scout import HEAVY_COLUMNS
 from inspect_scout._recorder.file import _load_scanner_df, _parquet_source
 from inspect_scout._scanresults import scan_results_df
 from upath import UPath
@@ -36,7 +37,7 @@ def memory_scan_dir() -> Iterator[UPath]:
 def test_exclude_columns_matches_full_read(scanner_name: str) -> None:
     """Excluding columns drops them and leaves all other data unchanged."""
     scan_dir = UPath(SCAN_DIR.as_posix())
-    full = _load_scanner_df(scan_dir, scanner_name)
+    full = _load_scanner_df(scan_dir, scanner_name, exclude_columns=[])
     excluded = _load_scanner_df(scan_dir, scanner_name, exclude_columns=EXCLUDED)
 
     assert len(full) > 0
@@ -46,13 +47,13 @@ def test_exclude_columns_matches_full_read(scanner_name: str) -> None:
 
 @pytest.mark.parametrize(
     "exclude_columns",
-    [None, [], ["not_a_column"]],
-    ids=["none", "empty", "nonexistent"],
+    [[], ["not_a_column"]],
+    ids=["empty", "nonexistent"],
 )
-def test_exclude_columns_noop_variants(exclude_columns: list[str] | None) -> None:
-    """None, empty, and non-existent exclusions all yield the full read."""
+def test_exclude_columns_noop_variants(exclude_columns: list[str]) -> None:
+    """Empty and non-existent exclusions both yield the full read."""
     scan_dir = UPath(SCAN_DIR.as_posix())
-    full = _load_scanner_df(scan_dir, "word_counter")
+    full = _load_scanner_df(scan_dir, "word_counter", exclude_columns=[])
     df = _load_scanner_df(scan_dir, "word_counter", exclude_columns=exclude_columns)
     pd.testing.assert_frame_equal(df, full)
 
@@ -78,13 +79,30 @@ def test_value_cast_skipped_when_value_type_excluded() -> None:
 def test_scan_results_df_exclude_columns(scanner_name: str) -> None:
     """exclude_columns via the public scan_results_df API matches a full read."""
     location = SCAN_DIR.as_posix()
-    full = scan_results_df(location, scanner=scanner_name).scanners[scanner_name]
+    full = scan_results_df(location, scanner=scanner_name, exclude_columns=[]).scanners[
+        scanner_name
+    ]
     results = scan_results_df(location, scanner=scanner_name, exclude_columns=EXCLUDED)
     df = results.scanners[scanner_name]
 
     assert len(full) > 0
     assert list(df.columns) == [c for c in full.columns if c not in EXCLUDED]
     pd.testing.assert_frame_equal(df, full[df.columns])
+
+
+@pytest.mark.parametrize("scanner_name", SCANNERS)
+def test_scan_results_df_default_excludes_heavy_columns(scanner_name: str) -> None:
+    """Default (None) excludes heavy columns; [] includes everything."""
+    location = SCAN_DIR.as_posix()
+    full = scan_results_df(location, scanner=scanner_name, exclude_columns=[]).scanners[
+        scanner_name
+    ]
+    default = scan_results_df(location, scanner=scanner_name).scanners[scanner_name]
+
+    assert len(default) > 0
+    # input_data is dropped from the full read too (by event expansion)
+    assert list(default.columns) == [c for c in full.columns if c not in HEAVY_COLUMNS]
+    pd.testing.assert_frame_equal(default, full[default.columns])
 
 
 def test_load_scanner_df_from_fsspec_only_protocol(memory_scan_dir: UPath) -> None:

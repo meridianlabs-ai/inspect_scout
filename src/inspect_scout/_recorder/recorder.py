@@ -18,6 +18,25 @@ from .._transcript.types import TranscriptInfo
 from .._util.duckdb import generated_identifier
 from .summary import Summary
 
+HEAVY_COLUMNS: tuple[str, ...] = ("input", "input_data", "scan_events")
+"""Large JSON columns excluded by default when reading scan results.
+
+These columns (full serialized scanner input, deduplicated message/call
+pools, and scanner execution events) dominate parquet file size and memory
+usage, and the common case (analysis over values/scores/metadata) never
+needs them. Pass `exclude_columns=[]` to include all columns.
+"""
+
+
+def resolve_exclude_columns(exclude_columns: Sequence[str] | None) -> list[str]:
+    """Resolve an `exclude_columns` argument to the columns to exclude.
+
+    `None` (the default everywhere) means "exclude the heavy columns"
+    (`HEAVY_COLUMNS`); an explicit sequence (including `[]`) excludes exactly
+    those columns.
+    """
+    return list(HEAVY_COLUMNS if exclude_columns is None else exclude_columns)
+
 
 @dataclass
 class Status:
@@ -63,11 +82,16 @@ class ScanResultsArrow(Status):
         self,
         scanner: str,
         streaming_batch_size: int = 1024,
-        exclude_columns: list[str] | None = None,
+        exclude_columns: Sequence[str] | None = None,
     ) -> pa.RecordBatchReader:
         """Acquire a reader for the specified scanner.
 
         The return reader is a context manager that should be acquired before reading.
+
+        `exclude_columns=None` (the default) excludes the heavy columns
+        (`input`, `input_data`, and `scan_events`, available as
+        `HEAVY_COLUMNS`); pass `[]` to include all columns, or an explicit
+        sequence to exclude exactly those columns.
         """
         ...
 
@@ -297,8 +321,16 @@ class ScanRecorder(abc.ABC):
         scan_location: str,
         *,
         scanner: str | None = None,
-        exclude_columns: list[str] | None = None,
-    ) -> ScanResultsDF: ...
+        exclude_columns: Sequence[str] | None = None,
+    ) -> ScanResultsDF:
+        """Read scan results as pandas DataFrames.
+
+        `exclude_columns=None` (the default) excludes the heavy columns
+        (`input`, `input_data`, and `scan_events`, available as
+        `HEAVY_COLUMNS`); pass `[]` to include all columns, or an explicit
+        sequence to exclude exactly those columns.
+        """
+        ...
 
     @staticmethod
     @abc.abstractmethod
@@ -307,7 +339,7 @@ class ScanRecorder(abc.ABC):
         scanner: str,
         *,
         batch_size: int = 1024,
-        exclude_columns: list[str] | None = None,
+        exclude_columns: Sequence[str] | None = None,
     ) -> ScanResultsBatches:
         """Stream a scanner's results as raw DataFrame batches.
 
@@ -316,6 +348,11 @@ class ScanRecorder(abc.ABC):
         batches of `batch_size` rows, with memory bounded by `batch_size`
         rather than the size of the results. File-scoped facts that per-batch
         transformations depend on are provided alongside the iterator.
+
+        `exclude_columns=None` (the default) excludes the heavy columns
+        (`input`, `input_data`, and `scan_events`, available as
+        `HEAVY_COLUMNS`); pass `[]` to include all columns, or an explicit
+        sequence to exclude exactly those columns.
 
         Note that batches are read with synchronous I/O (unlike the other
         recorder methods, which are async).

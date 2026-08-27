@@ -12,6 +12,7 @@ import pyarrow.parquet as pq
 import pytest
 from fsspec.implementations.local import LocalFileSystem  # type: ignore[import-untyped]
 from inspect_scout import (
+    HEAVY_COLUMNS,
     Result,
     Scanner,
     scan,
@@ -267,6 +268,32 @@ def test_exclude_columns(scan_location: str) -> None:
     for batch in batches:
         assert "scan_events" not in batch.columns
         assert "eval_metadata" not in batch.columns
+
+
+def test_default_excludes_heavy_columns(scan_location: str) -> None:
+    """Default (None) excludes heavy columns; [] includes everything."""
+    default_batches = assert_batches_match_df(scan_location, "bool_scanner")
+    for batch in default_batches:
+        assert not set(HEAVY_COLUMNS) & set(batch.columns)
+
+    full_batches = assert_batches_match_df(
+        scan_location, "bool_scanner", exclude_columns=[]
+    )
+    full = pd.concat(full_batches, ignore_index=True)
+    # input_data is dropped by event expansion after the full read
+    assert "input" in full.columns
+    assert "scan_events" in full.columns
+
+
+def test_reader_default_excludes_heavy_columns() -> None:
+    """Arrow reader default (None) excludes heavy columns; [] includes them."""
+    results = scan_results_arrow(FIXTURE_SCAN.as_posix())
+
+    default_schema = results.reader("word_counter").schema
+    assert not set(HEAVY_COLUMNS) & set(default_schema.names)
+
+    full_schema = results.reader("word_counter", exclude_columns=[]).schema
+    assert set(default_schema.names) == set(full_schema.names) - set(HEAVY_COLUMNS)
 
 
 @pytest.mark.asyncio

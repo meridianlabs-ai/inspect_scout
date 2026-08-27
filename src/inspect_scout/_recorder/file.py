@@ -50,6 +50,7 @@ from .recorder import (
     ScanResultsDB,
     ScanResultsDF,
     Status,
+    resolve_exclude_columns,
 )
 
 SCAN_JSON = "_scan.json"
@@ -413,14 +414,14 @@ class FileRecorder(ScanRecorder):
                 self,
                 scanner: str,
                 streaming_batch_size: int = 1024,
-                exclude_columns: list[str] | None = None,
+                exclude_columns: Sequence[str] | None = None,
             ) -> pa.RecordBatchReader:
                 # iter_batches() streams lazily for both local files and
                 # PyArrow cloud filesystems (which do ranged reads on demand),
                 # keeping memory bounded by streaming_batch_size.
                 parquet = _open_scanner_parquet(scan_path, scanner)
 
-                exclude = set(exclude_columns) if exclude_columns else set()
+                exclude = set(resolve_exclude_columns(exclude_columns))
                 columns = [c for c in parquet.schema.names if c not in exclude]
 
                 fields_by_name = {f.name: f for f in parquet.schema_arrow}
@@ -552,10 +553,12 @@ class FileRecorder(ScanRecorder):
         scan_location: str,
         *,
         scanner: str | None = None,
-        exclude_columns: list[str] | None = None,
+        exclude_columns: Sequence[str] | None = None,
     ) -> ScanResultsDF:
         scan_dir = UPath(scan_location)
         status = await FileRecorder.status(scan_location)
+
+        resolved_exclude = resolve_exclude_columns(exclude_columns)
 
         # Determine available scanner names
         if scanner is not None:
@@ -571,7 +574,7 @@ class FileRecorder(ScanRecorder):
         scanners = LazyScannerMapping(
             scanner_names=scanner_names,
             loader=lambda name: _load_scanner_df(
-                scan_dir, name, exclude_columns=exclude_columns
+                scan_dir, name, exclude_columns=resolved_exclude
             ),
         )
 
@@ -591,11 +594,11 @@ class FileRecorder(ScanRecorder):
         scanner: str,
         *,
         batch_size: int = 1024,
-        exclude_columns: list[str] | None = None,
+        exclude_columns: Sequence[str] | None = None,
     ) -> ScanResultsBatches:
         parquet = _open_scanner_parquet(UPath(scan_location), scanner)
 
-        exclude = set(exclude_columns) if exclude_columns else set()
+        exclude = set(resolve_exclude_columns(exclude_columns))
         columns = [c for c in parquet.schema.names if c not in exclude]
 
         # The single-DataFrame path makes its value-cast decisions over the
@@ -1296,15 +1299,16 @@ def _load_scanner_df(
     scan_dir: UPath,
     scanner_name: str,
     *,
-    exclude_columns: list[str] | None = None,
+    exclude_columns: list[str],
 ) -> pd.DataFrame:
     """Load a scanner's DataFrame from a parquet file.
 
     Args:
         scan_dir: Directory containing the scan parquet files.
         scanner_name: Name of the scanner (without .parquet extension).
-        exclude_columns: List of column names to exclude when reading.
-            Non-existent columns are silently ignored.
+        exclude_columns: Column names to exclude when reading (callers resolve
+            any default before calling; `[]` excludes nothing). Non-existent
+            columns are silently ignored.
 
     Returns:
         DataFrame with the scanner results, value column cast appropriately.

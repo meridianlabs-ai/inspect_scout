@@ -4,6 +4,7 @@ Tests get_langsmith_client(), _is_retryable_error(), and retry_api_call()
 functions that handle client setup and transient error retries.
 """
 
+import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -153,6 +154,11 @@ class TestIsRetryableError:
 
 class TestRetryApiCall:
     """Tests for retry_api_call function."""
+
+    @pytest.fixture(autouse=True)
+    def no_backoff(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Zero out the retry backoff (tenacity sleeps via time.sleep)."""
+        monkeypatch.setattr(time, "sleep", lambda _: None)
 
     def test_successful_call_returns_result(self) -> None:
         """Successful call returns result without retry."""

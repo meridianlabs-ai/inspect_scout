@@ -38,25 +38,25 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Cache pip dependencies
-        uses: actions/cache@v3
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9.0.0
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}-${{ matrix.python-version }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          version: "0.9.4"
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          uv venv --python "$(which python)"
           # Track inspect_ai main everywhere EXCEPT the release PR, where we
           # validate against the pinned/shipped version pulled in via .[dev] below.
           if [ "${{ github.head_ref }}" != "release-please--branches--main" ]; then
-            python -m pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
+            uv pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
           fi
-          python -m pip install .[dev]
+          uv pip install .[dev]
       - name: Run mypy
         run: |
-          mypy src examples tests --python-executable $(which python)
+          .venv/bin/mypy src examples tests
+      - name: Minimize uv cache
+        if: ${{ !cancelled() }}
+        run: uv cache prune --ci
 
   py-test:
     runs-on: ubuntu-latest
@@ -65,28 +65,34 @@ jobs:
         python-version: *python-versions
     steps:
       - uses: actions/checkout@v4
+      # setup-python (not uv's managed python): uv 0.9.4 resolves "3.14" to
+      # CPython 3.14.0, where a string member in a runtime `|` union raises
+      # TypeError (fixed in a later 3.14 patch; hostedtoolcache has 3.14.7).
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Cache pip dependencies
-        uses: actions/cache@v3
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9.0.0
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}-${{ matrix.python-version }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          version: "0.9.4"
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          uv venv --python "$(which python)"
           # Track inspect_ai main everywhere EXCEPT the release PR, where we
           # validate against the pinned/shipped version pulled in via .[dev] below.
           if [ "${{ github.head_ref }}" != "release-please--branches--main" ]; then
-            python -m pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
+            uv pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
           fi
-          python -m pip install .[dev]
+          uv pip install .[dev]
       - name: Run tests
-        run: pytest
+        # .venv/bin directly, not `uv run`: scout is not a uv-managed project
+        # (no uv.lock), so `uv run` would lock + sync and could replace the
+        # git-installed inspect_ai above with a registry resolution.
+        run: .venv/bin/pytest
+      - name: Minimize uv cache
+        if: ${{ !cancelled() }}
+        run: uv cache prune --ci
 
   py-build:
     runs-on: ubuntu-latest
@@ -99,21 +105,28 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          version: "0.9.4"
       - name: Install build dependencies
         run: |
-          python -m pip install --upgrade pip
+          uv venv --python "$(which python)"
           # Track inspect_ai main everywhere EXCEPT the release PR, where we
           # validate against the pinned/shipped version pulled in via . below.
           if [ "${{ github.head_ref }}" != "release-please--branches--main" ]; then
-            python -m pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
+            uv pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
           fi
-          python -m pip install build
+          uv pip install build
       - name: Build package
-        run: python -m build
+        run: .venv/bin/python -m build
       - name: Verify package
         run: |
-          python -m pip install dist/*.whl
-          python -c "import inspect_scout; print('Package imported successfully')"
+          uv pip install dist/*.whl
+          .venv/bin/python -c "import inspect_scout; print('Package imported successfully')"
+      - name: Minimize uv cache
+        if: ${{ !cancelled() }}
+        run: uv cache prune --ci
 
   check-schema-and-types:
     runs-on: ubuntu-latest

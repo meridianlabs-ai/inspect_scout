@@ -28,14 +28,14 @@ needs them. Pass `exclude_columns=[]` to include all columns.
 """
 
 
-def resolve_exclude_columns(exclude_columns: list[str] | None) -> list[str]:
+def resolve_exclude_columns(exclude_columns: Sequence[str] | None) -> list[str]:
     """Resolve an `exclude_columns` argument to the columns to exclude.
 
     `None` (the default everywhere) means "exclude the heavy columns"
-    (`HEAVY_COLUMNS`); an explicit list (including `[]`) excludes exactly
+    (`HEAVY_COLUMNS`); an explicit sequence (including `[]`) excludes exactly
     those columns.
     """
-    return list(HEAVY_COLUMNS) if exclude_columns is None else exclude_columns
+    return list(HEAVY_COLUMNS if exclude_columns is None else exclude_columns)
 
 
 @dataclass
@@ -82,7 +82,7 @@ class ScanResultsArrow(Status):
         self,
         scanner: str,
         streaming_batch_size: int = 1024,
-        exclude_columns: list[str] | None = None,
+        exclude_columns: Sequence[str] | None = None,
     ) -> pa.RecordBatchReader:
         """Acquire a reader for the specified scanner.
 
@@ -91,7 +91,7 @@ class ScanResultsArrow(Status):
         `exclude_columns=None` (the default) excludes the heavy columns
         (`input`, `input_data`, and `scan_events`, available as
         `HEAVY_COLUMNS`); pass `[]` to include all columns, or an explicit
-        list to exclude exactly those columns.
+        sequence to exclude exactly those columns.
         """
         ...
 
@@ -321,14 +321,14 @@ class ScanRecorder(abc.ABC):
         scan_location: str,
         *,
         scanner: str | None = None,
-        exclude_columns: list[str] | None = None,
+        exclude_columns: Sequence[str] | None = None,
     ) -> ScanResultsDF:
         """Read scan results as pandas DataFrames.
 
         `exclude_columns=None` (the default) excludes the heavy columns
         (`input`, `input_data`, and `scan_events`, available as
         `HEAVY_COLUMNS`); pass `[]` to include all columns, or an explicit
-        list to exclude exactly those columns.
+        sequence to exclude exactly those columns.
         """
         ...
 
@@ -339,7 +339,7 @@ class ScanRecorder(abc.ABC):
         scanner: str,
         *,
         batch_size: int = 1024,
-        exclude_columns: list[str] | None = None,
+        exclude_columns: Sequence[str] | None = None,
     ) -> ScanResultsBatches:
         """Stream a scanner's results as raw DataFrame batches.
 
@@ -352,7 +352,7 @@ class ScanRecorder(abc.ABC):
         `exclude_columns=None` (the default) excludes the heavy columns
         (`input`, `input_data`, and `scan_events`, available as
         `HEAVY_COLUMNS`); pass `[]` to include all columns, or an explicit
-        list to exclude exactly those columns.
+        sequence to exclude exactly those columns.
 
         Note that batches are read with synchronous I/O (unlike the other
         recorder methods, which are async).

@@ -18,7 +18,7 @@ from .._transcript.types import TranscriptInfo
 from .._util.duckdb import generated_identifier
 from .summary import Summary
 
-HEAVY_COLUMNS: list[str] = ["input", "input_data", "scan_events"]
+HEAVY_COLUMNS: tuple[str, ...] = ("input", "input_data", "scan_events")
 """Large JSON columns excluded by default when reading scan results.
 
 These columns (full serialized scanner input, deduplicated message/call
@@ -79,8 +79,8 @@ class ScanResultsArrow(Status):
         The return reader is a context manager that should be acquired before reading.
 
         `exclude_columns=None` (the default) excludes the heavy columns
-        (`HEAVY_COLUMNS`); pass `[]` to include all columns, or an explicit
-        list to exclude exactly those columns.
+        (`input`, `input_data`, and `scan_events`); pass `[]` to include all
+        columns, or an explicit list to exclude exactly those columns.
         """
         ...
 
@@ -315,8 +315,8 @@ class ScanRecorder(abc.ABC):
         """Read scan results as pandas DataFrames.
 
         `exclude_columns=None` (the default) excludes the heavy columns
-        (`HEAVY_COLUMNS`); pass `[]` to include all columns, or an explicit
-        list to exclude exactly those columns.
+        (`input`, `input_data`, and `scan_events`); pass `[]` to include all
+        columns, or an explicit list to exclude exactly those columns.
         """
         ...
 
@@ -338,8 +338,8 @@ class ScanRecorder(abc.ABC):
         transformations depend on are provided alongside the iterator.
 
         `exclude_columns=None` (the default) excludes the heavy columns
-        (`HEAVY_COLUMNS`); pass `[]` to include all columns, or an explicit
-        list to exclude exactly those columns.
+        (`input`, `input_data`, and `scan_events`); pass `[]` to include all
+        columns, or an explicit list to exclude exactly those columns.
 
         Note that batches are read with synchronous I/O (unlike the other
         recorder methods, which are async).

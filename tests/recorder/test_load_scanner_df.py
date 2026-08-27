@@ -37,7 +37,7 @@ def memory_scan_dir() -> Iterator[UPath]:
 def test_exclude_columns_matches_full_read(scanner_name: str) -> None:
     """Excluding columns drops them and leaves all other data unchanged."""
     scan_dir = UPath(SCAN_DIR.as_posix())
-    full = _load_scanner_df(scan_dir, scanner_name)
+    full = _load_scanner_df(scan_dir, scanner_name, exclude_columns=[])
     excluded = _load_scanner_df(scan_dir, scanner_name, exclude_columns=EXCLUDED)
 
     assert len(full) > 0
@@ -47,13 +47,13 @@ def test_exclude_columns_matches_full_read(scanner_name: str) -> None:
 
 @pytest.mark.parametrize(
     "exclude_columns",
-    [None, [], ["not_a_column"]],
-    ids=["none", "empty", "nonexistent"],
+    [[], ["not_a_column"]],
+    ids=["empty", "nonexistent"],
 )
-def test_exclude_columns_noop_variants(exclude_columns: list[str] | None) -> None:
-    """None, empty, and non-existent exclusions all yield the full read."""
+def test_exclude_columns_noop_variants(exclude_columns: list[str]) -> None:
+    """Empty and non-existent exclusions both yield the full read."""
     scan_dir = UPath(SCAN_DIR.as_posix())
-    full = _load_scanner_df(scan_dir, "word_counter")
+    full = _load_scanner_df(scan_dir, "word_counter", exclude_columns=[])
     df = _load_scanner_df(scan_dir, "word_counter", exclude_columns=exclude_columns)
     pd.testing.assert_frame_equal(df, full)
 

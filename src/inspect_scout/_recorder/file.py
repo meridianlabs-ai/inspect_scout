@@ -562,7 +562,7 @@ class FileRecorder(ScanRecorder):
 
         # None means "exclude the heavy columns" (pass [] to include all)
         if exclude_columns is None:
-            exclude_columns = HEAVY_COLUMNS
+            exclude_columns = list(HEAVY_COLUMNS)
 
         # Determine available scanner names
         if scanner is not None:
@@ -1303,15 +1303,16 @@ def _load_scanner_df(
     scan_dir: UPath,
     scanner_name: str,
     *,
-    exclude_columns: list[str] | None = None,
+    exclude_columns: list[str],
 ) -> pd.DataFrame:
     """Load a scanner's DataFrame from a parquet file.
 
     Args:
         scan_dir: Directory containing the scan parquet files.
         scanner_name: Name of the scanner (without .parquet extension).
-        exclude_columns: List of column names to exclude when reading.
-            Non-existent columns are silently ignored.
+        exclude_columns: Column names to exclude when reading (callers resolve
+            any default before calling; `[]` excludes nothing). Non-existent
+            columns are silently ignored.
 
     Returns:
         DataFrame with the scanner results, value column cast appropriately.

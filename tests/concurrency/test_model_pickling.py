@@ -79,7 +79,9 @@ def test_model_survives_cloudpickle_roundtrip_in_subprocess() -> None:
         [sys.executable, "-c", script],
         capture_output=True,
         text=True,
-        timeout=15,
+        # Hang guard only. The subprocess cold-imports inspect_ai/inspect_scout,
+        # which can take >15s on a CI runner whose cores are saturated by xdist.
+        timeout=60,
         check=False,
     )
     if result.returncode != 0:
@@ -165,7 +167,9 @@ def _unpickle_callable_in_subprocess(pickled: bytes) -> bool:
         [sys.executable, "-c", script],
         capture_output=True,
         text=True,
-        timeout=15,
+        # Hang guard only. The subprocess cold-imports inspect_ai/inspect_scout,
+        # which can take >15s on a CI runner whose cores are saturated by xdist.
+        timeout=60,
         check=False,
     )
     if result.returncode != 0:

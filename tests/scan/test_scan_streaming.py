@@ -272,7 +272,11 @@ def _scan_input_column(monkeypatch: pytest.MonkeyPatch, *, spool_threshold: int)
         )
         assert status.complete
         assert status.location is not None
-        results = scan_results_df(status.location, scanner="attachment_scanner")
+        # `input`/`input_data` are heavy columns, excluded by default since
+        # #583; this test is about what they contain.
+        results = scan_results_df(
+            status.location, scanner="attachment_scanner", exclude_columns=()
+        )
         return str(results.scanners["attachment_scanner"]["input"].tolist()[0])
 
 

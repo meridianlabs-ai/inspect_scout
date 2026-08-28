@@ -32,7 +32,7 @@ from inspect_ai._util.registry import (
     registry_tag,
     registry_unqualified_name,
 )
-from inspect_ai.model import GenerateConfig, Model, get_model
+from inspect_ai.model import GenerateConfig, Model, ModelRoles, get_model
 from inspect_ai.model._util import resolve_model_roles
 from jsonschema import Draft7Validator
 from typing_extensions import Unpack
@@ -79,7 +79,7 @@ class ScanJob:
         model_base_url: str | None = None,
         model_args: dict[str, Any] | None = None,
         generate_config: GenerateConfig | None = None,
-        model_roles: dict[str, str | Model] | None = None,
+        model_roles: ModelRoles | None = None,
         max_transcripts: int | None = None,
         max_processes: int | None = None,
         limit: int | None = None,
@@ -251,7 +251,7 @@ class ScanJob:
         return self._generate_config
 
     @property
-    def model_roles(self) -> dict[str, Model] | None:
+    def model_roles(self) -> dict[str, Model | list[Model]] | None:
         """Named roles for use in `get_model()`."""
         return self._model_roles
 

@@ -18,6 +18,7 @@ from ._observe import ObserveEmit, ObserveProvider, observe, observe_update
 from ._project import ProjectConfig
 from ._query.condition import Condition
 from ._recorder.recorder import (
+    HEAVY_COLUMNS,
     ScanResultsArrow,
     ScanResultsDF,
     Status,
@@ -134,6 +135,7 @@ __all__ = [
     "scan_results_arrow",
     "ScanResultsArrow",
     "scan_results_batches",
+    "HEAVY_COLUMNS",
     "Summary",
     # transcript
     "transcripts_db",

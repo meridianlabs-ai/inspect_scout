@@ -21,7 +21,13 @@ from inspect_ai._util.path import pretty_path
 from inspect_ai._util.platform import platform_init as init_platform
 from inspect_ai._util.rich import clean_control_characters
 from inspect_ai.model._generate_config import GenerateConfig
-from inspect_ai.model._model import Model, init_model_usage, model_usage, resolve_models
+from inspect_ai.model._model import (
+    Model,
+    ModelRoles,
+    init_model_usage,
+    model_usage,
+    resolve_models,
+)
 from inspect_ai.model._model_config import (
     model_config_to_model,
     model_roles_config_to_model_roles,
@@ -100,7 +106,7 @@ def scan(
     model_config: GenerateConfig | None = None,
     model_base_url: str | None = None,
     model_args: dict[str, Any] | str | None = None,
-    model_roles: dict[str, str | Model] | None = None,
+    model_roles: ModelRoles | None = None,
     max_transcripts: int | None = None,
     max_processes: int | None = None,
     limit: int | None = None,
@@ -192,7 +198,7 @@ async def scan_async(
     model_config: GenerateConfig | None = None,
     model_base_url: str | None = None,
     model_args: dict[str, Any] | str | None = None,
-    model_roles: dict[str, str | Model] | None = None,
+    model_roles: ModelRoles | None = None,
     max_transcripts: int | None = None,
     max_processes: int | None = None,
     limit: int | None = None,
@@ -859,8 +865,8 @@ def init_scan_model_context(
     model_config: GenerateConfig | None = None,
     model_base_url: str | None = None,
     model_args: dict[str, Any] | str | None = None,
-    model_roles: Mapping[str, str | Model] | None = None,
-) -> tuple[Model, dict[str, Any], dict[str, Model] | None]:
+    model_roles: ModelRoles | None = None,
+) -> tuple[Model, dict[str, Any], dict[str, Model | list[Model]] | None]:
     # resolve from inspect eval model env var if rquired
     if model is None:
         model = os.getenv("SCOUT_SCAN_MODEL", None)
@@ -886,7 +892,12 @@ def init_scan_model_context(
 async def handle_scan_interrupted(
     message_or_exc: str | Exception, spec: ScanSpec, recorder: ScanRecorder
 ) -> Status:
-    scan_status = await recorder.sync(await recorder.location(), complete=False)
+    # on interrupt this runs inside an already-cancelled scope, where an
+    # unshielded await re-raises the cancellation before the sync can
+    # complete (#578) -- shield it so the interrupted status gets written
+    # and reported rather than tripping the not-None assert upstream
+    with anyio.CancelScope(shield=True):
+        scan_status = await recorder.sync(await recorder.location(), complete=False)
     display().scan_interrupted(message_or_exc, scan_status)
     return scan_status
 

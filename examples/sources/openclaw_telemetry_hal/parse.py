@@ -14,20 +14,29 @@ JSONL, one event per line. Payload-bearing events:
   ``messages[]`` snapshot (assistant turns, ``toolResult``s,
   ``compactionSummary``s). The same turn recurs across snapshots, so turns must
   be deduped by ``responseId`` — or, when the capture carries none, by
-  ``(timestamp, content)`` with toolCall ids masked, because OpenClaw's history
-  sanitizer rewrites those ids between a turn's first snapshot and all later
-  ones (see :func:`_keyless_content_json`).
+  ``(session, timestamp, content)`` with toolCall ids masked, because
+  OpenClaw's history sanitizer rewrites those ids between a turn's first
+  snapshot and all later ones (see :func:`_keyless_content_json`). Snapshots may also carry scaffold
+  *roll-up* records — turn-finalization aggregates whose usage restates (sums)
+  the preceding per-call block; these are dropped (see
+  :func:`_drop_rollup_aggregates`).
 - ``tool.start`` / ``tool.end`` are individual tool calls (the only place
   schema-B sub-agent activity is recorded).
 - ``sessionKey`` is ``agent:<...>:<kind>:<uuid>`` with ``kind`` one of ``main``,
-  ``telegram``, ``dashboard``, ``explicit`` (orchestrator surfaces — ``explicit``
-  is an explicitly-created session on the orchestrator agent, e.g. OpenClaw's
+  ``telegram``, ``dashboard``, ``cron``, ``explicit`` (orchestrator surfaces —
+  ``cron`` is the scheduler surface of a cron-scheduled run; ``explicit`` an
+  explicitly-created session on the orchestrator agent, e.g. OpenClaw's
   gateway-fallback path) or ``subagent`` (delegated work). Any other kind on a
   consumed event fails the import loudly rather than silently dropping that
   session's activity.
+- ``message.in`` is the inbound operator channel: each event carries the full
+  text of a message a human sent the agent mid-run. These are collected as
+  ``operator_messages`` so the mapping can stamp the corresponding user turns
+  ``source="operator"`` (and surface inbound messages that never entered the
+  session thread) — see :func:`events.build_content`.
 
-Intentionally NOT consumed: ``message.in`` / ``message.sending`` /
-``message.out`` (channel I/O). A sub-agent's final report is auto-announced as a
+Intentionally NOT consumed: ``message.sending`` / ``message.out`` (outbound
+channel I/O). A sub-agent's final report is auto-announced as a
 ``message.out`` on the orchestrator's outbound channel, but those events carry
 no ``sessionKey``, ``runId``, or ``agentId`` (and the spawn result is only an
 ``accepted`` ack), so a report cannot be deterministically attributed to the
@@ -65,6 +74,7 @@ from .detection import (
 from .extraction import (
     content_to_text,
     rich_or_text,
+    tokens_from_usage,
     toolcalls_of,
 )
 
@@ -101,6 +111,12 @@ class SubagentSpan:
     ``turns`` are the sub-agent's own assistant turn messages (schema A);
     ``tool_calls`` are its ``tool.*`` calls (schema B). Both feed the
     reconstruction of the sub-agent's activity inside its agent span.
+
+    ``anchor_ts`` is the session's *file-order anchor*: the timestamp of the
+    latest orchestrator assistant turn seen before the session's first event.
+    A session with no linkable spawn call (``spawn_tool_call_id`` is None —
+    e.g. cron/system-spawned sub-agents) is placed in the timeline at this
+    anchor instead of being dropped; see :func:`events.build_content`.
     """
 
     session_key: str
@@ -112,6 +128,7 @@ class SubagentSpan:
     spawn_task: str | None  # the spawn's ``task`` arg (the delegated instruction)
     turns: list[dict[str, Any]]  # schema-A assistant turns (in file order)
     tool_calls: list[dict[str, Any]]  # schema-B tool.* calls (in file order)
+    anchor_ts: int = 0  # latest orchestrator turn ts before first activity
 
 
 @dataclass
@@ -121,9 +138,10 @@ class OpenClawTelemetry:
     The whole-file consolidation (turns deduped, sub-agents reconstructed) lands
     here so the event/message mapping never touches the raw cumulative snapshots.
 
-    ``orchestrator_turns`` are the deduped main/telegram assistant turns in
-    timestamp order (each a raw OpenClaw message dict with ``content``,
-    ``usage``, ``timestamp``, ``model``). ``compactions`` are the orchestrator's
+    ``orchestrator_turns`` are the deduped assistant turns of every
+    orchestrator surface (``main``/``telegram``/``dashboard``/``cron``/
+    ``explicit``) in timestamp order (each a raw OpenClaw message dict with
+    ``content``, ``usage``, ``timestamp``, ``model``). ``compactions`` are the orchestrator's
     real ``compactionSummary`` turns (a sub-agent's own compactions are dropped
     with a warning). ``result_by_callid`` maps a toolCall id to its
     :class:`ToolResult` (text + success/error + completion time).
@@ -138,6 +156,11 @@ class OpenClawTelemetry:
     session uuid for ``main``/``dashboard`` surfaces, but a chat id shared across
     runs for ``telegram``. It is therefore NOT unique per run on its own; the
     transcript layer combines it with the run's earliest timestamp.
+
+    ``operator_messages`` are the raw ``message.in`` events (inbound operator
+    channel), in file order. The mapping uses them to mark operator-delivered
+    user turns ``source="operator"`` and to surface inbound messages that never
+    entered the session thread.
     """
 
     orchestrator_turns: list[dict[str, Any]]
@@ -147,6 +170,7 @@ class OpenClawTelemetry:
     model_name: str | None
     subagents: list[SubagentSpan]
     session_id: str | None
+    operator_messages: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _primary_model(orchestrator_turns: list[dict[str, Any]]) -> str | None:
@@ -165,6 +189,89 @@ def _primary_model(orchestrator_turns: list[dict[str, Any]]) -> str | None:
     return winner[0][0] if winner else None
 
 
+def _int_or_none(value: Any) -> int | None:
+    """Coerce a telemetry numeric field to ``int``, else ``None``.
+
+    Conformant telemetry-hal records integers, but the values come verbatim
+    out of ``json.loads``, so a numeric string is coerced and anything else
+    yields ``None`` (callers treat that as unclassifiable, never as a match).
+    """
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _drop_rollup_aggregates(
+    turns: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Drop scaffold roll-up aggregate records from one assembled turn stream.
+
+    OpenClaw's turn-finalization bookkeeping appends an AGGREGATE assistant
+    record after a block of per-call records. Its signature — deliberately
+    conjunctive, all five conditions — against the previously KEPT turn: no
+    ``responseId``, stopReason ``stop``, no toolCalls, a ``totalTokens``
+    FROZEN at the previous record's value, and usage that is NOT internally
+    consistent. A genuine per-call record satisfies ``input + output +
+    cacheRead + cacheWrite == totalTokens`` (verified for every turn across
+    the real captures; see :func:`.extraction.usage_to_inspect`), while an
+    aggregate's components SUM the block it closes against that stale total,
+    breaking the identity. Keeping one double-counts every usage field — ~23M
+    phantom ``cache_read`` tokens on one real CRUX capture.
+
+    The consistency condition keeps the genuine turns the frozen-total
+    comparison alone would delete on rid-less (service-sink) captures: a
+    text-only reply that happens to repeat the previous total, and adjacent
+    zero-usage provider-failure placeholders (``0 == 0+0+0+0``).
+
+    ``turns`` must be a SINGLE session's stream: callers group per
+    ``sessionKey`` (or per sub-agent session) first, so a turn interleaved
+    from another session — another surface, or another concurrent session of
+    the same kind — cannot sit between a block's closing record and its
+    roll-up and mask the frozen-total comparison.
+    """
+
+    def _is_rollup(turn: dict[str, Any], prev: dict[str, Any] | None) -> bool:
+        if prev is None or turn.get("responseId") is not None:
+            return False
+        if (turn.get("stopReason") or "stop") != "stop":
+            return False
+        if toolcalls_of(turn.get("content")):
+            return False
+        # Coerce totals before comparing: raw json.loads output can carry a
+        # numeric STRING, and an un-coerced comparison would pass the frozen
+        # gate ("950" == "950") yet break the int-summed identity below,
+        # deleting a genuine turn. Non-numeric totals are unclassifiable.
+        usage = turn.get("usage") or {}
+        total = _int_or_none(usage.get("totalTokens"))
+        prev_total = _int_or_none((prev.get("usage") or {}).get("totalTokens"))
+        if total is None or prev_total is None or total != prev_total:
+            return False
+        # A usage with no component fields gives the identity nothing to
+        # classify (its sum is 0 on genuine turns of that shape too): keep —
+        # the filter drops only on positive evidence of restated usage.
+        if all(
+            usage.get(k) is None for k in ("input", "output", "cacheRead", "cacheWrite")
+        ):
+            return False
+        return bool(tokens_from_usage(usage) != total)
+
+    kept: list[dict[str, Any]] = []
+    n_rollups = 0
+    for turn in turns:
+        if _is_rollup(turn, kept[-1] if kept else None):
+            n_rollups += 1
+            continue
+        kept.append(turn)
+    if n_rollups:
+        logger.info(
+            "Dropped %d scaffold roll-up aggregate record(s) whose usage "
+            "restates the preceding per-call records",
+            n_rollups,
+        )
+    return kept
+
+
 def parse_telemetry(raw_events: Iterable[dict[str, Any]]) -> OpenClawTelemetry:
     """Parse raw OpenClaw telemetry events into the consolidated intermediate.
 
@@ -173,29 +280,53 @@ def parse_telemetry(raw_events: Iterable[dict[str, Any]]) -> OpenClawTelemetry:
     """
     c = _consolidate(raw_events)
 
+    # The roll-up filter runs per SESSION: an aggregate closes a block within
+    # its own session's message stream, so a turn interleaved from any OTHER
+    # session — another surface, or another session of the same kind (real
+    # captures carry hundreds of concurrent cron sessions) — must not sit
+    # between a block's closing record and its roll-up and mask the
+    # frozen-total comparison. Timestamp ties keep file order through the
+    # regroup (``_primary_model``'s first-seen tie-break reads this ordering).
+    file_order = {id(m): i for i, m in enumerate(c.assistant_by_id.values())}
+
+    def turn_sort_key(m: dict[str, Any]) -> tuple[int, int]:
+        return (int(m.get("timestamp") or 0), file_order[id(m)])
+
+    turns_by_session: dict[str, list[dict[str, Any]]] = {}
+    for rid, kind in c.assistant_kind.items():
+        if is_orchestrator(kind):
+            session = c.assistant_session[rid]
+            turns_by_session.setdefault(session, []).append(c.assistant_by_id[rid])
     orchestrator_turns = sorted(
         (
-            c.assistant_by_id[rid]
-            for rid, kind in c.assistant_kind.items()
-            if is_orchestrator(kind)
+            turn
+            for session_turns in turns_by_session.values()
+            for turn in _drop_rollup_aggregates(
+                sorted(session_turns, key=turn_sort_key)
+            )
         ),
-        key=lambda m: int(m.get("timestamp") or 0),
+        key=turn_sort_key,
     )
 
-    # Keyed turns are canonical; a keyless turn whose text matches a keyed one is
-    # that prompt's transient first-snapshot serialization, so drop it. Keyless
-    # turns with no keyed twin (runtime context, inter-session messages, keyless
-    # human prompts) are kept.
-    keyed_texts = {
-        content_to_text(m.get("content")) for m in c.user_by_idempotency.values()
-    }
+    # Keyed turns are canonical; a keyless turn whose text matches a keyed one
+    # FROM ITS OWN SESSION is that prompt's transient first-snapshot
+    # serialization, so drop it — the transient and settled forms are the same
+    # session re-serializing its own prompt, so a same-text prompt in another
+    # session is a distinct turn. Keyless turns with no keyed twin (runtime
+    # context, inter-session messages, keyless human prompts) are kept.
+    keyed_texts_by_session: dict[str, set[str]] = {}
+    for idem, keyed_turn in c.user_by_idempotency.items():
+        keyed_texts_by_session.setdefault(
+            c.user_session_by_idempotency[idem], set()
+        ).add(content_to_text(keyed_turn.get("content")))
     user_turns = sorted(
         (
             *c.user_by_idempotency.values(),
             *(
                 m
-                for m in c.user_by_key.values()
-                if content_to_text(m.get("content")) not in keyed_texts
+                for (user_sk, _ts, _content), m in c.user_by_key.items()
+                if content_to_text(m.get("content"))
+                not in keyed_texts_by_session.get(user_sk, set())
             ),
         ),
         key=lambda m: int(m.get("timestamp") or 0),
@@ -218,20 +349,28 @@ def parse_telemetry(raw_events: Iterable[dict[str, Any]]) -> OpenClawTelemetry:
                 args = tc.get("arguments")
                 child_to_spawn_args[csk] = args if isinstance(args, dict) else {}
 
-    subagents = [
-        SubagentSpan(
-            session_key=sk,
-            prompt=s.get("prompt"),
-            n_tool_calls=s.get("n_tool_calls", 0),
-            n_assistant_turns=s.get("n_assistant_turns", 0),
-            spawn_tool_call_id=child_to_toolcall.get(sk),
-            spawn_label=(child_to_spawn_args.get(sk) or {}).get("label"),
-            spawn_task=(child_to_spawn_args.get(sk) or {}).get("task"),
-            turns=s.get("turns", []),
-            tool_calls=s.get("tool_calls", []),
+    subagents = []
+    for sk, s in c.sessions.items():
+        # The same scaffold finalizes sub-agent sessions, so their schema-A
+        # turns get the same roll-up filter (not yet observed inside real
+        # sub-agent sessions — defensive parity with the orchestrator).
+        turns = _drop_rollup_aggregates(s.get("turns", []))
+        subagents.append(
+            SubagentSpan(
+                session_key=sk,
+                prompt=s.get("prompt"),
+                n_tool_calls=s.get("n_tool_calls", 0),
+                n_assistant_turns=len(turns)
+                if turns
+                else s.get("n_assistant_turns", 0),
+                spawn_tool_call_id=child_to_toolcall.get(sk),
+                spawn_label=(child_to_spawn_args.get(sk) or {}).get("label"),
+                spawn_task=(child_to_spawn_args.get(sk) or {}).get("task"),
+                turns=turns,
+                tool_calls=s.get("tool_calls", []),
+                anchor_ts=s.get("anchor_ts", 0),
+            )
         )
-        for sk, s in c.sessions.items()
-    ]
 
     # Every assistant turn in valid telemetry-hal records its model. A missing
     # one means malformed / non-telemetry-hal input, so fail here — the single,
@@ -252,6 +391,7 @@ def parse_telemetry(raw_events: Iterable[dict[str, Any]]) -> OpenClawTelemetry:
         model_name=_primary_model(orchestrator_turns),
         subagents=subagents,
         session_id=c.session_id,
+        operator_messages=c.message_ins,
     )
 
 
@@ -266,11 +406,14 @@ class _Consolidated:
 
     assistant_by_id: dict[Any, dict[str, Any]] = field(default_factory=dict)
     assistant_kind: dict[Any, str] = field(default_factory=dict)
+    assistant_session: dict[Any, str] = field(default_factory=dict)
     result_by_callid: dict[str, ToolResult] = field(default_factory=dict)
     compactions: dict[Any, dict[str, Any]] = field(default_factory=dict)
     user_by_idempotency: dict[str, dict[str, Any]] = field(default_factory=dict)
+    user_session_by_idempotency: dict[str, str] = field(default_factory=dict)
     user_by_key: dict[Any, dict[str, Any]] = field(default_factory=dict)
     sessions: dict[str, dict[str, Any]] = field(default_factory=dict)
+    message_ins: list[dict[str, Any]] = field(default_factory=list)
     session_id: str | None = None
 
 
@@ -320,8 +463,8 @@ def _consolidate(raw_events: Iterable[dict[str, Any]]) -> _Consolidated:
        deduped by ``responseId`` (recording each turn's first-occurrence session
        kind), ``toolResult``s by ``toolCallId``, and orchestrator-only
        ``compactionSummary``s and ``user`` turns. Turns and user prompts with no
-       ``responseId`` are keyed by ``(timestamp, content)`` since they recur
-       across cumulative snapshots.
+       ``responseId`` are keyed by ``(session, timestamp, content)`` since they
+       recur across their own session's cumulative snapshots.
 
     2. Sub-agent reconstruction, robust across both export schemas. Schema A: the
        sub-agent's assistant turns live in its own ``agent.* messages[]`` (with
@@ -332,12 +475,19 @@ def _consolidate(raw_events: Iterable[dict[str, Any]]) -> _Consolidated:
        yields a real id.
     """
     out = _Consolidated()
+    orch_cursor = 0  # latest orchestrator assistant ts seen so far (file order)
     seen_subagent_rids: set[Any] = set()
     warned_compaction_sessions: set[str] = set()
     for ev in raw_events:
         if not isinstance(ev, dict):
             continue
         t = ev.get("type")
+        # The inbound operator channel: collect message.in events whole (they
+        # carry no sessionKey — the mapping matches them to user turns by
+        # content, see ``events.build_content``).
+        if t == "message.in":
+            out.message_ins.append(ev)
+            continue
         sk = ev.get("sessionKey", "")
         kind = session_kind(sk)
         is_agent = t in ("agent.start", "agent.end")
@@ -345,9 +495,9 @@ def _consolidate(raw_events: Iterable[dict[str, Any]]) -> _Consolidated:
         # The events the importer consumes must classify as orchestrator or
         # sub-agent. Any other kind — a surface we have not seen (e.g. another
         # chat channel), or an absent/malformed sessionKey — would silently
-        # drop that session's activity, so fail loudly instead. (``message.*``
-        # events carry no sessionKey and are intentionally not consumed, so
-        # they are not checked.)
+        # drop that session's activity, so fail loudly instead. (The outbound
+        # ``message.sending``/``message.out`` events carry no sessionKey and
+        # are intentionally not consumed, so they are not checked.)
         if (is_agent or t in ("tool.start", "tool.end")) and not (
             is_orchestrator(kind) or kind == SUBAGENT_KIND
         ):
@@ -376,32 +526,52 @@ def _consolidate(raw_events: Iterable[dict[str, Any]]) -> _Consolidated:
                     rid: Any = m.get("responseId")
                     if rid is None:
                         # No responseId (absent from service-sink captures). Key
-                        # by (timestamp, id-masked content) so the SAME turn
-                        # re-dumped across cumulative snapshots — including with
-                        # sanitizer-rewritten toolCall ids — collapses to one.
+                        # by (session, timestamp, id-masked content) so the SAME
+                        # turn re-dumped across cumulative snapshots — including
+                        # with sanitizer-rewritten toolCall ids — collapses to
+                        # one. Re-dumps always come from the turn's own session,
+                        # so the session in the key never blocks that collapse;
+                        # without it, two GENUINE turns from two concurrent
+                        # sessions coinciding on (timestamp, content) would
+                        # wrongly merge.
                         rid = (
                             "a",
+                            sk,
                             m.get("timestamp"),
                             _keyless_content_json(m.get("content")),
                         )
                     if rid not in out.assistant_by_id:
                         out.assistant_by_id[rid] = m
                         out.assistant_kind[rid] = kind
+                        out.assistant_session[rid] = sk
+                    if is_orchestrator(kind):
+                        # Advance the file-order anchor cursor: sub-agent
+                        # sessions first seen after this point anchor here.
+                        turn_ts = int(m.get("timestamp") or 0)
+                        if turn_ts > orch_cursor:
+                            orch_cursor = turn_ts
                 elif role == "user" and is_orchestrator(kind):
                     # OpenClaw re-serializes a human prompt across snapshots: a
                     # transient first-snapshot form (no key, structured content)
                     # and a settled form carrying a stable ``idempotencyKey``
                     # (the inbound message id). Dedup keyed turns by that id (the
                     # user-turn analogue of ``responseId``); fall back to
-                    # (timestamp, content) only for genuinely keyless turns
-                    # (runtime context, inter-session messages, and human prompts
-                    # that arrived without a key). The transient twins are dropped
-                    # against the keyed set in ``parse_telemetry``.
+                    # (session, timestamp, content) only for genuinely keyless
+                    # turns (runtime context, inter-session messages, and human
+                    # prompts that arrived without a key) — session-scoped for
+                    # the same reason as the assistant key: re-dumps come from
+                    # the turn's own session, while two concurrent sessions can
+                    # genuinely coincide on (timestamp, content). The transient
+                    # twins are dropped against their own session's keyed set
+                    # in ``parse_telemetry``.
                     idem = m.get("idempotencyKey")
                     if idem is not None:
-                        out.user_by_idempotency.setdefault(idem, m)
+                        if idem not in out.user_by_idempotency:
+                            out.user_by_idempotency[idem] = m
+                            out.user_session_by_idempotency[idem] = sk
                     else:
                         key = (
+                            sk,
                             m.get("timestamp"),
                             json.dumps(m.get("content"), sort_keys=True, default=str),
                         )
@@ -421,9 +591,9 @@ def _consolidate(raw_events: Iterable[dict[str, Any]]) -> _Consolidated:
                         )
                 elif role == "compactionSummary":
                     if is_orchestrator(kind):
-                        key = (m.get("timestamp"), "compaction")
-                        if key not in out.compactions:
-                            out.compactions[key] = m
+                        compaction_key = (m.get("timestamp"), "compaction")
+                        if compaction_key not in out.compactions:
+                            out.compactions[compaction_key] = m
                     elif sk not in warned_compaction_sessions:
                         # A sub-agent compacting its own thread — never observed
                         # in the sample captures (all 467 CRUX1 compactions are
@@ -441,7 +611,12 @@ def _consolidate(raw_events: Iterable[dict[str, Any]]) -> _Consolidated:
         # (2) sub-agent reconstruction.
         if kind != SUBAGENT_KIND:
             continue
-        s = out.sessions.setdefault(sk, _new_session())
+        if sk not in out.sessions:
+            out.sessions[sk] = _new_session()
+            # File-order anchor: where a session with no linkable spawn call
+            # (e.g. cron/system-spawned) is placed in the timeline.
+            out.sessions[sk]["anchor_ts"] = orch_cursor
+        s = out.sessions[sk]
         if is_agent:
             if t == "agent.start" and ev.get("prompt") and not s["prompt"]:
                 s["prompt"] = ev["prompt"]
@@ -452,8 +627,8 @@ def _consolidate(raw_events: Iterable[dict[str, Any]]) -> _Consolidated:
                 if rid is None:
                     # No responseId (absent from service-sink captures: the
                     # datasets that carry a seq/ts envelope). Key by
-                    # (timestamp, id-masked content) so the SAME turn re-dumped
-                    # across cumulative snapshots — including with
+                    # (session, timestamp, id-masked content) so the SAME turn
+                    # re-dumped across cumulative snapshots — including with
                     # sanitizer-rewritten toolCall ids — collapses to one.
                     rid = (
                         "a",

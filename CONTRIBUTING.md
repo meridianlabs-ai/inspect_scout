@@ -57,7 +57,7 @@ Shared types flow **Python (Pydantic models) → `openapi.json` → `generated.t
 
 ```bash
 .venv/bin/python scripts/export_openapi_schema.py     # Python → openapi.json
-cd src/inspect_scout/_view/ts-mono && pnpm build       # openapi.json → generated.ts
+cd src/inspect_scout/_view/ts-mono/apps/scout && pnpm types:generate   # openapi.json → generated.ts
 ```
 
 Commit the updated `src/inspect_scout/_view/openapi.json` and `apps/scout/src/types/generated.ts`. CI also verifies the submodule pointer is a commit on `ts-mono`'s `main`, so merge the submodule PR before updating the pointer.

@@ -27,7 +27,9 @@ Note that by default the results data frame will include an individual row for e
 
 #### Available Fields
 
-The data frame includes the following fields (note that some fields included embedded JSON data, these are all noted below):
+The data frame includes the following fields (note that some fields include embedded JSON data, these are all noted below).
+
+Note that the heavy JSON columns (`input` and `scan_events`) are excluded by default as they dominate file size and memory usage—pass `exclude_columns=[]` to include all columns, or an explicit list to exclude exactly those columns (the default exclusions are available as the `HEAVY_COLUMNS` constant, e.g. `exclude_columns=[*HEAVY_COLUMNS, "metadata"]`).
 
 | Field | Type | Description |
 |-------------------|-------------------|----------------------------------|
@@ -65,7 +67,7 @@ The data frame includes the following fields (note that some fields included emb
 | `scanner_params` | dict<br/><small>JSON</small> | Params used to create scanner. |
 | `input_type` | transcript \| message \| messages \| event \| events | Input type received by scanner. |
 | `input_ids` | list\[str\]<br/><small>JSON</small> | Unique ids of scanner input. |
-| `input` | ScannerInput<br/><small>JSON</small> | Scanner input value. |
+| `input` | ScannerInput<br/><small>JSON</small> | Scanner input value (excluded by default). |
 | `uuid` | str | Globally unique id for scan result. |
 | `label` | str | Label for the origin of the result (optional). |
 | `value` | JsonValue<br/><small>JSON</small> | Value returned by scanner. |
@@ -82,7 +84,7 @@ The data frame includes the following fields (note that some fields included emb
 | `scan_error` | str | Error which occurred during scan. |
 | `scan_error_traceback` | str | Traceback for error (if any) |
 | `scan_error_type` | str | Error type (either "refusal" for refusals or null for other errors). |
-| `scan_events` | list\[Event\]<br/><small>JSON</small> | Scan events (e.g. model event, log event, etc.) |
+| `scan_events` | list\[Event\]<br/><small>JSON</small> | Scan events (e.g. model event, log event, etc.) (excluded by default) |
 | `scan_total_tokens` | number | Total tokens used by scan (only included when `rows = "transcripts"`). |
 | `scan_model_usage` | dict \[str, ModelUsage\]<br/><small>JSON</small> | Token usage by model for scan (only included when `rows = "transcripts"`). |
 

@@ -67,7 +67,9 @@ def test_events_expanded_in_results_df() -> None:
             max_processes=1,
         )
 
-        results = scan_results_df(status.location, scanner="events_scanner")
+        results = scan_results_df(
+            status.location, scanner="events_scanner", exclude_columns=[]
+        )
         df = results.scanners["events_scanner"]
 
         assert "input_data" not in df.columns
@@ -77,6 +79,26 @@ def test_events_expanded_in_results_df() -> None:
         events = json.loads(input_json)
         assert isinstance(events, list)
         assert not _has_unresolved_refs(events)
+
+
+def test_heavy_columns_excluded_by_default() -> None:
+    """Default read excludes input, input_data, and scan_events."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        status = scan(
+            scanners=[events_scanner_factory()],
+            transcripts=transcripts_from(LOGS_DIR),
+            scans=tmpdir,
+            limit=1,
+            max_processes=1,
+        )
+
+        results = scan_results_df(status.location, scanner="events_scanner")
+        df = results.scanners["events_scanner"]
+
+        assert "input" not in df.columns
+        assert "input_data" not in df.columns
+        assert "scan_events" not in df.columns
+        assert "value" in df.columns
 
 
 def test_results_input_columns_are_compact_json() -> None:
@@ -133,7 +155,9 @@ def test_transcript_input_expanded_in_results_df() -> None:
             max_processes=1,
         )
 
-        results = scan_results_df(status.location, scanner="transcript_scanner")
+        results = scan_results_df(
+            status.location, scanner="transcript_scanner", exclude_columns=[]
+        )
         df = results.scanners["transcript_scanner"]
 
         assert "input_data" not in df.columns
@@ -155,7 +179,9 @@ def test_messages_only_scanner_no_errors() -> None:
             max_processes=1,
         )
 
-        results = scan_results_df(status.location, scanner="messages_scanner")
+        results = scan_results_df(
+            status.location, scanner="messages_scanner", exclude_columns=[]
+        )
         df = results.scanners["messages_scanner"]
 
         # input_data column should be dropped regardless
@@ -175,7 +201,10 @@ def test_transcript_mode_also_expands() -> None:
         )
 
         results = scan_results_df(
-            status.location, scanner="events_scanner", rows="transcripts"
+            status.location,
+            scanner="events_scanner",
+            rows="transcripts",
+            exclude_columns=[],
         )
         df = results.scanners["events_scanner"]
 

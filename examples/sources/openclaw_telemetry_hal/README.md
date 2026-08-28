@@ -63,7 +63,7 @@ entirely different schema. This example only handles the `openclaw-telemetry-hal
 schema.
 
 Within that schema, the importer is strict about session classification: a
-`sessionKey` kind outside `main`/`telegram`/`dashboard`/`subagent` on a consumed
+`sessionKey` kind outside `main`/`telegram`/`dashboard`/`cron`/`subagent` on a consumed
 (`agent.*`/`tool.*`) event — e.g. a chat surface we have not seen — fails the
 import with an error naming the kind, rather than silently dropping that
 session's activity. Native session support is a future, separate source — see "Native
@@ -214,7 +214,9 @@ labelled by `span_id`, so code that reads only `messages` will not see them.
 
 Assistant turns recur across the cumulative `agent.*` snapshots and are deduped
 by `responseId`. Service-sink captures (e.g. CRUX1) carry **no** `responseId`,
-so the fallback key is `(timestamp, content)` — and that content is serialized
+so the fallback key is `(session, timestamp, content)` — session-scoped because
+re-dumps always come from the turn's own session while concurrent sessions can
+genuinely coincide on `(timestamp, content)` — and that content is serialized
 with toolCall ids **masked** (`_keyless_content_json` in `parse.py`).
 
 The masking exists because OpenClaw's history sanitizer rewrites tool-call ids
@@ -307,19 +309,49 @@ sub-agent that produced it**. File order misleads (reports arrive in completion
 order, not spawn order; e.g. the *Eastern* report can immediately follow the
 *weather-west* sub-agent's activity), and the only thing tying a report to a
 sub-agent is the report text echoing the spawn `label` — a content heuristic
-that does not generalize. We therefore **do not** consume `message.*` events or
-nest reports inside sub-agent spans.
+that does not generalize. We therefore **do not** consume the outbound
+`message.sending`/`message.out` events or nest reports inside sub-agent spans.
+
+The inbound `message.in` events (the operator channel) **are** consumed, for
+provenance rather than content: each inbound send marks the first user turn
+carrying the same text at-or-after it `source="operator"`
+(occurrence-for-occurrence, so a repeated send is never collapsed into its
+first match), and a send that never entered the session thread (e.g.
+delivered while the agent was busy) becomes its own operator-sourced user
+message — so mid-run operator interventions are preserved for downstream
+analysis. Such a message appears in the message thread only, **not** in later
+`ModelEvent.input`: the model never saw it, and `input` reflects only what
+the model was actually shown.
+
+### Spawn-less sub-agent sessions are placed by file-order anchor
+
+Not every sub-agent session is created by a `sessions_spawn` tool call:
+cron/system-spawned sessions (a normal OpenClaw pattern on scheduled runs)
+appear in the telemetry with no spawn call to link to — on one real
+cron-scheduled CRUX capture, 46 of 101 sub-agent sessions. Dropping them would
+silently lose that delegated activity, so an unlinked session is instead
+**placed at its file-order anchor**: its agent span is emitted immediately
+after the latest orchestrator turn seen (in file order) before the session's
+first event. No spawn tool call is fabricated — the span simply has no folded
+`sessions_spawn` child — and its span is named from the spawn `label` when one
+exists, else the first task-bearing line of the session's own prompt (skipping
+the `[Subagent Context]` scaffold preamble). The placement is a *file-order*
+heuristic, not a recorded parent link: it says "the orchestrator was here when
+this session started", nothing stronger.
 
 ### Schema-B sub-agents have no internal transcript
 
 Under schema B, a sub-agent's `agent.start` carries only the
 spawn `prompt` with an empty `messages[]`; its activity is visible solely as
-`tool.start`/`tool.end` events, which record **no result body, no usage, and no
-timestamps** (only `durationMs` on `tool.end`). Consequently a schema-B
-sub-agent span shows its reconstructed tool calls but no model turns, token
-totals, or wall-clock duration (it renders as `0 · 0s`). This is a property of
-the source telemetry, not the importer. Schema-A sub-agents (which carry their
-own assistant turns in `messages[]`) are reconstructed in full.
+`tool.start`/`tool.end` events, which record **no result body and no usage**.
+Consequently a schema-B sub-agent span shows its reconstructed tool calls but
+no model turns or token totals. This is a property of the source telemetry,
+not the importer. Per-call timing is best-effort: the enriched (service-sink)
+envelope's `ts` gives each call a real start→end span; bare captures carry no
+`ts`, so the call is stamped at the spawn time and `durationMs` (from
+`tool.end`) supplies its width — only a call with neither collapses to zero
+duration. Schema-A sub-agents (which carry their own assistant turns in
+`messages[]`) are reconstructed in full.
 
 ### Sub-agent compactions are not surfaced
 

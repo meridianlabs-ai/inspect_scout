@@ -182,7 +182,7 @@ class ScanSpec(BaseModel):
     model: ModelConfig | None = Field(default=None)
     """Model used for eval."""
 
-    model_roles: dict[str, ModelConfig] | None = Field(default=None)
+    model_roles: dict[str, ModelConfig | list[ModelConfig]] | None = Field(default=None)
     """Model roles."""
 
     revision: ScanRevision | None = Field(default=None)

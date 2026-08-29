@@ -251,6 +251,12 @@ def structured_answer_type(
     return answer_type, result_set
 
 
+class _InjectedExplanation(BaseModel):
+    """Validates the explanation field injected into augmented answer schemas."""
+
+    explanation: str
+
+
 def structured_result(
     answer: AnswerStructured[Any],
     output: ModelOutput,
@@ -304,15 +310,13 @@ def structured_result(
         Validation runs exactly once, on the wire-format data, so
         ``mode="before"`` validators and ``model_post_init`` see it exactly
         once. An injected explanation field is lifted out before validation
-        (the declared type may forbid extra fields).
+        (the declared type may forbid extra fields) and validated separately,
+        raising ``ValidationError`` when missing or malformed — models violate
+        the answer schema often enough that callers rely on catching it.
         """
         if augmented:
-            if not isinstance(data, dict) or "explanation" not in data:
-                raise ValueError("Missing required 'explanation' field")
-            data = dict(data)
-            explanation = data.pop("explanation")
-            if not isinstance(explanation, str):
-                raise ValueError("'explanation' field must be a string")
+            explanation = _InjectedExplanation.model_validate(data).explanation
+            data = {k: v for k, v in data.items() if k != "explanation"}
             return answer_type.model_validate(data, by_name=True), explanation
         else:
             instance = answer_type.model_validate(data, by_name=True)

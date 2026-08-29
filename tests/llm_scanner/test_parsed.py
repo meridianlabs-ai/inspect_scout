@@ -13,7 +13,13 @@ import pytest
 from inspect_ai.model import ModelOutput
 from inspect_scout import AnswerMultiLabel, AnswerSpec, AnswerStructured, parse_answer
 from inspect_scout._scanner.result import Reference, Result
-from pydantic import BaseModel, Field, field_serializer, field_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    ValidationError,
+    field_serializer,
+    field_validator,
+)
 
 
 def _no_refs(_text: str) -> list[Reference]:
@@ -159,6 +165,28 @@ def test_parsed_structured_keeps_own_explanation_type() -> None:
     )
     assert type(result.parsed) is DetectionWithExplanation
     assert result.parsed.explanation == "mine"
+
+
+@pytest.mark.parametrize(
+    "completion",
+    [
+        pytest.param('{"behavior": "b", "confidence": 0.9}', id="missing"),
+        pytest.param(
+            '{"behavior": "b", "confidence": 0.9, "explanation": 42}',
+            id="non-string",
+        ),
+        pytest.param("[1, 2]", id="non-object"),
+    ],
+)
+def test_parsed_structured_invalid_injected_explanation(completion: str) -> None:
+    """Missing/malformed injected explanations raise ValidationError.
+
+    Models violate the answer schema often enough that callers rely on
+    catching pydantic's ValidationError (as raised on validation against
+    the augmented type) rather than a plain ValueError.
+    """
+    with pytest.raises(ValidationError):
+        parse_answer(_output(completion), AnswerStructured(Detection), _no_refs)
 
 
 def test_parsed_structured_resultset() -> None:

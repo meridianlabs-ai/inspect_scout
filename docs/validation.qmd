@@ -103,6 +103,50 @@ For YAML/JSON files, use a labels key instead of target:
 
 ---->
 
+## Strict Coverage {#strict-coverage}
+
+Validation cases are matched to scanner inputs by id, and by default a case whose id matches nothing that was scanned is ignored. This keeps partial validation sets convenient (see [Validation Splits](#validation-splits)), but it also means a scan can report validation metrics for a fraction of your cases without saying so — for example when transcript ids have changed, when the scan reads a different transcripts database, or when a transcript filter excludes labelled transcripts.
+
+Set `strict` on the validation set to require that every case matches something that was scanned:
+
+``` python
+from inspect_scout import scan, transcripts_from, validation_set
+
+scan(
+    scanners=[ctf_environment()],
+    transcripts=transcripts_from("./logs"),
+    validation=validation_set("ctf-environment.csv", strict=True)
+)
+```
+
+If any case matched no scanned input, the scan writes its results as usual and then raises `ValidationCoverageError`, listing the unmatched case ids per scanner:
+
+``` default
+Strict validation: 2 validation case(s) matched no scanned input.
+  ctf_environment (2): Fg3KBpgFr6RSsEWmHBUqeo, VFkCH7gXWpJYUYonvfHxrG
+Scan results were written to scans/2025-11-14T09-33-12+00-00_ctf-environment_bMLcBnvVzX.
+Check that these case ids match the ids of the inputs that were scanned, or set 'strict' to False on the validation set to ignore unmatched cases.
+```
+
+The error carries the completed scan's `status`, so results are still available programmatically:
+
+``` python
+from inspect_scout import ValidationCoverageError, scan
+
+try:
+    status = scan(...)
+except ValidationCoverageError as ex:
+    status = ex.status  # results were written; coverage was incomplete
+```
+
+`scout scan` prints the message and exits non-zero.
+
+Coverage is checked when the scan completes rather than before it starts, since case ids can also address messages or events, which aren't known until the transcripts are read. Scans that are interrupted or that end with errors are reported as usual and aren't checked for coverage.
+
+Because coverage is measured against what was actually scanned, anything that narrows the scan can leave cases unmatched: a transcript filter, `limit`, or a `worklist`. Narrowing the scan *to* the validation set with `transcripts.for_validation()` doesn't guarantee coverage either — case ids that aren't in the transcripts simply match nothing — so `strict` is useful there too.
+
+`strict` is a property of the validation set rather than of a single scan, so it applies per scanner (each scanner in a scan can have its own setting) and is recorded in the scan spec — a scan resumed with `scan_resume()` checks coverage on the same terms as the original scan, counting the cases that were validated before the interruption.
+
 ## Predicates
 
 By default, validation compares scanner results to targets using equality (`eq`). You can specify different comparison predicates either per-case or as a default for all cases.

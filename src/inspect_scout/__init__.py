@@ -25,6 +25,7 @@ from ._recorder.recorder import (
 )
 from ._recorder.summary import Summary
 from ._scan import (
+    ValidationCoverageError,
     scan,
     scan_complete,
     scan_resume,
@@ -203,6 +204,7 @@ __all__ = [
     "PredicateType",
     "PredicateFn",
     "validation_set",
+    "ValidationCoverageError",
     # version
     "__version__",
 ]

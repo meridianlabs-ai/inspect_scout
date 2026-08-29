@@ -13,11 +13,14 @@ from inspect_scout import (
     Result,
     Scanner,
     ValidationCase,
+    ValidationCoverageError,
     ValidationSet,
     loader,
     scan,
     scanner,
 )
+from inspect_scout._recorder.recorder import Status
+from inspect_scout._scan import MAX_REPORTED_UNMATCHED_CASES
 from inspect_scout._scanner.loader import Loader
 from inspect_scout._scanresults import scan_results_db, scan_results_df
 from inspect_scout._transcript.factory import transcripts_from
@@ -445,6 +448,177 @@ async def test_validation_partial_coverage_e2e() -> None:
         assert all(df_without_validation["validation_result"].isna()), (
             "Non-validated transcripts should have null validation_result"
         )
+
+
+# ============================================================================
+# Strict Coverage Tests
+# ============================================================================
+
+UNSCANNED_ID = "not-a-transcript-id"
+
+
+def scan_with_case_ids(scans_dir: str, case_ids: list[str], *, strict: bool) -> Status:
+    """Scan 2 transcripts with a validation case (target True) for each id."""
+    return scan(
+        scanners=[validation_scanner_a_factory()],
+        transcripts=transcripts_from(LOGS_DIR),
+        validation=ValidationSet(
+            cases=[ValidationCase(id=case_id, target=True) for case_id in case_ids],
+            predicate="eq",
+            strict=strict,
+        ),
+        scans=scans_dir,
+        limit=2,
+    )
+
+
+def validated_ids(status: Status) -> list[str | list[str]]:
+    """Ids of the cases that were validated during the scan."""
+    validation = status.summary["validation_scanner_a"].validation
+    assert validation is not None, "scan recorded no validation results"
+    return [entry.id for entry in validation.entries]
+
+
+@pytest.mark.asyncio
+async def test_strict_validation_all_cases_matched_e2e() -> None:
+    """A strict validation set whose cases all match completes normally."""
+    transcript_ids = await get_n_transcript_ids(2)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        status = scan_with_case_ids(tmpdir, transcript_ids, strict=True)
+
+        assert status.complete
+        assert sorted(validated_ids(status)) == sorted(transcript_ids)
+
+
+@pytest.mark.asyncio
+async def test_strict_validation_unmatched_case_fails_e2e() -> None:
+    """A strict validation set fails the scan and names the unmatched cases."""
+    transcript_ids = await get_n_transcript_ids(2)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with pytest.raises(ValidationCoverageError) as ex_info:
+            scan_with_case_ids(tmpdir, transcript_ids + [UNSCANNED_ID], strict=True)
+
+        message = str(ex_info.value)
+        # the console (which prints `message`) and str() report the same thing
+        assert message == str(ex_info.value.message)
+        assert UNSCANNED_ID in message
+        assert "validation_scanner_a" in message
+        # cases that did match are not reported as unmatched
+        assert not any(tid in message for tid in transcript_ids)
+
+        # the scan's own results are complete and readable
+        status = ex_info.value.status
+        assert status.complete
+        df = scan_results_df(status.location, scanner="validation_scanner_a").scanners[
+            "validation_scanner_a"
+        ]
+        assert len(df) == 2
+
+
+@pytest.mark.asyncio
+async def test_unmatched_case_ignored_by_default_e2e() -> None:
+    """Without strict, an unmatched case is ignored (the pre-existing behavior)."""
+    transcript_ids = await get_n_transcript_ids(2)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        status = scan_with_case_ids(
+            tmpdir, transcript_ids + [UNSCANNED_ID], strict=False
+        )
+
+        assert status.complete
+        assert sorted(validated_ids(status)) == sorted(transcript_ids)
+
+
+@pytest.mark.asyncio
+async def test_strict_validation_applies_per_scanner_e2e() -> None:
+    """Only the scanners whose validation set is strict are held to coverage."""
+    transcript_ids = await get_n_transcript_ids(2)
+
+    def cases(case_ids: list[str], target: bool) -> list[ValidationCase]:
+        return [ValidationCase(id=case_id, target=target) for case_id in case_ids]
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with pytest.raises(ValidationCoverageError) as ex_info:
+            scan(
+                scanners=[
+                    validation_scanner_a_factory(),
+                    validation_scanner_b_factory(),
+                ],
+                transcripts=transcripts_from(LOGS_DIR),
+                validation={
+                    "validation_scanner_a": ValidationSet(
+                        cases=cases(transcript_ids + [UNSCANNED_ID], target=True),
+                        strict=True,
+                    ),
+                    # scanner b returns False, so its cases target False
+                    "validation_scanner_b": ValidationSet(
+                        cases=cases(transcript_ids + [UNSCANNED_ID], target=False),
+                    ),
+                },
+                scans=tmpdir,
+                limit=2,
+            )
+
+    message = str(ex_info.value)
+    assert "validation_scanner_a" in message
+    assert "validation_scanner_b" not in message
+
+
+@pytest.mark.asyncio
+async def test_strict_validation_composite_case_ids_e2e() -> None:
+    """Cases with multiple ids are matched (and reported) as a whole."""
+    # first pass: discover the message pair ids the loader yields
+    with tempfile.TemporaryDirectory() as tmpdir:
+        status = scan(
+            scanners=[pair_scanner_factory()],
+            transcripts=transcripts_from(LOGS_DIR),
+            scans=tmpdir,
+            limit=1,
+        )
+        df = scan_results_df(status.location, scanner="pair_scanner").scanners[
+            "pair_scanner"
+        ]
+        scanned_pair: list[str] = json.loads(df["input_ids"].iloc[0])
+
+    unscanned_pair = ["unscanned-id-1", "unscanned-id-2"]
+    validation = ValidationSet(
+        cases=[
+            ValidationCase(id=scanned_pair, target=True),
+            ValidationCase(id=unscanned_pair, target=True),
+        ],
+        strict=True,
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with pytest.raises(ValidationCoverageError) as ex_info:
+            scan(
+                scanners=[pair_scanner_factory()],
+                transcripts=transcripts_from(LOGS_DIR),
+                validation=validation,
+                scans=tmpdir,
+                limit=1,
+            )
+
+    message = str(ex_info.value)
+    assert ",".join(unscanned_pair) in message
+    assert not any(message_id in message for message_id in scanned_pair)
+
+
+@pytest.mark.asyncio
+async def test_strict_validation_truncates_long_id_list_e2e() -> None:
+    """Only the first MAX_REPORTED_UNMATCHED_CASES ids are listed."""
+    unscanned_ids = [f"unscanned-{index:02}" for index in range(26)]
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with pytest.raises(ValidationCoverageError) as ex_info:
+            scan_with_case_ids(tmpdir, unscanned_ids, strict=True)
+
+    message = str(ex_info.value)
+    assert unscanned_ids[MAX_REPORTED_UNMATCHED_CASES - 1] in message
+    assert unscanned_ids[MAX_REPORTED_UNMATCHED_CASES] not in message
+    assert "(1 more)" in message
 
 
 # ============================================================================

@@ -3,13 +3,27 @@
 from typing import Any
 
 from pydantic import BaseModel, Field, JsonValue, computed_field, model_validator
+from pydantic.json_schema import SkipJsonSchema
 from typing_extensions import Self
 
 from inspect_scout._validation.validate import is_positive_value
 
 
 class ValidationEntry(BaseModel):
-    """A single validation result with its target."""
+    """A single validation result with its target.
+
+    Entries mirror the `ResultValidation` shape: pass/fail predicates set
+    `valid`; score-returning predicates set `score` and leave `valid` as None.
+    Scored entries are recorded so that every validated case appears in
+    `entries` (e.g. for coverage/completeness checks), but they are excluded
+    from the pass/fail confusion-matrix metrics.
+
+    The score-bearing shape is kept out of the generated OpenAPI schema
+    (`SkipJsonSchema`): the view consumes only entry counts and aggregate
+    metrics, and exposing the new fields would force the coordinated ts-mono
+    types regeneration. Remove the `SkipJsonSchema` wrappers when the UI
+    grows a use for per-entry scores.
+    """
 
     id: str | list[str]
     """ID(s) from the validation case (e.g., transcript_id)."""
@@ -17,8 +31,11 @@ class ValidationEntry(BaseModel):
     target: JsonValue
     """Expected target value."""
 
-    valid: bool | dict[str, bool]
-    """Whether validation passed."""
+    valid: bool | dict[str, bool] | SkipJsonSchema[None]
+    """Whether validation passed (None when the predicate returned a score)."""
+
+    score: SkipJsonSchema[float | None] = Field(default=None)
+    """Score returned by a score-returning predicate (None for pass/fail predicates)."""
 
     @model_validator(mode="before")
     @classmethod
@@ -141,14 +158,16 @@ def compute_validation_metrics(
 
     Returns (total_metrics, per_key_metrics) tuple.
     per_key_metrics is None for bool-based entries, dict for dict-based entries.
-    Returns None if no entries have non-None targets.
+    Returns None if no entries have both a non-None target and a pass/fail
+    outcome (scored entries have `valid=None` and carry no pass/fail signal,
+    so they are excluded from the confusion matrix).
 
     Note: If entries contain a mix of bool and dict `valid` values, only dict
     entries are processed (bool entries are silently skipped). This handles
     edge cases in incremental data collection but should be rare in practice.
     """
-    # Filter to entries with non-None targets
-    with_targets = [e for e in entries if e.target is not None]
+    # Filter to pass/fail entries with non-None targets
+    with_targets = [e for e in entries if e.target is not None and e.valid is not None]
     if not with_targets:
         return None
 

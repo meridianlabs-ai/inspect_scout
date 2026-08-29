@@ -993,6 +993,7 @@ def _create_expanded_view_sql(
     validation_fields = {
         "validation_target",
         "validation_result",
+        "validation_score",
         "validation_predicate",
         "validation_split",
     }

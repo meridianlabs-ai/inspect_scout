@@ -401,12 +401,16 @@ def scanner_table(
         ) from e
 
     # Correct schema to handle type inconsistencies across files:
-    # 1. Promote null-type columns to string (unknown type)
-    # 2. Force 'value' and 'transcript_score' columns to string since they can have
+    # 1. Pin 'validation_score' to float64 (it is all-null, and therefore
+    #    null-typed, in fragments validated with pass/fail predicates)
+    # 2. Promote null-type columns to string (unknown type)
+    # 3. Force 'value' and 'transcript_score' columns to string since they can have
     #    mixed types across different result reports / transcripts
-    corrected_fields = []
+    corrected_fields: list[pa.Field[Any]] = []
     for field in schema:
-        if pa.types.is_null(field.type):
+        if field.name == "validation_score":
+            corrected_fields.append(pa.field(field.name, pa.float64(), nullable=True))
+        elif pa.types.is_null(field.type):
             # Promote null type to string
             corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))
         elif field.name in {"value", "transcript_score"}:

@@ -1274,6 +1274,8 @@ async def _validate_scan(
                     labels=v_case.labels,
                     predicate_override=v_case.predicate,
                 )
+                # label validation always produces one bool per label
+                assert isinstance(valid, dict)
                 return ResultValidation(
                     target=cast(JsonValue, v_case.labels),
                     valid=valid,
@@ -1288,11 +1290,21 @@ async def _validate_scan(
                     target=v_case.target,
                     predicate_override=v_case.predicate,
                 )
-                return ResultValidation(
-                    target=v_case.target,
-                    valid=valid,
-                    predicate=predicate_str,
-                    split=v_case.split,
-                )
+                # a float (non-bool) outcome is a score rather than pass/fail
+                if isinstance(valid, (bool, dict)):
+                    return ResultValidation(
+                        target=v_case.target,
+                        valid=valid,
+                        predicate=predicate_str,
+                        split=v_case.split,
+                    )
+                else:
+                    return ResultValidation(
+                        target=v_case.target,
+                        valid=None,
+                        score=valid,
+                        predicate=predicate_str,
+                        split=v_case.split,
+                    )
     else:
         return None

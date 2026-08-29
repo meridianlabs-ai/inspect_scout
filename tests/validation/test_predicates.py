@@ -197,6 +197,75 @@ async def test_custom_callable_predicate() -> None:
     assert await validate(validation, Result(value=123), "456") is False
 
 
+# Test score-returning predicates
+
+
+@pytest.mark.asyncio
+async def test_score_predicate_returns_float() -> None:
+    """Test that a predicate may return a float score for single-value targets."""
+
+    async def absolute_error(result: Result, target: JsonValue) -> float:
+        assert isinstance(result.value, (int, float))
+        assert isinstance(target, (int, float))
+        return abs(result.value - target)
+
+    validation = ValidationSet(cases=[], predicate=absolute_error)
+    score = await validate(validation, Result(value=7), 5)
+    assert score == 2.0
+    assert isinstance(score, float)
+    assert not isinstance(score, bool)
+
+
+@pytest.mark.asyncio
+async def test_score_predicate_int_coerced_to_float() -> None:
+    """Test that an int score is coerced to float."""
+
+    async def int_score(result: Result, target: JsonValue) -> float:
+        return 3
+
+    validation = ValidationSet(cases=[], predicate=int_score)
+    score = await validate(validation, Result(value=1), 1)
+    assert score == 3.0
+    assert isinstance(score, float)
+    assert not isinstance(score, bool)
+
+
+@pytest.mark.asyncio
+async def test_score_predicate_bool_still_returned_as_bool() -> None:
+    """Test that a bool return is passed through as bool, not coerced to float."""
+
+    async def bool_predicate(result: Result, target: JsonValue) -> bool:
+        return result.value == target
+
+    validation = ValidationSet(cases=[], predicate=bool_predicate)
+    valid = await validate(validation, Result(value=5), 5)
+    assert valid is True
+
+
+@pytest.mark.asyncio
+async def test_score_predicate_nan_raises() -> None:
+    """Test that a NaN score is rejected (indistinguishable from NULL once recorded)."""
+
+    async def nan_score(result: Result, target: JsonValue) -> float:
+        return float("nan")
+
+    validation = ValidationSet(cases=[], predicate=nan_score)
+    with pytest.raises(RuntimeError, match="returned NaN"):
+        await validate(validation, Result(value=5), 5)
+
+
+@pytest.mark.asyncio
+async def test_predicate_invalid_return_type_raises() -> None:
+    """Test that non-bool/non-numeric predicate returns raise RuntimeError."""
+
+    async def bad_predicate(result: Result, target: JsonValue) -> bool:
+        return "high"  # type: ignore[return-value]
+
+    validation = ValidationSet(cases=[], predicate=bad_predicate)
+    with pytest.raises(RuntimeError, match="must return bool or float"):
+        await validate(validation, Result(value=5), 5)
+
+
 # Test dict target validation (string predicates applied to each key)
 
 

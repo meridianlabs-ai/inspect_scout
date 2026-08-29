@@ -106,7 +106,10 @@ class Error(BaseModel):
 
 class ResultValidation(BaseModel):
     target: JsonValue
-    valid: bool | dict[str, bool]
+    valid: bool | dict[str, bool] | None = Field(default=None)
+    """Pass/fail validation result (None when the predicate returned a score)."""
+    score: float | None = Field(default=None)
+    """Score returned by a score-returning predicate (None for pass/fail predicates)."""
     predicate: str | None = Field(default=None)
     """The predicate used for validation (e.g., 'eq', 'gte', 'contains')."""
     split: str | None = Field(default=None)
@@ -206,7 +209,12 @@ class ResultReport(BaseModel):
         # report validation
         if self.validation is not None:
             columns["validation_target"] = to_json_str_compact(self.validation.target)
-            columns["validation_result"] = to_json_str_compact(self.validation.valid)
+            columns["validation_result"] = (
+                to_json_str_compact(self.validation.valid)
+                if self.validation.valid is not None
+                else None
+            )
+            columns["validation_score"] = self.validation.score
             columns["validation_predicate"] = self.validation.predicate
             columns["validation_split"] = self.validation.split
             if isinstance(self.validation.valid, dict):
@@ -216,6 +224,7 @@ class ResultReport(BaseModel):
         else:
             columns["validation_target"] = None
             columns["validation_result"] = None
+            columns["validation_score"] = None
             columns["validation_predicate"] = None
             columns["validation_split"] = None
 

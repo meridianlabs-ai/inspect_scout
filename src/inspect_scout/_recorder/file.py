@@ -1,4 +1,3 @@
-import asyncio
 import functools
 import io
 import json
@@ -18,6 +17,7 @@ import pyarrow.compute as pc
 import pyarrow.dataset as ds
 import pyarrow.fs as pafs
 import pyarrow.parquet as pq
+from inspect_ai._util._async import tg_collect
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import file, filesystem
 from inspect_ai._util.json import to_json_str_safe
@@ -729,10 +729,9 @@ class FileRecorder(ScanRecorder):
                 scan_dirs.append(entry.as_posix())
 
         # Fetch in parallel; skip scans that no longer exist and propagate
-        # any other error. return_exceptions=True keeps one failure from
-        # cancelling its siblings.
-        results = await asyncio.gather(
-            *(FileRecorder.status(d) for d in scan_dirs), return_exceptions=True
+        # any other error.
+        results = await tg_collect(
+            [functools.partial(_status_or_error, d) for d in scan_dirs]
         )
         scans: list[Status] = []
         for r in results:
@@ -757,6 +756,20 @@ class FileRecorder(ScanRecorder):
 # cleared when a run starts (`init`/`resume`/`attach`) and when a sync
 # completes the scan.
 _prior_parquet_cache: dict[str, dict[str, str | None]] = {}
+
+
+async def _status_or_error(scan_dir: str) -> Status | BaseException:
+    """Read one scan's status, returning any failure as a value.
+
+    Concurrent reads run in a task group, which cancels the remaining reads as
+    soon as one raises. Cancellation is captured too — the caller re-raises it,
+    and anyio re-delivers a genuine cancellation on scope exit — but
+    KeyboardInterrupt and SystemExit are left to unwind as they always did.
+    """
+    try:
+        return await FileRecorder.status(scan_dir)
+    except (Exception, anyio.get_cancelled_exc_class()) as ex:
+        return ex
 
 
 def _clear_prior_parquet_cache(scan_location: str) -> None:

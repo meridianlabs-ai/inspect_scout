@@ -1,5 +1,5 @@
 import re
-from typing import Any, Callable, Literal, Protocol, Sequence, runtime_checkable
+from typing import Any, Callable, Literal, Protocol, Sequence, cast, runtime_checkable
 
 from inspect_ai._util.pattern import ANSWER_PATTERN_WORD
 from inspect_ai._util.text import (
@@ -98,7 +98,7 @@ def answer_from_argument(
     answer: Literal["boolean", "numeric", "string"]
     | list[str]
     | AnswerMultiLabel
-    | AnswerStructured,
+    | AnswerStructured[Any],
 ) -> Answer:
     match answer:
         case "boolean":
@@ -123,7 +123,7 @@ def answer_type(
     answer: Literal["boolean", "numeric", "string"]
     | list[str]
     | AnswerMultiLabel
-    | AnswerStructured,
+    | AnswerStructured[Any],
 ) -> Answer:
     """Resolve an answer specification into an Answer object.
 
@@ -172,6 +172,7 @@ class _BoolAnswer(Answer):
                 case "yes":
                     return Result(
                         value=True if value_to_float is None else value_to_float(True),
+                        parsed=True,
                         answer="Yes",
                         explanation=explanation,
                         references=references,
@@ -181,6 +182,7 @@ class _BoolAnswer(Answer):
                         value=False
                         if value_to_float is None
                         else value_to_float(False),
+                        parsed=False,
                         answer="No",
                         explanation=explanation,
                         references=references,
@@ -219,6 +221,7 @@ class _NumberAnswer(Answer):
 
                 return Result(
                     value=value,
+                    parsed=answer,
                     answer=str(answer),
                     explanation=explanation,
                     references=references,
@@ -290,8 +293,10 @@ class _LabelsAnswer(Answer):
             if self.multi_classification:
                 # "NONE" means no labels apply (only when allow_none is set)
                 if answer_text.upper() == "NONE" and self.allow_none:
+                    no_labels: list[str] = []
                     return Result(
-                        value=[],
+                        value=cast(JsonValue, no_labels),
+                        parsed=no_labels,
                         answer=answer_text,
                         explanation=explanation,
                         references=references,
@@ -312,12 +317,13 @@ class _LabelsAnswer(Answer):
 
                 # Return result if at least one valid letter found
                 if valid_letters:
-                    answer_labels: JsonValue = [
+                    answer_labels = [
                         self.labels[valid_characters.index(letter)]
                         for letter in valid_letters
                     ]
                     return Result(
-                        value=answer_labels,
+                        value=cast(JsonValue, answer_labels),
+                        parsed=answer_labels,
                         answer=answer_text,
                         explanation=explanation,
                         references=references,
@@ -331,6 +337,7 @@ class _LabelsAnswer(Answer):
                         value=value_to_float(answer_letter)
                         if value_to_float
                         else answer_letter,
+                        parsed=self.labels[index],
                         answer=self.labels[index],
                         explanation=explanation,
                         references=references,
@@ -369,6 +376,7 @@ class _StrAnswer(Answer):
 
             return Result(
                 value=value_to_float(answer_text) if value_to_float else answer_text,
+                parsed=answer_text,
                 answer=answer_text,
                 explanation=explanation,
                 references=references,
@@ -410,7 +418,7 @@ def _answer_character(index: int) -> str:
 
 
 class _StructuredAnswer(Answer):
-    def __init__(self, answer: AnswerStructured):
+    def __init__(self, answer: AnswerStructured[Any]):
         self.answer = answer
 
     @property

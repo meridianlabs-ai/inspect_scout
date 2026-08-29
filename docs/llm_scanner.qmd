@@ -257,7 +257,7 @@ Scanners produce results which ultimately carry a specific `value`. There are tw
     class ToolErrors(BaseModel):
         tool_errors: int = Field(alias="value", description="The number of tool errors encountered.")
 
-        causes: str = Field(description="What were the most common causes of tool errors.") 
+        causes: str = Field(description="What were the most common causes of tool errors.")
     ```
 
 ### Labels and Explanations

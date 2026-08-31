@@ -501,8 +501,11 @@ def _persist_scan_summary(buffer_dir: UPath, summary: Summary) -> None:
     selection mode) share one buffer, and a fixed tmp name lets one worker's
     rename consume another's file mid-write — the loser then errors its
     sample on the missing tmp. Unique names reduce the race to
-    last-writer-wins over summary stats, which a later record or the
-    finalizing sync corrects.
+    last-writer-wins over the summary's *content*: each process persists its
+    own accumulated counts, so with concurrent writers the file undercounts
+    every process's share but one. A single-process scan is exact; an
+    external runner that owns a shared scan's lifecycle must derive the
+    durable summary from the recorded rows rather than trust this file.
     """
     summary_file = buffer_dir.joinpath(SCAN_SUMMARY)
     tmp_file = buffer_dir.joinpath(f".{SCAN_SUMMARY}.{uuid.uuid4().hex}.tmp")

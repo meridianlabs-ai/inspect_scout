@@ -24,9 +24,10 @@ from .._scanner.scanner import (
     Scanner,
     scanner,
 )
+from .._transcript.interleave import INTERLEAVE_DEPENDENCIES, EventsSpec
 from .._transcript.messages import _effective_segment_budget, transcript_messages
 from .._transcript.timeline import TimelineMessages
-from .._transcript.types import Transcript, TranscriptContent
+from .._transcript.types import EventType, Transcript, TranscriptContent
 from ._reducer import aggregate_results
 from .answer import Answer, answer_from_argument
 from .generate import generate_answer
@@ -54,6 +55,7 @@ def llm_scanner(
     retry_refusals: bool | int = 3,
     name: str | None = None,
     content: TranscriptContent | None = None,
+    events: EventsSpec | None = None,
     context_window: int | None = None,
     timeline: str | None = None,
     compaction: Literal["all", "last"] | int = "all",
@@ -79,6 +81,7 @@ def llm_scanner(
     retry_refusals: bool | int = 3,
     name: str | None = None,
     content: TranscriptContent | None = None,
+    events: EventsSpec | None = None,
     context_window: int | None = None,
     timeline: str | None = None,
     compaction: Literal["all", "last"] | int = "all",
@@ -104,6 +107,7 @@ def llm_scanner(
     retry_refusals: bool | int = 3,
     name: str | None = None,
     content: TranscriptContent | None = None,
+    events: EventsSpec | None = None,
     context_window: int | None = None,
     timeline: str | None = None,
     compaction: Literal["all", "last"] | int = "all",
@@ -170,7 +174,18 @@ def llm_scanner(
             Use this to assign a name when passing ``llm_scanner()`` directly to ``scan()`` rather than delegating to it from another scanner.
         content: Override the transcript content filters for this scanner.
             For example, ``TranscriptContent(timeline=True)`` requests timeline
-            data so the scanner can process span-level segments.
+            data so the scanner can process span-level segments. Events loaded
+            via ``content`` are available on the ``Transcript`` (e.g. for
+            ``template_variables``) but are not rendered into the prompt;
+            use ``events`` for that.
+        events: Render the named event types (e.g. ``["score"]``, or
+            ``"all"``) inline in the transcript as citable ``[E#]`` entries,
+            anchored to the assistant turn they followed. The named events
+            are loaded automatically, along with model events (needed for
+            positioning). ``model``/``tool`` and structural events are never
+            interleaved (they are already the message thread). On timeline
+            scans interleaving is per-span, with events outside any scanned
+            span attaching to the last preceding one.
         context_window: Override the model's context window size for chunking.
             When set, transcripts exceeding this limit are split into multiple
             segments, each scanned independently.
@@ -314,6 +329,7 @@ def llm_scanner(
                 compaction=compaction,
                 depth=depth,
                 prompt_reserve=template_tokens,
+                events=events,
             )
         ]
         segment_results: list[Result] = await tg_collect(
@@ -339,6 +355,24 @@ def llm_scanner(
     # set name for collection by @scanner if specified
     if name is not None:
         setattr(scan, SCANNER_NAME_ATTR, name)
+
+    # extend the loaded events with the interleave selection, plus the
+    # structural events the walk runs on (see INTERLEAVE_DEPENDENCIES)
+    if events is not None:
+        existing_events = content.events if content is not None else None
+        loaded_events: Literal["all"] | list[EventType | str]
+        if events == "all" or existing_events == "all":
+            loaded_events = "all"
+        else:
+            existing = list(existing_events) if existing_events is not None else []
+            loaded_events = list(
+                dict.fromkeys([*existing, *events, *sorted(INTERLEAVE_DEPENDENCIES)])
+            )
+        content = TranscriptContent(
+            messages=content.messages if content is not None else None,
+            events=loaded_events,
+            timeline=content.timeline if content is not None else None,
+        )
 
     # set content override for @scanner to merge into ScannerConfig
     if content is not None:

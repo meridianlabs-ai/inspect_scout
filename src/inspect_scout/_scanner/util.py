@@ -1,4 +1,4 @@
-from typing import Sequence, cast
+from typing import NewType, Sequence, cast
 
 from inspect_ai.analysis._dataframe.extract import auto_id
 from inspect_ai.event import Event, Timeline
@@ -7,6 +7,17 @@ from inspect_ai.model import ChatMessage, ChatMessageBase
 
 from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
 from inspect_scout._transcript.types import Transcript
+
+# The interleave plumbing brands its ids so a message id cannot be passed
+# where an event id is required (or vice versa). One deliberate laundering
+# point remains: `_event_message` writes an `EventId` into
+# `ChatMessage.id: str | None` and `extract.py` reads it back as a
+# `MessageId`; typing that honestly forces a cast, so it stays a documented
+# exception rather than a half-fix.
+EventId = NewType("EventId", str)
+"""A rendered event's citation identity (``event.uuid`` or a minted id)."""
+MessageId = NewType("MessageId", str)
+SpanId = NewType("SpanId", str)
 
 
 def get_input_type_and_ids(
@@ -50,9 +61,9 @@ def get_input_type_and_ids(
     return None
 
 
-def _event_id(event: Event) -> str:
-    return event.uuid or auto_id("event", str(event.timestamp))
+def _event_id(event: Event) -> EventId:
+    return EventId(event.uuid or auto_id("event", str(event.timestamp)))
 
 
-def _message_id(message: ChatMessage) -> str:
-    return message.id or auto_id("message", message.text)
+def _message_id(message: ChatMessage) -> MessageId:
+    return MessageId(message.id or auto_id("message", message.text))

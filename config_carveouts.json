@@ -1,0 +1,72 @@
+[
+  {
+    "file": "pyproject.toml",
+    "location": "tool.mypy.overrides[harbor.*]",
+    "setting": "ignore_missing_imports",
+    "value": "true",
+    "reason": "harbor requires Python >= 3.12 so it can be absent from the type-checking environment; see the comment in pyproject.toml"
+  },
+  {
+    "file": "pyproject.toml",
+    "location": "tool.ruff",
+    "setting": "extend-exclude",
+    "value": "docs",
+    "reason": "docs/ is Quarto site content with embedded code snippets, not package code; not lintable as-is. Baselined (predates the ledger)"
+  },
+  {
+    "file": "pyproject.toml",
+    "location": "tool.ruff.lint",
+    "setting": "ignore",
+    "value": "D10",
+    "reason": "missing-docstring checks off by choice; public-API docstrings are required by AGENTS.md and enforced in review. Baselined (predates the ledger)"
+  },
+  {
+    "file": "pyproject.toml",
+    "location": "tool.ruff.lint",
+    "setting": "ignore",
+    "value": "D212",
+    "reason": "docstring summary-position style choice. Baselined (predates the ledger)"
+  },
+  {
+    "file": "pyproject.toml",
+    "location": "tool.ruff.lint",
+    "setting": "ignore",
+    "value": "D415",
+    "reason": "docstring summary-punctuation style choice. Baselined (predates the ledger)"
+  },
+  {
+    "file": "pyproject.toml",
+    "location": "tool.ruff.lint",
+    "setting": "ignore",
+    "value": "E203",
+    "reason": "whitespace-before-punctuation conflicts with ruff format. Baselined (predates the ledger)"
+  },
+  {
+    "file": "pyproject.toml",
+    "location": "tool.ruff.lint",
+    "setting": "ignore",
+    "value": "E501",
+    "reason": "line length is handled by ruff format, not lint. Baselined (predates the ledger)"
+  },
+  {
+    "file": "pyproject.toml",
+    "location": "tool.ruff.lint",
+    "setting": "ignore",
+    "value": "PLW0127",
+    "reason": "self-assignment allowed by choice. Baselined (predates the ledger)"
+  },
+  {
+    "file": "pyproject.toml",
+    "location": "tool.ruff.lint",
+    "setting": "ignore",
+    "value": "PLW0603",
+    "reason": "global statement allowed by choice. Baselined (predates the ledger)"
+  },
+  {
+    "file": "pyproject.toml",
+    "location": "tool.ruff.lint",
+    "setting": "ignore",
+    "value": "PLW2901",
+    "reason": "loop-variable overwrite allowed by choice. Baselined (predates the ledger)"
+  }
+]

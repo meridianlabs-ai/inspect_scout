@@ -58,6 +58,15 @@ jobs:
         if: ${{ !cancelled() }}
         run: uv cache prune --ci
 
+  config-carveouts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # stdlib-only gate; the runner's default python3 (>= 3.11, has tomllib)
+      # is all it needs — no venv, no installs
+      - name: Check config carve-out ledger
+        run: python3 scripts/check_config_carveouts.py
+
   py-test:
     runs-on: ubuntu-latest
     strategy:

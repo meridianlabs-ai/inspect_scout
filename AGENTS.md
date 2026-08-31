@@ -35,6 +35,11 @@ Development setup (editable install, inspect_ai tracked from `main`, frontend/Gi
 - During development, run only implicated tests; run the full suite when the work is complete
 - Git LFS tracks `src/inspect_scout/_view/dist/**` (built frontend assets)—without `git lfs install`, a checkout leaves pointer stubs, not real files
 
+### Config carve-outs
+- A config-level relaxation that silences a checker (a mypy override, a ruff `ignore`, etc.) is a smell—name the root cause and check whether the repo already has an established practice for the problem before reaching for one
+- Escalate rather than work around: if a checker blocks you, flag it; don't relax the checker to get green
+- New carve-outs must be recorded in `config_carveouts.json` with a reason (`python3 scripts/check_config_carveouts.py --update`, then fill in the reason) and get maintainer sign-off on the ledger diff—CI fails on unrecorded carve-outs
+
 ## Pull Requests
 
 - Title PRs as Conventional Commits (`<type>: <description>`)—we squash-merge, so the PR title becomes the commit message that drives releases; `pr-title-lint` enforces it

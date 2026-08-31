@@ -7,9 +7,15 @@ from inspect_scout._scanner.result import Result
 
 # Predicate function signatures
 PredicateFn: TypeAlias = Callable[
-    [Result, JsonValue], Awaitable[bool | dict[str, bool]]
+    [Result, JsonValue], Awaitable[bool | float | dict[str, bool]]
 ]
-"""Function that implements a validation predicate."""
+"""Function that implements a validation predicate.
+
+For single-value targets a predicate may return either a `bool` (pass/fail,
+recorded as `validation_result`) or a `float` score (e.g. an error magnitude
+or graded agreement, recorded as `validation_score`). For dict targets a
+predicate must return a `dict[str, bool]`.
+"""
 
 # String name of a built-in validation predicate
 PredicateType: TypeAlias = Literal[

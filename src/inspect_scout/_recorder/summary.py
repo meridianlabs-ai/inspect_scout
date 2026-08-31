@@ -113,6 +113,12 @@ class Summary(BaseModel):
                     )
                 else:
                     agg_results += 1
+            # Record an entry for every validated result so completeness
+            # checks over `entries` see all matched cases. Score-returning
+            # predicates yield entries with valid=None and a score; they carry
+            # no pass/fail outcome and are excluded from the confusion-matrix
+            # metrics (their per-case scores also live in the
+            # `validation_score` results column).
             if result.validation is not None:
                 # Normalize input_ids: single string if length 1, else list
                 entry_id: str | list[str] = (
@@ -129,6 +135,7 @@ class Summary(BaseModel):
                         id=entry_id,
                         target=result.validation.target,
                         valid=result.validation.valid,
+                        score=result.validation.score,
                     )
                 )
             agg_errors += 1 if result.error is not None else 0

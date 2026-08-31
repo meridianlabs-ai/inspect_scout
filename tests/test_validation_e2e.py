@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any, Sequence
 
+import pandas as pd
 import pytest
 from inspect_ai.event import Event
 from inspect_ai.model import ChatMessage
@@ -503,6 +504,132 @@ async def test_validation_with_custom_predicate_e2e() -> None:
         assert all(isinstance(v, bool) for v in deserialized_results), (
             "All validation results should be boolean"
         )
+
+
+@pytest.mark.asyncio
+async def test_validation_score_predicate_e2e() -> None:
+    """Test validation with a score-returning predicate (recorded in validation_score)."""
+    # Get test transcript IDs
+    transcript_ids = await get_n_transcript_ids(3)
+
+    # Define score predicate function (absolute error rather than pass/fail)
+    async def absolute_error(result: Result, target: Any) -> float:
+        assert isinstance(result.value, (int, float))
+        assert isinstance(target, (int, float))
+        return abs(result.value - target)
+
+    # Create validation set with score predicate
+    targets = [50, 50, 50]
+    validation = ValidationSet(
+        cases=[
+            ValidationCase(id=tid, target=target)
+            for tid, target in zip(transcript_ids, targets, strict=True)
+        ],
+        predicate=absolute_error,
+    )
+
+    # Run scan with validation
+    with tempfile.TemporaryDirectory() as tmpdir:
+        scan_result = scan(
+            scanners=[int_scanner_factory()],
+            transcripts=transcripts_from(LOGS_DIR),
+            validation=validation,
+            scans=tmpdir,
+            limit=3,  # Only scan 3 transcripts for efficiency
+        )
+
+        # Get results
+        results = scan_results_df(scan_result.location, scanner="int_scanner")
+        df = results.scanners["int_scanner"]
+
+        # Verify validation columns exist
+        assert "validation_target" in df.columns
+        assert "validation_score" in df.columns
+        assert "validation_result" in df.columns
+
+        # Scored rows have a float score and no pass/fail result
+        df_validated = df[df["validation_target"].notna()]
+        assert len(df_validated) == 3
+        assert all(df_validated["validation_score"].notna())
+        assert all(df_validated["validation_result"].isna())
+
+        # Score equals the absolute error between scanner value and target
+        for _, row in df_validated.iterrows():
+            expected_score = abs(float(row["value"]) - 50.0)
+            assert row["validation_score"] == expected_score
+
+        # Scored validations are recorded as entries (with the score and no
+        # pass/fail outcome) so all matched cases are visible in the summary,
+        # but they are excluded from the pass/fail confusion-matrix metrics
+        summary = scan_result.summary.scanners["int_scanner"]
+        assert summary.validation is not None
+        assert len(summary.validation.entries) == 3
+        assert all(e.valid is None for e in summary.validation.entries)
+        assert all(e.score is not None for e in summary.validation.entries)
+        assert summary.validation.metrics is None
+
+
+@pytest.mark.asyncio
+async def test_validation_mixed_score_and_bool_e2e() -> None:
+    """Test a validation set mixing score cases with per-case bool predicates."""
+    # Get test transcript IDs
+    transcript_ids = await get_n_transcript_ids(3)
+
+    # Global score predicate; one case overrides with a pass/fail predicate
+    async def absolute_error(result: Result, target: Any) -> float:
+        assert isinstance(result.value, (int, float))
+        assert isinstance(target, (int, float))
+        return abs(result.value - target)
+
+    # First case uses a bool predicate override ("gte" against 0 always passes
+    # for int_scanner values); the remaining cases use the score predicate
+    bool_case_id = transcript_ids[0]
+    validation = ValidationSet(
+        cases=[
+            ValidationCase(id=bool_case_id, target=0, predicate="gte"),
+            ValidationCase(id=transcript_ids[1], target=50),
+            ValidationCase(id=transcript_ids[2], target=50),
+        ],
+        predicate=absolute_error,
+    )
+
+    # Run scan with validation
+    with tempfile.TemporaryDirectory() as tmpdir:
+        scan_result = scan(
+            scanners=[int_scanner_factory()],
+            transcripts=transcripts_from(LOGS_DIR),
+            validation=validation,
+            scans=tmpdir,
+            limit=3,  # Only scan 3 transcripts for efficiency
+        )
+
+        # Get results
+        results = scan_results_df(scan_result.location, scanner="int_scanner")
+        df = results.scanners["int_scanner"]
+
+        df_validated = df[df["validation_target"].notna()]
+        assert len(df_validated) == 3
+
+        for _, row in df_validated.iterrows():
+            if row["transcript_id"] == bool_case_id:
+                # Bool-validated row: pass/fail recorded, no score
+                assert json.loads(row["validation_result"]) is True
+                assert pd.isna(row["validation_score"])
+            else:
+                # Scored row: score recorded, no pass/fail result
+                assert pd.isna(row["validation_result"])
+                assert row["validation_score"] == abs(float(row["value"]) - 50.0)
+
+        # All validated cases are recorded as entries, but only the
+        # bool-validated case contributes to summary metrics
+        summary = scan_result.summary.scanners["int_scanner"]
+        assert summary.validation is not None
+        assert len(summary.validation.entries) == 3
+        scored_entries = [e for e in summary.validation.entries if e.valid is None]
+        assert len(scored_entries) == 2
+        assert all(e.score is not None for e in scored_entries)
+        assert summary.validation.metrics is not None
+        assert summary.validation.metrics.total == 1
 
 
 @pytest.mark.asyncio

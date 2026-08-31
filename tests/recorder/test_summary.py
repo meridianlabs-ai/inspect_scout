@@ -8,7 +8,12 @@ from inspect_scout._recorder.validation import (
     ValidationResults,
     compute_validation_metrics,
 )
-from inspect_scout._scanner.result import Result, ResultReport, as_resultset
+from inspect_scout._scanner.result import (
+    Result,
+    ResultReport,
+    ResultValidation,
+    as_resultset,
+)
 from inspect_scout._transcript.types import Transcript
 from inspect_scout._validation.validate import is_positive_value
 
@@ -247,6 +252,27 @@ class TestComputeValidationMetrics:
         assert per_key["b"].tp == 0
         assert per_key["b"].fn == 0
 
+    def test_scored_entries_excluded(self) -> None:
+        """Scored entries (valid=None) are excluded even when they have targets."""
+        validations = [
+            ValidationEntry(id="t1", target=5, valid=None, score=2.0),
+            ValidationEntry(id="t2", target=True, valid=True),  # TP
+        ]
+        result = compute_validation_metrics(validations)
+        assert result is not None
+        metrics, per_key = result
+        assert per_key is None
+        assert metrics.total == 1
+        assert metrics.tp == 1
+
+    def test_all_scored_entries_yield_no_metrics(self) -> None:
+        """All-scored entries carry no pass/fail signal, so metrics are None."""
+        validations = [
+            ValidationEntry(id="t1", target=5, valid=None, score=2.0),
+            ValidationEntry(id="t2", target=7, valid=None, score=0.5),
+        ]
+        assert compute_validation_metrics(validations) is None
+
     def test_mixed_with_legacy(self) -> None:
         """Mixed entries with some legacy (target=None) are handled correctly."""
         validations = [
@@ -311,6 +337,52 @@ class TestSummaryResultsetCounting:
         summary._report(None, "scanner", [r3], None)  # type: ignore[arg-type]
         assert summary.scanners["scanner"].results == 4
         assert summary.scanners["scanner"].scans == 3
+
+
+class TestSummaryScoredValidation:
+    """Tests that scored validations are recorded but excluded from metrics."""
+
+    def _make_report(self, validation: ResultValidation) -> ResultReport:
+        """Helper: create a ResultReport with the given validation."""
+        return ResultReport(
+            input_type="transcript",
+            input_ids=["t1"],
+            input=Transcript(transcript_id="t1"),
+            result=Result(value=1),
+            validation=validation,
+            error=None,
+            events=[],
+            model_usage={},
+        )
+
+    def test_scored_validation_recorded_but_excluded_from_metrics(self) -> None:
+        summary = Summary(scanners=["scanner"])
+        scored = self._make_report(ResultValidation(target=5, score=2.0))
+        passed = self._make_report(ResultValidation(target=True, valid=True))
+        summary._report(None, "scanner", [scored, passed], None)  # type: ignore[arg-type]
+        validation = summary.scanners["scanner"].validation
+        assert validation is not None
+        # Both validated results are recorded as entries
+        assert len(validation.entries) == 2
+        assert validation.entries[0].valid is None
+        assert validation.entries[0].score == 2.0
+        assert validation.entries[1].valid is True
+        assert validation.entries[1].score is None
+        # Metrics count only the pass/fail entry
+        assert validation.metrics is not None
+        assert validation.metrics.total == 1
+        assert validation.metrics.tp == 1
+
+    def test_only_scored_validations_yield_entries_without_metrics(self) -> None:
+        summary = Summary(scanners=["scanner"])
+        scored = self._make_report(ResultValidation(target=5, score=2.0))
+        summary._report(None, "scanner", [scored], None)  # type: ignore[arg-type]
+        validation = summary.scanners["scanner"].validation
+        assert validation is not None
+        assert len(validation.entries) == 1
+        assert validation.entries[0].valid is None
+        assert validation.entries[0].score == 2.0
+        assert validation.metrics is None
 
 
 class TestValidationResults:

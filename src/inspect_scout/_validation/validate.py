@@ -1,3 +1,5 @@
+import math
+
 from pydantic import JsonValue
 
 from inspect_scout._scanner.result import Result
@@ -12,7 +14,7 @@ async def validate(
     target: JsonValue | None = None,
     labels: dict[str, bool] | None = None,
     predicate_override: ValidationPredicate | None = None,
-) -> bool | dict[str, bool]:
+) -> bool | float | dict[str, bool]:
     """Validate a result against a target or labels using the validation set's predicate.
 
     Args:
@@ -23,7 +25,8 @@ async def validate(
         predicate_override: Optional predicate to override the validation set's predicate
 
     Returns:
-        bool if target is a single value
+        bool if target is a single value and the predicate returned pass/fail
+        float if target is a single value and the predicate returned a score
         dict[str, bool] if target is a dict OR labels is provided (one bool per key/label)
 
     Raises:
@@ -53,14 +56,23 @@ async def _validate_single(
     result: Result,
     target: list[JsonValue] | str | bool | int | float | None,
     predicate: ValidationPredicate | None,
-) -> bool:
+) -> bool | float:
     predicate_fn = resolve_predicate(predicate)
     valid = await predicate_fn(result, target)
-    if not isinstance(valid, bool):
-        raise RuntimeError(
-            f"Validation function must return bool for target of type '{type(target)}' (returned '{type(valid)}')"
-        )
-    return valid
+    if isinstance(valid, bool):
+        return valid
+    if isinstance(valid, (int, float)):
+        score = float(valid)
+        # reject NaN eagerly -- once recorded it is indistinguishable from
+        # NULL in the validation_score column
+        if math.isnan(score):
+            raise RuntimeError(
+                f"Validation function returned NaN for target of type '{type(target)}'"
+            )
+        return score
+    raise RuntimeError(
+        f"Validation function must return bool or float for target of type '{type(target)}' (returned '{type(valid)}')"
+    )
 
 
 async def _validate_dict(

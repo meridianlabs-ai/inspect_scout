@@ -43,6 +43,8 @@ make check   # ruff check --fix, ruff format, and mypy
 make test    # pytest
 ```
 
+The `carveouts` step of `make check` needs a `python3` >= 3.11 (it uses `tomllib`); on an older interpreter it exits with a clear message rather than passing silently.
+
 **Frontend** (from `src/inspect_scout/_view/ts-mono`):
 
 ```bash

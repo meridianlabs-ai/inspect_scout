@@ -61,6 +61,16 @@ def run_gate(root: Path, *args: str) -> "subprocess.CompletedProcess[str]":
             id="ruff-lint-ignore",
         ),
         pytest.param(
+            '[tool.ruff.lint]\nignore = "E501"\n',
+            "[tool.ruff.lint] ignore = E501",
+            id="ruff-lint-ignore-string-scalar",
+        ),
+        pytest.param(
+            '[tool.mypy]\nexclude = "src/legacy/"\n',
+            "[tool.mypy] exclude = src/legacy/",
+            id="mypy-exclude-string-scalar",
+        ),
+        pytest.param(
             '[tool.ruff.lint.per-file-ignores]\n"tests/*" = ["D103"]\n',
             "[tool.ruff.lint.per-file-ignores] tests/* = D103",
             id="ruff-per-file-ignores",

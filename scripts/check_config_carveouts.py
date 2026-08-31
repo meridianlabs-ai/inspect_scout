@@ -66,6 +66,13 @@ def _render(value: object) -> str:
     return ("true" if value else "false") if isinstance(value, bool) else str(value)
 
 
+def _listify(value: Any) -> list[Any]:
+    # scalar-or-list settings: a bare string is one item, not its characters
+    if isinstance(value, list):
+        return value
+    return [value] if value else []
+
+
 # mypy knobs that relax checking when set to the given polarity. Everything
 # else in [tool.mypy] (paths, strictness enables, plugins) is benign.
 _MYPY_RELAX_WHEN_TRUE = {
@@ -82,12 +89,10 @@ _MYPY_RELAX_WHEN_FALSE = {"check_untyped_defs"}
 
 def _mypy_relaxations(table: dict[str, Any]) -> Iterator[tuple[str, str]]:
     for key, value in sorted(table.items()):
-        if key == "disable_error_code" and value:
-            codes = value if isinstance(value, list) else [value]
-            yield from (("disable_error_code", str(code)) for code in codes)
-        elif key == "exclude" and value:
-            patterns = value if isinstance(value, list) else [value]
-            yield from (("exclude", str(p)) for p in patterns)
+        if key == "disable_error_code":
+            yield from (("disable_error_code", str(code)) for code in _listify(value))
+        elif key == "exclude":
+            yield from (("exclude", str(p)) for p in _listify(value))
         elif key == "follow_imports" and value in ("skip", "silent"):
             yield (key, str(value))
         elif key in _MYPY_RELAX_WHEN_TRUE and value is True:
@@ -120,20 +125,19 @@ def _scan_ruff_lint(
 ) -> Iterator[Carveout]:
     for key in ("ignore", "extend-ignore"):
         yield from (
-            Carveout(file, location, key, str(code)) for code in lint.get(key, [])
+            Carveout(file, location, key, str(code)) for code in _listify(lint.get(key))
         )
     # excluding a path silences all lint for it — same relaxation channel as
     # an ignore code, aimed at paths instead of rules
     for key in ("exclude", "extend-exclude"):
         yield from (
-            Carveout(file, location, key, str(path)) for path in lint.get(key, [])
+            Carveout(file, location, key, str(path)) for path in _listify(lint.get(key))
         )
     for key in ("per-file-ignores", "extend-per-file-ignores"):
         for glob, codes in lint.get(key, {}).items():
-            codes = codes if isinstance(codes, list) else [codes]
             yield from (
                 Carveout(file, f"{location}.{key}", str(glob), str(code))
-                for code in codes
+                for code in _listify(codes)
             )
 
 

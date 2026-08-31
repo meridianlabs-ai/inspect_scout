@@ -13,7 +13,6 @@ from functools import partial
 from logging import getLogger
 from typing import Protocol
 
-import anyio
 from inspect_ai._util._async import tg_collect
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import FileInfo
@@ -21,7 +20,8 @@ from inspect_ai.util._anyio import inner_exception
 from upath import UPath
 
 from .._recorder.active_scans_store import active_scans_store
-from .._recorder.file import _is_not_found, _status_or_error
+from .._recorder.file import FileRecorder, _is_not_found
+from .._util._async import as_value
 from .convert import scan_row_from_status
 from .store import ScanIndexStore
 
@@ -137,22 +137,6 @@ async def _listing_from_scan_dir(
     return ScanListing(scan_id, normalized_scan_dir, token)
 
 
-async def _listing_or_error(
-    fs: ScanListingFilesystem,
-    scan_dir: str,
-    semaphore: asyncio.Semaphore,
-) -> ScanListing | None | BaseException:
-    """Read one scan's listing, returning any failure as a value.
-
-    A task group drops a child CancelledError without reporting it, which would
-    silently shorten the listing rather than fail it.
-    """
-    try:
-        return await _listing_from_scan_dir(fs, scan_dir, semaphore)
-    except (Exception, anyio.get_cancelled_exc_class()) as ex:
-        return ex
-
-
 async def async_listing_to_scans(
     fs: ScanListingFilesystem, location: str
 ) -> dict[str, ScanListing]:
@@ -168,7 +152,10 @@ async def async_listing_to_scans(
 
     semaphore = asyncio.Semaphore(_METADATA_CONCURRENCY)
     listings = await tg_collect(
-        [partial(_listing_or_error, fs, scan_dir, semaphore) for scan_dir in scan_dirs]
+        [
+            partial(as_value, partial(_listing_from_scan_dir, fs, scan_dir, semaphore))
+            for scan_dir in scan_dirs
+        ]
     )
 
     result: dict[str, ScanListing] = {}
@@ -237,7 +224,10 @@ async def refresh_index(store: ScanIndexStore, location: str) -> None:
 
         # Read Status for the delta in parallel; missing scans are skipped.
         statuses = await tg_collect(
-            [partial(_status_or_error, listing.dir_path) for listing in delta.to_read]
+            [
+                partial(as_value, partial(FileRecorder.status, listing.dir_path))
+                for listing in delta.to_read
+            ]
         )
 
     rows = []

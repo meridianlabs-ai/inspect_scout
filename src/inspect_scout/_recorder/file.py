@@ -42,6 +42,7 @@ from .._recorder.buffer import (
 from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec, ScanTranscripts
 from .._transcript.types import TranscriptInfo
+from .._util._async import as_value
 from .._util.duckdb import create_parquet_view, restrict_external_access
 from .recorder import (
     ScanRecorder,
@@ -731,7 +732,10 @@ class FileRecorder(ScanRecorder):
         # Fetch in parallel; skip scans that no longer exist and propagate
         # any other error.
         results = await tg_collect(
-            [functools.partial(_status_or_error, d) for d in scan_dirs]
+            [
+                functools.partial(as_value, functools.partial(FileRecorder.status, d))
+                for d in scan_dirs
+            ]
         )
         scans: list[Status] = []
         for r in results:
@@ -756,20 +760,6 @@ class FileRecorder(ScanRecorder):
 # cleared when a run starts (`init`/`resume`/`attach`) and when a sync
 # completes the scan.
 _prior_parquet_cache: dict[str, dict[str, str | None]] = {}
-
-
-async def _status_or_error(scan_dir: str) -> Status | BaseException:
-    """Read one scan's status, returning any failure as a value.
-
-    Concurrent reads run in a task group, which cancels the remaining reads as
-    soon as one raises. Cancellation is captured too — the caller re-raises it,
-    and anyio re-delivers a genuine cancellation on scope exit — but
-    KeyboardInterrupt and SystemExit are left to unwind as they always did.
-    """
-    try:
-        return await FileRecorder.status(scan_dir)
-    except (Exception, anyio.get_cancelled_exc_class()) as ex:
-        return ex
 
 
 def _clear_prior_parquet_cache(scan_location: str) -> None:

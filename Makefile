@@ -7,8 +7,16 @@ ruff:
 mypy:
 	mypy src examples tests
 
+.PHONY: suppressions-check
+suppressions-check:
+	python3 scripts/check_suppressions.py
+
+.PHONY: suppressions-update
+suppressions-update:
+	python3 scripts/check_suppressions.py --update
+
 .PHONY: check
-check: ruff mypy
+check: ruff mypy suppressions-check
 
 .PHONY: test
 test:

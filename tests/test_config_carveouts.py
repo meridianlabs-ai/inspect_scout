@@ -184,6 +184,23 @@ def test_malformed_ledger_fails_cleanly(tmp_path: Path, ledger_text: str) -> Non
     assert "Traceback" not in result.stderr
 
 
+@pytest.mark.parametrize(
+    ("filename", "content"),
+    [
+        pytest.param("pyproject.toml", "[tool.mypy\nstrict = true\n", id="bad-toml"),
+        pytest.param("setup.cfg", "no section header\n", id="bad-setup-cfg"),
+    ],
+)
+def test_malformed_config_fails_cleanly(
+    tmp_path: Path, filename: str, content: str
+) -> None:
+    (tmp_path / filename).write_text(content)
+    result = run_gate(tmp_path)
+    assert result.returncode == 1
+    assert "malformed" in result.stderr
+    assert "Traceback" not in result.stderr
+
+
 def test_duplicate_ledger_entries_fail(tmp_path: Path) -> None:
     ledger_path = tmp_path / "config_carveouts.json"
     (tmp_path / "pyproject.toml").write_text(SCOUT_STYLE_OVERRIDE)

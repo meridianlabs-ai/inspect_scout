@@ -154,7 +154,10 @@ def _check_unscannable(root: Path) -> None:
     setup_cfg = root / "setup.cfg"
     if setup_cfg.exists():
         parser = configparser.ConfigParser()
-        parser.read(setup_cfg)
+        try:
+            parser.read(setup_cfg)
+        except configparser.Error as error:
+            sys.exit(f"setup.cfg is malformed — {type(error).__name__}: {error}")
         if any(s == "mypy" or s.startswith("mypy-") for s in parser.sections()):
             found.append("setup.cfg ([mypy] sections)")
     if found:
@@ -166,8 +169,11 @@ def _check_unscannable(root: Path) -> None:
 
 
 def _load_toml(path: Path) -> dict[str, Any]:
-    with path.open("rb") as f:
-        return tomllib.load(f)
+    try:
+        with path.open("rb") as f:
+            return tomllib.load(f)
+    except tomllib.TOMLDecodeError as error:
+        sys.exit(f"{path.name} is malformed — TOMLDecodeError: {error}")
 
 
 def scan_config(root: Path) -> list[Carveout]:

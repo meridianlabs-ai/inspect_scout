@@ -1042,7 +1042,6 @@ async def _scan_one(
     init_transcript(inspect_transcript)
 
     results: list[ResultReport] = []
-    validation_result: ResultValidation | None = None
 
     scanner_config = config_for_scanner(job.scanner)
     loader = scanner_config.loader
@@ -1050,6 +1049,7 @@ async def _scan_one(
     async for loader_result in loader(job.union_transcript):
         result: Result | list[Result] | None = None
         final_result: Result | None = None
+        validation_result: ResultValidation | None = None
         error: Error | None = None
         try:
             type_and_ids = get_input_type_and_ids(loader_result)

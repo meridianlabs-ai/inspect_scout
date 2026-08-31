@@ -716,6 +716,93 @@ async def test_validation_message_based_scanner_e2e() -> None:
         )
 
 
+@scanner(name="failing_message_scanner", messages="all")
+def failing_message_scanner_factory(
+    fail_after_first: bool = False,
+) -> Scanner[ChatMessage]:
+    """Scanner that succeeds on its first call and (optionally) raises afterwards."""
+    calls = 0
+
+    async def scan_message(message: ChatMessage) -> Result:
+        nonlocal calls
+        calls += 1
+        if fail_after_first and calls > 1:
+            raise RuntimeError(f"failing scanner: {message.id}")
+        return Result(value=True, explanation="ok")
+
+    return scan_message
+
+
+@pytest.mark.asyncio
+async def test_validation_not_carried_onto_errored_inputs_e2e() -> None:
+    """Errored scanner inputs must not inherit a previous input's validation.
+
+    Regression test: `_scan_one` kept the previous iteration's validation
+    result across loader inputs, so when the scanner raised on a later input
+    of the same transcript, its error report (parquet row and summary entry)
+    carried the previous input's validation target/verdict.
+    """
+    # First pass: run without failures/validation to collect the message IDs
+    with tempfile.TemporaryDirectory() as tmpdir:
+        scan_result = scan(
+            scanners=[failing_message_scanner_factory()],
+            transcripts=transcripts_from(LOGS_DIR),
+            scans=tmpdir,
+            limit=1,  # Only scan 1 transcript
+        )
+        results = scan_results_df(
+            scan_result.location, scanner="failing_message_scanner"
+        )
+        df_first = results.scanners["failing_message_scanner"]
+        message_ids = [json.loads(ids)[0] for ids in df_first["input_ids"]]
+
+    assert len(message_ids) >= 2, "Need at least 2 messages to cover a later failure"
+
+    # Second pass: validation cases for every message; the scanner succeeds
+    # (and validates) on the first message it sees and raises on all others
+    validation = ValidationSet(
+        cases=[ValidationCase(id=msg_id, target=True) for msg_id in message_ids],
+        predicate="eq",
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        scan_result = scan(
+            scanners=[failing_message_scanner_factory(fail_after_first=True)],
+            transcripts=transcripts_from(LOGS_DIR),
+            validation=validation,
+            scans=tmpdir,
+            limit=1,  # Scan same transcript
+        )
+        results = scan_results_df(
+            scan_result.location, scanner="failing_message_scanner"
+        )
+        df = results.scanners["failing_message_scanner"]
+        assert len(df) == len(message_ids)
+
+        # The first-scanned message succeeded and validated
+        df_valid = df[df["scan_error"].isna()]
+        assert len(df_valid) == 1
+        validated_id = json.loads(df_valid.iloc[0]["input_ids"])[0]
+        assert df_valid.iloc[0]["validation_result"] is not None
+
+        # Errored inputs never validated, so their rows must not carry the
+        # succeeded message's validation target/verdict
+        df_errored = df[df["scan_error"].notna()]
+        assert len(df_errored) == len(message_ids) - 1
+        assert df_errored["validation_result"].isna().all(), (
+            f"Errored inputs must not inherit a previous input's validation: "
+            f"{df_errored[['input_ids', 'validation_result']].to_dict('records')}"
+        )
+        assert df_errored["validation_target"].isna().all()
+
+        # The summary must contain exactly the one validation that ran
+        summary_validation = scan_result.summary.scanners[
+            "failing_message_scanner"
+        ].validation
+        assert summary_validation is not None
+        assert [entry.id for entry in summary_validation.entries] == [validated_id]
+
+
 @pytest.mark.asyncio
 async def test_validation_event_based_scanner_e2e() -> None:
     """Test validation with event-based scanner."""

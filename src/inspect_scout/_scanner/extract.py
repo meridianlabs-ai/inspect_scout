@@ -32,6 +32,13 @@ logger = getLogger(__name__)
 
 T = TypeVar("T", Transcript, list[ChatMessage])
 
+EVENT_MARKER_KEY = "__scout_event__"
+"""Marks a synthetic ChatMessage that carries pre-rendered event text.
+
+message_numbering renders such messages as ``[E#]`` entries (event
+references) without consuming an ``[M#]`` ordinal.
+"""
+
 
 @dataclass(frozen=True)
 class MessageFormatOptions:
@@ -243,15 +250,40 @@ def message_numbering(
             - label_for_id (when requested): takes a real message ID, returns its label (e.g. ``"M3"``) or None if not yet seen.
     """
     counter = [0]
+    event_counter = [0]
     id_map: dict[str, str] = {}
     reverse_map: dict[str, str] = {}
 
+    def _is_event_message(message: ChatMessage) -> bool:
+        return bool(message.metadata and message.metadata.get(EVENT_MARKER_KEY))
+
     async def _messages_as_str(messages: list[ChatMessage]) -> str:
         if preprocessor is not None and preprocessor.transform is not None:
-            messages = await preprocessor.transform(messages)
+            # Synthetic event entries are not conversation turns; transforms
+            # are written against real messages, so route only those through
+            # and re-splice the event entries at their original positions.
+            events = [
+                (index, message)
+                for index, message in enumerate(messages)
+                if _is_event_message(message)
+            ]
+            transformed = await preprocessor.transform(
+                [m for m in messages if not _is_event_message(m)]
+            )
+            messages = list(transformed)
+            for index, message in events:
+                messages.insert(min(index, len(messages)), message)
 
         items: list[str] = []
         for message in messages:
+            if _is_event_message(message):
+                event_counter[0] += 1
+                ordinal = f"E{event_counter[0]}"
+                real_id = _message_id(message)
+                id_map[ordinal] = real_id
+                reverse_map[real_id] = ordinal
+                items.append(f"[{ordinal}] {message.text}")
+                continue
             content = message_as_str(message, preprocessor)
             if content is not None:
                 counter[0] += 1

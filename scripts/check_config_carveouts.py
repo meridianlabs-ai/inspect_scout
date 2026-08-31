@@ -16,9 +16,9 @@ Scans (repo root only):
   ruff.toml / .ruff.toml
 
 Only settings that suppress or weaken diagnostics are flagged (e.g. mypy
-implicit_reexport = true, disable_error_code, disallow_* = false; ruff
-lint.ignore and per-file-ignores; pyright report* = false/"none").
-Formatting, path, and other benign config is not.
+implicit_reexport = true, disable_error_code, disallow_* = false, exclude;
+ruff lint.ignore, per-file-ignores, and exclude/extend-exclude; pyright
+report* = false/"none"). Formatting and other benign config is not.
 
 Checker config the gate cannot scan (mypy.ini, [mypy] sections in setup.cfg,
 pyrightconfig.json) fails the gate outright rather than being silently
@@ -85,6 +85,9 @@ def _mypy_relaxations(table: dict[str, Any]) -> Iterator[tuple[str, str]]:
         if key == "disable_error_code" and value:
             codes = value if isinstance(value, list) else [value]
             yield from (("disable_error_code", str(code)) for code in codes)
+        elif key == "exclude" and value:
+            patterns = value if isinstance(value, list) else [value]
+            yield from (("exclude", str(p)) for p in patterns)
         elif key == "follow_imports" and value in ("skip", "silent"):
             yield (key, str(value))
         elif key in _MYPY_RELAX_WHEN_TRUE and value is True:
@@ -117,6 +120,12 @@ def _scan_ruff_lint(
     for key in ("ignore", "extend-ignore"):
         yield from (
             Carveout(file, location, key, str(code)) for code in lint.get(key, [])
+        )
+    # excluding a path silences all lint for it — same relaxation channel as
+    # an ignore code, aimed at paths instead of rules
+    for key in ("exclude", "extend-exclude"):
+        yield from (
+            Carveout(file, location, key, str(path)) for path in lint.get(key, [])
         )
     for key in ("per-file-ignores", "extend-per-file-ignores"):
         for glob, codes in lint.get(key, {}).items():

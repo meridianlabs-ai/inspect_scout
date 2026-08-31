@@ -8,6 +8,13 @@
   },
   {
     "file": "pyproject.toml",
+    "location": "tool.ruff",
+    "setting": "extend-exclude",
+    "value": "docs",
+    "reason": "docs/ is Quarto site content with embedded code snippets, not package code; not lintable as-is. Baselined (predates the ledger)"
+  },
+  {
+    "file": "pyproject.toml",
     "location": "tool.ruff.lint",
     "setting": "ignore",
     "value": "D10",

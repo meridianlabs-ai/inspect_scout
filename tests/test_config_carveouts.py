@@ -70,6 +70,21 @@ def run_gate(root: Path, *args: str) -> "subprocess.CompletedProcess[str]":
             "[tool.pyright] reportMissingImports = false",
             id="pyright-report-off",
         ),
+        pytest.param(
+            '[tool.mypy]\nexclude = ["src/legacy/"]\n',
+            "[tool.mypy] exclude = src/legacy/",
+            id="mypy-exclude",
+        ),
+        pytest.param(
+            '[tool.ruff]\nextend-exclude = ["scripts"]\n',
+            "[tool.ruff] extend-exclude = scripts",
+            id="ruff-extend-exclude",
+        ),
+        pytest.param(
+            '[tool.ruff.lint]\nexclude = ["scripts/*.py"]\n',
+            "[tool.ruff.lint] exclude = scripts/*.py",
+            id="ruff-lint-exclude",
+        ),
     ],
 )
 def test_detects_relaxation(tmp_path: Path, config: str, expected: str) -> None:

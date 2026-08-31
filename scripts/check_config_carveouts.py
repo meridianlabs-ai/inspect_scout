@@ -107,7 +107,8 @@ def _scan_mypy(mypy: dict[str, Any], file: str) -> Iterator[Carveout]:
     for override in mypy.get("overrides", []):
         modules = override.get("module", [])
         modules = [modules] if isinstance(modules, str) else modules
-        location = f"tool.mypy.overrides[{','.join(modules)}]"
+        # sorted so reordering the module list doesn't churn the identity
+        location = f"tool.mypy.overrides[{','.join(sorted(modules))}]"
         yield from (
             Carveout(file, location, key, value)
             for key, value in _mypy_relaxations(override)
@@ -193,13 +194,31 @@ def scan_config(root: Path) -> list[Carveout]:
 
 
 def read_ledger(root: Path) -> dict[Carveout, str]:
+    # the ledger is hand-edited (reasons get filled in), so slips like invalid
+    # JSON, a missing/non-string field, or a duplicated entry need a legible
+    # error, not a traceback or a silent last-entry-wins collapse
     path = root / LEDGER_NAME
     if not path.exists():
         return {}
-    return {
-        Carveout(e["file"], e["location"], e["setting"], e["value"]): e["reason"]
-        for e in json.loads(path.read_text())
-    }
+    ledger: dict[Carveout, str] = {}
+    try:
+        for entry in json.loads(path.read_text()):
+            fields = [
+                entry[key] for key in ("file", "location", "setting", "value", "reason")
+            ]
+            if not all(isinstance(field, str) for field in fields):
+                raise TypeError(f"every field must be a string: {entry}")
+            carveout = Carveout(*fields[:4])
+            if carveout in ledger:
+                raise ValueError(f"duplicate entry for {carveout}")
+            ledger[carveout] = fields[4]
+    except (KeyError, TypeError, ValueError) as error:
+        sys.exit(
+            f"{LEDGER_NAME} is malformed — {type(error).__name__}: {error}."
+            f" Fix it by hand, or delete it and {UPDATE_HINT} to regenerate"
+            " (reasons will need re-entering)."
+        )
+    return ledger
 
 
 def write_ledger(root: Path, entries: dict[Carveout, str]) -> None:

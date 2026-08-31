@@ -163,6 +163,55 @@ def test_record_and_shrink_flow(tmp_path: Path) -> None:
     assert run_gate(tmp_path).returncode == 0
 
 
+@pytest.mark.parametrize(
+    "ledger_text",
+    [
+        pytest.param("{not json", id="invalid-json"),
+        pytest.param('[{"file": "pyproject.toml"}]', id="missing-fields"),
+        pytest.param(
+            '[{"file": "f", "location": "l", "setting": "s",'
+            ' "value": "v", "reason": null}]',
+            id="non-string-reason",
+        ),
+    ],
+)
+def test_malformed_ledger_fails_cleanly(tmp_path: Path, ledger_text: str) -> None:
+    (tmp_path / "pyproject.toml").write_text(SCOUT_STYLE_OVERRIDE)
+    (tmp_path / "config_carveouts.json").write_text(ledger_text)
+    result = run_gate(tmp_path)
+    assert result.returncode == 1
+    assert "malformed" in result.stderr
+    assert "Traceback" not in result.stderr
+
+
+def test_duplicate_ledger_entries_fail(tmp_path: Path) -> None:
+    ledger_path = tmp_path / "config_carveouts.json"
+    (tmp_path / "pyproject.toml").write_text(SCOUT_STYLE_OVERRIDE)
+    run_gate(tmp_path, "--update")
+    entries = json.loads(ledger_path.read_text())
+    entries[0]["reason"] = "real reason"
+    ledger_path.write_text(json.dumps(entries + [dict(entries[0], reason="")]))
+    result = run_gate(tmp_path)
+    assert result.returncode == 1
+    assert "duplicate entry" in result.stderr
+
+
+def test_override_identity_ignores_module_order(tmp_path: Path) -> None:
+    def override(modules: str) -> str:
+        return f"[[tool.mypy.overrides]]\nmodule = [{modules}]\nignore_errors = true\n"
+
+    ledger_path = tmp_path / "config_carveouts.json"
+    (tmp_path / "pyproject.toml").write_text(override('"b_mod", "a_mod"'))
+    run_gate(tmp_path, "--update")
+    entries = json.loads(ledger_path.read_text())
+    entries[0]["reason"] = "shared reason"
+    ledger_path.write_text(json.dumps(entries))
+    assert run_gate(tmp_path).returncode == 0
+
+    (tmp_path / "pyproject.toml").write_text(override('"a_mod", "b_mod"'))
+    assert run_gate(tmp_path).returncode == 0
+
+
 def test_update_preserves_existing_reasons(tmp_path: Path) -> None:
     ledger_path = tmp_path / "config_carveouts.json"
     (tmp_path / "pyproject.toml").write_text('[tool.ruff.lint]\nignore = ["E501"]\n')

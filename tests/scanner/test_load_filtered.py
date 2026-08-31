@@ -291,6 +291,97 @@ async def test_attachment_resolution() -> None:
 
 
 @pytest.mark.asyncio
+async def test_attachment_resolution_embedded_ref() -> None:
+    """A ref embedded within a larger string (not an exact match) still resolves.
+
+    Regression test: the materialized path used to only collect an
+    attachment into the keep-set when a string value was *exactly* a ref
+    (len 45, startswith prefix). A ref embedded inside a larger string
+    (e.g. "prefix attachment://<id> suffix") was never collected, so it
+    survived unresolved -- diverging from the streaming path, which always
+    resolves embedded refs via substring regex.
+    """
+    attachment_id = "a1b2c3d4e5f678901234567890123456"
+    result = await load_filtered_transcript(
+        create_json_stream(
+            {
+                "id": "test",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": f"prefix attachment://{attachment_id} suffix",
+                    },
+                ],
+                "events": [],
+                "attachments": {attachment_id: "VALUE"},
+            }
+        ),
+        TranscriptInfo(
+            transcript_id="test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+        ),
+        "all",
+        "all",
+    )
+
+    assert result.messages[0].content == "prefix VALUE suffix"
+
+
+@pytest.mark.asyncio
+async def test_attachment_resolution_in_events_data_pool() -> None:
+    """A ref inside an events_data pool entry resolves.
+
+    The pool is parsed after the `attachments` section, so its refs cannot be
+    known while attachments stream past. Retention must therefore not be gated
+    on the refs seen so far.
+    """
+    attachment_id = "b1c2d3e4f5a678901234567890123456"
+    result = await load_filtered_transcript(
+        create_json_stream(
+            {
+                "id": "test",
+                "messages": [],
+                "events": [
+                    {
+                        "span_id": "s1",
+                        "timestamp": "2022-01-01T00:00:00+00:00",
+                        "event": "model",
+                        "model": "test-model",
+                        "input": [],
+                        "input_refs": [[0, 1]],
+                        "output": {"model": "test-model", "choices": []},
+                        "tools": [],
+                        "tool_choice": "auto",
+                        "config": {},
+                    }
+                ],
+                "attachments": {attachment_id: "VALUE"},
+                "events_data": {
+                    "messages": [
+                        {"role": "user", "content": f"attachment://{attachment_id}"}
+                    ],
+                    "calls": [],
+                },
+            }
+        ),
+        TranscriptInfo(
+            transcript_id="test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+        ),
+        "all",
+        "all",
+    )
+
+    model_event = result.events[0]
+    assert isinstance(model_event, ModelEvent)
+    assert model_event.input[0].content == "VALUE"
+
+
+@pytest.mark.asyncio
 async def test_missing_attachments() -> None:
     """Test handling of missing attachment references."""
     result = await load_filtered_transcript(

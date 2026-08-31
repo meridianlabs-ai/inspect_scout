@@ -7,6 +7,11 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="the gate script requires tomllib (Python >= 3.11)",
+)
+
 SCRIPT = (
     Path(__file__).resolve().parent.parent / "scripts" / "check_config_carveouts.py"
 )

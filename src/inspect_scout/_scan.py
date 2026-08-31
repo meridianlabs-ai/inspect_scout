@@ -37,6 +37,7 @@ from inspect_ai.util import span
 from inspect_ai.util._anyio import inner_exception
 from pydantic import JsonValue, TypeAdapter
 from rich import box
+from rich.markup import escape
 from rich.table import Column, Table
 from typing_extensions import Unpack
 
@@ -135,7 +136,9 @@ def scan(
         worklist: Transcripts too process for each scanner (defaults to processing all transcripts). Either a list of `ScannerWork` or a YAML or JSON file with same.
         validation: Validation cases to evaluate for scanners. Can be a file path
             (CSV, JSON, JSONL, YAML), a ValidationSet, or a dict mapping scanner
-            names to file paths or ValidationSets.
+            names to file paths or ValidationSets. A validation set with `strict`
+            enabled raises `ValidationCoverageError` if any of its cases matched
+            no scanned input.
         model: Model to use for scanning by default (individual scanners can always
             call `get_model()` to us arbitrary models). If not specified use the model specified in the scout project config (if any).
         model_config: `GenerationConfig` for calls to the model.
@@ -226,7 +229,9 @@ async def scan_async(
         worklist: Transcript ids to process for each scanner (defaults to processing all transcripts). Either a list of `ScannerWork` or a YAML or JSON file contianing the same.
         validation: Validation cases to apply for scanners. Can be a file path
             (CSV, JSON, JSONL, YAML), a ValidationSet, or a dict mapping scanner
-            names to file paths or ValidationSets.
+            names to file paths or ValidationSets. A validation set with `strict`
+            enabled raises `ValidationCoverageError` if any of its cases matched
+            no scanned input.
         model: Model to use for scanning by default (individual scanners can always
             call `get_model()` to us arbitrary models). If not specified use the model specified in the scout project config (if any).
         model_config: `GenerationConfig` for calls to the model.
@@ -509,6 +514,16 @@ async def _scan_async(
         _scan_async_running = False
 
     assert result is not None, "scan async did not return a result."
+
+    # a scan that didn't run to completion hasn't had the chance to match all of
+    # its validation cases, so coverage is only checked for a complete scan (an
+    # interrupted or errored scan is already reported as such in the status)
+    if result.complete:
+        unmatched = _unmatched_validation_cases(scan.validation, result.summary)
+        if unmatched:
+            raise ValidationCoverageError(
+                _unmatched_validation_message(unmatched, result.location), result
+            )
 
     return result
 
@@ -1240,6 +1255,96 @@ def _resolve_validation(
             k: v if isinstance(v, ValidationSet) else vs_from_file(v)
             for k, v in validation.items()
         }
+
+
+class ValidationCoverageError(PrerequisiteError):
+    """Raised when a strict validation set has cases that matched no scanned input.
+
+    The scan itself ran to completion and its results were written, so the
+    status of the completed scan is carried on the error.
+
+    Attributes:
+        message: Description of the unmatched cases.
+        status: Status of the completed scan (spec, summary, location, errors).
+    """
+
+    def __init__(self, message: str, status: Status) -> None:
+        super().__init__(message)
+        self.status = status
+
+    def __str__(self) -> str:
+        # BaseException captures every constructor argument in `args`, so
+        # without this the default __str__ renders the (message, status) tuple
+        return str(self.message)
+
+
+MAX_REPORTED_UNMATCHED_CASES = 25
+"""Maximum number of unmatched case ids reported per scanner."""
+
+
+def _unmatched_validation_cases(
+    validation: dict[str, ValidationSet] | None, summary: recorder_summary.Summary
+) -> dict[str, list[str | list[str]]]:
+    """Ids of strict validation cases that matched no scanned input, by scanner.
+
+    Coverage is determined from the validation entries recorded for the scan
+    (rather than from the transcripts in the scan) because case ids can address
+    messages, events, or groups thereof, none of which are known before the
+    scanners run.
+    """
+    unmatched: dict[str, list[str | list[str]]] = {}
+    for scanner, validation_set in (validation or {}).items():
+        if not validation_set.strict:
+            continue
+
+        validated: set[str | tuple[str, ...]] = set()
+        scanner_summary = summary.scanners.get(scanner)
+        if scanner_summary is not None and scanner_summary.validation is not None:
+            validated = {
+                _case_id_key(entry.id) for entry in scanner_summary.validation.entries
+            }
+
+        missing = [
+            case.id
+            for case in validation_set.cases
+            if _case_id_key(case.id) not in validated
+        ]
+        if missing:
+            unmatched[scanner] = missing
+
+    return unmatched
+
+
+def _case_id_key(case_id: str | list[str]) -> str | tuple[str, ...]:
+    """Hashable form of a case id or of a recorded validation entry id."""
+    return tuple(case_id) if isinstance(case_id, list) else case_id
+
+
+def _unmatched_validation_message(
+    unmatched: dict[str, list[str | list[str]]], location: str
+) -> str:
+    total = sum(len(ids) for ids in unmatched.values())
+    lines = [f"Strict validation: {total} validation case(s) matched no scanned input."]
+    for scanner, ids in unmatched.items():
+        reported = ", ".join(
+            _case_id_str(case_id) for case_id in ids[:MAX_REPORTED_UNMATCHED_CASES]
+        )
+        if len(ids) > MAX_REPORTED_UNMATCHED_CASES:
+            reported += f", ... ({len(ids) - MAX_REPORTED_UNMATCHED_CASES} more)"
+        lines.append(f"  {scanner} ({len(ids)}): {reported}")
+    lines.append(f"Scan results were written to {pretty_path(location)}.")
+    lines.append(
+        "Check that these case ids match the ids of the inputs that were scanned, "
+        "or set 'strict' to False on the validation set to ignore unmatched cases."
+    )
+    # case ids are user data, and unescaped '[' would be eaten as markup by the
+    # rich console that prints this message
+    return escape("\n".join(lines))
+
+
+def _case_id_str(case_id: str | list[str]) -> str:
+    """Composite ids are rendered like the quoted, comma-separated CSV form."""
+    return f'"{",".join(case_id)}"' if isinstance(case_id, list) else case_id
 
 
 async def _validate_scan(

@@ -86,6 +86,17 @@ class ValidationSet(BaseModel):
     split: str | list[str] | None = Field(default=None)
     """Active split filter applied to this validation set (informational)."""
 
+    strict: bool = Field(default=False)
+    """Require every case in the set to match a scanned input.
+
+    Cases are matched to scanner inputs by id, and by default a case whose id
+    matches nothing that was scanned is ignored -- so a scan can score against
+    a fraction of the set (e.g. after transcript ids drift, or when a
+    transcripts filter excludes labelled transcripts) without saying so. When
+    `strict` is enabled the scan fails at completion, reporting the ids of the
+    cases that matched no scanned input.
+    """
+
     @field_serializer("predicate")
     def serialize_predicate(
         self, predicate: ValidationPredicate | None, _info: Any

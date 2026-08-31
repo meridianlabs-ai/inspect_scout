@@ -12127,10 +12127,16 @@
               }
             ],
             "title": "Split"
+          },
+          "strict": {
+            "default": false,
+            "title": "Strict",
+            "type": "boolean"
           }
         },
         "required": [
-          "cases"
+          "cases",
+          "strict"
         ],
         "title": "ValidationSet",
         "type": "object"
@@ -12172,10 +12178,16 @@
               }
             ],
             "title": "Split"
+          },
+          "strict": {
+            "default": false,
+            "title": "Strict",
+            "type": "boolean"
           }
         },
         "required": [
-          "cases"
+          "cases",
+          "strict"
         ],
         "title": "ValidationSet",
         "type": "object"

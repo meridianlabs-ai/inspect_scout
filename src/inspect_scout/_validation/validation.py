@@ -16,6 +16,7 @@ def validation_set(
     cases: str | Path | pd.DataFrame,
     predicate: ValidationPredicate | None = "eq",
     split: str | list[str] | None = None,
+    strict: bool = False,
 ) -> ValidationSet:
     """Create a validation set by reading cases from a file or data frame.
 
@@ -28,6 +29,8 @@ def validation_set(
         split: Optional split name(s) to filter cases by. Only cases with matching
             split values will be included. Can be a single split name or a list of
             split names. Cases without a split field are excluded when filtering.
+        strict: Fail the scan at completion if any case in the set matched no
+            scanned input (defaults to False, which ignores unmatched cases).
     """
     # Load data into DataFrame if not already one
     if isinstance(cases, pd.DataFrame):
@@ -95,7 +98,9 @@ def validation_set(
 
         validate_cases = filtered_cases
 
-    return ValidationSet(cases=validate_cases, predicate=predicate, split=split)
+    return ValidationSet(
+        cases=validate_cases, predicate=predicate, split=split, strict=strict
+    )
 
 
 def _load_file(file: str | Path) -> pd.DataFrame:

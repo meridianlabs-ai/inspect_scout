@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Generator, Literal, cast
 
@@ -9,6 +10,7 @@ from ijson.utils import coroutine as _ijson_coroutine  # type: ignore
 # Public constants / prefixes
 ATTACHMENT_PREFIX = "attachment://"
 ATTACHMENT_PREFIX_LEN = len(ATTACHMENT_PREFIX)
+ATTACHMENT_REF_PATTERN = re.compile(r"attachment://([a-f0-9]{32})")
 ATTACHMENTS_PREFIX = "attachments."
 MESSAGES_ITEM_PREFIX = "messages.item"
 EVENTS_ITEM_PREFIX = "events.item"
@@ -115,9 +117,12 @@ def _item_coroutine(
         except Exception:
             builder = None
             continue
-        if event == "string" and isinstance(value, str):
+        if event == "string" and isinstance(value, str) and ATTACHMENT_PREFIX in value:
             if len(value) == 45 and value.startswith(ATTACHMENT_PREFIX):
                 attachments.add(value[ATTACHMENT_PREFIX_LEN:])
+            else:
+                for m in ATTACHMENT_REF_PATTERN.finditer(value):
+                    attachments.add(m.group(1))
 
 
 def message_item_coroutine(
@@ -185,6 +190,15 @@ def call_pool_item_coroutine(state: ParseState, item_prefix: str) -> CoroutineGe
 
 @_ijson_coroutine  # type: ignore
 def attachments_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
+    """Collect the attachments table.
+
+    Keeps every attachment rather than only those already referenced. Pool
+    entries under ``events_data`` can carry refs too, and that section follows
+    ``attachments`` in the file, so a membership test here cannot know about
+    them yet -- it silently dropped exactly the attachments a pooled system
+    prompt needs. ``state.attachment_refs`` is still collected, because the
+    early exit in ``load_filtered`` keys off it.
+    """
     attachments_prefix_len = len(ATTACHMENTS_PREFIX)
     while True:
         prefix, event, value = yield
@@ -198,8 +212,7 @@ def attachments_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cove
             if end == -1
             else prefix[attachments_prefix_len:end]
         )
-        if attachment_id in state.attachment_refs:
-            state.attachments[attachment_id] = value
+        state.attachments[attachment_id] = value
 
 
 @_ijson_coroutine  # type: ignore
@@ -304,6 +317,7 @@ __all__ = [
     "TARGET_PREFIX",
     "ATTACHMENT_PREFIX",
     "ATTACHMENT_PREFIX_LEN",
+    "ATTACHMENT_REF_PATTERN",
     "ATTACHMENTS_PREFIX",
     "MESSAGES_ITEM_PREFIX",
     "EVENTS_ITEM_PREFIX",

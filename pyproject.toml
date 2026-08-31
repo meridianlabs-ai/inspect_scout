@@ -21,7 +21,7 @@ dependencies = [
     "fastapi>=0.128.1",
     "ijson>=3.2.0",
     "importlib-metadata",
-    "inspect-ai>=0.3.252",
+    "inspect-ai @ git+https://github.com/UKGovernmentBEIS/inspect_ai@main",
     "inspect-swe>=0.2.56",
     "jinja2>=3.0.0",
     "jsonlines>=3.0.0",
@@ -199,12 +199,3 @@ explicit_package_bases = true
 [[tool.mypy.overrides]]
 module = ["harbor.*"]
 ignore_missing_imports = true
-
-# We import parse_cli_args and friends from inspect_ai._cli.util, a private
-# module whose symbols move between inspect_ai versions (some are definitions,
-# some plain re-imports, depending on the version installed). Treat its plain
-# re-imports as exports so one import path type-checks across our whole
-# declared inspect-ai range.
-[[tool.mypy.overrides]]
-module = ["inspect_ai._cli.util"]
-implicit_reexport = true

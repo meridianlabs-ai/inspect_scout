@@ -10,6 +10,7 @@ import tempfile
 import threading
 import time
 import zipfile
+from functools import partial
 from typing import Any, Iterable
 
 import anyio
@@ -161,8 +162,10 @@ def create_scans_router(
         summary="Get active scans",
         description="Returns info on all currently running scans.",
     )
-    async def active_scans() -> ActiveScansResponse:
+    def active_scans() -> ActiveScansResponse:
         """Get info on all active scans from the KV store."""
+        # Sync sqlite access and no awaits: a plain `def` endpoint is run by
+        # FastAPI in a threadpool, keeping the event loop free.
         with active_scans_store() as store:
             return ActiveScansResponse(items=store.read_all())
 
@@ -175,18 +178,19 @@ def create_scans_router(
     )
     async def run_llm_scanner(body: ScanJobConfig) -> ScanStatus:
         """Run an llm_scanner scan via subprocess."""
-        proc, temp_path, _stdout_lines, stderr_lines = _spawn_scan_subprocess(body)
+        proc, temp_path, _stdout_lines, stderr_lines = await anyio.to_thread.run_sync(
+            _spawn_scan_subprocess, body
+        )
         pid = proc.pid
 
         active_info = await _wait_for_active_scan(pid)
 
-        if os.path.exists(temp_path):
-            os.unlink(temp_path)
+        await anyio.to_thread.run_sync(_remove_if_exists, temp_path)
 
         if active_info is None:
             exit_code = proc.poll()
             if exit_code is not None:
-                proc.wait(timeout=1)
+                await anyio.to_thread.run_sync(partial(proc.wait, timeout=1))
                 stderr = b"".join(stderr_lines)
                 error_msg = stderr.decode() if stderr else "Unknown error"
                 raise HTTPException(
@@ -398,7 +402,7 @@ def create_scans_router(
         scan_path = UPath(scans_dir) / decode_base64url(scan)
 
         # Check if scan exists
-        if not scan_path.exists():
+        if not await anyio.to_thread.run_sync(scan_path.exists):
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
                 detail="Scan not found",
@@ -406,21 +410,32 @@ def create_scans_router(
 
         # Check if scan is active (prevent deletion of running scans)
         scan_location_str = str(scan_path)
-        with active_scans_store() as store:
-            active_scans = store.read_all()
-            for active_info in active_scans.values():
-                if active_info.location == scan_location_str:
-                    raise HTTPException(
-                        status_code=HTTP_409_CONFLICT,
-                        detail=f"Cannot delete active scan: {active_info.scan_id}",
-                    )
+        active_scans = await anyio.to_thread.run_sync(_read_active_scans)
+        for active_info in active_scans.values():
+            if active_info.location == scan_location_str:
+                raise HTTPException(
+                    status_code=HTTP_409_CONFLICT,
+                    detail=f"Cannot delete active scan: {active_info.scan_id}",
+                )
 
-        send2trash(scan_path.path)
+        await anyio.to_thread.run_sync(send2trash, scan_path.path)
 
         # Notify clients to invalidate scan caches
         await notify_topics(["scans"])
 
     return router
+
+
+def _remove_if_exists(path: str) -> None:
+    """Delete a file if present (sync; call via anyio.to_thread.run_sync)."""
+    if os.path.exists(path):
+        os.unlink(path)
+
+
+def _read_active_scans() -> dict[str, ActiveScanInfo]:
+    """Read all active scans from the KV store (sync; call via to_thread)."""
+    with active_scans_store() as store:
+        return store.read_all()
 
 
 def _build_scans_cursor(

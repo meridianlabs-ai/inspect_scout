@@ -21,9 +21,8 @@ def to_json_bytes_compact(x: Any) -> bytes:
 
     Prefer this for values headed straight into a parquet column: pyarrow
     accepts UTF-8 bytes for string columns and would re-encode a ``str``
-    anyway. Skipping the round trip also avoids allocating that ``str`` at
-    all -- a second full copy of a multi-hundred-megabyte transcript, sized
-    by Python's PEP 393 representation (1, 2, or 4 bytes per character,
-    picked from the widest code point in the whole string).
+    anyway. Skipping the decode also avoids a second full copy of the payload,
+    at PEP 393's 1, 2, or 4 bytes per character (set by the widest code point
+    in the string).
     """
     return to_json_safe(x, indent=None)

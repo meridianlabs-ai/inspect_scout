@@ -1,12 +1,8 @@
-"""Arrow conversion of pre-serialized (bytes/bytearray) column values.
+"""Arrow conversion of the pre-serialized (bytes/bytearray) `input` columns.
 
-`_serialize_input` emits the `input`/`input_data` columns as UTF-8
-bytes/bytearray to avoid materializing a second, wider copy of a large
-transcript as `str`. These assert the buffers survive into a real string
-column, for both buffer types.
+`_serialize_input` emits UTF-8 buffers rather than `str`; these pin that the
+buffers survive into a real string column, for both buffer types.
 """
-
-from __future__ import annotations
 
 from typing import Any
 
@@ -43,11 +39,8 @@ def test_bytes_columns_become_string_columns(
 @pytest.mark.parametrize("buffer_type", [bytes, bytearray], ids=["bytes", "bytearray"])
 def test_bytes_column_preserves_non_ascii(buffer_type: BufferType) -> None:
     """The bytes are UTF-8; decoding must happen, not a repr()."""
-    payload = {"text": "héllo 你好"}
     encoded = buffer_type('{"text":"héllo 你好"}'.encode())
 
     table = _records_to_arrow([{"input": encoded}])
 
-    assert table.column("input").to_pylist() == [encoded.decode()]
-    assert table.column("input")[0].as_py() == '{"text":"héllo 你好"}'
-    assert payload["text"] in table.column("input")[0].as_py()
+    assert table.column("input").to_pylist() == ['{"text":"héllo 你好"}']

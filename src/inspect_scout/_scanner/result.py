@@ -238,13 +238,7 @@ def _serialize_input(
     *,
     pool_dedup: bool,
 ) -> tuple[bytes | bytearray, bytes | bytearray | None]:
-    """Serialize scanner input, optionally condensing events.
-
-    Only "transcript" input pools events separately (second tuple element);
-    all other input types return None there.
-
-    Every branch returns UTF-8 bytes so the `input` column holds one type
-    regardless of which path produced it.
+    """Serialize scanner input as UTF-8 JSON bytes, optionally condensing events.
 
     Returns:
         (input_json, input_data_json | None)

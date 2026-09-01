@@ -1,8 +1,11 @@
 """Tests for transcript search endpoints."""
 
+import asyncio
 import base64
 from collections.abc import AsyncIterator, Awaitable, Callable
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import anthropic
@@ -13,13 +16,36 @@ import pytest_asyncio
 from fastapi.testclient import TestClient
 from google.genai.errors import ClientError as GoogleClientError
 from inspect_ai._util.error import PrerequisiteError
+from inspect_ai.event import Event, ModelEvent, SpanBeginEvent, SpanEndEvent
+from inspect_ai.model import (
+    ChatCompletionChoice,
+    ChatMessage,
+    GenerateConfig,
+    ModelOutput,
+)
 from inspect_ai.model._chat_message import ChatMessageAssistant, ChatMessageUser
+from inspect_ai.model._providers.mockllm import MockLLM
+from inspect_ai.model._registry import modelapi
+from inspect_ai.tool import ToolChoice, ToolInfo
 from inspect_scout._scanner.result import Result
+from inspect_scout._transcript.handle import SpooledTranscriptHandle, TranscriptHandle
 from inspect_scout._transcript.types import Transcript
+from inspect_scout._util import constants as constants_mod
 from inspect_scout._view._api_v2 import v2_api_app
 from inspect_scout._view._api_v2_search import LLM_SEARCH_TEMPLATE
 from inspect_scout._view._api_v2_types import SearchRequest
 from pydantic import TypeAdapter
+
+LOGS_DIR = Path(__file__).parent.parent / "recorder" / "logs"
+
+
+@pytest.fixture
+def eval_log() -> Path:
+    """First eval log fixture file (resolved lazily to keep collection safe)."""
+    logs = sorted(LOGS_DIR.glob("*.eval"))
+    if not logs:
+        pytest.skip(f"no .eval fixture logs in {LOGS_DIR}")
+    return logs[0]
 
 
 def _fake_httpx2_response(status_code: int) -> httpx2.Response:
@@ -80,6 +106,19 @@ async def transcript_location(tmp_path: Path) -> AsyncIterator[Path]:
     location.mkdir(parents=True, exist_ok=True)
     await _populate_transcripts(location, [_create_transcript()])
     yield location
+
+
+async def _first_eval_log_transcript_id(log: Path) -> str:
+    """Fetch the transcript_id of the first sample in an eval log."""
+    from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
+
+    view = EvalLogTranscriptsView(str(log))
+    await view.connect()
+    try:
+        infos = [info async for info in view.select()]
+        return infos[0].transcript_id
+    finally:
+        await view.disconnect()
 
 
 class TestSearchEndpoint:
@@ -206,6 +245,7 @@ class TestSearchEndpoint:
             template: str,
             model: str | None,
             reducer: object,
+            content: object = None,
         ) -> Callable[[Transcript], Awaitable[Result]]:
             llm_calls.append(
                 {
@@ -272,6 +312,79 @@ class TestSearchEndpoint:
             "model": "openai/gpt-5.4-mini",
         }
         assert llm_calls == [expected_call, expected_call]
+
+    def test_llm_search_uses_streaming_handle(
+        self,
+        client: TestClient,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        eval_log: Path,
+    ) -> None:
+        """The LLM search scanner receives a live spooled handle it can consume.
+
+        Guards the view-connection-lifetime contract: `scan(handle)` must run
+        inside the view's `async with`, so the handle's streamed reads succeed
+        while the scanner is running.
+        """
+        # Force EvalLogTranscriptsView.open() to take the spooled-handle
+        # branch regardless of sample size.
+        monkeypatch.setattr(constants_mod, "SPOOL_THRESHOLD_BYTES", 0)
+
+        transcript_id = asyncio.run(_first_eval_log_transcript_id(eval_log))
+
+        received_handles: list[object] = []
+        streamed_message_counts: list[int] = []
+
+        def fake_llm_scanner(
+            *,
+            question: str,
+            answer: str,
+            template: str,
+            model: str | None,
+            reducer: object,
+            content: object = None,
+        ) -> Callable[[TranscriptHandle], Awaitable[Result]]:
+            async def _scan(handle: TranscriptHandle) -> Result:
+                received_handles.append(handle)
+                # Consume the handle: streaming reads must work while the
+                # view's resources are still open.
+                msgs = [m async for m in handle.messages()]
+                streamed_message_counts.append(len(msgs))
+                return Result(
+                    value="The assistant says the needle is in the haystack.",
+                    explanation="LLM summary.",
+                )
+
+            return _scan
+
+        encoded_dir = _base64url(str(eval_log))
+        with (
+            patch(
+                "inspect_scout._view._api_v2_search.scout_data_dir",
+                side_effect=_search_data_dir(tmp_path / "search-data"),
+            ),
+            patch(
+                "inspect_scout._view._api_v2_search.llm_scanner",
+                side_effect=fake_llm_scanner,
+            ),
+        ):
+            response = client.post(
+                f"/transcripts/{encoded_dir}/{transcript_id}/search",
+                json={
+                    "messages": "all",
+                    "query": "Where is the needle?",
+                    "type": "llm",
+                    "model": "openai/gpt-5.4-mini",
+                },
+            )
+
+        assert response.status_code == 200
+        assert set(response.json().keys()) == {"id", "result"}
+
+        # The streamed (spooled) handle path was exercised and consumable.
+        assert len(received_handles) == 1
+        assert isinstance(received_handles[0], SpooledTranscriptHandle)
+        assert streamed_message_counts[0] > 0
 
     @pytest.mark.parametrize(
         ("payload", "field_name"),
@@ -398,6 +511,7 @@ class TestSearchEndpoint:
             template: str,
             model: str | None,
             reducer: object,
+            content: object = None,
         ) -> Callable[[Transcript], Awaitable[Result]]:
             async def _scan(_: Transcript) -> Result:
                 raise error
@@ -426,3 +540,136 @@ class TestSearchEndpoint:
 
         assert response.status_code == 502
         assert expected_detail_substring in response.json()["detail"]
+
+
+_EVENT_SENTINEL = "ZORBLAX_SENTINEL_42"
+_RECORDED_PROMPTS: list[str] = []
+
+
+def _record_prompt(
+    input: list[ChatMessage],
+    tools: list[ToolInfo],
+    tool_choice: ToolChoice,
+    config: GenerateConfig,
+) -> ModelOutput:
+    _RECORDED_PROMPTS.append("\n".join(m.text for m in input))
+    return ModelOutput.from_content(
+        model="search-recording",
+        content="Looked at it.\n\nANSWER: recorded",
+        stop_reason="stop",
+    )
+
+
+@modelapi("search-recording")
+class _RecordingLLM(MockLLM):
+    """mockllm variant that records the prompts the scanner renders."""
+
+    def __init__(
+        self,
+        model_name: str,
+        base_url: str | None = None,
+        api_key: str | None = None,
+        config: GenerateConfig | None = None,
+        **model_args: Any,
+    ) -> None:
+        super().__init__(
+            model_name,
+            base_url,
+            api_key,
+            config or GenerateConfig(),
+            custom_outputs=_record_prompt,
+            **model_args,
+        )
+
+
+def _transcript_with_event_sentinel() -> Transcript:
+    """Transcript whose sentinel text exists only in events, never in messages.
+
+    The sentinel sits in the *final* model event: conversation reconstruction
+    legitimately drops superseded outputs, so an earlier one would prove
+    nothing.
+    """
+    base = datetime(2025, 1, 1, tzinfo=timezone.utc)
+
+    def ts(offset: int) -> datetime:
+        return base + timedelta(seconds=offset)
+
+    events: list[Event] = [
+        SpanBeginEvent(
+            id="main",
+            parent_id=None,
+            type="agent",
+            name="main",
+            timestamp=ts(1),
+            span_id="main",
+        ),
+        ModelEvent(
+            span_id="main",
+            timestamp=ts(2),
+            completed=ts(2),
+            uuid="evt-1",
+            model="mockllm/model",
+            input=[ChatMessageUser(content="do the work")],
+            tools=[],
+            tool_choice="auto",
+            config=GenerateConfig(),
+            output=ModelOutput(
+                model="mockllm/model",
+                choices=[
+                    ChatCompletionChoice(
+                        message=ChatMessageAssistant(
+                            content=f"The agent noted {_EVENT_SENTINEL} while working."
+                        ),
+                        stop_reason="stop",
+                    )
+                ],
+            ),
+        ),
+        SpanEndEvent(id="main", timestamp=ts(3), span_id="main"),
+    ]
+    return Transcript(
+        transcript_id="t002",
+        source_type="test",
+        source_id="source-002",
+        source_uri="test://uri",
+        model="gpt-4.1",
+        metadata={},
+        messages=[ChatMessageUser(content="unrelated message text")],
+        events=events,
+    )
+
+
+@pytest.mark.asyncio
+async def test_events_scope_search_reaches_the_model(
+    client: TestClient, tmp_path: Path
+) -> None:
+    """An events-scope LLM search must actually scan the events.
+
+    Deliberately does not patch `llm_scanner`: without the scope passed as a
+    content override the scanner falls back to its declared messages="all",
+    scans zero segments, and still returns 200 with an invented answer.
+    """
+    location = tmp_path / "transcripts"
+    location.mkdir(parents=True, exist_ok=True)
+    await _populate_transcripts(location, [_transcript_with_event_sentinel()])
+    _RECORDED_PROMPTS.clear()
+
+    with patch(
+        "inspect_scout._view._api_v2_search.scout_data_dir",
+        side_effect=_search_data_dir(tmp_path / "search-data"),
+    ):
+        response = client.post(
+            f"/transcripts/{_base64url(str(location))}/t002/search",
+            json={
+                "events": "all",
+                "query": "what did the agent note?",
+                "type": "llm",
+                "model": "search-recording/model",
+            },
+        )
+
+    assert response.status_code == 200
+    assert _RECORDED_PROMPTS, "the scanner never called the model"
+    assert any(_EVENT_SENTINEL in prompt for prompt in _RECORDED_PROMPTS), (
+        "event content never reached the model: the search scanned nothing"
+    )

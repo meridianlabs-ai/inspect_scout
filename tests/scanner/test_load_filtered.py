@@ -294,12 +294,12 @@ async def test_attachment_resolution() -> None:
 async def test_attachment_resolution_embedded_ref() -> None:
     """A ref embedded within a larger string (not an exact match) still resolves.
 
-    Regression test: the materialized path used to only collect an
-    attachment into the keep-set when a string value was *exactly* a ref
-    (len 45, startswith prefix). A ref embedded inside a larger string
-    (e.g. "prefix attachment://<id> suffix") was never collected, so it
-    survived unresolved -- diverging from the streaming path, which always
-    resolves embedded refs via substring regex.
+    Regression test: an embedded ref (e.g. "prefix attachment://<id> suffix",
+    as opposed to a string that is *exactly* a ref) used to survive
+    end-to-end as literal unresolved text. This exercises resolution with
+    events requested (so the early-exit path never engages); see
+    `test_early_exit_suppressed_by_embedded_attachment_ref` for the
+    collection-path half of the fix, which this test does not pin on its own.
     """
     attachment_id = "a1b2c3d4e5f678901234567890123456"
     result = await load_filtered_transcript(
@@ -763,6 +763,56 @@ async def test_early_exit_suppressed_by_attachment_refs(
     assert not call_tracker.called
     assert len(result.messages) == 2
     assert result.messages[0].content == "Resolved content"
+    assert result.metadata["scores"] == {"accuracy": {"value": "C", "answer": "C"}}
+
+
+@pytest.mark.asyncio
+async def test_early_exit_suppressed_by_embedded_attachment_ref(
+    call_tracker: CallTracker,
+) -> None:
+    """Early exit does NOT fire when a message has only an embedded ref.
+
+    Pins the collection-path half of the fix: with events filtered out
+    entirely, the early exit at `load_filtered.py` keys off whether any
+    attachment refs were collected. An embedded (non-exact) ref must still
+    register there, or the `attachments` section is never parsed and the
+    ref is permanently unresolved.
+    """
+    attachment_id = "a1b2c3d4e5f678901234567890123456"
+
+    result = await load_filtered_transcript(
+        create_json_stream(
+            {
+                "id": "test",
+                "target": "the answer",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": f"prefix attachment://{attachment_id} suffix",
+                    },
+                    {"role": "assistant", "content": "Hi"},
+                ],
+                "output": {},
+                "scores": {"accuracy": {"value": "C", "answer": "C"}},
+                "metadata": {"key": "value"},
+                "events": [],
+                "attachments": {attachment_id: "Resolved content"},
+            }
+        ),
+        TranscriptInfo(
+            transcript_id="test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+        ),
+        "all",
+        None,
+        on_early_exit=call_tracker,
+    )
+
+    assert not call_tracker.called
+    assert len(result.messages) == 2
+    assert result.messages[0].content == "prefix Resolved content suffix"
     assert result.metadata["scores"] == {"accuracy": {"value": "C", "answer": "C"}}
 
 

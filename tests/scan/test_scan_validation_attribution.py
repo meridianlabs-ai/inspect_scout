@@ -74,9 +74,7 @@ async def test_error_item_does_not_inherit_previous_validation() -> None:
 
         assert status.location is not None
 
-        results = scan_results_df(
-            status.location, scanner="attribution_scanner", exclude_columns=()
-        )
+        results = scan_results_df(status.location, scanner="attribution_scanner")
         rows = results.scanners["attribution_scanner"]
 
         error_row = rows[rows["scan_error"].notna()].iloc[0]

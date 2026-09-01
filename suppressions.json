@@ -388,6 +388,11 @@
       "undescribed": 4
     }
   },
+  "tests/scan/test_scan_streaming.py": {
+    "type: ignore[arg-type]": {
+      "count": 1
+    }
+  },
   "tests/scan/test_scan_where.py": {
     "noqa:E712": {
       "count": 6,
@@ -448,6 +453,11 @@
     "noqa:E712": {
       "count": 2,
       "undescribed": 2
+    }
+  },
+  "tests/scanner/test_result_serialized_input.py": {
+    "type: ignore[call-arg]": {
+      "count": 1
     }
   },
   "tests/scanner/test_scanner_decorator.py": {

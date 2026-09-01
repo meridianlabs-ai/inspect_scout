@@ -206,6 +206,12 @@ class EvalLogTranscriptsReader(TranscriptsReader):
         return await self._db.read(transcript, content)
 
     @override
+    async def open(
+        self, transcript: TranscriptInfo, content: TranscriptContent
+    ) -> TranscriptHandle:
+        return await self._db.open(transcript, content)
+
+    @override
     async def snapshot(self) -> ScanTranscripts:
         transcript_ids = await self._db.transcript_ids(self._query)
         return ScanTranscripts(

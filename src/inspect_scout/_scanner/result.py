@@ -113,6 +113,42 @@ class ResultValidation(BaseModel):
     """The split the validation case belongs to (e.g., 'dev', 'test')."""
 
 
+class SerializedTranscript(BaseModel):
+    """Recorder column values for an already-serialized transcript.
+
+    Produced by the spooled pooled-passthrough path, which emits the compact
+    (pool-condensed, attachment-ref) form straight from the transcript spool
+    rather than building a `Transcript` and re-condensing it.
+    `_serialize_input` passes these values through unchanged.
+
+    Carried as a UTF-8 buffer, not `str`: the values go straight into a
+    parquet column, which pyarrow encodes as UTF-8 regardless, and a `str` of
+    non-ASCII text costs two bytes per character in memory.
+    """
+
+    # `bytearray`, and not a `bytes | bytearray` union: pydantic copies the
+    # buffer to satisfy a `bytes` member, which for a union it does while
+    # deciding which one matches. arbitrary_types_allowed because pydantic has
+    # no bytearray schema.
+    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
+
+    input_json: bytearray
+    """Value for the `input` column: transcript JSON, events pool-condensed."""
+
+    input_data_json: bytearray | None = None
+    """Value for the `input_data` column: `{messages, calls, attachments}`,
+    or None when nothing is pooled and there are no attachments."""
+
+
+ReportInput = ScannerInput | SerializedTranscript
+"""What a `ResultReport` may carry: a live scanner input, or -- for spooled
+transcript handles -- pre-serialized column values.
+
+Deliberately NOT part of `ScannerInput`: that alias is public API, bounds
+`Loader[T]` and the `@scanner` type parameter, and drives the OpenAPI schema.
+"""
+
+
 class ResultReport(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
@@ -120,7 +156,7 @@ class ResultReport(BaseModel):
 
     input_ids: list[str]
 
-    input: ScannerInput
+    input: ReportInput
 
     result: Result | None
 
@@ -233,16 +269,22 @@ class ResultReport(BaseModel):
 
 
 def _serialize_input(
-    input: ScannerInput,
+    input: ReportInput,
     input_type: ScannerInputNames,
     *,
     pool_dedup: bool,
 ) -> tuple[bytes | bytearray, bytes | bytearray | None]:
     """Serialize scanner input as UTF-8 JSON bytes, optionally condensing events.
 
+    A `SerializedTranscript` is already in column form and is passed through
+    unchanged.
+
     Returns:
         (input_json, input_data_json | None)
     """
+    if isinstance(input, SerializedTranscript):
+        return input.input_json, input.input_data_json
+
     if not pool_dedup or input_type not in ("transcript", "events"):
         return to_json_bytes_compact(input), None
 

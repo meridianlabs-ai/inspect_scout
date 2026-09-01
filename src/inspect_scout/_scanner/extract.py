@@ -267,12 +267,15 @@ def message_numbering(
                 for index, message in enumerate(messages)
                 if _is_event_message(message)
             ]
-            transformed = await preprocessor.transform(
-                [m for m in messages if not _is_event_message(m)]
-            )
-            messages = list(transformed)
-            for index, message in events:
-                messages.insert(min(index, len(messages)), message)
+            real = [m for m in messages if not _is_event_message(m)]
+            # Segments render one message at a time, so a segment that is only
+            # an event entry would otherwise hand the transform an empty list --
+            # a transform written for the previous always-exactly-one contract
+            # raises on messages[0].
+            if real:
+                messages = list(await preprocessor.transform(real))
+                for index, message in events:
+                    messages.insert(min(index, len(messages)), message)
 
         items: list[str] = []
         for message in messages:

@@ -25,6 +25,7 @@ from inspect_ai.event._event import Event
 from inspect_ai.log import EvalError
 from inspect_ai.model import (
     ChatMessage,
+    ChatMessageAssistant,
     ChatMessageUser,
     GenerateConfig,
     Model,
@@ -1041,16 +1042,20 @@ def test_selective_load_preserves_nested_tool_agent_models() -> None:
     )
     scan = llm_scanner(question="q", answer="boolean", events=["score"])
     loaded = getattr(scan, SCANNER_CONTENT_ATTR).events
+    assert tool_event.event in loaded, "tool must be a load dependency"
 
-    survived = [e for e in [tool_event] if e.event in loaded]
-    assert survived, "tool events must survive so nested sub-agent models remain"
-    assert nested.uuid is not None
-    assert [
-        m.output.completion
-        for e in survived
-        for m in e.events
-        if isinstance(m, ModelEvent)
-    ] == ["SUB ANSWER"]
+    def rendered(events: list[Event]) -> list[str]:
+        transcript = Transcript(
+            transcript_id="t",
+            messages=[ChatMessageUser(content="q"), ChatMessageAssistant(content="a")],
+            events=events,
+        )
+        return _event_texts(interleave_events(transcript, ["score"]))
+
+    # loaded: the sub-agent's output reaches the prompt through the ToolEvent
+    assert any("SUB ANSWER" in text for text in rendered([tool_event]))
+    # filtered out: it is unreachable -- the consequence `tool` exists to prevent
+    assert not rendered([])
 
 
 def test_branch_events_render_despite_being_a_load_dependency() -> None:

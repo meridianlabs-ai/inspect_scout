@@ -46,6 +46,7 @@ from tests.transcript.fixtures_agentic import (
     _span_begin,
     _span_end,
     agentic_events,
+    reset_ids,
 )
 from tests.transcript.fixtures_agentic import (
     _model_event as _agentic_model_event,
@@ -130,6 +131,7 @@ async def _collect(
     events: EventsSpec | None,
     compaction: Literal["all", "last"] | int = "all",
     context_window: int = 10_000,
+    depth: int | None = None,
 ) -> tuple[list[TimelineMessages], str]:
     """Collect segments plus a combined messages_str for convenience assertions."""
     msgs_as_str, _ = message_numbering()
@@ -141,6 +143,7 @@ async def _collect(
         model=model,
         context_window=context_window,
         compaction=compaction,
+        depth=depth,
         events=events,
     ):
         results.append(seg)
@@ -707,9 +710,9 @@ def _cumulative_compaction_events() -> list[Event]:
     "t4"; plus a trailing in-span ``ScoreEvent``.
 
     Under ``compaction in ("last", 2)`` region 1 is pruned, and "t1"'s
-    output is only recoverable through "t2"'s cumulative input -- so the
-    streaming path must retain "t2" in full (not output-only) for the
-    discriminator to classify "t1" as compaction-pruned rather than a fork.
+    output is only recoverable through "t2"'s cumulative input -- so "t2"
+    must be retained in full (not output-only) for the discriminator to
+    classify "t1" as compaction-pruned rather than a fork.
     """
     ev_t1 = _agentic_model_event(
         label="cc-t1", system_prompt="MAIN", output_text="turn1-output", span_id="main"
@@ -1011,3 +1014,105 @@ async def test_agentic_events_yields_each_walked_span_exactly_once(
     ]
     assert all(seg.span.id != _ORPHAN_SPAN_ID for seg in results)
     assert combined.count("main-output-3") == 1
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("depth", [None, 1])
+@pytest.mark.parametrize("compaction", ["all", "last", 2])
+async def test_agentic_scores_render_once_across_compaction_and_depth(
+    compaction: Literal["all", "last"] | int, depth: int | None
+) -> None:
+    """Sub-agent output and scores survive every compaction/depth combination.
+
+    Each sub-agent output must render exactly once and land in the owning
+    span's segment; the off-thread fork must render as a branch entry; the
+    grader's model call must stay suppressed while its score still surfaces.
+    """
+    results, combined = await _collect(
+        timeline_build(_agentic_events_with_scores()).root,
+        events=["score"],
+        compaction=compaction,
+        depth=depth,
+    )
+    assert results
+
+    assert "fork-output-1" in combined
+    assert "MODEL (BRANCH)" in combined
+    assert combined.count("sub-output-1") == 1
+    assert combined.count("sub-output-2") == 1
+
+    main_text = next(
+        text
+        for span_id, text in ((r.span.id, r.messages_str) for r in results)
+        if span_id == "main"
+    )
+    assert "sub-output-1" in main_text
+
+    # grader model calls stay out; the score itself is shown
+    assert "grader-output" not in combined
+    assert "SCORE" in combined
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("compaction", ["all", "last", 2])
+async def test_cumulative_compaction_does_not_resurface_pruned_regions(
+    compaction: Literal["all", "last"] | int,
+) -> None:
+    """A pruned region must stay hidden, not reappear as a spurious branch.
+
+    Region 1's output is only recoverable through region 2's cumulative
+    input, so a discriminator that misreads it classifies a compaction-pruned
+    turn as a genuine fork and renders it as `MODEL (BRANCH)`.
+    """
+    _, combined = await _collect(
+        timeline_build(_cumulative_compaction_events()).root,
+        events=["score"],
+        compaction=compaction,
+    )
+
+    if compaction == "all":
+        assert "turn1-output" in combined
+    else:
+        assert "turn1-output" not in combined, "a pruned region must not resurface"
+    assert combined.count("turn4-output") == 1
+
+
+@pytest.mark.anyio
+async def test_events_selection_does_not_bypass_compaction_on_span_transcripts() -> (
+    None
+):
+    """`events=` must not reroute a span-structured transcript to the flat path.
+
+    The flat interleave path segments `transcript.messages` directly and
+    passes neither `compaction` nor `depth`. A transcript that carries real
+    spans must keep going through the timeline path, or adding `events=`
+    silently turns `compaction` into a no-op.
+    """
+    from inspect_ai.model import ChatMessageAssistant, ChatMessageUser
+    from inspect_scout._transcript.messages import transcript_messages
+    from inspect_scout._transcript.types import Transcript
+
+    async def render(
+        compaction: Literal["all", "last"], events: EventsSpec | None
+    ) -> str:
+        reset_ids()
+        transcript = Transcript(
+            transcript_id="t",
+            messages=[ChatMessageUser(content="q"), ChatMessageAssistant(content="a")],
+            events=agentic_events(),
+        )
+        msgs_as_str, _ = message_numbering()
+        out: list[str] = []
+        async for seg in transcript_messages(
+            transcript,
+            messages_as_str=msgs_as_str,
+            model=get_model("mockllm/model"),
+            compaction=compaction,
+            events=events,
+        ):
+            out.append(seg.messages_str)
+        return "\n".join(out)
+
+    # compaction discriminates with and without an events selection alike
+    assert await render("all", None) != await render("last", None)
+    assert await render("all", ["score"]) != await render("last", ["score"])

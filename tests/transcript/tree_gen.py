@@ -1,8 +1,8 @@
 """Seeded flat-event-list generator + brute-force ownership reference.
 
 The generator emits the *flat event list* shape (what `timeline_build`
-consumes), so the same corpus drives the materialized path, the streaming
-path (via MaterializedTranscriptHandle), and the flat driver (oracle 2).
+consumes), so the same corpus drives both the per-span timeline path and
+the flat driver (oracle 2).
 """
 
 from __future__ import annotations

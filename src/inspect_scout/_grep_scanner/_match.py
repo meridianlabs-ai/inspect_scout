@@ -1,13 +1,14 @@
 import re
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator, Literal
+from typing import Literal
 
+from inspect_ai._util.textsearch import Fold, FoldedText, compile_query
+from inspect_ai._view.find import MessageRow, project_event, project_row
 from inspect_ai.event import Event
 from inspect_ai.model import ChatMessage
 
-from .._scanner.extract import message_as_str
 from .._scanner.util import _event_id, _message_id
-from ._event import event_as_str
 
 MAX_CONTEXT = 50
 
@@ -35,75 +36,91 @@ def compile_pattern(
     regex: bool,
     ignore_case: bool,
     word_boundary: bool,
-) -> re.Pattern[str]:
-    """Compile a pattern into a regex object.
+) -> re.Pattern[str] | None:
+    """Compile a pattern the same way inspect_ai Find/grep matching does.
 
     Args:
         pattern: The pattern string to compile.
         regex: If True, treat as regex; if False, escape special chars.
-        ignore_case: If True, compile with case-insensitive flag.
-        word_boundary: If True, wrap pattern with word boundary anchors.
+        ignore_case: Casefold the text and a literal query.
+        word_boundary: Match whole words only (wraps the whole pattern).
 
     Returns:
-        Compiled regex pattern.
+        Compiled regex to run over ``FoldedText.folded``, or None when
+        ``pattern`` is empty (no matches).
 
     Raises:
-        PatternError: If the pattern is an invalid regular expression.
+        PatternError: If regex=True and pattern is an invalid regular expression.
     """
-    if not regex:
-        pattern = re.escape(pattern)  # Escape special chars for literal matching
-
-    if word_boundary:
-        pattern = rf"\b{pattern}\b"
-
-    flags = re.IGNORECASE if ignore_case else 0
-
     try:
-        return re.compile(pattern, flags)
+        return compile_query(
+            pattern,
+            mode="regex" if regex else "literal",
+            fold=_fold(ignore_case),
+            word_boundary=word_boundary,
+        )
     except re.error as e:
         raise PatternError(f"Invalid regex pattern '{pattern}': {e}") from e
 
 
 def find_matches_in_messages(
     messages: list[ChatMessage],
-    patterns: list[re.Pattern[str]],
+    patterns: list[re.Pattern[str] | None],
+    fold: Fold,
 ) -> Iterator[Match]:
     """Find all matches across all messages for any of the patterns."""
     for index, message in enumerate(messages, start=1):
-        text = message_as_str(message) or ""
-        msg_id = _message_id(message)
-
-        for compiled in patterns:
-            for match in compiled.finditer(text):
-                yield Match(
-                    source="message",
-                    index=index,
-                    id=msg_id,
-                    position=match.start(),
-                    match_text=match.group(0),
-                    context=_extract_context(text, match.start(), len(match.group(0))),
-                )
+        text = _message_text(message)
+        yield from _scan(text, patterns, fold, "message", index, _message_id(message))
 
 
 def find_matches_in_events(
     events: list[Event],
-    patterns: list[re.Pattern[str]],
+    patterns: list[re.Pattern[str] | None],
+    fold: Fold,
 ) -> Iterator[Match]:
     """Find all matches across all events for any of the patterns."""
     for index, event in enumerate(events, start=1):
-        text = event_as_str(event) or ""
-        evt_id = _event_id(event)
+        text = _event_text(event)
+        yield from _scan(text, patterns, fold, "event", index, _event_id(event))
 
-        for compiled in patterns:
-            for match in compiled.finditer(text):
-                yield Match(
-                    source="event",
-                    index=index,
-                    id=evt_id,
-                    position=match.start(),
-                    match_text=match.group(0),
-                    context=_extract_context(text, match.start(), len(match.group(0))),
-                )
+
+def _fold(ignore_case: bool) -> Fold:
+    return "case" if ignore_case else "none"
+
+
+def _message_text(message: ChatMessage) -> str:
+    # grep has never searched system prompts (message_as_str skipped them)
+    if message.role == "system":
+        return ""
+    return "\n".join(project_row(MessageRow(message), include_chrome=False))
+
+
+def _event_text(event: Event) -> str:
+    return "\n".join(project_event(event, include_chrome=False))
+
+
+def _scan(
+    text: str,
+    patterns: list[re.Pattern[str] | None],
+    fold: Fold,
+    source: Literal["message", "event"],
+    index: int,
+    item_id: str,
+) -> Iterator[Match]:
+    if not text:
+        return
+    folded = FoldedText(text, fold)
+    for compiled in patterns:
+        for start, end in folded.find_all(compiled):
+            yield Match(
+                source=source,
+                index=index,
+                id=item_id,
+                position=start,
+                match_text=text[start:end],
+                context=_extract_context(text, start, end - start),
+            )
 
 
 def _extract_context(text: str, pos: int, match_len: int) -> str:

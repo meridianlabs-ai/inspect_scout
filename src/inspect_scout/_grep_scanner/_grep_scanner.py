@@ -1,5 +1,7 @@
 """Pattern-based transcript scanner using grep-style matching."""
 
+from inspect_ai._util.textsearch import Fold
+
 from .._scanner.result import Reference, Result
 from .._scanner.scanner import SCANNER_NAME_ATTR, Scanner, scanner
 from .._transcript.types import Transcript
@@ -105,16 +107,19 @@ def _scan_single(
     """Scan with single pattern or list of patterns, returning single result."""
     patterns = [pattern] if isinstance(pattern, str) else pattern
     compiled = [compile_pattern(p, regex, ignore_case, word_boundary) for p in patterns]
+    fold: Fold = "case" if ignore_case else "none"
 
     all_matches: list[Match] = []
 
     # Search messages if present
     if transcript.messages:
-        all_matches.extend(find_matches_in_messages(transcript.messages, compiled))
+        all_matches.extend(
+            find_matches_in_messages(transcript.messages, compiled, fold)
+        )
 
     # Search events if present
     if transcript.events:
-        all_matches.extend(find_matches_in_events(transcript.events, compiled))
+        all_matches.extend(find_matches_in_events(transcript.events, compiled, fold))
 
     return _build_result(all_matches)
 
@@ -132,16 +137,19 @@ def _scan_labeled(
     for label, label_patterns in patterns.items():
         pats = [label_patterns] if isinstance(label_patterns, str) else label_patterns
         compiled = [compile_pattern(p, regex, ignore_case, word_boundary) for p in pats]
+        fold: Fold = "case" if ignore_case else "none"
 
         matches: list[Match] = []
 
         # Search messages if present
         if transcript.messages:
-            matches.extend(find_matches_in_messages(transcript.messages, compiled))
+            matches.extend(
+                find_matches_in_messages(transcript.messages, compiled, fold)
+            )
 
         # Search events if present
         if transcript.events:
-            matches.extend(find_matches_in_events(transcript.events, compiled))
+            matches.extend(find_matches_in_events(transcript.events, compiled, fold))
 
         result = _build_result(matches)
         result.label = label

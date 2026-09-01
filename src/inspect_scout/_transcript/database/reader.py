@@ -77,13 +77,9 @@ class TranscriptsViewReader(TranscriptsReader):
     async def open(
         self, transcript: TranscriptInfo, content: TranscriptContent
     ) -> TranscriptHandle:
-        """Open a streaming handle to transcript content.
-
-        Delegates to the underlying `TranscriptsView` so it can choose a
-        spooled or materialized handle; without this override the inherited
-        default would always materialize, defeating streaming for
-        database-backed transcripts.
-        """
+        """Open a streaming handle to transcript content."""
+        # Without this override the inherited default would always
+        # materialize, so the view never gets to choose a spooled handle.
         return await self._view.open(transcript, content)
 
     @override

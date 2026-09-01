@@ -30,13 +30,6 @@ def test_blob_spool_roundtrip(value: str, tmp_path: Path) -> None:
         spool.close()
 
 
-def test_blob_spool_no_file_left_behind(tmp_path: Path) -> None:
-    spool = BlobSpool(tmp_path)
-    spool.put("k", "v")
-    spool.close()
-    assert list(tmp_path.iterdir()) == []  # deleted when the fd closes
-
-
 def test_item_spool_reiterable(tmp_path: Path) -> None:
     spool = ItemSpool(tmp_path)
     try:
@@ -219,18 +212,14 @@ def test_byte_spool_roundtrips_across_chunk_boundaries(
         spool.close()
 
 
-def test_byte_spool_is_reiterable(tmp_path: Path) -> None:
-    spool = ByteSpool(tmp_path)
-    try:
-        spool.write(b'{"k":"v"}')
-        assert b"".join(spool.chunks()) == b'{"k":"v"}'
-        assert b"".join(spool.chunks()) == b'{"k":"v"}'  # second pass identical
-    finally:
-        spool.close()
-
-
-def test_byte_spool_no_file_left_behind(tmp_path: Path) -> None:
-    spool = ByteSpool(tmp_path)
-    spool.write(b"payload")
+@pytest.mark.parametrize(
+    "factory",
+    [_populated_blob_spool, _populated_item_spool, _populated_byte_spool],
+    ids=["blob", "item", "byte"],
+)
+def test_spool_no_file_left_behind(
+    factory: Callable[[Path], Any], tmp_path: Path
+) -> None:
+    spool = factory(tmp_path)
     spool.close()
     assert list(tmp_path.iterdir()) == []  # deleted when the fd closes

@@ -55,11 +55,11 @@ from .reducer import (
 )
 from .spool import BlobSpool, ByteSpool, ItemSpool
 
-# Section constants for prefix classification. Mirrors load_filtered.py:49-62
-# minus _SECTION_TIMELINES (streaming skips timelines -- see the note on
-# `elif prefix[0] == "t":` below). Keep both constant blocks and both
-# classify/dispatch loops (see the HOT PATH comment below and
-# load_filtered.py:335-444) in sync when either changes.
+# Section constants for prefix classification. Mirrors the `_SECTION_*` block
+# in load_filtered.py minus _SECTION_TIMELINES (streaming skips timelines --
+# see the note on `elif prefix[0] == "t":` below). Keep both constant blocks
+# and both classify/dispatch loops (the HOT PATH comment below, and the one in
+# load_filtered.py's `_parse_and_filter`) in sync when either changes.
 _SECTION_OTHER = 0
 _SECTION_MESSAGES = 1
 _SECTION_EVENTS = 2
@@ -228,7 +228,11 @@ async def stream_parse_to_spool(
 
     Returns:
         StreamParseResult with spools populated and small fields
-        (metadata/target/scores/timelines) resolved in memory.
+        (metadata/target/scores) resolved in memory. The sample's
+        ``timelines`` section is neither spooled nor returned --
+        ``StreamParseResult`` has no field for it, so a transcript
+        materialized from this parse has ``timelines == []`` even when the
+        sample carried some. See the note on the ``"t"`` branch below.
 
     Raises:
         ijson.JSONError: On malformed JSON (e.g. NaN/Inf without use_float
@@ -313,7 +317,7 @@ async def stream_parse_to_spool(
                 # HOT PATH: this classification runs 56M+ times per large parse.
                 # Avoid string slicing, startswith, or any allocation in common
                 # paths. Profile before changing. Mirrored in
-                # load_filtered.py:335-444 (which also handles
+                # load_filtered.py's `_parse_and_filter` (which also handles
                 # _SECTION_TIMELINES -- streaming has no such branch, see
                 # below). A change to this decision tree needs the same
                 # change there.
@@ -387,10 +391,17 @@ async def stream_parse_to_spool(
                         current_section = _SECTION_CALL_POOL
                     elif prefix[0] == "t":
                         # "target" vs "timelines", on the 2nd char. Timelines
-                        # are skipped: a timeline scan is not streaming
-                        # eligible (_scan.py `_streaming_eligible`), so nothing
-                        # downstream can read them and spooling them would
-                        # retain the whole section for the parse's lifetime.
+                        # are skipped: spooling them would retain the whole
+                        # section for the parse's lifetime, and a scan that
+                        # *requests* a timeline is not streaming eligible
+                        # (_scan.py `_streaming_eligible`). That is a
+                        # constraint on consumers, not a fact about them:
+                        # `_streaming_eligible` looks only at the requested
+                        # content, never at whether the sample stores
+                        # timelines, so anything reading a spooled transcript's
+                        # `.timelines` sees [] regardless. Pinned by
+                        # test_handle_equivalence.py::
+                        # test_materialized_preserves_timelines_spooled_drops_them.
                         current_section = (
                             _SECTION_TARGET
                             if prefix[1] == _TARGET_CHAR1

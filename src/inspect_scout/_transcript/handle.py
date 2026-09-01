@@ -14,7 +14,6 @@ from typing import (
     Callable,
     NoReturn,
     Protocol,
-    runtime_checkable,
 )
 
 import anyio
@@ -28,7 +27,6 @@ from .types import Transcript, TranscriptInfo
 _CHECKPOINT_INTERVAL = 64
 
 
-@runtime_checkable
 class TranscriptHandle(Protocol):
     """Streaming access to transcript content. Async context manager.
 
@@ -223,6 +221,11 @@ class SpooledTranscriptHandle:
             metadata=metadata,
             messages=messages,
             events=events,
+            # Always empty: the spooling parse skips the sample's `timelines`
+            # section, so there is nothing to restore here even when the
+            # sample had one. See `stream_parse_to_spool` and
+            # test_handle_equivalence.py::
+            # test_materialized_preserves_timelines_spooled_drops_them.
             timelines=[],
         )
         return self._transcript

@@ -205,18 +205,32 @@ def _event_has_pool_refs(event_dict: dict[str, Any]) -> bool:
 
 
 @_ijson_coroutine  # type: ignore
-def attachments_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
+def attachments_coroutine(
+    state: ParseState, collecting_events: bool
+) -> CoroutineGen:  # pragma: no cover
     """Collect the attachments table.
 
     Pool entries under ``events_data`` can carry refs too, and that section
     follows ``attachments`` in the file, so a plain ``attachment_refs``
-    membership test here cannot know about them yet. But only a *retained*
-    event can ever resolve a pool entry -- ``state.events`` is already fully
-    populated by the time ``attachments`` streams past (events precede it in
-    file order), so retain every attachment only when a retained event
-    carries a pool ref; otherwise keep the original referenced-ID filter, so
-    e.g. a messages-only scan stays bounded to what it actually references.
-    ``state.attachment_refs`` is still collected either way, because the
+    membership test here cannot know about them yet. Only a *retained* event
+    can ever resolve a pool entry, so this only needs to retain every
+    attachment when a retained event carries a pool ref -- but JSON object
+    key order is not guaranteed, so at the point the first attachment string
+    arrives, ``state.events`` may simply not have been populated yet rather
+    than genuinely being empty. ``collecting_events`` (whether an events
+    coroutine exists at all -- i.e. events are wanted, regardless of whether
+    any have arrived) tells us when that ambiguity is even possible:
+
+    - Not collecting events at all: no event can ever need a pool entry, so
+      the original referenced-ID filter applies -- this is what keeps a
+      messages-only scan bounded.
+    - Collecting events, and none retained *yet*: cannot yet know whether a
+      pool-ref-carrying event is still to come, so retain everything
+      (conservative -- guessing wrong here drops data permanently).
+    - Collecting events, and at least one retained event has a pool ref:
+      retain everything (it's needed).
+
+    ``state.attachment_refs`` is still collected in all cases, because the
     early exit in ``load_filtered`` keys off it.
     """
     attachments_prefix_len = len(ATTACHMENTS_PREFIX)
@@ -228,7 +242,9 @@ def attachments_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cove
         if not prefix.startswith(ATTACHMENTS_PREFIX):
             continue
         if retain_all is None:
-            retain_all = any(_event_has_pool_refs(e) for e in state.events)
+            retain_all = collecting_events and (
+                not state.events or any(_event_has_pool_refs(e) for e in state.events)
+            )
         end = prefix.find(".", attachments_prefix_len)
         attachment_id = (
             prefix[attachments_prefix_len:]

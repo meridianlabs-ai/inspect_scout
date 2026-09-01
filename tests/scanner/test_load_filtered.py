@@ -14,12 +14,16 @@ import pytest
 if TYPE_CHECKING:
     from tests.conftest import CallTracker
 
+from inspect_ai._util.async_bytes_reader import adapt_to_reader
 from inspect_ai._util.async_zip import AsyncZipReader
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai.event import ToolEvent
 from inspect_ai.event._model import ModelEvent
 from inspect_scout import Transcript, TranscriptInfo
-from inspect_scout._transcript.json.load_filtered import load_filtered_transcript
+from inspect_scout._transcript.json.load_filtered import (
+    _parse_and_filter,
+    load_filtered_transcript,
+)
 from inspect_scout._transcript.types import EventFilter, MessageFilter
 
 
@@ -379,6 +383,50 @@ async def test_attachment_resolution_in_events_data_pool() -> None:
     model_event = result.events[0]
     assert isinstance(model_event, ModelEvent)
     assert model_event.input[0].content == "VALUE"
+
+
+@pytest.mark.asyncio
+async def test_attachments_bounded_when_no_pool_refs_retained() -> None:
+    """A messages-only scan retains only referenced attachments, not the whole table.
+
+    Retaining every attachment is necessary only when a *retained* event carries an
+    unresolved pool ref (`input_refs` / `call.call_refs`) -- those are parsed under
+    `events_data`, after `attachments`, so which ones are needed can't be known via
+    `attachment_refs` alone. A messages-only scan (events filtered out entirely)
+    retains no events, so it can never need pool-entry attachments, and the original
+    referenced-ID filter should still apply.
+    """
+    referenced_id = "a1b2c3d4e5f678901234567890123456"
+    unrelated_id = "b2c3d4e5f67890123456789012345678"
+
+    async with adapt_to_reader(
+        create_json_stream(
+            {
+                "id": "test",
+                "messages": [
+                    {"role": "user", "content": f"attachment://{referenced_id}"},
+                ],
+                "events": [],
+                "attachments": {
+                    referenced_id: "REFERENCED",
+                    unrelated_id: "UNRELATED",
+                },
+            }
+        )
+    ) as reader:
+        _, attachments = await _parse_and_filter(
+            reader,
+            TranscriptInfo(
+                transcript_id="test",
+                source_type="test",
+                source_id="42",
+                source_uri="/test.json",
+            ),
+            "all",
+            None,
+        )
+
+    assert set(attachments) == {referenced_id}
 
 
 @pytest.mark.asyncio

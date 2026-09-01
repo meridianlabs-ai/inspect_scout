@@ -1,6 +1,15 @@
-from typing import Literal, NamedTuple, TypeAlias
+from collections.abc import Sequence
+from typing import Any, Generic, Literal, TypeAlias, TypeVar
 
 from pydantic import BaseModel
+
+# stdlib NamedTuple only supports Generic from Python 3.11
+from typing_extensions import NamedTuple
+
+StructuredAnswerT = TypeVar(
+    "StructuredAnswerT", bound="BaseModel | Sequence[BaseModel]"
+)
+"""Type of a structured answer: a Pydantic model or a list of Pydantic models."""
 
 
 class AnswerMultiLabel(NamedTuple):
@@ -16,13 +25,15 @@ class AnswerMultiLabel(NamedTuple):
     """Allow the model to respond with NONE when no labels apply."""
 
 
-class AnswerStructured(NamedTuple):
+class AnswerStructured(NamedTuple, Generic[StructuredAnswerT]):
     """Answer with structured output.
 
-    Structured answers are objects that conform to a JSON Schema.
+    Structured answers are objects that conform to a JSON Schema. The answer
+    type parameter flows through to the type of ``Result.parsed`` in
+    ``generate_answer()`` and ``parse_answer()``.
     """
 
-    type: type[BaseModel] | type[list]  # type: ignore[type-arg]
+    type: type[StructuredAnswerT]
     """Pydantic BaseModel that defines the type of the answer.
 
     Can be a single Pydantic model result or a list of results.
@@ -53,7 +64,7 @@ class AnswerStructured(NamedTuple):
 _TextualAnswerSpec: TypeAlias = (
     Literal["boolean", "numeric", "string"] | list[str] | AnswerMultiLabel
 )
-AnswerSpec: TypeAlias = _TextualAnswerSpec | AnswerStructured
+AnswerSpec: TypeAlias = _TextualAnswerSpec | AnswerStructured[Any]
 """Specification of the answer format for an LLM scanner.
 
 Pass ``"boolean"``, ``"numeric"``, or ``"string"`` for a simple answer;

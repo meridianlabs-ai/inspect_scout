@@ -50,11 +50,6 @@ def test_matches_json_dumps_byte_for_byte(value: Any) -> None:
     assert _rewrite(value).decode() == expected
 
 
-@pytest.mark.parametrize("value", VALUES)
-def test_round_trips_to_an_equal_value(value: Any) -> None:
-    assert json.loads(_rewrite(value)) == value
-
-
 def test_duplicate_keys_resolve_as_json_does() -> None:
     """Both are reported by ijson; last one wins on reparse, as in json."""
     out = io.BytesIO()

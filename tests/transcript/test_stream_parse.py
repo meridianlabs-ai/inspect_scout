@@ -7,10 +7,19 @@ import json
 from pathlib import Path
 from typing import Any
 
+import ijson  # type: ignore[import-untyped]  # no published stubs
 import pytest
 from inspect_ai.event import ModelEvent
-from inspect_scout._transcript.json.stream_parse import stream_parse_to_spool
-from inspect_scout._transcript.types import EventFilter, MessageFilter
+from inspect_scout._transcript.json import spool as spool_mod
+from inspect_scout._transcript.json import stream_parse
+from inspect_scout._transcript.json.load_filtered import load_filtered_transcript
+from inspect_scout._transcript.json.spool import ItemSpool
+from inspect_scout._transcript.json.stream_parse import (
+    replay_events,
+    replay_messages,
+    stream_parse_to_spool,
+)
+from inspect_scout._transcript.types import EventFilter, MessageFilter, TranscriptInfo
 
 
 def _stream(data: dict[str, Any]) -> io.BytesIO:
@@ -111,8 +120,6 @@ async def test_parse_spools_all_attachments_and_pools(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_parse_nan_raises(tmp_path: Path) -> None:
-    import ijson  # type: ignore[import-untyped]  # no published stubs
-
     bad = io.BytesIO(b'{"id": "s", "messages": [], "x": NaN}')
     with pytest.raises(ijson.JSONError):
         await stream_parse_to_spool(bad, "all", "all", tmp_path)
@@ -129,9 +136,6 @@ async def test_partial_spool_construction_failure_closes_opened_spools(
     fails (e.g. EMFILE/ENOSPC), the already-opened fds must not leak. Spy on
     close() of every ItemSpool created and fail BlobSpool construction.
     """
-    from inspect_scout._transcript.json import stream_parse
-    from inspect_scout._transcript.json.spool import ItemSpool
-
     created: list[ItemSpool] = []
     closed: list[ItemSpool] = []
 
@@ -160,8 +164,6 @@ async def test_partial_spool_construction_failure_closes_opened_spools(
 
 @pytest.mark.asyncio
 async def test_replay_messages_resolves_attachments(tmp_path: Path) -> None:
-    from inspect_scout._transcript.json.stream_parse import replay_messages
-
     result = await stream_parse_to_spool(_stream(SAMPLE), "all", None, tmp_path)
     try:
         messages = list(replay_messages(result))
@@ -175,8 +177,6 @@ async def test_replay_messages_resolves_attachments(tmp_path: Path) -> None:
 async def test_replay_events_expands_pools_and_pool_attachments(
     tmp_path: Path,
 ) -> None:
-    from inspect_scout._transcript.json.stream_parse import replay_events
-
     result = await stream_parse_to_spool(_stream(SAMPLE), None, "all", tmp_path)
     try:
         events = list(replay_events(result))
@@ -184,7 +184,7 @@ async def test_replay_events_expands_pools_and_pool_attachments(
         assert len(model_events) == 1
         inputs = model_events[0].input
         assert len(inputs) == 2  # input_refs [[0, 2]] expanded from pool
-        # THE BUG FIX: attachment ref inside a pool item is resolved.
+        # attachment ref inside a pool item is resolved
         assert inputs[1].content == "pool-attachment-resolved"
         # multi-shot: second replay identical (re-iterable, not just replay_messages)
         again = [e for e in replay_events(result) if e.event == "model"]
@@ -200,8 +200,6 @@ async def test_replay_events_expands_call_pool(tmp_path: Path) -> None:
 
     Mirrors test_call_pool_resolution in tests/scanner/test_load_filtered.py.
     """
-    from inspect_scout._transcript.json.stream_parse import replay_events
-
     sample: dict[str, Any] = {
         "id": "test-pool-call",
         "target": "expected",
@@ -259,10 +257,6 @@ async def test_streamed_and_materialized_resolve_embedded_ref_the_same(
     Both must resolve a ref embedded inside a larger string (e.g. "prefix
     attachment://<id> suffix"), not just on an exact-match string.
     """
-    from inspect_scout._transcript.json.load_filtered import load_filtered_transcript
-    from inspect_scout._transcript.json.stream_parse import replay_messages
-    from inspect_scout._transcript.types import TranscriptInfo
-
     attachment_id = "d" * 32
     sample: dict[str, Any] = {
         "id": "s-embedded-ref",
@@ -314,8 +308,6 @@ async def test_resolve_strings_empty_string_attachment_not_treated_as_missing(
 
     An empty-string attachment value is not the same as a missing one.
     """
-    from inspect_scout._transcript.json.stream_parse import replay_messages
-
     empty_id = "c" * 32
     sample: dict[str, Any] = {
         "id": "s-empty-attachment",
@@ -391,8 +383,6 @@ async def test_spool_write_failure_surfaces_instead_of_dropping_items(
     a message or event while the parse went on to report success. Data loss
     that a caller cannot see is worse than a crash.
     """
-    from inspect_scout._transcript.json import spool as spool_mod
-
     real_append = spool_mod.ItemSpool.append
     calls = {"n": 0}
 

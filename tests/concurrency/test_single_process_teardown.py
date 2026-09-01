@@ -10,7 +10,7 @@ deque and run `on_complete` for whatever it finds, or the handle's refcount
 never reaches zero and it never closes.
 """
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import cast
 
@@ -76,6 +76,86 @@ async def test_teardown_runs_on_complete_for_a_follower_stranded_in_the_queue() 
         yield ParseJob(
             transcript_info=TranscriptInfo(transcript_id="t1"),
             scanner_indices={0, 1},
+        )
+
+    async def parse_function(
+        job: ParseJob, reader: TranscriptsReader
+    ) -> ParseFunctionResult:
+        return True, lead
+
+    async def scan_function(job: ScannerJob) -> list[ResultReport]:
+        try:
+            return []
+        finally:
+            if job.on_complete is not None:
+                await job.on_complete()
+
+    async def record_results(
+        info: TranscriptInfo, scanner_name: str, results: list[ResultReport]
+    ) -> None:
+        if scanner_name == "lead":
+            raise RuntimeError("worker crashed")
+
+    strategy = single_process_strategy(task_count=1)
+
+    with pytest.raises(RuntimeError, match="worker crashed"):
+        await strategy(
+            parse_jobs=parse_jobs(),
+            parse_function=parse_function,
+            scan_function=scan_function,
+            record_results=record_results,
+            update_metrics=lambda _: None,
+            reader_cm_factory=_reader_cm,
+        )
+
+    assert remaining == 0
+    assert closes == 1
+
+
+@pytest.mark.asyncio
+async def test_teardown_drain_continues_past_a_raising_on_complete() -> None:
+    """One stranded follower's `on_complete` raising must not stop the drain.
+
+    Each stranded job still holds a real share of the shared handle's
+    refcount; skipping the rest because one of them raised would leak the
+    handle just as surely as never draining at all.
+    """
+    remaining = 4  # lead + 3 followers
+    closes = 0
+
+    def _make_on_complete(*, raises: bool) -> Callable[[], Awaitable[None]]:
+        async def on_complete() -> None:
+            nonlocal remaining, closes
+            remaining -= 1
+            if remaining == 0:
+                closes += 1
+            if raises:
+                raise RuntimeError("on_complete boom")
+
+        return on_complete
+
+    transcript = Transcript(transcript_id="t1")
+    followers = tuple(
+        ScannerJob(
+            union_transcript=transcript,
+            scanner=_noop_scanner(),
+            scanner_name=name,
+            on_complete=_make_on_complete(raises=(name == "f1")),
+        )
+        for name in ("f1", "f2", "f3")
+    )
+    lead = ScannerJob(
+        union_transcript=transcript,
+        scanner=_noop_scanner(),
+        scanner_name="lead",
+        followers=followers,
+        on_complete=_make_on_complete(raises=False),
+    )
+
+    async def parse_jobs() -> AsyncIterator[ParseJob]:
+        yield ParseJob(
+            transcript_info=TranscriptInfo(transcript_id="t1"),
+            scanner_indices={0, 1, 2, 3},
         )
 
     async def parse_function(

@@ -284,3 +284,43 @@ def test_input_data_streams_pool_entries_without_holding_them(
     # The read-back is unavoidable; 2.5x leaves headroom while still failing
     # if the value is built as an object graph and dumped whole (~5x).
     assert peak < cell * 2.5, f"peak {peak} exceeds 2.5x the {cell}-byte cell"
+
+
+def test_merged_metadata_prefers_spooled_values_over_the_stale_index_copies(
+    tmp_path: Path,
+) -> None:
+    """Spooled `sample_metadata`/`target`/`scores` win over the index row's.
+
+    Real eval-log index rows carry their own stale `sample_metadata` (observed:
+    the literal string `"{}"`) inside `TranscriptInfo.metadata`, alongside
+    whatever the spool actually holds. `_merged_metadata` has to merge the
+    spooled values in as overrides -- `info.metadata.copy() | overrides` --
+    not the reverse; swapping that precedence would silently record the
+    stale index value into a public column instead of the real one.
+    """
+    metadata_json = ByteSpool(tmp_path)
+    metadata_json.write(json.dumps({"foo": "bar"}).encode())
+    result = StreamParseResult(
+        ItemSpool(tmp_path),
+        ItemSpool(tmp_path),
+        BlobSpool(tmp_path),
+        metadata_json,
+        tmp_path,
+        target="t",
+        scores={"accuracy": 1.0},
+    )
+    try:
+        info = TranscriptInfo(
+            transcript_id="t1",
+            metadata={"sample_metadata": "{}", "other": "kept"},
+        )
+        input_json, _ = pooled_passthrough(info, result)
+    finally:
+        result.close()
+
+    assert json.loads(input_json)["metadata"] == {
+        "other": "kept",
+        "sample_metadata": {"foo": "bar"},
+        "target": "t",
+        "scores": {"accuracy": 1.0},
+    }

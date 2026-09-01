@@ -376,4 +376,21 @@ def single_process_strategy(
             _update_metrics_now()
             final_metrics_delivered = True
 
+            # A worker pool torn down early (exception, cancellation) can
+            # strand jobs still sitting in scanner_job_deque -- most commonly
+            # a follower whose lead already ran, or a lead whose followers
+            # were never released. Each carries a share of a refcounted
+            # TranscriptHandle (see ScannerJob.on_complete); undispatched, its
+            # on_complete never fires and the handle never closes. Shielded:
+            # the ambient scope may already be cancelled here, and an
+            # unshielded await would raise before closing anything.
+            with anyio.CancelScope(shield=True):
+                pending = list(scanner_job_deque)
+                scanner_job_deque.clear()
+                while pending:
+                    job = pending.pop()
+                    pending.extend(job.followers)
+                    if job.on_complete is not None:
+                        await job.on_complete()
+
     return the_func

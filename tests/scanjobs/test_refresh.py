@@ -249,3 +249,28 @@ async def test_refresh_index_propagates_cancelled_status_error(
             await refresh_module.refresh_index(store, "/s")
     finally:
         store.close()
+
+
+class _CancellingMetadataFilesystem(_FakeAsyncFilesystem):
+    """Raises CancelledError from metadata reads.
+
+    CancelledError is not an Exception, so it escapes the internal handler in
+    _listing_from_scan_dir and reaches the concurrent-collection call.
+    """
+
+    async def info(self, filename: str) -> FileInfo:
+        raise asyncio.CancelledError("stop listing")
+
+
+@pytest.mark.asyncio
+async def test_async_listing_to_scans_propagates_cancelled_metadata_error() -> None:
+    """A cancelled metadata read must surface, not silently drop the scan.
+
+    A dropped scan is not merely missing from the result: refresh_index feeds
+    the listing into compute_delta, which treats an absent scan_id as deleted
+    and removes its row from the index.
+    """
+    fs = _CancellingMetadataFilesystem(dirs=["/s/scan_id=a/"], infos={})
+
+    with pytest.raises(asyncio.CancelledError):
+        await async_listing_to_scans(fs, "/s")

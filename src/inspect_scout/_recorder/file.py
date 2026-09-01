@@ -1,4 +1,3 @@
-import asyncio
 import functools
 import io
 import json
@@ -18,6 +17,7 @@ import pyarrow.compute as pc
 import pyarrow.dataset as ds
 import pyarrow.fs as pafs
 import pyarrow.parquet as pq
+from inspect_ai._util._async import tg_collect
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import file, filesystem
 from inspect_ai._util.json import to_json_str_safe
@@ -42,6 +42,7 @@ from .._recorder.buffer import (
 from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec, ScanTranscripts
 from .._transcript.types import TranscriptInfo
+from .._util._async import as_value
 from .._util.duckdb import create_parquet_view, restrict_external_access
 from .recorder import (
     ScanRecorder,
@@ -729,10 +730,12 @@ class FileRecorder(ScanRecorder):
                 scan_dirs.append(entry.as_posix())
 
         # Fetch in parallel; skip scans that no longer exist and propagate
-        # any other error. return_exceptions=True keeps one failure from
-        # cancelling its siblings.
-        results = await asyncio.gather(
-            *(FileRecorder.status(d) for d in scan_dirs), return_exceptions=True
+        # any other error.
+        results = await tg_collect(
+            [
+                functools.partial(as_value, functools.partial(FileRecorder.status, d))
+                for d in scan_dirs
+            ]
         )
         scans: list[Status] = []
         for r in results:

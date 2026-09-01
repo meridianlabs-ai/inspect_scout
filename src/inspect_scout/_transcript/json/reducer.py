@@ -191,31 +191,52 @@ def call_pool_item_coroutine(state: ParseState, item_prefix: str) -> CoroutineGe
     return cast(CoroutineGen, _unfiltered_item_coroutine(state.call_pool, item_prefix))
 
 
+def _event_has_pool_refs(event_dict: dict[str, Any]) -> bool:
+    """Does this event dict carry an unresolved message/call pool ref?
+
+    Mirrors the exact conditions `pool.py`'s `_resolve_events_pools` checks
+    before expanding a ref -- `input_refs` truthy, or a `call` with
+    `call_refs` not `None`.
+    """
+    if event_dict.get("input_refs"):
+        return True
+    call = event_dict.get("call")
+    return bool(call and call.get("call_refs") is not None)
+
+
 @_ijson_coroutine  # type: ignore
 def attachments_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
     """Collect the attachments table.
 
-    Keeps every attachment rather than only those already referenced. Pool
-    entries under ``events_data`` can carry refs too, and that section follows
-    ``attachments`` in the file, so a membership test here cannot know about
-    them yet -- it silently dropped exactly the attachments a pooled system
-    prompt needs. ``state.attachment_refs`` is still collected, because the
+    Pool entries under ``events_data`` can carry refs too, and that section
+    follows ``attachments`` in the file, so a plain ``attachment_refs``
+    membership test here cannot know about them yet. But only a *retained*
+    event can ever resolve a pool entry -- ``state.events`` is already fully
+    populated by the time ``attachments`` streams past (events precede it in
+    file order), so retain every attachment only when a retained event
+    carries a pool ref; otherwise keep the original referenced-ID filter, so
+    e.g. a messages-only scan stays bounded to what it actually references.
+    ``state.attachment_refs`` is still collected either way, because the
     early exit in ``load_filtered`` keys off it.
     """
     attachments_prefix_len = len(ATTACHMENTS_PREFIX)
+    retain_all: bool | None = None
     while True:
         prefix, event, value = yield
         if event != "string":
             continue
         if not prefix.startswith(ATTACHMENTS_PREFIX):
             continue
+        if retain_all is None:
+            retain_all = any(_event_has_pool_refs(e) for e in state.events)
         end = prefix.find(".", attachments_prefix_len)
         attachment_id = (
             prefix[attachments_prefix_len:]
             if end == -1
             else prefix[attachments_prefix_len:end]
         )
-        state.attachments[attachment_id] = value
+        if retain_all or attachment_id in state.attachment_refs:
+            state.attachments[attachment_id] = value
 
 
 @_ijson_coroutine  # type: ignore

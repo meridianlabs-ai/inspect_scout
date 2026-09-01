@@ -1,17 +1,4 @@
-"""Tests for llm_scanner streaming: handle input, ordering, and fallback.
-
-Covers ``llm_scanner``'s streaming segmentation:
-
-- A ``TranscriptHandle`` input produces the same prompts and Result as a
-  ``Transcript`` input over the same content (messages and events paths).
-- The ``SCANNER_SUPPORTS_STREAMING_ATTR`` capability attr is set only when
-  streaming can work without the full transcript (static config), and not
-  when a callable ``question``/``template_variables`` or timeline content
-  would force materialization.
-- The runtime mirror of the opt-in logic materializes the handle when a
-  callable ``question`` needs the full transcript.
-- A ``_StubSkeletonUnsupported`` during streaming events falls back to a
-  materialized scan.
+"""Tests for llm_scanner streaming: handle input, capability gating, fallback.
 
 Bounded segment concurrency and segment-order-through-reduction are covered
 in ``test_segment_concurrency.py``.
@@ -105,11 +92,6 @@ def _yes_model() -> Model:
     return _recording_model([])
 
 
-# ---------------------------------------------------------------------------
-# (a) handle input equivalence
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.anyio
 @pytest.mark.parametrize(
     ("make_transcript", "scanner_kwargs", "min_prompts"),
@@ -174,11 +156,6 @@ async def test_handle_scan_equivalent_to_transcript_scan(
     assert result_handle.explanation == result_transcript.explanation
 
 
-# ---------------------------------------------------------------------------
-# (b) capability attr gating
-# ---------------------------------------------------------------------------
-
-
 async def _dynamic_question(_t: Transcript) -> str:
     return "dynamic?"
 
@@ -225,11 +202,6 @@ def test_streaming_attr_gating(kwargs: dict[str, Any], expected: bool) -> None:
     call_kwargs: dict[str, Any] = {"question": "static?", "answer": "boolean"} | kwargs
     scan_fn = llm_scanner(**call_kwargs)
     assert getattr(scan_fn, SCANNER_SUPPORTS_STREAMING_ATTR, False) is expected
-
-
-# ---------------------------------------------------------------------------
-# (c) streaming fallback and runtime materialization
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.anyio

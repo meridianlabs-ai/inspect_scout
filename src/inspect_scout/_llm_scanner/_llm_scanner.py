@@ -292,9 +292,7 @@ def llm_scanner(
     resolved_answer = answer_from_argument(answer)
 
     # Events enter the effective filter only via a content override (the
-    # @scanner decorator declares messages="all"). On the streaming path this
-    # picks stream_timeline_messages (events) vs stream_segment_messages
-    # (messages-only).
+    # @scanner decorator declares messages="all").
     content_has_events = content is not None and content.events is not None
 
     # resolve retry_refusals
@@ -307,9 +305,9 @@ def llm_scanner(
     )
 
     async def scan(transcript: Transcript | TranscriptHandle) -> Result:
-        # A TranscriptHandle streams messages without materializing. Match
-        # the concrete handle classes: TranscriptHandle is a plain Protocol,
-        # and making it runtime-checkable would only test method presence.
+        # Match the concrete handle classes: TranscriptHandle is a plain
+        # Protocol, and making it runtime-checkable would only test method
+        # presence.
         handle: TranscriptHandle | None = (
             transcript
             if isinstance(
@@ -417,8 +415,8 @@ def llm_scanner(
                 "the scanner template."
             )
 
-        # Materialized Transcript path. Factored out so the events-streaming
-        # fallback can reuse it after materializing the handle.
+        # Factored out so the events-streaming fallback can reuse it after
+        # materializing the handle.
         async def scan_materialized(source_transcript: Transcript) -> Result:
             materialized_results = await _scan_segments_bounded(
                 transcript_messages(
@@ -441,10 +439,6 @@ def llm_scanner(
             )
 
         if handle is not None and content_has_events:
-            # Streaming events path: two-pass event streaming over the handle
-            # via stream_timeline_messages, yielding TimelineMessages segments
-            # (span ids reused for per-span grouping).
-            #
             # _StubSkeletonUnsupported is raised in pass 1 (building the stub
             # skeleton / selecting needed uuids), before any segment is yielded
             # and thus before any LLM call, so the fallback re-runs from scratch
@@ -470,9 +464,7 @@ def llm_scanner(
                     ex,
                 )
                 return await scan_materialized(await handle.load())
-            # A handle carries events, not named timelines (info_transcript is
-            # built with timelines=[]), so this matches the sibling streaming
-            # path below rather than testing a value that is always empty.
+            # A handle carries events, not named timelines.
             return await aggregate_results(
                 results=results,
                 timeline=False,

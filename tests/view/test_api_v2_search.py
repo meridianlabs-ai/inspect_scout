@@ -381,7 +381,6 @@ class TestSearchEndpoint:
         assert response.status_code == 200
         assert set(response.json().keys()) == {"id", "result"}
 
-        # The streamed (spooled) handle path was exercised and consumable.
         assert len(received_handles) == 1
         assert isinstance(received_handles[0], SpooledTranscriptHandle)
         assert streamed_message_counts[0] > 0

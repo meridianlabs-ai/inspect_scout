@@ -375,14 +375,16 @@ def scanner(
                     inferred_messages = override.messages
                 if override.events is not None:
                     inferred_events = override.events
-                    # A timeline is pruned by its own filter, and interleaved
-                    # entries render from the timeline -- without this an
-                    # events selection is silently dropped on timeline scans.
+                if override.timeline is not None:
+                    inferred_timeline = override.timeline
+                if override.events is not None:
+                    # Widen last, so an explicit timeline override cannot drop
+                    # the selection: a timeline is pruned by its own filter and
+                    # interleaved entries render from the timeline, so a type
+                    # missing there is silently dropped rather than rendered.
                     inferred_timeline = widen_timeline_for_events(
                         inferred_timeline, override.events
                     )
-                if override.timeline is not None:
-                    inferred_timeline = override.timeline
 
             # Validate scanner signature matches filters
             # Only validate if we have filters (not just a custom loader)

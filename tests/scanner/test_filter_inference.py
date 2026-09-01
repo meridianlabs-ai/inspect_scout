@@ -457,3 +457,30 @@ def test_events_selection_does_not_force_a_timeline_on_message_scanners() -> Non
         return llm_scanner(question="q", answer="boolean", events=["score"])
 
     assert config_for_scanner(flat()).content.timeline is None
+
+
+def test_explicit_timeline_override_cannot_drop_the_events_selection() -> None:
+    """Widening must survive a caller-supplied `content.timeline`.
+
+    The override is applied after inference, so widening has to come last --
+    otherwise an explicit timeline silently prunes the very events the caller
+    asked to have rendered.
+    """
+    from inspect_scout._llm_scanner._llm_scanner import llm_scanner
+    from inspect_scout._scanner.scanner import config_for_scanner
+    from inspect_scout._transcript.types import TranscriptContent
+
+    @scanner(timeline=True)
+    def narrow_timeline() -> Scanner[Transcript]:
+        return llm_scanner(
+            question="q",
+            answer="boolean",
+            events=["score"],
+            content=TranscriptContent(timeline=["model", "span_begin", "span_end"]),
+        )
+
+    timeline = config_for_scanner(narrow_timeline()).content.timeline
+    assert isinstance(timeline, list)
+    assert "score" in timeline
+    # the caller's own selection is still honoured
+    assert "model" in timeline and "span_end" in timeline

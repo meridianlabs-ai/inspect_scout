@@ -1,7 +1,7 @@
-from functools import partial
-from typing import Any, Awaitable, Callable, Literal, cast, overload
+import sys
+from typing import Any, AsyncIterator, Awaitable, Callable, Literal, cast, overload
 
-from inspect_ai._util._async import tg_collect
+import anyio
 from inspect_ai._util.content import ContentText
 from inspect_ai.model import (
     CachePolicy,
@@ -35,6 +35,52 @@ from .prompt import (
     DEFAULT_SCANNER_TEMPLATE_SUFFIX,
 )
 from .types import AnswerSpec
+
+if sys.version_info < (3, 11):
+    from exceptiongroup import ExceptionGroup
+
+_SEGMENT_WINDOW_CAP = 16  # bound memory: one rendered segment string per slot
+
+
+async def _scan_segments_bounded(
+    source: AsyncIterator[tuple[str | None, str]],
+    scan_segment: Callable[[str], Awaitable[Result]],
+    model: Model,
+) -> list[tuple[str | None, Result]]:
+    """Scan lazily-yielded segments with bounded concurrency, in order.
+
+    Each ``(span_id, messages_str)`` from ``source`` is scanned; results return
+    in segment order (reduction is order-sensitive). A failing segment raises
+    its original exception, unwrapped from the task-group ``ExceptionGroup``.
+    """
+    # Never bound below what the model layer will run anyway -- those tasks would
+    # just queue on inspect_ai's own semaphore. The cap is the memory policy, and
+    # it also clamps batch mode's much larger connection limit.
+    window = anyio.Semaphore(
+        min(
+            model.config.max_connections or model.api.max_connections(),
+            _SEGMENT_WINDOW_CAP,
+        )
+    )
+    indexed: list[tuple[int, str | None, Result]] = []
+
+    async def scan_bounded(index: int, span_id: str | None, messages_str: str) -> None:
+        try:
+            indexed.append((index, span_id, await scan_segment(messages_str)))
+        finally:
+            window.release()
+
+    try:
+        async with anyio.create_task_group() as tg:
+            index = 0
+            async for span_id, messages_str in source:
+                await window.acquire()
+                tg.start_soon(scan_bounded, index, span_id, messages_str)
+                index += 1
+    except ExceptionGroup as ex:
+        raise ex.exceptions[0] from None
+
+    return [(span_id, r) for _, span_id, r in sorted(indexed, key=lambda t: t[0])]
 
 
 @overload
@@ -303,8 +349,10 @@ def llm_scanner(
                 "the scanner template."
             )
 
-        segments = [
-            seg
+        async def source() -> AsyncIterator[tuple[str | None, str]]:
+            # Pair each segment with its originating span id (None on
+            # non-timeline paths) so aggregate_results can group timeline
+            # chunks by span.
             async for seg in transcript_messages(
                 transcript,
                 messages_as_str=messages_as_str_fn,
@@ -314,20 +362,11 @@ def llm_scanner(
                 compaction=compaction,
                 depth=depth,
                 prompt_reserve=template_tokens,
-            )
-        ]
-        segment_results: list[Result] = await tg_collect(
-            [partial(scan_segment, seg.messages_str) for seg in segments]
-        )
-        # Pair each result with its originating span id (None on non-timeline
-        # paths) so aggregate_results can group timeline chunks by span.
-        results: list[tuple[str | None, Result]] = [
-            (
-                seg.span.id if isinstance(seg, TimelineMessages) else None,
-                result,
-            )
-            for seg, result in zip(segments, segment_results, strict=True)
-        ]
+            ):
+                span_id = seg.span.id if isinstance(seg, TimelineMessages) else None
+                yield span_id, seg.messages_str
+
+        results = await _scan_segments_bounded(source(), scan_segment, resolved_model)
 
         return await aggregate_results(
             results=results,

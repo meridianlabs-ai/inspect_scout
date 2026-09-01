@@ -1,8 +1,8 @@
 """Tests for message extraction with compaction boundary handling."""
 
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Sequence
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Protocol
 
 import pytest
 from inspect_ai.event import CompactionEvent, Event, ModelEvent, ToolEvent
@@ -11,6 +11,7 @@ from inspect_ai.model import (
     ChatMessageAssistant,
     ChatMessageSystem,
     ChatMessageUser,
+    Model,
     ModelOutput,
     get_model,
 )
@@ -23,6 +24,7 @@ from inspect_scout._transcript.messages import (
     segment_messages,
     span_messages,
     span_tools,
+    stream_segment_messages,
     transcript_messages,
 )
 from inspect_scout._transcript.timeline import (
@@ -519,7 +521,80 @@ def test_span_tools_empty() -> None:
     assert span_tools([_make_model_event(input=[_user1])]) == []
 
 
-# -- segment_messages tests --
+# -- segment_messages / stream_segment_messages tests --
+#
+# The two segmenters share a behavioral contract, so most tests are
+# parametrized over a `segmenter` axis: "batch" runs `segment_messages` on a
+# list, "stream" runs `stream_segment_messages` on an async iterator.
+
+
+async def _make_source(
+    msgs: list[ChatMessage],
+) -> AsyncIterator[ChatMessage]:
+    """Turn a plain list into an async iterator (no progress tracking)."""
+    for msg in msgs:
+        yield msg
+
+
+class _Segmenter(Protocol):
+    """Runs one of the two message segmenters over a message list."""
+
+    async def __call__(
+        self,
+        msgs: list[ChatMessage],
+        *,
+        model: Model | None = None,
+        context_window: int | None = None,
+    ) -> list[MessagesSegment]: ...
+
+
+async def _segment_batch(
+    msgs: list[ChatMessage],
+    *,
+    model: Model | None = None,
+    context_window: int | None = None,
+) -> list[MessagesSegment]:
+    """Collect all MessagesSegment from segment_messages (list input)."""
+    model = model or get_model("mockllm/model")
+    msgs_as_str, _ = message_numbering()
+    return [
+        seg
+        async for seg in segment_messages(
+            msgs,
+            messages_as_str=msgs_as_str,
+            model=model,
+            context_window=context_window,
+        )
+    ]
+
+
+async def _segment_stream(
+    msgs: list[ChatMessage],
+    *,
+    model: Model | None = None,
+    context_window: int | None = None,
+) -> list[MessagesSegment]:
+    """Collect all MessagesSegment from stream_segment_messages (async input)."""
+    model = model or get_model("mockllm/model")
+    msgs_as_str, _ = message_numbering()
+    return [
+        seg
+        async for seg in stream_segment_messages(
+            _make_source(msgs),
+            messages_as_str=msgs_as_str,
+            model=model,
+            context_window=context_window,
+        )
+    ]
+
+
+segmenter_axis = pytest.mark.parametrize(
+    "segmenter",
+    [
+        pytest.param(_segment_batch, id="batch"),
+        pytest.param(_segment_stream, id="stream"),
+    ],
+)
 
 
 async def _collect(
@@ -542,10 +617,11 @@ async def _collect(
 
 
 @pytest.mark.anyio
-async def test_segment_messages_single_segment() -> None:
+@segmenter_axis
+async def test_segment_messages_single_segment(segmenter: _Segmenter) -> None:
     """Small message list fits in budget → single MessagesSegment."""
     msgs: list[ChatMessage] = [_user1, _asst1, _user2]
-    results = await _collect(msgs, context_window=10_000)
+    results = await segmenter(msgs, context_window=10_000)
 
     assert len(results) == 1
     assert results[0].segment == 0
@@ -587,8 +663,9 @@ async def test_segment_messages_with_events() -> None:
 
 
 @pytest.mark.anyio
-async def test_segment_messages_chunking() -> None:
-    """Large messages exceeding budget → multiple chunks."""
+@segmenter_axis
+async def test_segment_messages_chunking(segmenter: _Segmenter) -> None:
+    """Large messages exceeding budget → multiple chunks, numbered continuously."""
     long_text = "word " * 100  # ~100 tokens
     msgs: list[ChatMessage] = [
         ChatMessageUser(content=long_text, id="long-1"),
@@ -597,7 +674,7 @@ async def test_segment_messages_chunking() -> None:
     ]
     # Set budget so each message is its own segment (budget < single message tokens)
     # 80% of 50 = 40 tokens, each message is ~100+ tokens
-    results = await _collect(msgs, context_window=50)
+    results = await segmenter(msgs, context_window=50)
 
     assert len(results) == 3
     assert results[0].segment == 0
@@ -606,21 +683,10 @@ async def test_segment_messages_chunking() -> None:
     assert len(results[0].messages) == 1
     assert len(results[1].messages) == 1
     assert len(results[2].messages) == 1
-
-
-@pytest.mark.anyio
-async def test_segment_messages_continuous_numbering() -> None:
-    """Message numbering is continuous across chunks."""
-    long_text = "word " * 100
-    msgs: list[ChatMessage] = [
-        ChatMessageUser(content=long_text, id="long-1"),
-        ChatMessageUser(content=long_text, id="long-2"),
-    ]
-    results = await _collect(msgs, context_window=50)
-
-    assert len(results) == 2
+    # Message numbering is continuous across chunks.
     assert "[M1]" in results[0].messages_str
     assert "[M2]" in results[1].messages_str
+    assert "[M3]" in results[2].messages_str
 
 
 @pytest.mark.anyio
@@ -649,8 +715,9 @@ async def test_segment_messages_events_with_chunking() -> None:
 
 
 @pytest.mark.anyio
+@segmenter_axis
 async def test_segment_messages_counts_in_chunks(
-    monkeypatch: pytest.MonkeyPatch,
+    segmenter: _Segmenter, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Token counting batches messages into chunks, not one call per message."""
     model = get_model("mockllm/model")
@@ -670,15 +737,7 @@ async def test_segment_messages_counts_in_chunks(
     msgs: list[ChatMessage] = [
         ChatMessageUser(content=f"Message number {i}", id=f"m-{i}") for i in range(50)
     ]
-    msgs_as_str, _ = message_numbering()
-    results: list[MessagesSegment] = []
-    async for seg in segment_messages(
-        msgs,
-        messages_as_str=msgs_as_str,
-        model=model,
-        context_window=100_000,
-    ):
-        results.append(seg)
+    results = await segmenter(msgs, model=model, context_window=100_000)
 
     # All 50 messages fit in a single chunk → a single count_tokens call
     assert len(count_calls) == 1
@@ -687,22 +746,87 @@ async def test_segment_messages_counts_in_chunks(
 
 
 @pytest.mark.anyio
-async def test_segment_messages_empty_input() -> None:
-    """Empty list yields nothing."""
-    results = await _collect([], context_window=10_000)
+@segmenter_axis
+async def test_segment_messages_empty_input(segmenter: _Segmenter) -> None:
+    """Empty input yields nothing."""
+    results = await segmenter([], context_window=10_000)
     assert results == []
 
 
 @pytest.mark.anyio
-async def test_segment_messages_skips_empty_renders() -> None:
+@segmenter_axis
+async def test_segment_messages_skips_empty_renders(segmenter: _Segmenter) -> None:
     """System messages excluded by default preprocessor are skipped."""
     msgs: list[ChatMessage] = [_sys, _user1]
-    results = await _collect(msgs, context_window=10_000)
+    results = await segmenter(msgs, context_window=10_000)
 
     assert len(results) == 1
     assert len(results[0].messages) == 1
     assert results[0].messages[0] is _user1
     assert "[M1]" in results[0].messages_str
+
+
+# -- stream_segment_messages-only tests --
+
+
+@pytest.mark.anyio
+async def test_stream_segment_messages_releases_early() -> None:
+    """First segment is yielded before the source iterator is exhausted."""
+    long_text = "word " * 100  # ~100 tokens, forces one message per segment
+    total_messages = 6
+    consumed = 0
+
+    async def source() -> AsyncIterator[ChatMessage]:
+        nonlocal consumed
+        for i in range(total_messages):
+            yield ChatMessageUser(content=long_text, id=f"long-{i}")
+            consumed += 1
+
+    model = get_model("mockllm/model")
+    msgs_as_str, _ = message_numbering()
+
+    segments_seen = 0
+    async for _seg in stream_segment_messages(
+        source(),
+        messages_as_str=msgs_as_str,
+        model=model,
+        context_window=50,
+    ):
+        segments_seen += 1
+        if segments_seen == 1:
+            # The first segment must have been produced without the
+            # source having been fully drained yet.
+            assert consumed < total_messages
+            break
+
+    assert segments_seen == 1
+
+
+@pytest.mark.anyio
+async def test_stream_segment_messages_equivalence() -> None:
+    """Streamed segmentation matches batch segmentation on the same input."""
+    msgs: list[ChatMessage] = [
+        ChatMessageUser(content=f"Message number {i} " * 10, id=f"m-{i}")
+        for i in range(20)
+    ]
+
+    batch_results = await _segment_batch(msgs, context_window=500)
+    stream_results = await _segment_stream(msgs, context_window=500)
+
+    # Budget should be small enough to force multiple segments.
+    assert len(batch_results) >= 3
+
+    # Streamed output equals batch output: same segment indices, same
+    # rendered text, same messages.
+    assert [seg.segment for seg in stream_results] == [
+        seg.segment for seg in batch_results
+    ]
+    assert [seg.messages_str for seg in stream_results] == [
+        seg.messages_str for seg in batch_results
+    ]
+    assert [seg.messages for seg in stream_results] == [
+        seg.messages for seg in batch_results
+    ]
 
 
 # -- timeline_messages tests --

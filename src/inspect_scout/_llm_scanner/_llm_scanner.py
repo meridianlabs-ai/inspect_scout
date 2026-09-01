@@ -48,11 +48,10 @@ async def _scan_segments_bounded(
     scan_segment: Callable[[str], Awaitable[Result]],
     model: Model,
 ) -> list[tuple[str | None, Result]]:
-    """Scan lazily-yielded segments with bounded concurrency, in order.
+    """Scan lazily-yielded segments with bounded concurrency, in segment order.
 
-    Each ``(span_id, messages_str)`` from ``source`` is scanned; results return
-    in segment order (reduction is order-sensitive). A failing segment raises
-    its original exception, unwrapped from the task-group ``ExceptionGroup``.
+    A failing segment raises its original exception, unwrapped from the
+    task-group ``ExceptionGroup``.
     """
     # Never bound below what the model layer will run anyway -- those tasks would
     # just queue on inspect_ai's own semaphore. The cap is the memory policy, and
@@ -86,6 +85,7 @@ async def _scan_segments_bounded(
     except ExceptionGroup as ex:
         raise ex.exceptions[0] from None
 
+    # Reduction is order-sensitive, so undo the completion-order interleaving.
     return [(span_id, r) for _, span_id, r in sorted(indexed, key=lambda t: t[0])]
 
 

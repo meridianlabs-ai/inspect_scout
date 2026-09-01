@@ -246,7 +246,7 @@ async def stream_segment_messages(
     ``count_tokens`` per chunk) since chunks aren't known ahead of time.
 
     Args:
-        source: An async iterator of ChatMessage.
+        source: Messages to segment, consumed one at a time.
         messages_as_str: Rendering function from ``message_numbering()``, called
             sequentially to preserve counter ordering.
         model: Model used for token counting.
@@ -259,10 +259,8 @@ async def stream_segment_messages(
         MessagesSegment instances within the token budget (a single oversized
         chunk is still yielded alone). Segment counter increments across yields.
     """
-    # Resolve model
     model = get_model(model)
 
-    # Compute effective budget
     effective_budget = max(
         1,
         _effective_segment_budget(

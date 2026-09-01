@@ -1,3 +1,4 @@
+import contextlib
 import time
 from collections import deque
 from typing import AsyncIterator, Awaitable, Callable, Literal
@@ -383,7 +384,10 @@ def single_process_strategy(
             # TranscriptHandle (see ScannerJob.on_complete); undispatched, its
             # on_complete never fires and the handle never closes. Shielded:
             # the ambient scope may already be cancelled here, and an
-            # unshielded await would raise before closing anything.
+            # unshielded await would raise before closing anything. Runs after
+            # reader_cm_factory's context manager has exited -- safe today
+            # because on_complete only touches the handle, not the reader, but
+            # an unstated coupling worth knowing about.
             with anyio.CancelScope(shield=True):
                 pending = list(scanner_job_deque)
                 scanner_job_deque.clear()
@@ -391,6 +395,12 @@ def single_process_strategy(
                     job = pending.pop()
                     pending.extend(job.followers)
                     if job.on_complete is not None:
-                        await job.on_complete()
+                        # One job's on_complete raising must not stop the
+                        # rest from draining -- each still holds a real share
+                        # of the refcount, and swallowing this exception (not
+                        # letting it replace whatever's already propagating)
+                        # is strictly better than leaking the handle.
+                        with contextlib.suppress(Exception):
+                            await job.on_complete()
 
     return the_func

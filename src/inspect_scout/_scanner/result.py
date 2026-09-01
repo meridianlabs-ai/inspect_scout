@@ -122,8 +122,9 @@ class SerializedTranscript(BaseModel):
     `_serialize_input` passes these values through unchanged.
 
     Carried as a UTF-8 buffer, not `str`: the values go straight into a
-    parquet column, which pyarrow encodes as UTF-8 regardless, and a `str` of
-    non-ASCII text costs two bytes per character in memory.
+    parquet column, which pyarrow encodes as UTF-8 regardless, so decoding
+    would only allocate a second full copy of the transcript (1, 2, or 4
+    bytes per character, per PEP 393's sizing of `str`).
     """
 
     # `bytearray`, and not a `bytes | bytearray` union: pydantic copies the

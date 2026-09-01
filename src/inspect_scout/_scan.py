@@ -1245,8 +1245,9 @@ async def _scan_one(
             validation_result: ResultValidation | None = None
             type_and_ids: tuple[ScannerInputNames, list[str]] | None = None
 
-            # Match the concrete handle classes rather than the
-            # runtime_checkable protocol.
+            # Match the concrete handle classes: TranscriptHandle is a plain
+            # Protocol, and making it runtime-checkable would only test
+            # method presence.
             handle_input = (
                 loader_result
                 if isinstance(
@@ -1378,11 +1379,6 @@ def _filters_equal(
     return a == b
 
 
-def _message_filters_equal(a: MessageFilter, b: MessageFilter) -> bool:
-    """Compare two message filters, ignoring list order (see ``_filters_equal``)."""
-    return _filters_equal(a, b)
-
-
 def _streaming_eligible(
     scanners: list[Scanner[Any]], union_content: TranscriptContent
 ) -> bool:
@@ -1402,7 +1398,7 @@ def _streaming_eligible(
         content = _content_for_scanner(scanner)
         if content.timeline is not None:
             return False
-        if not _message_filters_equal(content.messages, union_content.messages):
+        if not _filters_equal(content.messages, union_content.messages):
             return False
         if not _filters_equal(content.events, union_content.events):
             return False

@@ -14,3 +14,16 @@ def to_json_str_compact(x: Any) -> str:
     In extreme cases, this reduces serialized JSON from 700 MiB -> 200 MiB.
     """
     return to_json_safe(x, indent=None).decode("utf-8")
+
+
+def to_json_bytes_compact(x: Any) -> bytes:
+    """``to_json_str_compact`` without decoding to ``str``.
+
+    Prefer this for values headed straight into a parquet column: pyarrow
+    accepts UTF-8 bytes for string columns and would re-encode a ``str``
+    anyway. Skipping the round trip also avoids allocating that ``str`` at
+    all -- a second full copy of a multi-hundred-megabyte transcript, sized
+    by Python's PEP 393 representation (1, 2, or 4 bytes per character,
+    picked from the widest code point in the whole string).
+    """
+    return to_json_safe(x, indent=None)

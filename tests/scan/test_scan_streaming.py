@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import tempfile
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 import pytest
@@ -20,7 +21,12 @@ from inspect_scout import Scanner, llm_scanner, scan, scanner
 from inspect_scout._scanresults import scan_results_df
 from inspect_scout._transcript import handle as handle_mod
 from inspect_scout._transcript.factory import transcripts_from
-from inspect_scout._transcript.types import Transcript, TranscriptContent
+from inspect_scout._transcript.json.stream_parse import StreamParseResult
+from inspect_scout._transcript.types import (
+    Transcript,
+    TranscriptContent,
+    TranscriptInfo,
+)
 
 LOGS_DIR = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
 
@@ -42,10 +48,11 @@ def _spy_spooled_handles(
 
     def spy_init(
         self: handle_mod.SpooledTranscriptHandle,
-        *args: object,
-        **kwargs: object,
+        info: TranscriptInfo,
+        parse: Callable[[], Awaitable[StreamParseResult]],
+        load_fallback: Callable[[], Awaitable[Transcript]],
     ) -> None:
-        real_init(self, *args, **kwargs)  # type: ignore[arg-type]  # forwarding a spy's *args/**kwargs loses the real signature
+        real_init(self, info, parse, load_fallback)
         created.append(self)
         close_counts[id(self)] = 0
 
@@ -305,5 +312,4 @@ def test_recorded_input_resolves_attachments_like_materialized(
     assert "attachment://" not in streamed_input
     streamed = json.loads(streamed_input)
     control = json.loads(control_input)
-    assert streamed["messages"] == control["messages"]
-    assert streamed["events"] == control["events"]
+    assert streamed == control

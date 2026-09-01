@@ -317,7 +317,8 @@ def _merged_metadata(info: TranscriptInfo, result: StreamParseResult) -> dict[st
     caller replaces by copying the value out of the spool: parsing it back
     into objects is exactly what the spool exists to avoid. Key order still
     matches the merge `handle.load()` performs, so the emitted object is
-    identical either way.
+    semantically identical either way (not byte-identical: stdlib `json`
+    emits e.g. `1e-07` where pydantic emits `1e-7`).
     """
     overrides: dict[str, Any] = {}
     if result.has_metadata:

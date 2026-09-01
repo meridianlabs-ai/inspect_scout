@@ -14,6 +14,7 @@ from inspect_ai.log import EvalError
 from inspect_ai.model import (
     ChatMessage,
     ChatMessageAssistant,
+    ChatMessageSystem,
     ChatMessageUser,
     ModelOutput,
 )
@@ -70,6 +71,19 @@ class TestSinglePattern:
         assert result.explanation is not None
         assert "**error**" in result.explanation
         assert len(result.references) == 1
+
+    @pytest.mark.asyncio
+    async def test_system_prompts_are_not_searched(self) -> None:
+        """A hit only in the system prompt is not reported (as before the shared projection)."""
+        transcript = make_transcript([("user", "Hello world")])
+        transcript.messages = [
+            ChatMessageSystem(content="You are a careful error handler", id="sys"),
+            *transcript.messages,
+        ]
+        result = await grep_scanner("error")(transcript)
+
+        assert isinstance(result, Result)
+        assert result.value == 0
 
     @pytest.mark.asyncio
     async def test_multiple_matches_same_message(self) -> None:
@@ -404,7 +418,7 @@ class TestEdgeCases:
 
     @pytest.mark.asyncio
     async def test_empty_pattern(self) -> None:
-        """Empty pattern matches everywhere (regex behavior)."""
+        """Empty pattern matches nothing (same as inspect_ai Find)."""
         transcript = make_transcript(
             [
                 ("assistant", "hello"),
@@ -414,8 +428,7 @@ class TestEdgeCases:
         result = await scanner(transcript)
 
         assert isinstance(result, Result)
-        # Empty pattern matches at every position
-        assert isinstance(result.value, int) and result.value > 0
+        assert result.value == 0
 
     @pytest.mark.asyncio
     async def test_unicode_patterns(self) -> None:
@@ -514,6 +527,18 @@ class TestEventMatching:
         assert len(result.references) == 1
         assert result.references[0].type == "event"
         assert result.references[0].cite == "[E1]"
+
+    @pytest.mark.asyncio
+    async def test_tool_event_chrome_is_not_searchable(self) -> None:
+        """Viewer labels like TOOL (fn): are not in the searchable projection."""
+        transcript = make_transcript_with_events(
+            [make_tool_event("search_files", "Found error in file.py", "e1")]
+        )
+        scanner = grep_scanner("TOOL")
+        result = await scanner(transcript)
+
+        assert isinstance(result, Result)
+        assert result.value == 0
 
     @pytest.mark.asyncio
     async def test_error_event_match(self) -> None:

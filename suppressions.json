@@ -450,11 +450,6 @@
       "undescribed": 2
     }
   },
-  "tests/scanner/test_result_serialized_input.py": {
-    "type: ignore[call-arg]": {
-      "count": 1
-    }
-  },
   "tests/scanner/test_scanner_decorator.py": {
     "type: ignore[arg-type]": {
       "count": 1,

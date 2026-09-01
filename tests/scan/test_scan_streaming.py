@@ -36,9 +36,7 @@ def _spy_spooled_handles(
 ) -> tuple[list[handle_mod.SpooledTranscriptHandle], dict[int, int]]:
     """Spy on SpooledTranscriptHandle create/close.
 
-    Wraps ``__init__`` and ``aclose`` with per-instance counters (without
-    re-implementing the on_complete counter). Returns (created, close_counts)
-    where close_counts is keyed by ``id(handle)``.
+    Returns (created, close_counts), the latter keyed by ``id(handle)``.
     """
     created: list[handle_mod.SpooledTranscriptHandle] = []
     close_counts: dict[int, int] = {}
@@ -96,12 +94,8 @@ def test_scan_e2e_through_streaming_seam(
 ) -> None:
     """A real scan over eval logs must stream and produce correct results.
 
-    Handle-capable scanners share one spooled handle per transcript. We
-    verify (1) each scanner records a result per transcript, and (2) the
-    streaming path ran: one ``SpooledTranscriptHandle`` per transcript was
-    created and each was closed exactly once (exercising the real
-    lead+follower ``on_complete`` counter; the single-scanner case covers
-    the lead-only fallback where remaining starts at 1).
+    Handle-capable scanners share one spooled handle per transcript; the
+    single-scanner case covers the lead-only counter (remaining starts at 1).
     """
     limit = 2
     factories = {

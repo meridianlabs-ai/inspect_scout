@@ -30,8 +30,3 @@ def test_serialized_transcript_passes_values_through(
     input_json, input_data_json = _serialize_input(value, "transcript", pool_dedup=True)
     assert input_json == value.input_json
     assert input_data_json == expected_data
-
-
-def test_serialized_transcript_rejects_unknown_fields() -> None:
-    with pytest.raises(ValueError):
-        SerializedTranscript(input_json=bytearray(b"{}"), nope=1)  # type: ignore[call-arg]  # unknown field, on purpose

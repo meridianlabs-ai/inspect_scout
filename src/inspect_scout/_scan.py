@@ -1166,10 +1166,7 @@ async def _scan_one(
     loader = scanner_config.loader
 
     def _stream_error_report(ex: Exception) -> ResultReport:
-        """Build an Error report for an exception raised during iteration.
-
-        E.g. a corrupt sample surfacing lazily.
-        """
+        """Error report for an exception raised lazily during iteration."""
         union = job.union_transcript
         report_input: ReportInput
         if isinstance(union, Transcript):
@@ -1197,17 +1194,15 @@ async def _scan_one(
         )
 
     try:
-        # Choose what to iterate: the handle itself (streaming) or loader
-        # results. This happens before any LLM call, so the fallback below is
-        # a pre-LLM materialization.
         loader_iterations: AsyncIterator[ScannerInput | TranscriptHandle]
         if isinstance(job.union_transcript, Transcript):
             loader_iterations = loader(job.union_transcript)
         elif scanner_supports_streaming(job.scanner):
             loader_iterations = _single_item_iter(job.union_transcript)
         else:
-            # Handle paired with a non-streaming scanner: materialize first,
-            # then run the loader (kept for safety).
+            # Handle paired with a non-streaming scanner: materialize, then
+            # run the loader. Nothing has reached the model yet, so this
+            # costs no wasted LLM call.
             try:
                 transcript = await job.union_transcript.load()
             except PrerequisiteError:

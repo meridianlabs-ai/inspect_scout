@@ -120,13 +120,13 @@ class SerializedTranscript(BaseModel):
     (pool-condensed, attachment-ref) form straight from the transcript spool
     rather than building a `Transcript` and re-condensing it.
     `_serialize_input` passes these values through unchanged.
-
-    Carried as a UTF-8 buffer, not `str`: the values go straight into a
-    parquet column, which pyarrow encodes as UTF-8 regardless, so decoding
-    would only allocate a second full copy of the transcript (1, 2, or 4
-    bytes per character, per PEP 393's sizing of `str`).
     """
 
+    # UTF-8 buffers rather than `str`: the values go straight into a parquet
+    # column, which pyarrow encodes as UTF-8 regardless, so decoding would only
+    # allocate a second full copy of the transcript (1, 2, or 4 bytes per
+    # character, per PEP 393's sizing of `str`).
+    #
     # `bytearray`, and not a `bytes | bytearray` union: pydantic copies the
     # buffer to satisfy a `bytes` member, which for a union it does while
     # deciding which one matches. arbitrary_types_allowed because pydantic has

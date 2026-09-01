@@ -76,9 +76,8 @@ class ScannerJob(NamedTuple):
     union_transcript: Transcript | TranscriptHandle
     """Transcript pre-filtered with the union of ALL scanners' content filters.
 
-    A materialized `Transcript`, or a shared `TranscriptHandle` (streaming path)
-    when all scanners in the parse job accept handles; the lead and followers
-    share the same handle.
+    On the streaming path this is one `TranscriptHandle` shared by the lead
+    and all of its followers.
 
     This contains a superset of the data needed by all scanners and typically needs
     to be filtered again per-scanner (based on that scanner's specific content filter)

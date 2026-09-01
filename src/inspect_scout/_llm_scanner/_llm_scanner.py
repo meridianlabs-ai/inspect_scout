@@ -2,6 +2,7 @@ import sys
 from typing import Any, AsyncIterator, Awaitable, Callable, Literal, cast, overload
 
 import anyio
+from inspect_ai._util.constants import DEFAULT_MAX_CONNECTIONS_BATCH
 from inspect_ai._util.content import ContentText
 from inspect_ai.model import (
     CachePolicy,
@@ -58,7 +59,12 @@ async def _scan_segments_bounded(
     # it also clamps batch mode's much larger connection limit.
     window = anyio.Semaphore(
         min(
-            model.config.max_connections or model.api.max_connections(),
+            model.config.max_connections
+            or (
+                DEFAULT_MAX_CONNECTIONS_BATCH
+                if model.config.batch
+                else model.api.max_connections()
+            ),
             _SEGMENT_WINDOW_CAP,
         )
     )

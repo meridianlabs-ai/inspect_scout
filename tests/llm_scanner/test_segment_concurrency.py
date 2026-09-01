@@ -134,6 +134,47 @@ async def test_bounded_segment_concurrency(
     assert peak <= limit, f"peak in-flight {peak} exceeded window limit={limit}"
 
 
+@pytest.mark.anyio
+async def test_bounded_segment_concurrency_batch_mode() -> None:
+    """Batch mode (no explicit max_connections) uses _SEGMENT_WINDOW_CAP, not the provider's non-batch default.
+
+    inspect_ai resolves batch mode's effective max_connections to
+    DEFAULT_MAX_CONNECTIONS_BATCH (10_000), far above the cap -- so the window
+    should reach _SEGMENT_WINDOW_CAP (16). `model.api.max_connections()` (10 for
+    mockllm) is the *non-batch* provider default and must not leak into the
+    window when `config.batch` is set.
+
+    Calls `_scan_segments_bounded` directly (skipping the full scanner and any
+    real `generate` call) so this isn't muddied by inspect_ai's own model-level
+    connection semaphore/cache, the same concern that ruled out measuring the
+    other two legs inside a mock `generate`.
+    """
+    model = get_model("mockllm/model", config=GenerateConfig(batch=True), memoize=False)
+    assert model.api.max_connections() == 10  # sanity: would wrongly cap the window
+
+    in_flight = 0
+    peak = 0
+
+    async def scan_segment(messages_str: str) -> Result:
+        nonlocal in_flight, peak
+        in_flight += 1
+        peak = max(peak, in_flight)
+        try:
+            await anyio.sleep(0.01)
+        finally:
+            in_flight -= 1
+        return Result(value=True)
+
+    async def source() -> AsyncIterator[tuple[str | None, str]]:
+        for i in range(20):
+            yield None, f"segment {i}"
+
+    await llm_scanner_mod._scan_segments_bounded(source(), scan_segment, model)
+
+    assert peak > 10, f"window degraded to the non-batch provider default (peak={peak})"
+    assert peak <= 16
+
+
 # ---------------------------------------------------------------------------
 # segment order preserved through reduction
 # ---------------------------------------------------------------------------

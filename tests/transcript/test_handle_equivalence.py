@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from inspect_ai.event import ModelEvent
+from inspect_ai.event import ModelEvent, ToolEvent
 from inspect_ai.log import read_eval_log, write_eval_log
 from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
 from inspect_scout._transcript.handle import (
@@ -205,6 +205,87 @@ async def test_attachment_refs_only_inside_pool_entries_resolve(
 
     assert pooled_input(materialized) == pooled_input(streamed)
     assert pooled_input(materialized)[0]["content"] == "POOLED SYSTEM PROMPT"
+
+
+@pytest.mark.asyncio
+async def test_streamed_hydrates_nested_tool_events_materialized_does_not(
+    tmp_path: Path,
+) -> None:
+    """Pins a known streamed/materialized divergence on nested `ToolEvent.events`.
+
+    `ToolEvent.events` is typed `list[Any]` (a legacy field for tool-spawned
+    agents; see `inspect_ai.event._tool.ToolEvent`), so `Transcript.model_validate`
+    on the materialized path (`load_filtered.py`) never coerces its entries --
+    they stay raw dicts. The streamed replay path recursively validates them
+    via `_hydrate_nested_tool_events` (`stream_parse.py`), because a real
+    downstream consumer needs it: `timeline_stream.py`'s span classifier
+    recurses into `ToolEvent.events` expecting real `Event` instances, not
+    dicts. This asserts the actual (differing) behaviour of each path rather
+    than equality, so a future change that silently widens or closes the gap
+    is caught either way. See the PR description for why this is accepted
+    rather than fixed here: hydrating is the behaviour a real consumer needs,
+    so the materialized path -- not the streamed one -- is the one that's
+    arguably incomplete.
+    """
+    nested_model_event = {
+        "event": "model",
+        "span_id": "s2",
+        "timestamp": "2022-01-01T00:00:01+00:00",
+        "working_start": 1,
+        "model": "m",
+        "input": [],
+        "output": {"model": "m", "choices": []},
+        "tools": [],
+        "tool_choice": "auto",
+        "config": {},
+    }
+    sample = {
+        "id": "s1",
+        "messages": [{"id": "m1", "role": "user", "content": "hello"}],
+        "events": [
+            {
+                "event": "tool",
+                "span_id": "s1",
+                "timestamp": "2022-01-01T00:00:00+00:00",
+                "working_start": 0,
+                "id": "call1",
+                "function": "run_agent",
+                "arguments": {},
+                "agent": "sub_agent",
+                "events": [nested_model_event],
+            }
+        ],
+    }
+    data = json.dumps(sample).encode()
+    info = TranscriptInfo(transcript_id="t1")
+
+    materialized = await load_filtered_transcript(io.BytesIO(data), info, None, "all")
+    parsed = await stream_parse_to_spool(io.BytesIO(data), None, "all", tmp_path)
+
+    async def parse() -> StreamParseResult:
+        return parsed
+
+    async def fallback() -> Transcript:
+        raise AssertionError("fallback should not be called")
+
+    handle = SpooledTranscriptHandle(info, parse, fallback)
+    try:
+        streamed = await handle.load()
+    finally:
+        await handle.aclose()
+
+    materialized_tool_event = materialized.events[0]
+    streamed_tool_event = streamed.events[0]
+    assert isinstance(materialized_tool_event, ToolEvent)
+    assert isinstance(streamed_tool_event, ToolEvent)
+
+    # Materialized: nested events stay raw dicts (list[Any] isn't coerced).
+    assert materialized_tool_event.events == [nested_model_event]
+    assert not isinstance(materialized_tool_event.events[0], ModelEvent)
+
+    # Streamed: `_hydrate_nested_tool_events` validates them into real Events.
+    assert isinstance(streamed_tool_event.events[0], ModelEvent)
+    assert streamed_tool_event.events[0].model == "m"
 
 
 @pytest.fixture(scope="module")

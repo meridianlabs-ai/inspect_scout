@@ -531,7 +531,7 @@ def test_span_tools_empty() -> None:
 async def _make_source(
     msgs: list[ChatMessage],
 ) -> AsyncIterator[ChatMessage]:
-    """Turn a plain list into an async iterator (no progress tracking)."""
+    """Turn a plain list into an async iterator."""
     for msg in msgs:
         yield msg
 

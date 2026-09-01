@@ -23,7 +23,6 @@ from inspect_ai.tool import ToolChoice, ToolInfo
 from inspect_scout import llm_scanner
 from inspect_scout._llm_scanner import _llm_scanner as llm_scanner_mod
 from inspect_scout._scanner.result import Result
-from inspect_scout._scanner.scanner import Scanner
 from inspect_scout._transcript.types import Transcript
 
 
@@ -40,15 +39,7 @@ def _make_transcript(n_messages: int, *, words: int = 3) -> Transcript:
     return Transcript(transcript_id="t", messages=msgs)
 
 
-async def _scan(scan_fn: Scanner[Transcript], transcript: Transcript) -> Result:
-    out = await scan_fn(transcript)
-    assert isinstance(out, Result)
-    return out
-
-
-# ---------------------------------------------------------------------------
-# bounded concurrency: window = min(model max_connections, _SEGMENT_WINDOW_CAP)
-# ---------------------------------------------------------------------------
+# -- bounded concurrency tests --
 
 
 @pytest.mark.anyio
@@ -128,7 +119,7 @@ async def test_bounded_segment_concurrency(
         context_window=400,
     )
 
-    await _scan(scan_fn, transcript)
+    await scan_fn(transcript)
 
     assert peak > 1, "test should exercise concurrency (multiple segments in flight)"
     assert peak <= limit, f"peak in-flight {peak} exceeded window limit={limit}"
@@ -175,23 +166,7 @@ async def test_bounded_segment_concurrency_batch_mode() -> None:
     assert peak <= 16
 
 
-# ---------------------------------------------------------------------------
-# segment order preserved through reduction
-# ---------------------------------------------------------------------------
-
-
-def _make_recording_reducer() -> tuple[
-    Callable[[list[Result]], Awaitable[Result]], list[str]
-]:
-    """Build a reducer that records the answers it receives, in order."""
-    recorded: list[str] = []
-
-    async def reducer(results: list[Result]) -> Result:
-        recorded.clear()
-        recorded.extend(str(r.answer) for r in results)
-        return results[0]
-
-    return reducer, recorded
+# -- segment order tests --
 
 
 @pytest.mark.anyio
@@ -231,7 +206,13 @@ async def test_segment_order_preserved_in_reduction() -> None:
 
     mock_model: Model = get_model("mockllm/model", custom_outputs=custom, memoize=False)
 
-    reducer, recorded_order = _make_recording_reducer()
+    recorded_order: list[str] = []
+
+    async def reducer(results: list[Result]) -> Result:
+        recorded_order.clear()
+        recorded_order.extend(str(r.answer) for r in results)
+        return results[0]
+
     scan_fn = llm_scanner(
         question="What is here?",
         answer="string",
@@ -241,9 +222,8 @@ async def test_segment_order_preserved_in_reduction() -> None:
         reducer=reducer,
     )
 
-    await _scan(scan_fn, transcript)
+    await scan_fn(transcript)
 
     assert recorded_order, "reducer should have received multiple segments"
-    # Extract the leading index from each recorded answer ("seg0", "seg3", ...)
     indices = [int(ans.removeprefix("seg")) for ans in recorded_order]
     assert indices == sorted(indices), f"segment order not preserved: {indices}"

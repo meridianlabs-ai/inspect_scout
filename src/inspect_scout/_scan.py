@@ -1054,6 +1054,7 @@ async def _scan_one(
         try:
             type_and_ids = get_input_type_and_ids(loader_result)
             if type_and_ids is None:
+                init_model_usage(initial_usage={})
                 continue
 
             # do scan
@@ -1104,6 +1105,7 @@ async def _scan_one(
                     model_usage=model_usage(),
                 )
             )
+        init_model_usage(initial_usage={})
 
     return results
 

@@ -307,9 +307,9 @@ def llm_scanner(
     )
 
     async def scan(transcript: Transcript | TranscriptHandle) -> Result:
-        # A TranscriptHandle streams messages without materializing. Match the
-        # concrete handle classes, not the @runtime_checkable protocol (which
-        # only checks method presence).
+        # A TranscriptHandle streams messages without materializing. Match
+        # the concrete handle classes: TranscriptHandle is a plain Protocol,
+        # and making it runtime-checkable would only test method presence.
         handle: TranscriptHandle | None = (
             transcript
             if isinstance(
@@ -470,11 +470,12 @@ def llm_scanner(
                     ex,
                 )
                 return await scan_materialized(await handle.load())
-            # Handle carries events, not named timelines, so timelines is empty
-            # — matching the materialized events-only path's reduction flag.
+            # A handle carries events, not named timelines (info_transcript is
+            # built with timelines=[]), so this matches the sibling streaming
+            # path below rather than testing a value that is always empty.
             return await aggregate_results(
                 results=results,
-                timeline=bool(info_transcript.timelines),
+                timeline=False,
                 answer=answer,
                 reducer=reducer,
             )

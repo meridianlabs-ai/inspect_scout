@@ -333,89 +333,57 @@ async def test_attachment_resolution_embedded_ref() -> None:
     assert result.messages[0].content == "prefix VALUE suffix"
 
 
+@pytest.mark.parametrize(
+    "attachments_first",
+    [False, True],
+    ids=["events-before-attachments", "attachments-before-events"],
+)
 @pytest.mark.asyncio
-async def test_attachment_resolution_in_events_data_pool() -> None:
-    """A ref inside an events_data pool entry resolves.
+async def test_pool_ref_resolves_regardless_of_section_order(
+    attachments_first: bool,
+) -> None:
+    """A pool-entry ref resolves whichever order the JSON sections come in.
 
-    The pool is parsed after the `attachments` section, so its refs cannot be
-    known while attachments stream past. Retention must therefore not be gated
-    on the refs seen so far.
+    The pool under `events_data` is parsed after `attachments`, so its refs
+    cannot be known while attachments stream past -- retention must not be
+    gated on the refs seen so far. Both rows are load-bearing: they reach the
+    retain-everything decision through *different* disjuncts of `retain_all`.
+    `events-before-attachments` (the order real eval logs use, per
+    `EvalSample`'s field order) has `state.events` populated by the time the
+    first attachment string arrives, so it hits `any(_event_has_pool_refs(e))`.
+    `attachments-before-events` -- legal, since JSON key order is not
+    guaranteed -- leaves `state.events` empty at that point, so it hits
+    `not state.events`: retention must not conclude "no pool refs" just
+    because none have arrived *yet*.
     """
     attachment_id = "b1c2d3e4f5a678901234567890123456"
-    result = await load_filtered_transcript(
-        create_json_stream(
-            {
-                "id": "test",
-                "messages": [],
-                "events": [
-                    {
-                        "span_id": "s1",
-                        "timestamp": "2022-01-01T00:00:00+00:00",
-                        "event": "model",
-                        "model": "test-model",
-                        "input": [],
-                        "input_refs": [[0, 1]],
-                        "output": {"model": "test-model", "choices": []},
-                        "tools": [],
-                        "tool_choice": "auto",
-                        "config": {},
-                    }
-                ],
-                "attachments": {attachment_id: "VALUE"},
-                "events_data": {
-                    "messages": [
-                        {"role": "user", "content": f"attachment://{attachment_id}"}
-                    ],
-                    "calls": [],
-                },
-            }
-        ),
-        TranscriptInfo(
-            transcript_id="test",
-            source_type="test",
-            source_id="42",
-            source_uri="/test.json",
-        ),
-        "all",
-        "all",
+    attachments = {attachment_id: "VALUE"}
+    events = [
+        {
+            "span_id": "s1",
+            "timestamp": "2022-01-01T00:00:00+00:00",
+            "event": "model",
+            "model": "test-model",
+            "input": [],
+            "input_refs": [[0, 1]],
+            "output": {"model": "test-model", "choices": []},
+            "tools": [],
+            "tool_choice": "auto",
+            "config": {},
+        }
+    ]
+    ordered_sections: dict[str, Any] = (
+        {"attachments": attachments, "events": events}
+        if attachments_first
+        else {"events": events, "attachments": attachments}
     )
 
-    model_event = result.events[0]
-    assert isinstance(model_event, ModelEvent)
-    assert model_event.input[0].content == "VALUE"
-
-
-@pytest.mark.asyncio
-async def test_pool_ref_resolves_when_attachments_precede_events() -> None:
-    """A pool ref resolves even when `attachments` precedes `events` in the JSON.
-
-    Real eval logs always put `events` before `attachments` (the field order
-    `EvalSample` declares), but JSON object key order is not guaranteed in
-    general. `state.events` is still empty when the first attachment string
-    arrives in this ordering -- retention must not conclude "no pool refs"
-    just because none have arrived *yet*.
-    """
-    attachment_id = "c1c2d3e4f5a678901234567890123456"
     result = await load_filtered_transcript(
         create_json_stream(
             {
                 "id": "test",
                 "messages": [],
-                "attachments": {attachment_id: "VALUE"},
-                "events": [
-                    {
-                        "span_id": "s1",
-                        "timestamp": "2022-01-01T00:00:00+00:00",
-                        "event": "model",
-                        "model": "test-model",
-                        "input": [],
-                        "input_refs": [[0, 1]],
-                        "output": {"model": "test-model", "choices": []},
-                        "tools": [],
-                        "tool_choice": "auto",
-                        "config": {},
-                    }
-                ],
+                **ordered_sections,
                 "events_data": {
                     "messages": [
                         {"role": "user", "content": f"attachment://{attachment_id}"}

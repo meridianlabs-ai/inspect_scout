@@ -119,8 +119,9 @@ def _item_coroutine(
             continue
         if event == "string" and isinstance(value, str) and ATTACHMENT_PREFIX in value:
             # Exact-ref fast path avoids the regex engine for the common case;
-            # fall back to the regex only for embedded refs. Same hot loop
-            # load_filtered.py warns about (56M+ calls) -- profile before removing.
+            # fall back to the regex only for embedded refs. This is a
+            # per-ijson-event loop like the one load_filtered.py warns about
+            # (56M+ calls) -- profile before removing.
             if len(value) == 45 and value.startswith(ATTACHMENT_PREFIX):
                 attachments.add(value[ATTACHMENT_PREFIX_LEN:])
             else:

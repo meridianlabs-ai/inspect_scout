@@ -340,3 +340,78 @@ async def test_streamed_equals_materialized_with_a_generated_pool(
     assert pool, "fixture is vacuous: the writer produced no message pool"
 
     await _assert_streamed_equals_materialized(pooled_log, content)
+
+
+@pytest.mark.asyncio
+async def test_materialized_preserves_timelines_spooled_drops_them(
+    tmp_path: Path,
+) -> None:
+    """Pins a known streamed/materialized divergence on `Transcript.timelines`.
+
+    `stream_parse_to_spool` skips the sample's `timelines` section entirely --
+    `StreamParseResult` has no field for it -- so anything materialized from a
+    spooled handle reports `timelines == []`. `load_filtered.py` resolves and
+    keeps them.
+
+    This is asserted rather than fixed because spooling the section is a
+    feature change, not a carve. It is pinned in both directions so the gap
+    cannot widen or close silently: `_streaming_eligible` only inspects the
+    *requested* `content.timeline`, never whether the sample *stores*
+    timelines, so a consumer that reads `.timelines` off a transcript
+    recovered from a spooled handle sees an empty list with no signal that
+    anything was dropped. Closing the gap should turn this test red.
+    """
+    event_uuid = "11111111-1111-1111-1111-111111111111"
+    sample = {
+        "id": "s1",
+        "messages": [{"id": "m1", "role": "user", "content": "hello"}],
+        "events": [
+            {
+                "event": "model",
+                "uuid": event_uuid,
+                "span_id": "s1",
+                "timestamp": "2022-01-01T00:00:00+00:00",
+                "working_start": 0,
+                "model": "m",
+                "input": [],
+                "output": {"model": "m", "choices": []},
+                "tools": [],
+                "tool_choice": "auto",
+                "config": {},
+            }
+        ],
+        "timelines": [
+            {
+                "name": "default",
+                "description": "the stored timeline",
+                "root": {
+                    "type": "span",
+                    "id": "main",
+                    "name": "main",
+                    "span_type": "agent",
+                    "content": [{"type": "event", "event": event_uuid}],
+                },
+            }
+        ],
+    }
+    data = json.dumps(sample).encode()
+    info = TranscriptInfo(transcript_id="t1")
+
+    materialized = await load_filtered_transcript(io.BytesIO(data), info, "all", "all")
+    parsed = await stream_parse_to_spool(io.BytesIO(data), "all", "all", tmp_path)
+
+    async def parse() -> StreamParseResult:
+        return parsed
+
+    async def fallback() -> Transcript:
+        raise AssertionError("fallback should not be called")
+
+    handle = SpooledTranscriptHandle(info, parse, fallback)
+    try:
+        streamed = await handle.load()
+    finally:
+        await handle.aclose()
+
+    assert [tl.name for tl in materialized.timelines] == ["default"]
+    assert materialized.timelines[0].root.id == "main"
+    assert streamed.timelines == []

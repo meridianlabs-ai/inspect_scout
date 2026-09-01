@@ -194,9 +194,8 @@ def call_pool_item_coroutine(state: ParseState, item_prefix: str) -> CoroutineGe
 def _event_has_pool_refs(event_dict: dict[str, Any]) -> bool:
     """Does this event dict carry an unresolved message/call pool ref?
 
-    Mirrors the exact conditions `pool.py`'s `_resolve_events_pools` checks
-    before expanding a ref -- `input_refs` truthy, or a `call` with
-    `call_refs` not `None`.
+    Must stay in step with the conditions `pool.py`'s `_resolve_events_pools`
+    checks before expanding a ref.
     """
     if event_dict.get("input_refs"):
         return True

@@ -422,3 +422,38 @@ def test_full_event_union_still_rejected_by_loader(annotation: Any) -> None:
         scanner()(factory)()
     with pytest.raises(RuntimeError, match="must conform to ChatMessage or Event"):
         scanner(events="all")(factory)()
+
+
+def test_events_selection_widens_a_timeline_filter() -> None:
+    """An `events=` selection must survive timeline pruning.
+
+    Timeline content is filtered independently of `content.events`, and
+    interleaved `[E#]` entries render from the timeline. `timeline=True`
+    resolves to a default set that excludes `score`, so without widening,
+    `llm_scanner(events=["score"])` under `@scanner(timeline=True)` renders
+    nothing at all -- silently.
+    """
+    from inspect_scout._llm_scanner._llm_scanner import llm_scanner
+    from inspect_scout._scanner.scanner import config_for_scanner
+
+    @scanner(timeline=True)
+    def scores_visible() -> Scanner[Transcript]:
+        return llm_scanner(question="q", answer="boolean", events=["score"])
+
+    timeline = config_for_scanner(scores_visible()).content.timeline
+    assert isinstance(timeline, list)
+    assert "score" in timeline
+    # the default types are still there
+    assert "model" in timeline and "span_begin" in timeline
+
+
+def test_events_selection_does_not_force_a_timeline_on_message_scanners() -> None:
+    """Widening must not drag a messages-only scanner onto the timeline path."""
+    from inspect_scout._llm_scanner._llm_scanner import llm_scanner
+    from inspect_scout._scanner.scanner import config_for_scanner
+
+    @scanner(messages="all")
+    def flat() -> Scanner[Transcript]:
+        return llm_scanner(question="q", answer="boolean", events=["score"])
+
+    assert config_for_scanner(flat()).content.timeline is None

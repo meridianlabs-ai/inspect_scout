@@ -50,6 +50,7 @@ from .filter import (
     normalize_events_filter,
     normalize_messages_filter,
     normalize_timeline_filter,
+    widen_timeline_for_events,
 )
 from .loader import Loader
 from .result import Result
@@ -374,6 +375,12 @@ def scanner(
                     inferred_messages = override.messages
                 if override.events is not None:
                     inferred_events = override.events
+                    # A timeline is pruned by its own filter, and interleaved
+                    # entries render from the timeline -- without this an
+                    # events selection is silently dropped on timeline scans.
+                    inferred_timeline = widen_timeline_for_events(
+                        inferred_timeline, override.events
+                    )
                 if override.timeline is not None:
                     inferred_timeline = override.timeline
 

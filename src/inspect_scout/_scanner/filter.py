@@ -1,6 +1,6 @@
 from typing import Literal, get_args
 
-from .._transcript.types import EventType, MessageType
+from .._transcript.types import EventFilter, EventType, MessageType
 
 
 def normalize_messages_filter(
@@ -57,6 +57,33 @@ TIMELINE_DEFAULT_EVENTS: list[EventType] = [
     "span_begin",
     "span_end",
 ]
+
+
+def widen_timeline_for_events(
+    timeline: list[EventType] | Literal["all"] | None, events: EventFilter
+) -> list[EventType] | Literal["all"] | None:
+    """Widen a timeline filter to cover an explicit events selection.
+
+    Timeline content is pruned by its own filter, and interleaved entries are
+    rendered from the timeline -- so an event type present in ``events`` but
+    absent from the timeline filter is dropped silently rather than rendered.
+    The caller normalizes ``timeline=True`` first, and that default set
+    excludes ``score`` -- the case this exists for.
+    """
+    if timeline is None:
+        return timeline
+    if timeline == "all" or events == "all":
+        return "all"
+    if events is None:
+        return timeline
+    # Iterate the known event types rather than the selection: `events` admits
+    # arbitrary strings, and only real event types can widen a timeline filter.
+    selected = set(events)
+    widened = list(timeline)
+    for event_type in get_args(EventType):
+        if event_type in selected and event_type not in widened:
+            widened.append(event_type)
+    return widened if len(widened) > len(timeline) else timeline
 
 
 def normalize_timeline_filter(

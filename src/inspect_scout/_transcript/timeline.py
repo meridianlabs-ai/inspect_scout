@@ -38,6 +38,8 @@ from inspect_ai.event._timeline import (
 )
 from inspect_ai.model import ChatMessage, Model
 
+from .util import nested_tool_events
+
 # Re-export everything that moved to inspect_ai.event
 __all__ = [
     # Types
@@ -392,7 +394,7 @@ def walk_owned_spans(
         if isinstance(event, ToolEvent):
             # Recursive and uniform (decision 6): nested events are foreign
             # at any depth, wherever the traversal meets a ToolEvent.
-            for nested in event.events:
+            for nested in nested_tool_events(event):
                 add_flattened(nested, items, own=False, drop_models=drop_models)
 
     def add_branch(

@@ -1231,3 +1231,48 @@ def test_events_only_transcripts_are_rejected_by_the_flat_driver() -> None:
 
     with pytest.raises(EventsOnlyInterleaveUnsupported):
         interleave_events(events_only, "all")
+
+
+def test_legacy_raw_dict_subevents_are_skipped_not_crashed() -> None:
+    """A ToolEvent carrying pre-deprecation sub-events must not crash the walk.
+
+    `ToolEvent.events` is `list[Any]` upstream and unvalidated, so logs written
+    before the field was deprecated deserialize their sub-events as plain
+    dicts. Both interleave recursion sites hand those straight to code typed
+    `Event`; before the guard this raised
+    `AttributeError: 'dict' object has no attribute 'event'`.
+    """
+    tool_event = ToolEvent.model_validate(
+        {
+            "event": "tool",
+            "id": "call-1",
+            "function": "f",
+            "arguments": {},
+            "result": "ok",
+            "events": [
+                {
+                    "event": "info",
+                    "source": None,
+                    "data": "legacy",
+                    "timestamp": "2024-01-01T00:00:00+00:00",
+                    "working_start": 0,
+                    "pending": False,
+                    "metadata": None,
+                    "uuid": None,
+                    "span_id": None,
+                }
+            ],
+        }
+    )
+    assert isinstance(tool_event.events[0], dict), "fixture must reproduce the raw dict"
+
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[ChatMessageUser(content="q")],
+        events=[tool_event],
+    )
+
+    spliced = interleave_events(transcript, "all")
+
+    # the legacy sub-event contributes nothing; the thread is intact
+    assert [m.text for m in spliced] == ["q"]

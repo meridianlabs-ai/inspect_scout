@@ -386,6 +386,60 @@ async def test_attachment_resolution_in_events_data_pool() -> None:
 
 
 @pytest.mark.asyncio
+async def test_pool_ref_resolves_when_attachments_precede_events() -> None:
+    """A pool ref resolves even when `attachments` precedes `events` in the JSON.
+
+    Real eval logs always put `events` before `attachments` (the field order
+    `EvalSample` declares), but JSON object key order is not guaranteed in
+    general. `state.events` is still empty when the first attachment string
+    arrives in this ordering -- retention must not conclude "no pool refs"
+    just because none have arrived *yet*.
+    """
+    attachment_id = "c1c2d3e4f5a678901234567890123456"
+    result = await load_filtered_transcript(
+        create_json_stream(
+            {
+                "id": "test",
+                "messages": [],
+                "attachments": {attachment_id: "VALUE"},
+                "events": [
+                    {
+                        "span_id": "s1",
+                        "timestamp": "2022-01-01T00:00:00+00:00",
+                        "event": "model",
+                        "model": "test-model",
+                        "input": [],
+                        "input_refs": [[0, 1]],
+                        "output": {"model": "test-model", "choices": []},
+                        "tools": [],
+                        "tool_choice": "auto",
+                        "config": {},
+                    }
+                ],
+                "events_data": {
+                    "messages": [
+                        {"role": "user", "content": f"attachment://{attachment_id}"}
+                    ],
+                    "calls": [],
+                },
+            }
+        ),
+        TranscriptInfo(
+            transcript_id="test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+        ),
+        "all",
+        "all",
+    )
+
+    model_event = result.events[0]
+    assert isinstance(model_event, ModelEvent)
+    assert model_event.input[0].content == "VALUE"
+
+
+@pytest.mark.asyncio
 async def test_attachments_bounded_when_no_pool_refs_retained() -> None:
     """A messages-only scan retains only referenced attachments, not the whole table.
 

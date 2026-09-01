@@ -298,7 +298,7 @@ async def _parse_and_filter(
     )
     events_coro = event_item_coroutine(state, events_config) if events_config else None
     timelines_coro = timeline_item_coroutine(state)
-    attachments_coro = attachments_coroutine(state)
+    attachments_coro = attachments_coroutine(state, events_coro is not None)
     metadata_coro = metadata_coroutine(state)
     target_coro = target_coroutine(state)
     scores_coro = scores_coroutine(state)

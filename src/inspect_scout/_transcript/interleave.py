@@ -26,6 +26,7 @@ from .event_text import event_as_str
 from .messages import span_messages
 from .timeline import OwnedBranch, OwnedItem, OwnedSpan
 from .types import EventType, Transcript
+from .util import nested_tool_events
 
 
 class InterleavedEvent(NamedTuple):
@@ -336,8 +337,8 @@ class _AnchorWalk:
             # A tool-spawned sub-agent's model events never appear at the top
             # level of the event list, so without this its output is absent
             # from the prompt entirely. Only ids and rendered text are
-            # retained, so this costs nothing on the streaming path.
-            for nested in event.events:
+            # retained, never payloads.
+            for nested in nested_tool_events(event):
                 self.add(nested)
             return
         if isinstance(event, ModelEvent):

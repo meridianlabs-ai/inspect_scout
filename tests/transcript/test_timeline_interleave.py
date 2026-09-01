@@ -32,6 +32,7 @@ from inspect_ai.model import (
 )
 from inspect_ai.scorer import Score
 from inspect_scout._scanner.extract import message_numbering
+from inspect_scout._transcript.interleave import EventsSpec
 from inspect_scout._transcript.messages import segment_messages, transcript_messages
 from inspect_scout._transcript.timeline import (
     _ORPHAN_SPAN_ID,
@@ -95,7 +96,7 @@ def _span_of(
 async def _collect_transcript(
     root: TimelineSpan,
     *,
-    events: list[str] | str | None,
+    events: EventsSpec | None,
     include_scorers: bool = False,
     context_window: int = 10_000,
     depth: int | None = None,
@@ -113,7 +114,7 @@ async def _collect_transcript(
         messages_as_str=msgs_as_str,
         model=model,
         context_window=context_window,
-        events=events,  # type: ignore[arg-type]
+        events=events,
         include_scorers=include_scorers,
         depth=depth,
     ):
@@ -126,7 +127,7 @@ async def _collect_transcript(
 async def _collect(
     root: TimelineSpan,
     *,
-    events: list[str] | str | None,
+    events: EventsSpec | None,
     compaction: Literal["all", "last"] | int = "all",
     context_window: int = 10_000,
 ) -> tuple[list[TimelineMessages], str]:
@@ -140,7 +141,7 @@ async def _collect(
         model=model,
         context_window=context_window,
         compaction=compaction,
-        events=events,  # type: ignore[arg-type]
+        events=events,
     ):
         results.append(seg)
     combined = "\n".join(r.messages_str for r in results)
@@ -988,7 +989,7 @@ async def test_orphan_only_segment_reduces_to_scalar_result() -> None:
 @pytest.mark.anyio
 @pytest.mark.parametrize("events", [None, "all"])
 async def test_agentic_events_yields_each_walked_span_exactly_once(
-    events: list[str] | str | None,
+    events: EventsSpec | None,
 ) -> None:
     """Pins walk_owned_spans' one-OwnedSpan-per-walked-span discipline.
 

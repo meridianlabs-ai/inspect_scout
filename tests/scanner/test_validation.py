@@ -18,6 +18,7 @@ from inspect_ai.model._chat_message import (
 from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import SCANNER_CONFIG, Scanner, scanner
 from inspect_scout._scanner.validate import _is_compatible_with_type
+from inspect_scout._transcript.handle import TranscriptHandle
 from inspect_scout._transcript.types import Transcript
 
 # Valid scanner tests
@@ -619,5 +620,40 @@ def test_is_compatible_with_type_union_semantics(
     """A union counts as the base type only when it covers every member.
 
     Equivalently, only when it equals the base union — never for a strict subset.
+    """
+    assert _is_compatible_with_type(scanner_type, target) is expected
+
+
+@pytest.mark.parametrize(
+    "scanner_type,target,expected",
+    [
+        # A `Transcript | TranscriptHandle` scanner signature is compatible
+        # with a bare `Transcript` target — the widening this PR adds.
+        pytest.param(
+            Transcript | TranscriptHandle, Transcript, True, id="accepted-union"
+        ),
+        # A non-handle member must still reject the union, so the widening
+        # can't be tricked into accepting an unrelated type alongside Transcript.
+        pytest.param(Transcript | int, Transcript, False, id="incompatible-union"),
+        # Both sides are the same full union: falls through to
+        # `_union_covers_union` rather than the new branch, and must still
+        # terminate (no infinite recursion) and match.
+        pytest.param(
+            Transcript | TranscriptHandle,
+            Transcript | TranscriptHandle,
+            True,
+            id="full-union-vs-full-union",
+        ),
+    ],
+)
+def test_is_compatible_with_type_transcript_handle_widening(
+    scanner_type: Any, target: Any, expected: bool
+) -> None:
+    """`Transcript | TranscriptHandle` is accepted wherever bare `Transcript` is.
+
+    Guards `create_implicit_loader`'s signature check: a regression that made
+    this too permissive (accepting an incompatible union) would break nothing
+    else today, since the only other coverage is indirect (`llm_scanner`'s own
+    registration happening to succeed).
     """
     assert _is_compatible_with_type(scanner_type, target) is expected

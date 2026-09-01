@@ -17,7 +17,13 @@ from inspect_ai.model._chat_message import (
 )
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_scout._scanner._loaders import (
+    _matches_transcript_or_handle,
     create_implicit_loader,
+)
+from inspect_scout._transcript.handle import (
+    MaterializedTranscriptHandle,
+    SpooledTranscriptHandle,
+    TranscriptHandle,
 )
 from inspect_scout._transcript.timeline import Timeline
 from inspect_scout._transcript.types import Transcript, TranscriptContent
@@ -429,3 +435,31 @@ def test_bare_list_type_should_raise_error() -> None:
     # Should raise RuntimeError because element_type cannot be determined
     with pytest.raises(RuntimeError):
         create_implicit_loader(_bare_list, does_not_matter_filter)
+
+
+@pytest.mark.parametrize(
+    ("annotation", "expected"),
+    [
+        pytest.param(Transcript | TranscriptHandle, True, id="transcript-and-handle"),
+        pytest.param(
+            Transcript | MaterializedTranscriptHandle | SpooledTranscriptHandle,
+            True,
+            id="transcript-and-both-concrete-handles",
+        ),
+        pytest.param(Transcript | int, False, id="incompatible-member-rejected"),
+        pytest.param(
+            TranscriptHandle | MaterializedTranscriptHandle,
+            False,
+            id="no-transcript-member",
+        ),
+        pytest.param(Transcript, False, id="bare-transcript-not-a-union"),
+    ],
+)
+def test_matches_transcript_or_handle(annotation: Any, expected: bool) -> None:
+    """Only a `Transcript | <handle types>` union matches; nothing else does.
+
+    Guards `create_implicit_loader`'s identity-loader routing: a regression
+    that made this too permissive would silently accept an incompatible
+    signature no other test exercises directly.
+    """
+    assert _matches_transcript_or_handle(annotation) is expected

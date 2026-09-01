@@ -33,12 +33,7 @@ worker_id_counter: int = 0
 
 
 def _scanner_job_transcript_info(job: ScannerJob) -> TranscriptInfo:
-    """Derive the `TranscriptInfo` for a job's union transcript.
-
-    The union transcript is a materialized `Transcript` (itself a
-    `TranscriptInfo`) for legacy scanners, or a `TranscriptHandle` (whose
-    `info` is a `TranscriptInfo`) on the streaming path.
-    """
+    """The job's transcript info; a materialized `Transcript` is itself one."""
     union = job.union_transcript
     return union if isinstance(union, Transcript) else union.info
 

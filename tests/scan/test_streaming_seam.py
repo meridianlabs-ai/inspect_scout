@@ -3,7 +3,7 @@
 import io
 import json
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Callable, cast
 
 import pytest
 from inspect_ai._util.error import PrerequisiteError
@@ -113,9 +113,18 @@ async def test_scan_one_stream_error_contained() -> None:
     assert "corrupt sample JSON" in reports[0].error.error
 
 
+@pytest.mark.parametrize(
+    ("scanner_factory", "raises"),
+    [
+        pytest.param(_handle_scanner, None, id="scan_succeeds"),
+        pytest.param(_raising_handle_scanner, "scanner boom", id="scanner_raises"),
+    ],
+)
 @pytest.mark.asyncio
-async def test_scan_one_awaits_on_complete_once() -> None:
-    """`_scan_one` awaits `job.on_complete` exactly once per job."""
+async def test_scan_one_awaits_on_complete_once(
+    scanner_factory: Callable[[], Scanner[Transcript]], raises: str | None
+) -> None:
+    """`on_complete` is awaited exactly once, including when the scanner raises."""
     handle = _materialized_handle(_empty_transcript())
 
     complete_calls = 0
@@ -126,34 +135,15 @@ async def test_scan_one_awaits_on_complete_once() -> None:
 
     job = ScannerJob(
         union_transcript=handle,
-        scanner=_handle_scanner(),
+        scanner=scanner_factory(),
         scanner_name="s",
         on_complete=on_job_complete,
     )
 
-    await _scan_one(job, validation=None, fail_on_error=True)
-    assert complete_calls == 1
-
-
-@pytest.mark.asyncio
-async def test_scan_one_awaits_on_complete_when_scanner_raises() -> None:
-    """`on_complete` still fires (finally) when the scanner raises with fail_on_error."""
-    handle = _materialized_handle(_empty_transcript())
-
-    complete_calls = 0
-
-    async def on_job_complete() -> None:
-        nonlocal complete_calls
-        complete_calls += 1
-
-    job = ScannerJob(
-        union_transcript=handle,
-        scanner=_raising_handle_scanner(),
-        scanner_name="s",
-        on_complete=on_job_complete,
-    )
-
-    with pytest.raises(RuntimeError, match="scanner boom"):
+    if raises is not None:
+        with pytest.raises(RuntimeError, match=raises):
+            await _scan_one(job, validation=None, fail_on_error=True)
+    else:
         await _scan_one(job, validation=None, fail_on_error=True)
     assert complete_calls == 1
 

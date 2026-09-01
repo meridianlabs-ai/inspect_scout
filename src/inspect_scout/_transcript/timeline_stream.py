@@ -90,13 +90,6 @@ def _stub_model_event(event: ModelEvent, interner: _PromptInterner) -> ModelEven
     `_has_tool_calls` still reads correctly. When `config.max_tokens <= 1`,
     the trailing `ChatMessageUser` is also retained (truncated) to preserve
     the `_is_warmup_call` signal; see the inline note below.
-
-    Args:
-        event: The `ModelEvent` to stub.
-        interner: Interner used to dedupe system-prompt content strings.
-
-    Returns:
-        A `model_copy` of `event` with bulk content removed.
     """
     stub_input: list[ChatMessageSystem | ChatMessageUser] = []
     for msg in event.input:
@@ -175,13 +168,6 @@ def _stub_tool_event(event: ToolEvent, interner: _PromptInterner) -> ToolEvent:
     `ToolEvent` with `.agent` set and non-empty `.events` into a nested
     `TimelineSpan`, so emptying it would collapse that span and hide its
     `ModelEvent`s from pass-1 selection.
-
-    Args:
-        event: The `ToolEvent` to stub.
-        interner: Interner for nested `ModelEvent` system-prompt strings.
-
-    Returns:
-        A `model_copy` of `event` with bulk content removed.
     """
     return event.model_copy(
         update={
@@ -198,15 +184,8 @@ def stub_event(event: Event, interner: _PromptInterner) -> Event:
 
     `ModelEvent` and `ToolEvent` are reduced to the fields the classifier
     reads (see module docstring); every other event type is already small and
-    returned unchanged.
-
-    Args:
-        event: The event to stub.
-        interner: Interner for `ModelEvent` system-prompt strings.
-
-    Returns:
-        The (possibly stripped) event. Always preserves `uuid` and `span_id`
-        so pass 2 can substitute full events back in by uuid.
+    returned unchanged. Always preserves `uuid` and `span_id` so pass 2 can
+    substitute full events back in by uuid.
     """
     if isinstance(event, ModelEvent):
         return _stub_model_event(event, interner)
@@ -374,10 +353,6 @@ def _substitute_full_events(
     `span.branches`, replacing every `TimelineEvent` wrapping a `ModelEvent`
     whose uuid is in `full_by_uuid`. Reaches nested tool-spawned-agent events
     too, since the tree builder expands such `ToolEvent`s into nested spans.
-
-    Args:
-        span: A (sub)tree of the stub skeleton to mutate in place.
-        full_by_uuid: Full `ModelEvent`s collected in pass 2, by uuid.
     """
     for item in span.content:
         if isinstance(item, TimelineEvent):

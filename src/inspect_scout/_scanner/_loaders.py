@@ -150,9 +150,9 @@ def create_implicit_loader(
     input_annotation = next(
         iter(inspect.signature(scanner_fn).parameters.values())
     ).annotation
-    # A bare Transcript, or a `Transcript | TranscriptHandle` union, both use
-    # the identity loader: a materialized Transcript flows through it, while a
-    # handle bypasses the loader (the pipeline passes it directly).
+    # A `Transcript | TranscriptHandle` union also takes the identity loader:
+    # a materialized Transcript flows through it, while a handle bypasses the
+    # loader entirely (the pipeline passes it straight to the scanner).
     if (
         input_annotation is inspect.Parameter.empty
         or input_annotation == Transcript

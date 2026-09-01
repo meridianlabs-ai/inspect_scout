@@ -623,12 +623,7 @@ class _FlakyHandle:
 
 @pytest.mark.asyncio
 async def test_stream_raises_on_multi_shot_violation() -> None:
-    """A handle whose second `events()` call omits a pass-1-selected event must raise.
-
-    If a handle's second `events()` call omits a `ModelEvent` that pass 1
-    selected from the first call, pass 2 must raise `_StubSkeletonUnsupported`
-    rather than silently dropping content.
-    """
+    """A handle whose second `events()` call omits a pass-1-selected event must raise."""
     from inspect_scout._scanner.extract import message_numbering
     from inspect_scout._transcript.timeline_stream import (
         _StubSkeletonUnsupported,

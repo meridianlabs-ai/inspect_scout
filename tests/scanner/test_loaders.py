@@ -458,8 +458,6 @@ def test_bare_list_type_should_raise_error() -> None:
 def test_matches_transcript_or_handle(annotation: Any, expected: bool) -> None:
     """Only a `Transcript | <handle types>` union matches; nothing else does.
 
-    Guards `create_implicit_loader`'s identity-loader routing: a regression
-    that made this too permissive would silently accept an incompatible
-    signature no other test exercises directly.
+    Guards `create_implicit_loader`'s identity-loader routing.
     """
     assert _matches_transcript_or_handle(annotation) is expected

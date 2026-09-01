@@ -1,5 +1,6 @@
 import os
 import shutil
+import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Final, Sequence, Set, TypeVar, cast
@@ -494,9 +495,20 @@ def _persist_scan_summary(buffer_dir: UPath, summary: Summary) -> None:
     A mid-scan results sync (see the `results_buffer` scan option) may read
     `_summary.json` concurrently with a record; write-to-tmp + rename keeps
     readers from ever observing a truncated file.
+
+    The tmp name is unique per write because the buffer dir is keyed by scan
+    location rather than by process: concurrent record-only workers (eval_set
+    selection mode) share one buffer, and a fixed tmp name lets one worker's
+    rename consume another's file mid-write — the loser then errors its
+    sample on the missing tmp. Unique names reduce the race to
+    last-writer-wins over the summary's *content*: each process persists its
+    own accumulated counts, so with concurrent writers the file undercounts
+    every process's share but one. A single-process scan is exact; an
+    external runner that owns a shared scan's lifecycle must derive the
+    durable summary from the recorded rows rather than trust this file.
     """
     summary_file = buffer_dir.joinpath(SCAN_SUMMARY)
-    tmp_file = buffer_dir.joinpath(f".{SCAN_SUMMARY}.tmp")
+    tmp_file = buffer_dir.joinpath(f".{SCAN_SUMMARY}.{uuid.uuid4().hex}.tmp")
     with open(tmp_file.as_posix(), "w") as f:
         f.write(summary.model_dump_json(indent=2))
     os.replace(tmp_file.as_posix(), summary_file.as_posix())

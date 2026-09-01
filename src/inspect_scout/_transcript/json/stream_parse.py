@@ -55,7 +55,11 @@ from .reducer import (
 )
 from .spool import BlobSpool, ByteSpool, ItemSpool
 
-# Section constants for prefix classification (mirrors load_filtered.py)
+# Section constants for prefix classification. Mirrors load_filtered.py:49-62
+# minus _SECTION_TIMELINES (streaming skips timelines -- see the note on
+# `elif prefix[0] == "t":` below). Keep both constant blocks and both
+# classify/dispatch loops (see the HOT PATH comment below and
+# load_filtered.py:335-444) in sync when either changes.
 _SECTION_OTHER = 0
 _SECTION_MESSAGES = 1
 _SECTION_EVENTS = 2
@@ -308,7 +312,11 @@ async def stream_parse_to_spool(
             async for prefix, event, value in ijson.parse_async(reader, use_float=True):
                 # HOT PATH: this classification runs 56M+ times per large parse.
                 # Avoid string slicing, startswith, or any allocation in common
-                # paths. Profile before changing.
+                # paths. Profile before changing. Mirrored in
+                # load_filtered.py:335-444 (which also handles
+                # _SECTION_TIMELINES -- streaming has no such branch, see
+                # below). A change to this decision tree needs the same
+                # change there.
                 if prefix != last_prefix:
                     last_prefix = prefix
                     p_len = len(prefix)

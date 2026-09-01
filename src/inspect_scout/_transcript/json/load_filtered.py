@@ -46,7 +46,10 @@ from .reducer import (
     timeline_item_coroutine,
 )
 
-# Section constants for prefix classification
+# Section constants for prefix classification. Mirrored (minus timelines,
+# which streaming skips) in json/stream_parse.py:57-70 -- keep both constant
+# blocks and both classify/dispatch loops (see the HOT PATH comment below
+# and stream_parse.py:312-426) in sync when either changes.
 _SECTION_OTHER = 0
 _SECTION_MESSAGES = 1
 _SECTION_EVENTS = 2
@@ -331,7 +334,10 @@ async def _parse_and_filter(
 
         # HOT PATH: this classification runs 56M+ times per large parse. Avoid
         # string slicing, startswith, or any allocation in common paths.
-        # Profile before changing.
+        # Profile before changing. Mirrored in json/stream_parse.py:312-426
+        # (minus the _SECTION_TIMELINES branch, which streaming skips -- see
+        # its own comment). A change to this decision tree needs the same
+        # change there.
         if prefix != last_prefix:
             last_prefix = prefix
             p_len = len(prefix)

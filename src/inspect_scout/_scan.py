@@ -1043,7 +1043,6 @@ async def _scan_one(
     init_transcript(inspect_transcript)
 
     results: list[ResultReport] = []
-    validation_result: ResultValidation | None = None
 
     scanner_config = config_for_scanner(job.scanner)
     loader = scanner_config.loader

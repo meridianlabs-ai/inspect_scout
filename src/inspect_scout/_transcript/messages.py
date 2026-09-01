@@ -229,6 +229,13 @@ async def segment_messages(
         )
 
 
+def _has_span_structure(transcript: "Transcript") -> bool:
+    """Whether the events carry spans the timeline path would reconstruct."""
+    from inspect_ai.event import SpanBeginEvent
+
+    return any(isinstance(e, SpanBeginEvent) for e in transcript.events)
+
+
 async def transcript_messages(
     transcript: "Transcript",
     *,
@@ -310,12 +317,12 @@ async def transcript_messages(
         # path below, which reconstructs per-span threads so parallel agents
         # aren't collapsed into one.
         #
-        # The condition must stay exactly "messages present", matching the
-        # streaming router at `_llm_scanner.py:513-522`. A third condition
-        # here ("does anything render?") made the same scanner config yield
-        # different content depending only on whether `question` was callable,
-        # because splicing nothing is not a reason to discard the thread.
-        if transcript.messages:
+        # The condition must stay exactly "messages present". A third
+        # condition here ("does anything render?") made the same scanner
+        # config yield different content depending only on whether `question`
+        # was callable, because splicing nothing is not a reason to discard
+        # the thread.
+        if transcript.messages and not _has_span_structure(transcript):
             async for seg in segment_messages(
                 interleave_events(transcript, events),
                 messages_as_str=messages_as_str,

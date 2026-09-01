@@ -7,6 +7,7 @@ Hazards 1-4, both anchor-steal doors, filter rules, branch positioning
 from __future__ import annotations
 
 from inspect_ai.event import (
+    AnchorEvent,
     BranchEvent,
     ModelEvent,
     SampleLimitEvent,
@@ -22,7 +23,7 @@ from inspect_scout._transcript.interleave import (
     EventsSpec,
     span_owned_messages,
 )
-from inspect_scout._transcript.timeline import walk_owned_spans
+from inspect_scout._transcript.timeline import TimelineEvent, walk_owned_spans
 
 from tests.transcript.span_builders import _model_event, _span, _span_of
 
@@ -433,3 +434,45 @@ def test_branch_insertion_resolves_duplicate_real_message_id_to_first_occurrence
     alt_pos = next(i for i, t in enumerate(texts) if "ALT" in t)
     # Resolves to the FIRST occurrence (a1's), not the second (a2's).
     assert texts.index("a1") < alt_pos < texts.index("a2")
+
+
+def test_branch_splices_at_an_anchor_event_not_only_a_message_id() -> None:
+    """`branched_from` names an AnchorEvent id on modern transcripts.
+
+    `timeline_branch(from_anchor=...)` emits an `AnchorEvent` in the parent
+    span and a `BranchEvent` carrying the same id, so the branch point is a
+    marker between turns rather than a message id. Resolving message ids only
+    left every such branch appended after the final turn.
+    """
+    owner, (ev1, ev2) = _cumulative_owner()
+    anchor_id = "anchor-1"
+    alt_out = ModelOutput.from_content(model="mockllm", content="ALT")
+    branch = _span_of(
+        "b",
+        "branch",
+        [
+            BranchEvent(from_anchor=anchor_id),
+            _model_event([ChatMessageUser(content="bq")], alt_out),
+        ],
+    )
+    branch = branch.model_copy(update={"branched_from": anchor_id})
+
+    # the anchor sits between the two turns, as timeline_branch emits it
+    content = list(owner.content)
+    owner_wrapped = owner.model_copy(
+        update={
+            "content": [
+                content[0],
+                TimelineEvent(event=AnchorEvent(anchor_id=anchor_id)),
+                *content[1:],
+            ],
+            "branches": [branch],
+        }
+    )
+
+    [rendered] = _render(owner_wrapped)
+    texts = _texts(rendered)
+    alt_pos = next(i for i, t in enumerate(texts) if "ALT" in t)
+    assert texts.index("a1") < alt_pos < texts.index("a2"), (
+        "branch must splice at its anchor, not append after the last turn"
+    )

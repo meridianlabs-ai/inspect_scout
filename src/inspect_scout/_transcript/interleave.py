@@ -10,6 +10,7 @@ from typing import (
 )
 
 from inspect_ai.event import (
+    AnchorEvent,
     CompactionEvent,
     Event,
     ModelEvent,
@@ -37,15 +38,16 @@ class InterleavedEvent(NamedTuple):
 
 
 INTERLEAVE_DEPENDENCIES: Final[frozenset[EventType]] = frozenset(
-    {"model", "tool", "compaction", "span_begin", "span_end", "branch"}
+    {"model", "tool", "compaction", "span_begin", "span_end", "branch", "anchor"}
 )
 """Event types that must be LOADED for interleaving to be correct.
 
 These carry the structure the walk runs on -- model events anchor entries,
 compaction events drive pruning, span begins resolve scorer spans, tool events
-nest sub-agent models, and ``timeline_build`` needs a ``BranchEvent`` to form a
-branch span at all (without one it unrolls the branch into its parent, so the
-scanner reads the branch as the main thread). A caller that filters any of them
+nest sub-agent models, anchor events mark the thread position a branch forked
+from, and ``timeline_build`` needs a ``BranchEvent`` to form a branch span at
+all (without one it unrolls the branch into its parent, so the scanner reads
+the branch as the main thread). A caller that filters any of them
 out gets silent degradation rather than an error, so any content filter built
 for interleaving must be a superset of this.
 
@@ -88,14 +90,11 @@ reconstructed from model events (events-only transcripts)."""
 class EventsOnlyInterleaveUnsupported(Exception):
     """A flat interleave driver was given a transcript with no messages.
 
-    Reconstructing the thread from events alone cannot be made to agree with
-    the materialized driver inside a bounded-memory streaming pass: `trim`
-    compaction needs the whole trimmed prefix, which the region-last skeleton
-    deliberately does not retain, so an entire compaction region goes missing.
-
-    `llm_scanner` never hit this -- it routes every handle without messages to
-    `stream_timeline_messages`, which handles span structure properly. Callers
-    reaching it directly should do the same.
+    Reconstructing a thread from events alone was dropped rather than repaired,
+    so this fails loudly instead of silently producing a different thread.
+    `llm_scanner` never hits it: a transcript with no messages goes through the
+    per-span timeline machinery, which handles span structure properly.
+    Callers reaching this directly should do the same.
     """
 
 
@@ -168,9 +167,8 @@ def _compaction_excluded_ids(
 def scorer_span_ids(begins: Iterable[SpanBeginEvent]) -> frozenset[SpanId]:
     """Ids of spans under a top-level ``scorers`` span, by ``event_tree``'s rule.
 
-    Streaming counterpart to the flat-oracle helper that needs the whole
-    event tree in memory (``tests/llm_scanner/test_interleave_events.py``).
-    This needs only the span begins.
+    Needs only the span begins, rather than the whole event tree the
+    differential oracle builds in memory.
 
     A cyclic parent chain (possible with reused span ids) terminates here
     rather than recursing, unlike ``event_tree``.
@@ -208,7 +206,7 @@ def scorer_span_ids(begins: Iterable[SpanBeginEvent]) -> frozenset[SpanId]:
 
 
 class _AnchorWalk:
-    """Incremental anchor walk shared by the materialized and streaming drivers.
+    """Incremental anchor walk over a message thread.
 
     Consumes events one at a time and retains only the event id, rendered
     text, and the message *position* it anchors to -- never event payloads.
@@ -254,6 +252,7 @@ class _AnchorWalk:
         # flat drivers stream ids without roles and never splice branches.
         self._output_positions = output_positions
         self._consumed_positions: dict[MessageId, int] = {}
+        self._anchor_positions: dict[str, int] = {}
         self.leading: list[InterleavedEvent] = []
         self.anchored: dict[int, list[InterleavedEvent]] = defaultdict(list)
 
@@ -336,8 +335,7 @@ class _AnchorWalk:
         if isinstance(event, ToolEvent):
             # A tool-spawned sub-agent's model events never appear at the top
             # level of the event list, so without this its output is absent
-            # from the prompt entirely. Only ids and rendered text are
-            # retained, never payloads.
+            # from the prompt entirely.
             for nested in nested_tool_events(event):
                 self.add(nested)
             return
@@ -349,9 +347,26 @@ class _AnchorWalk:
                 return
             self._consume_own_model_event(event)
             return
+        self._note_anchor(event)
         text = _interleavable_text(event, self._events)
         if text is not None:
             self.add_rendered(_event_id(event), text)
+
+    def _note_anchor(self, event: Event) -> None:
+        """Record where a branch anchor sits in the thread.
+
+        ``timeline_branch`` emits an ``AnchorEvent`` in the parent span and a
+        ``BranchEvent`` carrying the same id, so ``branched_from`` names an
+        anchor rather than a message. An anchor seen before any turn has been
+        consumed has no position to splice after and is left unresolved, which
+        appends the branch as before.
+        """
+        if isinstance(event, AnchorEvent) and self._last_anchor is not None:
+            self._anchor_positions.setdefault(event.anchor_id, self._last_anchor)
+
+    def anchor_position(self, anchor_id: str) -> int | None:
+        """Thread position an anchor id marks, or None if it never resolved."""
+        return self._anchor_positions.get(anchor_id)
 
     def add_owned(self, item: OwnedItem) -> None:
         """Timeline-path entry point (design §2).
@@ -369,6 +384,8 @@ class _AnchorWalk:
         event = item.event
         if isinstance(event, ToolEvent):
             return  # nested events arrive as their own flattened items
+        if item.own:
+            self._note_anchor(event)
         if isinstance(event, ModelEvent):
             if item.own:
                 self._consume_own_model_event(event)
@@ -446,6 +463,13 @@ def _branch_thread_index(
     cross-role duplicate of a tool message id resolves to whichever thread
     message comes first.
     """
+    # `branched_from` names an AnchorEvent id on modern transcripts and a
+    # message id on older ones; try the anchor first and keep the message
+    # scan as the legacy path.
+    anchored_at = walk.anchor_position(key)
+    if anchored_at is not None:
+        return anchored_at
+
     # Escalate to uuid/event-identity-keyed positioning rather than
     # patching the role heuristics further (same route as _AnchorWalk's
     # duplicate-id anchoring note).
@@ -477,9 +501,10 @@ def _splice_branches(
     consecutively at the single resolved index; unmatched branches --
     including ``""`` -- append at the end, matching the viewer's inline
     positioning. Resolution is event-level against the owner's OWN items:
-    output message ids and ``ToolEvent.message_id`` only, never input ids
-    (the streaming stub strips those, and a tier one path cannot reach
-    would break streamed == materialized).
+    output message ids and ``ToolEvent.message_id`` only, never input ids.
+    Input ids are excluded deliberately: they are not available on every
+    path this has to agree with, and resolving against a tier one path
+    cannot reach would make the drivers disagree.
 
     Known limitation, duplicate message ids within one thread only
     (reachable for converter/synthetic logs; Inspect auto-mints unique

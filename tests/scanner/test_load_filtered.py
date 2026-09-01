@@ -443,12 +443,9 @@ async def test_pool_ref_resolves_when_attachments_precede_events() -> None:
 async def test_attachments_bounded_when_no_pool_refs_retained() -> None:
     """A messages-only scan retains only referenced attachments, not the whole table.
 
-    Retaining every attachment is necessary only when a *retained* event carries an
-    unresolved pool ref (`input_refs` / `call.call_refs`) -- those are parsed under
-    `events_data`, after `attachments`, so which ones are needed can't be known via
-    `attachment_refs` alone. A messages-only scan (events filtered out entirely)
-    retains no events, so it can never need pool-entry attachments, and the original
-    referenced-ID filter should still apply.
+    With events filtered out entirely no event survives to need a pool entry, so
+    the conservative retain-everything path in `attachments_coroutine` must not
+    engage.
     """
     referenced_id = "a1b2c3d4e5f678901234567890123456"
     unrelated_id = "b2c3d4e5f67890123456789012345678"

@@ -119,6 +119,31 @@ def _yes_model() -> Model:
             2,
             id="events",
         ),
+        # A template reading TranscriptInfo fields: the streaming path renders
+        # against an info-only Transcript built from handle.info, which must
+        # carry the same values as the materialized transcript.
+        pytest.param(
+            lambda: _make_transcript(3).model_copy(
+                update={"model": "acme/probe", "task_id": "task-7", "agent": "react"}
+            ),
+            {
+                "template": (
+                    "Scanning {{ model }} / {{ task_id }} / {{ agent }}.\n",
+                    "{{ messages }}\n{{ question }}\n{{ answer_prompt }}",
+                )
+            },
+            1,
+            id="template-reads-transcript-info",
+        ),
+        # events="all" over a transcript that has no events: the materialized
+        # path falls through to the messages segmenter, so the streaming path
+        # must too rather than reducing over zero segments.
+        pytest.param(
+            lambda: _make_transcript(3),
+            {"content": TranscriptContent(events="all")},
+            1,
+            id="events-requested-but-absent",
+        ),
     ],
 )
 async def test_handle_scan_equivalent_to_transcript_scan(
@@ -282,3 +307,22 @@ async def test_callable_question_with_handle_materializes() -> None:
         assert [m.id for m in t.messages] == [m.id for m in transcript.messages], (
             "question callable should receive the materialized transcript content"
         )
+
+
+@pytest.mark.anyio
+async def test_handle_info_may_be_a_transcript() -> None:
+    """`Transcript` subclasses `TranscriptInfo`, so a handle may expose one as `info`.
+
+    The info-only shell built for template rendering must exclude the content
+    fields, or they collide with the empties it substitutes.
+    """
+    transcript = _make_transcript(3)
+
+    async def load_fn() -> Transcript:
+        return transcript
+
+    scan_fn = llm_scanner(
+        question="Is this helpful?", answer="boolean", model=_yes_model()
+    )
+    result = await _scan(scan_fn, MaterializedTranscriptHandle(load_fn, transcript))
+    assert result.answer is not None

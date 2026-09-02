@@ -549,7 +549,7 @@ class _Segmenter(Protocol):
 
 
 async def _segment_batch(
-    msgs: list[ChatMessage],
+    msgs: list[ChatMessage] | list[Event],
     *,
     model: Model | None = None,
     context_window: int | None = None,
@@ -597,25 +597,6 @@ segmenter_axis = pytest.mark.parametrize(
 )
 
 
-async def _collect(
-    source: list[ChatMessage] | list[Event],
-    *,
-    context_window: int | None = None,
-) -> list[MessagesSegment]:
-    """Helper to collect all MessagesSegment from segment_messages."""
-    model = get_model("mockllm/model")
-    msgs_as_str, _ = message_numbering()
-    results: list[MessagesSegment] = []
-    async for seg in segment_messages(
-        source,
-        messages_as_str=msgs_as_str,
-        model=model,
-        context_window=context_window,
-    ):
-        results.append(seg)
-    return results
-
-
 @pytest.mark.anyio
 @segmenter_axis
 async def test_segment_messages_single_segment(segmenter: _Segmenter) -> None:
@@ -635,7 +616,7 @@ async def test_segment_messages_single_segment(segmenter: _Segmenter) -> None:
 async def test_segment_messages_renders_text() -> None:
     """Rendered text contains [M1], [M2] etc. from message_numbering()."""
     msgs: list[ChatMessage] = [_user1, _asst1]
-    results = await _collect(msgs, context_window=10_000)
+    results = await _segment_batch(msgs, context_window=10_000)
 
     assert len(results) == 1
     text = results[0].messages_str
@@ -651,7 +632,7 @@ async def test_segment_messages_with_events() -> None:
         _make_compaction_event(type="summary"),
         _make_model_event(input=[_user2], output_content="Seg 1"),
     ]
-    results = await _collect(events, context_window=10_000)
+    results = await _segment_batch(events, context_window=10_000)
 
     # Now produces a single merged segment (not two separate segments)
     assert len(results) == 1
@@ -704,7 +685,7 @@ async def test_segment_messages_events_with_chunking() -> None:
             output_content=long_text,
         ),
     ]
-    results = await _collect(events, context_window=50)
+    results = await _segment_batch(events, context_window=50)
 
     # Messages are merged then chunked — segment counter should be
     # monotonically increasing
@@ -774,13 +755,13 @@ async def test_stream_segment_messages_releases_early() -> None:
     """First segment is yielded before the source iterator is exhausted."""
     long_text = "word " * 100  # ~100 tokens, forces one message per segment
     total_messages = 6
-    consumed = 0
+    read = 0
 
     async def source() -> AsyncIterator[ChatMessage]:
-        nonlocal consumed
+        nonlocal read
         for i in range(total_messages):
+            read += 1
             yield ChatMessageUser(content=long_text, id=f"long-{i}")
-            consumed += 1
 
     model = get_model("mockllm/model")
     msgs_as_str, _ = message_numbering()
@@ -794,9 +775,9 @@ async def test_stream_segment_messages_releases_early() -> None:
     ):
         segments_seen += 1
         if segments_seen == 1:
-            # The first segment must have been produced without the
-            # source having been fully drained yet.
-            assert consumed < total_messages
+            # Segment 0 holds the first message; the third is what closed
+            # the chunk that overflowed it. Nothing beyond that is read.
+            assert read == 3
             break
 
     assert segments_seen == 1

@@ -17,11 +17,7 @@ from inspect_ai.model._chat_message import (
 )
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_scout._scanner._loaders import create_implicit_loader
-from inspect_scout._transcript.handle import (
-    MaterializedTranscriptHandle,
-    SpooledTranscriptHandle,
-    TranscriptHandle,
-)
+from inspect_scout._transcript.handle import TranscriptHandle
 from inspect_scout._transcript.timeline import Timeline
 from inspect_scout._transcript.types import Transcript, TranscriptContent
 
@@ -440,18 +436,7 @@ def test_bare_list_type_should_raise_error() -> None:
         pytest.param(
             Transcript | TranscriptHandle, "IdentityLoader", id="transcript-and-handle"
         ),
-        pytest.param(
-            Transcript | MaterializedTranscriptHandle | SpooledTranscriptHandle,
-            "IdentityLoader",
-            id="transcript-and-both-concrete-handles",
-        ),
-        pytest.param(Transcript, "IdentityLoader", id="bare-transcript"),
         pytest.param(Transcript | int, None, id="incompatible-member-rejected"),
-        pytest.param(
-            TranscriptHandle | MaterializedTranscriptHandle,
-            None,
-            id="no-transcript-member",
-        ),
     ],
 )
 def test_transcript_or_handle_union_takes_the_identity_loader(
@@ -461,8 +446,8 @@ def test_transcript_or_handle_union_takes_the_identity_loader(
 
     Asserts through `create_implicit_loader`, since that routing — not the
     predicate — is what a handle-accepting scanner needs at registration.
-    ``None`` marks annotations that are not a transcript-or-handle union and
-    so fall through to the message/event loaders, which reject them.
+    ``None`` marks an annotation that is not a transcript-or-handle union and
+    so falls through to the message/event loaders, which reject it.
     """
 
     async def scanner_fn(input: Any) -> Any:

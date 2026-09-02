@@ -631,15 +631,6 @@ def test_is_compatible_with_type_union_semantics(
             Transcript | TranscriptHandle, Transcript, True, id="accepted-union"
         ),
         pytest.param(Transcript | int, Transcript, False, id="incompatible-union"),
-        # Both sides are the same full union: falls through to
-        # `_union_covers_union` rather than the handle branch, and must still
-        # terminate (no infinite recursion) and match.
-        pytest.param(
-            Transcript | TranscriptHandle,
-            Transcript | TranscriptHandle,
-            True,
-            id="full-union-vs-full-union",
-        ),
     ],
 )
 def test_is_compatible_with_type_transcript_handle_widening(

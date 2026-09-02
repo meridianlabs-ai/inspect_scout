@@ -1,11 +1,12 @@
 """Single-pass spool-building parse and replay for large transcripts.
 
 Parses the sample JSON once, spooling filtered messages/events (unresolved)
-to JSONL and ALL attachments + pool items to an offset-indexed blob spool.
-Replay (see ``replay_*``) resolves ``attachment://`` refs and pool ranges
-per item, validates via TypeAdapter, and yields -- O(one item) memory.
+to JSONL and every attachment (plus, when events are collected, the pool
+items they can reference) to an offset-indexed blob spool. Replay (see
+``replay_*``) resolves ``attachment://`` refs and pool ranges per item,
+validates via TypeAdapter, and yields -- O(one item) memory.
 
-ALL attachments must be spooled: refs inside events_data pool items arrive
+Every attachment must be spooled: refs inside events_data pool items arrive
 after the attachments section, so they cannot be filtered during the parse.
 """
 
@@ -19,13 +20,10 @@ from pathlib import Path
 from typing import IO, Any, AsyncIterable, Iterator
 
 import ijson  # type: ignore[import-untyped]  # no published stubs
-from ijson.utils import (  # type: ignore[import-untyped]  # no published stubs
-    coroutine as _ijson_coroutine,
-)
 from inspect_ai._util.async_bytes_reader import adapt_to_reader
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 
 from ..types import EventFilter, MessageFilter
 from .pool import slice_positions
@@ -47,6 +45,7 @@ from .reducer import (
     CoroutineGen,
     ListProcessingConfig,
     ParseState,
+    _coroutine,
     _item_coroutine,
     _unfiltered_item_coroutine,
     scores_coroutine,
@@ -60,11 +59,18 @@ from .spool import BlobSpool, ByteSpool, ItemSpool
 # see the note on `elif prefix[0] == "t":` below). Keep both constant blocks
 # and both classify/dispatch loops (the HOT PATH comment below, and the one in
 # load_filtered.py's `_parse_and_filter`) in sync when either changes.
+#
+# One deliberate asymmetry: load_filtered.py sets `state.events_seen` in its
+# events branch, to decide how much of the attachment table to retain. This
+# path retains all of it unconditionally, so there is nothing to gate -- do
+# not add it here for parity.
 _SECTION_OTHER = 0
 _SECTION_MESSAGES = 1
 _SECTION_EVENTS = 2
 _SECTION_ATTACHMENTS = 3
 _SECTION_METADATA = 4
+# 5 is load_filtered.py's _SECTION_TIMELINES, skipped here. The gap is
+# deliberate: matching numbers keep the two blocks diffable.
 _SECTION_TARGET = 6
 _SECTION_SCORES = 7
 _SECTION_MESSAGE_POOL = 8
@@ -96,16 +102,6 @@ _MIN_SECTION_PREFIX_LEN = min(
     _EVENTS_DATA_MESSAGES_ITEM_PREFIX_LEN,
     _EVENTS_DATA_CALLS_ITEM_PREFIX_LEN,
 )
-
-
-class _SpoolSink:
-    """ItemSink whose append writes to an ItemSpool."""
-
-    def __init__(self, spool: ItemSpool) -> None:
-        self._spool = spool
-
-    def append(self, item: dict[str, Any]) -> None:
-        self._spool.append(item)
 
 
 class _PoolSink:
@@ -214,9 +210,10 @@ async def stream_parse_to_spool(
     """Parse sample JSON in a single ijson pass, spooling to disk.
 
     Filtered messages/events are appended (as raw, unresolved dicts) to JSONL
-    item spools. ALL attachments and pool items are spooled regardless of
-    filters: attachment refs inside pool items are only known during replay,
-    so filtering pools/attachments here would be unsound.
+    item spools. ALL attachments are spooled regardless of filters: refs
+    inside pool items are only known during replay, so filtering attachments
+    here would be unsound. Pool items are spooled only when events are
+    collected, since only an event can carry a pool ref.
 
     Args:
         sample_bytes: Byte stream of JSON sample data.
@@ -227,8 +224,8 @@ async def stream_parse_to_spool(
         spool_dir: Directory in which to create spool files.
 
     Returns:
-        StreamParseResult with spools populated and small fields
-        (metadata/target/scores) resolved in memory. The sample's
+        StreamParseResult with spools populated; ``target`` and ``scores``
+        are small enough to hold in memory, metadata is spooled. The sample's
         ``timelines`` section is neither spooled nor returned --
         ``StreamParseResult`` has no field for it, so a transcript
         materialized from this parse has ``timelines == []`` even when the
@@ -262,7 +259,7 @@ async def stream_parse_to_spool(
 
     # Unwind already-opened spools if a later constructor fails (e.g. EMFILE /
     # ENOSPC): until `result` exists, nothing else can close them. Disarmed
-    # via pop_all() once all three are open; from then on the
+    # via pop_all() once all four are open; from then on the
     # `except BaseException: result.close()` below owns cleanup.
     with contextlib.ExitStack() as unwind:
         messages_spool = ItemSpool(spool_dir)
@@ -278,35 +275,35 @@ async def stream_parse_to_spool(
     )
 
     messages_coro = (
-        _item_coroutine(_SpoolSink(messages_spool), set(), messages_config)
+        _item_coroutine(messages_spool, set(), messages_config)
         if messages_config
         else None
     )
     events_coro = (
-        _item_coroutine(_SpoolSink(events_spool), set(), events_config)
-        if events_config
-        else None
+        _item_coroutine(events_spool, set(), events_config) if events_config else None
     )
     attachments_coro = _spool_attachments_coroutine(blobs)
     metadata_coro = spooling_metadata_coroutine(metadata_spool.write)
     target_coro: CoroutineGen | None = target_coroutine(state)
     scores_coro = scores_coroutine(state)
-    message_pool_coros = [
-        _unfiltered_item_coroutine(
-            _PoolSink(blobs, "message_pool"), MESSAGE_POOL_ITEM_PREFIX
-        ),
-        _unfiltered_item_coroutine(
-            _PoolSink(blobs, "message_pool"), EVENTS_DATA_MESSAGES_ITEM_PREFIX
-        ),
-    ]
-    call_pool_coros = [
-        _unfiltered_item_coroutine(
-            _PoolSink(blobs, "call_pool"), CALL_POOL_ITEM_PREFIX
-        ),
-        _unfiltered_item_coroutine(
-            _PoolSink(blobs, "call_pool"), EVENTS_DATA_CALLS_ITEM_PREFIX
-        ),
-    ]
+    # One sink per pool, shared by both on-disk shapes: they carry the same
+    # pool, so a second sink would restart the positional counter and overwrite
+    # the first shape's entries. Only built when events are collected -- pool
+    # refs live on events, so nothing else can fetch them (load_filtered.py
+    # gates its own pool coroutines the same way).
+    message_pool_coros: list[CoroutineGen] = []
+    call_pool_coros: list[CoroutineGen] = []
+    if events_config:
+        message_sink = _PoolSink(blobs, "message_pool")
+        message_pool_coros = [
+            _unfiltered_item_coroutine(message_sink, MESSAGE_POOL_ITEM_PREFIX),
+            _unfiltered_item_coroutine(message_sink, EVENTS_DATA_MESSAGES_ITEM_PREFIX),
+        ]
+        call_sink = _PoolSink(blobs, "call_pool")
+        call_pool_coros = [
+            _unfiltered_item_coroutine(call_sink, CALL_POOL_ITEM_PREFIX),
+            _unfiltered_item_coroutine(call_sink, EVENTS_DATA_CALLS_ITEM_PREFIX),
+        ]
 
     last_prefix = ""
     current_section = _SECTION_OTHER
@@ -392,11 +389,12 @@ async def stream_parse_to_spool(
                     elif prefix[0] == "t":
                         # "target" vs "timelines", on the 2nd char. Timelines
                         # are skipped: spooling them would retain the whole
-                        # section for the parse's lifetime, and a scan that
-                        # *requests* a timeline is not streaming eligible
-                        # (_scan.py `_streaming_eligible`). That is a
-                        # constraint on consumers, not a fact about them:
-                        # `_streaming_eligible` looks only at the requested
+                        # section for the parse's lifetime, and a caller that
+                        # *requests* a timeline never reaches this parse --
+                        # `EvalLogTranscriptsView.open` routes
+                        # `content.timeline is not None` to the materialized
+                        # path. That is a constraint on callers, not a fact
+                        # about them: the guard looks only at the requested
                         # content, never at whether the sample stores
                         # timelines, so anything reading a spooled transcript's
                         # `.timelines` sees [] regardless. Pinned by
@@ -430,10 +428,10 @@ async def stream_parse_to_spool(
                         target_coro = None
                 elif current_section == _SECTION_SCORES:
                     scores_coro.send((prefix, event, value))
-                elif current_section == _SECTION_MESSAGE_POOL:
+                elif current_section == _SECTION_MESSAGE_POOL and message_pool_coros:
                     for coro in message_pool_coros:
                         coro.send((prefix, event, value))
-                elif current_section == _SECTION_CALL_POOL:
+                elif current_section == _SECTION_CALL_POOL and call_pool_coros:
                     for coro in call_pool_coros:
                         coro.send((prefix, event, value))
 
@@ -445,7 +443,7 @@ async def stream_parse_to_spool(
         raise
 
 
-@_ijson_coroutine  # type: ignore[untyped-decorator]  # ijson.utils.coroutine has no type stubs
+@_coroutine
 def _spool_attachments_coroutine(blobs: BlobSpool) -> CoroutineGen:  # pragma: no cover
     """Spool ALL attachments, without an ``attachment_refs`` membership check.
 
@@ -500,8 +498,10 @@ def _expand_pool_range(
 ) -> list[Any]:
     """Expand range-encoded pool refs by fetching items from ``blobs``.
 
-    Pool items are spooled unresolved (attachments arrive after pools in the
-    JSON), so each fetched item is resolved for attachment refs here.
+    Entries come back unresolved: the caller's trailing ``_resolve_strings``
+    walks them along with the rest of the item. Resolving here as well would
+    rescan a just-substituted attachment body for refs, which the
+    materialized path (a single ``re.sub``) never does.
     """
     result: list[Any] = []
     pool_len = blobs.pool_len(pool_name)
@@ -509,7 +509,7 @@ def _expand_pool_range(
         for i in slice_positions(start, end_exclusive, pool_len):
             raw = blobs.get((pool_name, i))
             if raw is not None:
-                result.append(_resolve_strings(json.loads(raw), blobs))
+                result.append(json.loads(raw))
     return result
 
 
@@ -548,11 +548,19 @@ def replay_messages(result: StreamParseResult) -> Iterator[ChatMessage]:
 def _hydrate_nested_tool_events(item: dict[str, Any], blobs: BlobSpool) -> None:
     """Recursively resolve and validate a `ToolEvent` item's nested `events`.
 
-    `ToolEvent.events` is typed `list[Any]` (a legacy field for
-    tool-spawned agents), so `TypeAdapter(Event)` leaves its entries as raw
-    dicts. `timeline_stream.py` recurses into `ToolEvent.events` expecting
-    real `Event` instances, so each nested dict is resolved and validated the
-    same way top-level events are (recursively, in place).
+    `ToolEvent.events` is typed `list[Any]` (a legacy field for tool-spawned
+    agents), so `TypeAdapter(Event)` leaves its entries as raw dicts.
+    Consumers that walk nested events expect real `Event` instances, so each
+    nested dict is resolved and validated the same way top-level events are
+    (recursively, in place).
+
+    Anything that does not validate is passed through unchanged, matching the
+    materialized path, which leaves the whole list alone. The field is legacy
+    and loosely shaped: a non-dict entry, or a dict from a future/unknown
+    event type, must not take down the surrounding `events()` stream -- and a
+    dict that is not an event at all must not be coerced into an invented one
+    (`TypeAdapter(Event)` happily turns `{"hello": "world"}` into a
+    `BranchEvent`).
 
     Known limitation: the materialized read path never runs this hydration,
     so for legacy tool-spawned-agent transcripts the streaming path surfaces
@@ -562,11 +570,20 @@ def _hydrate_nested_tool_events(item: dict[str, Any], blobs: BlobSpool) -> None:
     nested = item.get("events")
     if not nested:
         return
-    hydrated: list[Event] = []
+    hydrated: list[Any] = []
     for nested_item in nested:
+        if not isinstance(nested_item, dict):
+            hydrated.append(nested_item)
+            continue
         resolved = resolve_item_dict(nested_item, blobs)
         _hydrate_nested_tool_events(resolved, blobs)
-        hydrated.append(_EVENT_ADAPTER.validate_python(resolved))
+        if "event" not in resolved:
+            hydrated.append(resolved)  # not an event: validating would invent one
+            continue
+        try:
+            hydrated.append(_EVENT_ADAPTER.validate_python(resolved))
+        except ValidationError:
+            hydrated.append(resolved)  # unknown or future event type
     item["events"] = hydrated
 
 

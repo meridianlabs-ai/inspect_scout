@@ -5,15 +5,16 @@ from __future__ import annotations
 import io
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import ijson  # type: ignore[import-untyped]  # no published stubs
 import pytest
-from inspect_ai.event import ModelEvent
+from inspect_ai.event import ModelEvent, ToolEvent
 from inspect_scout._transcript.json import spool as spool_mod
 from inspect_scout._transcript.json import stream_parse
 from inspect_scout._transcript.json.load_filtered import load_filtered_transcript
-from inspect_scout._transcript.json.spool import ItemSpool
+from inspect_scout._transcript.json.pool import slice_positions
+from inspect_scout._transcript.json.spool import ItemSpool, SpoolKey
 from inspect_scout._transcript.json.stream_parse import (
     replay_events,
     replay_messages,
@@ -106,9 +107,9 @@ async def test_parse_captures_scalar_fields(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_parse_spools_all_attachments_and_pools(tmp_path: Path) -> None:
-    result = await stream_parse_to_spool(_stream(SAMPLE), None, None, tmp_path)
+    result = await stream_parse_to_spool(_stream(SAMPLE), None, "all", tmp_path)
     try:
-        # attachments spooled even when no kept item references them
+        # attachments spooled even though no kept item references this one
         assert result.blobs.get("a" * 32) == "resolved-text"
         # pool items positionally addressable
         assert result.blobs.pool_len("message_pool") == 2
@@ -119,11 +120,31 @@ async def test_parse_spools_all_attachments_and_pools(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_parse_nan_raises(tmp_path: Path) -> None:
+async def test_parse_nan_raises_and_closes_every_spool(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Malformed JSON must not leak the spool fds it had already opened.
+
+    Asserted on the files rather than on ``tmp_path.iterdir()``: the spool
+    files are unlinked at creation on POSIX, so the directory is empty
+    whether or not the unwind ever runs.
+    """
+    opened: list[Any] = []
+    real_open = spool_mod._open_spool_file
+
+    def spy_open(dir: Path, suffix: str) -> Any:
+        spool_file = real_open(dir, suffix)
+        opened.append(spool_file)
+        return spool_file
+
+    monkeypatch.setattr(spool_mod, "_open_spool_file", spy_open)
+
     bad = io.BytesIO(b'{"id": "s", "messages": [], "x": NaN}')
     with pytest.raises(ijson.JSONError):
         await stream_parse_to_spool(bad, "all", "all", tmp_path)
-    assert list(tmp_path.iterdir()) == []  # spools closed/unlinked on error
+
+    assert len(opened) == 4  # messages, events, blobs, metadata
+    assert all(spool_file.closed for spool_file in opened)
 
 
 @pytest.mark.asyncio
@@ -372,17 +393,8 @@ async def test_metadata_is_not_cached_between_calls(tmp_path: Path) -> None:
         result.close()
 
 
-@pytest.mark.asyncio
-async def test_spool_write_failure_surfaces_instead_of_dropping_items(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A failing spool write must raise, not silently drop the item.
-
-    The item coroutines tolerate a malformed item by design, but that guard
-    used to wrap the sink append too -- so a full disk or a closed fd dropped
-    a message or event while the parse went on to report success. Data loss
-    that a caller cannot see is worse than a crash.
-    """
+def _fail_item_spool_append(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make the second `ItemSpool.append` fail (the filtered-item coroutine)."""
     real_append = spool_mod.ItemSpool.append
     calls = {"n": 0}
 
@@ -393,6 +405,43 @@ async def test_spool_write_failure_surfaces_instead_of_dropping_items(
         real_append(self, item)
 
     monkeypatch.setattr(spool_mod.ItemSpool, "append", failing_append)
+
+
+def _fail_pool_blob_put(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make the first pool `BlobSpool.put` fail (the unfiltered coroutine).
+
+    Keyed on the tuple form so attachment writes, which share `put`, still
+    succeed -- the pool sinks are the only users of positional keys.
+    """
+    real_put = spool_mod.BlobSpool.put
+
+    def failing_put(self: spool_mod.BlobSpool, key: SpoolKey, value: str) -> None:
+        if isinstance(key, tuple):
+            raise OSError(28, "No space left on device")
+        real_put(self, key, value)
+
+    monkeypatch.setattr(spool_mod.BlobSpool, "put", failing_put)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "break_sink",
+    [_fail_item_spool_append, _fail_pool_blob_put],
+    ids=["filtered-items", "pool-items"],
+)
+async def test_spool_write_failure_surfaces_instead_of_dropping_items(
+    break_sink: Callable[[pytest.MonkeyPatch], None],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A failing spool write must raise, not silently drop the item.
+
+    Both item coroutines tolerate a malformed item by design, but that guard
+    used to wrap the sink append too -- so a full disk or a closed fd dropped
+    a message, event or pool entry while the parse went on to report success.
+    Data loss that a caller cannot see is worse than a crash.
+    """
+    break_sink(monkeypatch)
 
     with pytest.raises(OSError, match="No space left on device"):
         await stream_parse_to_spool(_stream(SAMPLE), "all", "all", tmp_path)
@@ -417,5 +466,196 @@ async def test_timelines_are_not_spooled(tmp_path: Path) -> None:
     try:
         assert not hasattr(result, "timelines")
         assert result.target == "the-target"
+    finally:
+        result.close()
+
+
+@pytest.mark.parametrize(
+    ("start", "end", "pool_len"),
+    [
+        (0, 3, 3),
+        (1, 4, 3),
+        (-1, 3, 3),
+        (-3, -1, 3),
+        (1, 10**9, 3),
+        (-99, 99, 3),
+        (2, 1, 3),
+        (0, 1, 0),
+        (-1, 10**9, 5),
+    ],
+)
+def test_slice_positions_matches_python_slicing(
+    start: int, end: int, pool_len: int
+) -> None:
+    """Divergence from slicing here is a silent divergence in replayed events."""
+    pool = list(range(pool_len))
+    assert [pool[i] for i in slice_positions(start, end, pool_len)] == pool[start:end]
+
+
+@pytest.mark.asyncio
+async def test_both_pool_shapes_share_one_positional_index(tmp_path: Path) -> None:
+    """Legacy `message_pool` and `events_data.messages` are one pool, in order.
+
+    Two sinks over the same pool name each start their own counter, so the
+    later shape overwrites the earlier one's entries while `pool_len` still
+    counts both -- entries silently vanish and refs address the wrong ones.
+    The materialized path appends both shapes into one list.
+    """
+    sample: dict[str, Any] = {
+        "id": "s-both-pool-shapes",
+        "messages": [],
+        "message_pool": [
+            {"role": "user", "content": "legacy-0"},
+            {"role": "user", "content": "legacy-1"},
+        ],
+        "events": [
+            {
+                "span_id": "s1",
+                "timestamp": "2022-01-01T00:00:00+00:00",
+                "event": "model",
+                "model": "test-model",
+                "input": [],
+                "input_refs": [[0, 3]],
+                "output": {"model": "test-model", "choices": []},
+                "tools": [],
+                "tool_choice": "auto",
+                "config": {},
+            }
+        ],
+        "attachments": {},
+        "events_data": {"messages": [{"role": "user", "content": "new-0"}]},
+    }
+    result = await stream_parse_to_spool(_stream(sample), None, "all", tmp_path)
+    try:
+        assert result.blobs.pool_len("message_pool") == 3
+        event = list(replay_events(result))[0]
+        assert isinstance(event, ModelEvent)
+        assert [m.content for m in event.input] == ["legacy-0", "legacy-1", "new-0"]
+    finally:
+        result.close()
+
+
+@pytest.mark.asyncio
+async def test_pools_are_not_spooled_when_events_are_not_collected(
+    tmp_path: Path,
+) -> None:
+    """Only events carry pool refs, so a messages-only read must skip the pool.
+
+    Spooling it writes the whole `events_data` section to disk for data
+    nothing can fetch.
+    """
+    result = await stream_parse_to_spool(_stream(SAMPLE), "all", None, tmp_path)
+    try:
+        assert result.blobs.pool_len("message_pool") == 0
+        assert result.blobs.get("a" * 32) == "resolved-text"  # attachments still kept
+    finally:
+        result.close()
+
+
+@pytest.mark.asyncio
+async def test_pooled_attachment_body_is_not_rescanned_for_refs(
+    tmp_path: Path,
+) -> None:
+    """A ref inside a resolved attachment body must survive, as when materialized.
+
+    The materialized path substitutes with one `re.sub`, which never rescans
+    what it just wrote. Resolving pool entries on fetch *and* again with the
+    rest of the item would expand the inner ref on the streamed path only.
+    """
+    outer, inner = "e" * 32, "f" * 32
+    sample: dict[str, Any] = {
+        "id": "s-nested-ref",
+        "messages": [],
+        "events": [
+            {
+                "span_id": "s1",
+                "timestamp": "2022-01-01T00:00:00+00:00",
+                "event": "model",
+                "model": "test-model",
+                "input": [],
+                "input_refs": [[0, 1]],
+                "output": {"model": "test-model", "choices": []},
+                "tools": [],
+                "tool_choice": "auto",
+                "config": {},
+            }
+        ],
+        "attachments": {
+            outer: f"body mentioning attachment://{inner} verbatim",
+            inner: "INNER",
+        },
+        "events_data": {
+            "messages": [{"role": "user", "content": f"attachment://{outer}"}]
+        },
+    }
+
+    result = await stream_parse_to_spool(_stream(sample), None, "all", tmp_path)
+    try:
+        streamed_event = list(replay_events(result))[0]
+        assert isinstance(streamed_event, ModelEvent)
+        streamed = streamed_event.input[0].content
+    finally:
+        result.close()
+
+    materialized = await load_filtered_transcript(
+        _stream(sample),
+        TranscriptInfo(
+            transcript_id="s-nested-ref",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+        ),
+        "all",
+        "all",
+    )
+    materialized_event = materialized.events[0]
+    assert isinstance(materialized_event, ModelEvent)
+    expected = f"body mentioning attachment://{inner} verbatim"
+    assert streamed == expected
+    assert materialized_event.input[0].content == expected
+
+
+def _tool_event_with_nested(nested: list[Any]) -> dict[str, Any]:
+    return {
+        "event": "tool",
+        "span_id": "s1",
+        "timestamp": "2022-01-01T00:00:00+00:00",
+        "working_start": 0,
+        "id": "call-1",
+        "function": "f",
+        "arguments": {},
+        "events": nested,
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "nested",
+    [
+        pytest.param(["a string", 42], id="non-dict"),
+        pytest.param([{"event": "future_thing", "timestamp": 1.0}], id="unknown-event"),
+        pytest.param([{"hello": "world"}], id="not-an-event"),
+    ],
+)
+async def test_nested_tool_events_that_are_not_events_pass_through(
+    nested: list[Any], tmp_path: Path
+) -> None:
+    """`ToolEvent.events` is `list[Any]`; hydration must not crash or invent.
+
+    The materialized path leaves these entries as-is. Validating them instead
+    raises out of the whole `events()` stream for an unknown event type, and
+    silently fabricates a `BranchEvent` from any other dict.
+    """
+    sample: dict[str, Any] = {
+        "id": "s-nested-tolerance",
+        "messages": [],
+        "events": [_tool_event_with_nested(nested)],
+        "attachments": {},
+    }
+    result = await stream_parse_to_spool(_stream(sample), None, "all", tmp_path)
+    try:
+        event = list(replay_events(result))[0]
+        assert isinstance(event, ToolEvent)
+        assert event.events == nested
     finally:
         result.close()

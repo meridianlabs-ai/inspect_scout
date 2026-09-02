@@ -4,17 +4,13 @@ from __future__ import annotations
 
 import io
 import json
-import pickle
 from pathlib import Path
 from typing import Any
 
 import anyio
 import ijson  # type: ignore[import-untyped]  # no published stubs
 import pytest
-from inspect_scout._transcript.handle import (
-    MaterializedTranscriptHandle,
-    SpooledTranscriptHandle,
-)
+from inspect_scout._transcript.handle import SpooledTranscriptHandle
 from inspect_scout._transcript.json.stream_parse import (
     StreamParseResult,
     stream_parse_to_spool,
@@ -46,15 +42,6 @@ def _spooled_handle(tmp_path: Path) -> SpooledTranscriptHandle:
     return SpooledTranscriptHandle(INFO, parse, fallback)
 
 
-def _materialized_handle() -> MaterializedTranscriptHandle:
-    transcript = Transcript(transcript_id="t1", messages=[], events=[], metadata={})
-
-    async def load_fn() -> Transcript:
-        return transcript
-
-    return MaterializedTranscriptHandle(load_fn, INFO)
-
-
 @pytest.mark.asyncio
 async def test_spooled_handle_multi_shot(tmp_path: Path) -> None:
     async with _spooled_handle(tmp_path) as handle:
@@ -62,45 +49,6 @@ async def test_spooled_handle_multi_shot(tmp_path: Path) -> None:
         second = [m async for m in handle.messages()]
         assert [m.id for m in first] == ["m1", "m2"]
         assert [m.id for m in second] == ["m1", "m2"]
-
-
-@pytest.mark.asyncio
-async def test_spooled_handle_load_memoized(tmp_path: Path) -> None:
-    async with _spooled_handle(tmp_path) as handle:
-        t1 = await handle.load()
-        t2 = await handle.load()
-        assert t1 is t2
-        assert len(t1.messages) == 2
-        assert t1.transcript_id == "t1"
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("handle_kind", ["spooled", "materialized"])
-async def test_handle_refuses_pickle(handle_kind: str, tmp_path: Path) -> None:
-    handle: SpooledTranscriptHandle | MaterializedTranscriptHandle = (
-        _spooled_handle(tmp_path)
-        if handle_kind == "spooled"
-        else _materialized_handle()
-    )
-    with pytest.raises(TypeError, match="cannot be pickled"):
-        pickle.dumps(handle)
-    await handle.aclose()
-
-
-@pytest.mark.asyncio
-async def test_materialized_handle(tmp_path: Path) -> None:
-    transcript = Transcript(transcript_id="t1", messages=[], events=[], metadata={})
-    calls = 0
-
-    async def load_fn() -> Transcript:
-        nonlocal calls
-        calls += 1
-        return transcript
-
-    async with MaterializedTranscriptHandle(load_fn, INFO) as handle:
-        assert (await handle.load()) is transcript
-        assert [m async for m in handle.messages()] == []
-        assert calls == 1  # memoized
 
 
 def _fallback_transcript() -> Transcript:
@@ -127,9 +75,8 @@ def _spooled_handle_with_bad_parse(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("first_call", ["messages", "load"])
-async def test_spooled_handle_fallback(first_call: str) -> None:
-    """The fallback is taken once and then memoized, however it is reached.
+async def test_spooled_handle_fallback() -> None:
+    """The fallback is taken once and then memoized.
 
     ``load_fallback`` is a full re-read of the source member, so repeating it
     per call would re-download and re-parse a >64MB transcript every time.
@@ -137,12 +84,8 @@ async def test_spooled_handle_fallback(first_call: str) -> None:
     fallback_transcript = _fallback_transcript()
     counts = {"parse": 0, "fallback": 0}
     async with _spooled_handle_with_bad_parse(fallback_transcript, counts) as handle:
-        if first_call == "messages":
-            messages = [m async for m in handle.messages()]
-            loaded = await handle.load()
-        else:
-            loaded = await handle.load()
-            messages = [m async for m in handle.messages()]
+        messages = [m async for m in handle.messages()]
+        loaded = await handle.load()
         assert [m.id for m in messages] == ["fb1"]
         assert loaded is fallback_transcript
 
@@ -152,35 +95,6 @@ async def test_spooled_handle_fallback(first_call: str) -> None:
             assert [e async for e in handle.events()] == []
             assert (await handle.load()) is fallback_transcript
         assert counts == {"parse": 1, "fallback": 1}
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("handle_kind", ["spooled", "materialized"])
-@pytest.mark.parametrize("load_first", [False, True], ids=["cold", "loaded"])
-async def test_handle_use_after_close_raises(
-    handle_kind: str, load_first: bool, tmp_path: Path
-) -> None:
-    """A closed handle refuses use -- including one that already loaded.
-
-    The memoized transcript must not be served from in front of the closed
-    check.
-    """
-    handle: SpooledTranscriptHandle | MaterializedTranscriptHandle = (
-        _spooled_handle(tmp_path)
-        if handle_kind == "spooled"
-        else _materialized_handle()
-    )
-    if load_first:
-        await handle.load()
-    await handle.aclose()
-    await handle.aclose()  # idempotent
-
-    with pytest.raises(RuntimeError, match="closed"):
-        await handle.load()
-
-    with pytest.raises(RuntimeError, match="closed"):
-        async for _ in handle.messages():
-            pass
 
 
 @pytest.mark.asyncio

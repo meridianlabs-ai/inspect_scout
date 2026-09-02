@@ -1,8 +1,8 @@
 """Tests for llm_scanner's bounded segment concurrency window.
 
-Covers `_scan_segments_bounded`'s window sizing -- `min(model's effective
-max_connections, _SEGMENT_WINDOW_CAP)` -- and that segment order survives
-concurrent scanning + reduction.
+Covers that `_scan_segments_bounded` admits no more than `_SEGMENT_WINDOW_CAP`
+segments at once, and that segment order survives concurrent scanning +
+reduction.
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ from inspect_ai.tool import ToolChoice, ToolInfo
 from inspect_scout import llm_scanner
 from inspect_scout._llm_scanner import _llm_scanner as llm_scanner_mod
 from inspect_scout._scanner.result import Result
+from inspect_scout._transcript.messages import MessagesSegment
 from inspect_scout._transcript.types import Transcript
 
 
@@ -43,37 +44,21 @@ def _make_transcript(n_messages: int, *, words: int = 3) -> Transcript:
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize(
-    ("window_cap", "max_connections", "limit"),
-    [
-        # cap binds: model allows more connections than the cap permits.
-        pytest.param(2, 10, 2, id="cap-binds"),
-        # connections bind: the model allows fewer than the (much larger) cap.
-        pytest.param(16, 2, 2, id="connections-bind"),
-    ],
-)
-async def test_bounded_segment_concurrency(
-    monkeypatch: pytest.MonkeyPatch,
-    window_cap: int,
-    max_connections: int,
-    limit: int,
-) -> None:
-    """No more than min(_SEGMENT_WINDOW_CAP, model max_connections) segments scan concurrently."""
-    monkeypatch.setattr(llm_scanner_mod, "_SEGMENT_WINDOW_CAP", window_cap)
+async def test_bounded_segment_concurrency(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No more than _SEGMENT_WINDOW_CAP segments are scanned concurrently."""
+    monkeypatch.setattr(llm_scanner_mod, "_SEGMENT_WINDOW_CAP", 2)
 
     # Count concurrency at _scan_segments_bounded's own admission window, not
     # inside the mock `generate` call: inspect_ai's model-level connection
-    # semaphore independently caps concurrent `generate` calls at
-    # max_connections, which would mask an under-derived window on the
-    # connections-bind leg if measured there instead.
+    # semaphore independently caps concurrent `generate` calls, which would
+    # mask a window that admits too many segments if measured there instead.
     in_flight = 0
     peak = 0
     original_bounded = llm_scanner_mod._scan_segments_bounded
 
     async def counting_bounded(
-        source: AsyncIterator[tuple[str | None, str]],
+        segments: AsyncIterator[MessagesSegment],
         scan_segment: Callable[[str], Awaitable[Result]],
-        model: Model,
     ) -> list[tuple[str | None, Result]]:
         async def counted_segment(messages_str: str) -> Result:
             nonlocal in_flight, peak
@@ -84,7 +69,7 @@ async def test_bounded_segment_concurrency(
             finally:
                 in_flight -= 1
 
-        return await original_bounded(source, counted_segment, model)
+        return await original_bounded(segments, counted_segment)
 
     monkeypatch.setattr(llm_scanner_mod, "_scan_segments_bounded", counting_bounded)
 
@@ -104,12 +89,7 @@ async def test_bounded_segment_concurrency(
             stop_reason="stop",
         )
 
-    mock_model = get_model(
-        "mockllm/model",
-        custom_outputs=custom,
-        memoize=False,
-        config=GenerateConfig(max_connections=max_connections),
-    )
+    mock_model = get_model("mockllm/model", custom_outputs=custom, memoize=False)
 
     scan_fn = llm_scanner(
         question="Is this helpful?",
@@ -122,48 +102,40 @@ async def test_bounded_segment_concurrency(
     await scan_fn(transcript)
 
     assert peak > 1, "test should exercise concurrency (multiple segments in flight)"
-    assert peak <= limit, f"peak in-flight {peak} exceeded window limit={limit}"
+    assert peak <= 2, f"peak in-flight {peak} exceeded the window cap"
 
 
 @pytest.mark.anyio
-async def test_bounded_segment_concurrency_batch_mode() -> None:
-    """Batch mode (no explicit max_connections) uses _SEGMENT_WINDOW_CAP, not the provider's non-batch default.
+async def test_segment_window_admits_before_pulling(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A window slot is taken before the next segment is pulled off the source.
 
-    inspect_ai resolves batch mode's effective max_connections to
-    DEFAULT_MAX_CONNECTIONS_BATCH (10_000), far above the cap -- so the window
-    should reach _SEGMENT_WINDOW_CAP (16). `model.api.max_connections()` (10 for
-    mockllm) is the *non-batch* provider default and must not leak into the
-    window when `config.batch` is set.
-
-    Calls `_scan_segments_bounded` directly (skipping the full scanner and any
-    real `generate` call) so this isn't muddied by inspect_ai's own model-level
-    connection semaphore/cache, the same concern that ruled out measuring the
-    other two legs inside a mock `generate`.
+    Pulling first would render (and hold) one segment string beyond the cap.
     """
-    model = get_model("mockllm/model", config=GenerateConfig(batch=True), memoize=False)
-    assert model.api.max_connections() == 10  # sanity: would wrongly cap the window
+    monkeypatch.setattr(llm_scanner_mod, "_SEGMENT_WINDOW_CAP", 2)
 
-    in_flight = 0
-    peak = 0
+    pulled = 0
+    completed = 0
+
+    async def segments() -> AsyncIterator[MessagesSegment]:
+        nonlocal pulled
+        for i in range(6):
+            pulled += 1
+            yield MessagesSegment(messages=[], messages_str=f"seg {i}", segment=i)
 
     async def scan_segment(messages_str: str) -> Result:
-        nonlocal in_flight, peak
-        in_flight += 1
-        peak = max(peak, in_flight)
-        try:
-            await anyio.sleep(0.01)
-        finally:
-            in_flight -= 1
+        nonlocal completed
+        await anyio.sleep(0.01)
+        assert pulled <= completed + 2, (
+            f"pulled {pulled} segments with {completed} scanned and a cap of 2"
+        )
+        completed += 1
         return Result(value=True)
 
-    async def source() -> AsyncIterator[tuple[str | None, str]]:
-        for i in range(20):
-            yield None, f"segment {i}"
+    await llm_scanner_mod._scan_segments_bounded(segments(), scan_segment)
 
-    await llm_scanner_mod._scan_segments_bounded(source(), scan_segment, model)
-
-    assert peak > 10, f"window degraded to the non-batch provider default (peak={peak})"
-    assert peak <= 16
+    assert pulled == 6
 
 
 # -- segment order tests --

@@ -23,7 +23,6 @@ import json
 import re
 import sqlite3
 from dataclasses import dataclass
-from datetime import datetime
 from logging import getLogger
 from os import PathLike
 from pathlib import Path
@@ -53,8 +52,6 @@ class ConversationRecord:
 
 def discover_conversations(
     path: str | PathLike[str] | None = None,
-    from_time: datetime | None = None,
-    to_time: datetime | None = None,
 ) -> list[ConversationRecord]:
     """Discover Antigravity conversations.
 
@@ -64,11 +61,6 @@ def discover_conversations(
             - An Antigravity data root (a directory containing ``brain/``)
             - A ``brain`` directory
             - A single conversation directory (``brain/<id>``)
-        from_time: Only yield conversations whose transcript modification
-            time (``st_mtime`` — not the conversation's run time, and reset
-            by ``cp``/``git checkout``/rsync) is on or after this time
-        to_time: Only yield conversations whose transcript modification time
-            is before this time
 
     Returns:
         Conversation records sorted by modification time (newest first).
@@ -81,35 +73,39 @@ def discover_conversations(
         logger.warning("Path does not exist: %s", search_path)
         return []
 
-    if (search_path / "brain").is_dir():
-        data_root: Path | None = search_path
-        conversation_dirs = [d for d in (search_path / "brain").iterdir() if d.is_dir()]
-    elif search_path.name == "brain" and search_path.is_dir():
-        data_root = search_path.parent
-        conversation_dirs = [d for d in search_path.iterdir() if d.is_dir()]
-    elif (search_path / _TRANSCRIPT_RELPATH).is_dir():
-        # A single conversation directory.
-        data_root = (
-            search_path.parent.parent if search_path.parent.name == "brain" else None
-        )
-        conversation_dirs = [search_path]
-    else:
-        logger.warning("Not an Antigravity data directory: %s", search_path)
+    try:
+        if (search_path / "brain").is_dir():
+            data_root: Path | None = search_path
+            conversation_dirs = [
+                d for d in (search_path / "brain").iterdir() if d.is_dir()
+            ]
+        elif search_path.name == "brain" and search_path.is_dir():
+            data_root = search_path.parent
+            conversation_dirs = [d for d in search_path.iterdir() if d.is_dir()]
+        elif (search_path / _TRANSCRIPT_RELPATH).is_dir():
+            # A single conversation directory.
+            data_root = (
+                search_path.parent.parent
+                if search_path.parent.name == "brain"
+                else None
+            )
+            conversation_dirs = [search_path]
+        else:
+            logger.warning("Not an Antigravity data directory: %s", search_path)
+            return []
+    except OSError as e:
+        logger.warning("Cannot list %s: %s", search_path, e)
         return []
 
     records: list[ConversationRecord] = []
     for conv_dir in conversation_dirs:
-        transcript_path = _find_transcript(conv_dir)
-        if transcript_path is None:
-            continue
         try:
+            transcript_path = _find_transcript(conv_dir)
+            if transcript_path is None:
+                continue
             mtime = transcript_path.stat().st_mtime
         except OSError as e:
-            logger.warning("stat failed for %s: %s", transcript_path, e)
-            continue
-        if from_time is not None and mtime < from_time.timestamp():
-            continue
-        if to_time is not None and mtime >= to_time.timestamp():
+            logger.warning("Skipping unreadable conversation %s: %s", conv_dir, e)
             continue
 
         conversation_id = conv_dir.name
@@ -162,7 +158,8 @@ def read_jsonl_steps(path: Path) -> list[dict[str, Any]]:
                 continue
             try:
                 parsed = json.loads(line)
-            except json.JSONDecodeError as e:
+            except (json.JSONDecodeError, RecursionError) as e:
+                # RecursionError: json.loads on a pathologically nested line
                 logger.warning("Invalid JSON at %s:%d: %s", path, line_num, e)
                 continue
             if isinstance(parsed, dict):
@@ -180,9 +177,9 @@ def read_title(data_root: Path, conversation_id: str) -> str | None:
     is not consulted.
     """
     annotation = data_root / "annotations" / f"{conversation_id}.pbtxt"
-    if not annotation.is_file():
-        return None
     try:
+        if not annotation.is_file():
+            return None
         text = annotation.read_text(encoding="utf-8")
     except OSError as e:
         logger.warning("Failed to read %s: %s", annotation, e)
@@ -205,8 +202,9 @@ def read_generation_metadata(db_path: Path) -> list[GenerationInfo]:
     The conversation store's step payloads are encrypted, but its
     ``gen_metadata`` table (one row per model generation, ordinal ``idx``)
     is clear protobuf without a published schema. Field paths below were
-    established empirically (agy 1.1.14–1.1.19) and verified against
-    parallel community reverse-engineering (antigravity-usage, MIT):
+    established empirically (agy 1.1.14–1.1.19); kenn-io/agentsview
+    (``antigravity_proto.go``) and ccusage's Antigravity adapter decode
+    token usage from the same blobs independently:
 
     - ``1.19`` (string): wire model id (e.g. ``claude-sonnet-4-6``)
     - ``1.4.1`` (varint): fixed prompt-prefix tokens

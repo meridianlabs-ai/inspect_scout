@@ -13,7 +13,11 @@ agy 1.1.14–1.1.19:
 - ``PLANNER_RESPONSE`` carries assistant text, optional ``thinking``, and
   ``tool_calls`` as ``[{"name", "args"}]`` with **no call ids** — results
   pair positionally with the preceding planner step's calls.
-- ``GENERIC`` steps are tool results (``source`` is MODEL, not TOOL).
+- Tool results are the ``MODEL``-sourced steps other than
+  ``PLANNER_RESPONSE``. The corpus records them all as ``GENERIC``; other
+  agy versions record typed results (``RUN_COMMAND``, ``VIEW_FILE``,
+  ``CODE_ACTION``, ``INVOKE_SUBAGENT``, …) per third-party parsers of the
+  same file, so the ``source``/``type`` pair — not ``GENERIC`` — is the test.
 - ``CHECKPOINT`` at the start of every conversation (``{{ CHECKPOINT 0 }}``)
   is a session preamble, not compaction; later checkpoints are real
   compaction boundaries.
@@ -143,12 +147,17 @@ def checkpoint_index(step: Step) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def is_tool_result_step(step: Step) -> bool:
+    """Whether a step is a tool result (see the module docstring)."""
+    return step.source == "MODEL" and step.type != "PLANNER_RESPONSE"
+
+
 class ToolCallPairer:
-    """Pairs ``GENERIC`` result steps with pending planner tool calls.
+    """Pairs tool-result steps with pending planner tool calls.
 
     The JSONL carries no call ids, and results follow their planner step in
-    order (parallel calls produce consecutive ``GENERIC`` steps), so pairing
-    is positional/FIFO. Calls that never receive a result (interrupted turns,
+    order (parallel calls produce consecutive result steps), so pairing is
+    positional/FIFO. Calls that never receive a result (interrupted turns,
     orphaned background tasks) simply remain unclaimed.
     """
 
@@ -239,7 +248,7 @@ def step_to_messages(
         step: The step to convert.
         tool_calls: Pre-converted tool calls when `step` is a planner step
             (from `step_tool_calls`; empty otherwise).
-        pairer: Positional pairing state for ``GENERIC`` results.
+        pairer: Positional pairing state for tool results.
     """
     if step.type == "USER_INPUT":
         return [ChatMessageUser(content=parse_user_request(step.content or ""))]
@@ -260,7 +269,7 @@ def step_to_messages(
                 tool_calls=tool_calls or None,
             )
         ]
-    elif step.type == "GENERIC":
+    elif is_tool_result_step(step):
         call = pairer.pop()
         return [
             ChatMessageTool(

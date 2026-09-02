@@ -49,6 +49,7 @@ from .events import (
     Step,
     ToolCallPairer,
     checkpoint_index,
+    is_tool_result_step,
     model_from_settings,
     parse_settings_change,
     parse_steps,
@@ -93,9 +94,17 @@ async def antigravity(
     Yields:
         Transcript objects ready for insertion into transcript database.
         Sub-agent conversations are inlined into their parent as agent spans
-        and not yielded at the top level.
+        and not yielded at the top level. ``model`` falls back to the
+        display name from session settings, and ``total_tokens`` is None,
+        when the conversation store (``conversations/<id>.db``) is absent
+        or undecodable.
     """
-    records = discover_conversations(path=path, from_time=from_time, to_time=to_time)
+    # Discover everything and apply the time window only to what is
+    # yielded: the child lookup map and the child-id pre-scan must see
+    # conversations outside the window, since a parent keeps writing after
+    # its sub-agents finish (a window can hold the child but not the parent,
+    # or vice versa).
+    records = discover_conversations(path=path)
     if not records:
         logger.info("No Antigravity conversations found")
         return
@@ -124,12 +133,12 @@ async def antigravity(
             if cid != conversation_id:
                 continue
         elif cid in child_ids:
-            # KNOWN LIMITATION: this suppression is scoped to a single
-            # import. A time-windowed import that sees a child without its
-            # parent yields the child standalone, storing its events twice
-            # across imports (see docs/db_importing.qmd).
             continue
         matched += 1
+        if from_time is not None and record.mtime < from_time.timestamp():
+            continue
+        if to_time is not None and record.mtime >= to_time.timestamp():
+            continue
         transcript = _create_transcript(record, records_by_id)
         if transcript is not None:
             count += 1
@@ -143,22 +152,31 @@ def _read_steps(record: ConversationRecord) -> list[Step]:
     """Read and validate a conversation's steps (empty if unreadable)."""
     try:
         raw_steps = read_jsonl_steps(record.transcript_path)
-    except OSError as e:
+    except (OSError, ValueError) as e:
+        # ValueError covers UnicodeDecodeError from non-UTF-8 bytes
         logger.warning("Skipping unreadable file %s: %s", record.transcript_path, e)
         return []
     return parse_steps(raw_steps)
+
+
+def _spawn_result_content(step: Step) -> str | None:
+    """The content of an ``invoke_subagent`` tool result, or None for any other step."""
+    if (
+        is_tool_result_step(step)
+        and step.content
+        and _SPAWN_RESULT_MARKER in step.content
+    ):
+        return step.content
+    return None
 
 
 def _extract_child_conversation_ids(steps: list[Step]) -> list[str]:
     """Extract child conversation ids from invoke_subagent result steps."""
     ids: list[str] = []
     for step in steps:
-        if (
-            step.type == "GENERIC"
-            and step.content
-            and (_SPAWN_RESULT_MARKER in step.content)
-        ):
-            ids.extend(_CONVERSATION_ID_RE.findall(step.content))
+        content = _spawn_result_content(step)
+        if content:
+            ids.extend(_CONVERSATION_ID_RE.findall(content))
     return ids
 
 
@@ -200,6 +218,7 @@ def _create_transcript(
         records_by_id=records_by_id,
         roles=roles,
         depth=0,
+        inlining=frozenset({record.conversation_id}),
     )
     if not messages:
         return None
@@ -275,11 +294,15 @@ def _convert_steps(
     records_by_id: dict[str, ConversationRecord],
     roles: dict[str, str],
     depth: int,
+    inlining: frozenset[str],
 ) -> tuple[list[ChatMessage], list[Event], _ConversionInfo]:
     """Convert a conversation's steps to messages and events.
 
     Sub-agent spawns are inlined as agent spans at the point of the spawn
-    result, bounded by ``depth`` against reference cycles.
+    result. ``inlining`` holds the conversation ids on the current inlining
+    path (the root plus every enclosing sub-agent), so a spawn result naming
+    an ancestor is skipped rather than nested into a cycle; ``depth`` bounds
+    legitimate nesting.
     """
     messages: list[ChatMessage] = []
     events: list[Event] = []
@@ -298,7 +321,13 @@ def _convert_steps(
             # Their content is the replacement context the model saw, so it
             # enters the message stream (matching claude_code), with the
             # CompactionEvent as the boundary marker.
-            if (checkpoint_index(step) or 0) > 0:
+            index = checkpoint_index(step)
+            if index is None:
+                logger.warning(
+                    "Dropping CHECKPOINT step %d without a {{ CHECKPOINT N }} marker",
+                    step.step_index,
+                )
+            elif index > 0:
                 info.compaction_count += 1
                 events.append(to_compaction_event(step))
                 if step.content:
@@ -342,12 +371,9 @@ def _convert_steps(
         messages.extend(new_messages)
 
         # Inline spawned sub-agents as agent spans at the spawn result.
-        if (
-            step.type == "GENERIC"
-            and step.content
-            and (_SPAWN_RESULT_MARKER in step.content)
-        ):
-            for child_id in _CONVERSATION_ID_RE.findall(step.content):
+        spawn_result = _spawn_result_content(step)
+        if spawn_result:
+            for child_id in _CONVERSATION_ID_RE.findall(spawn_result):
                 if child_id in info.child_ids:
                     # Resume seams can duplicate steps verbatim; inlining the
                     # same child twice would emit colliding span ids.
@@ -362,6 +388,7 @@ def _convert_steps(
                         records_by_id=records_by_id,
                         roles=roles,
                         depth=depth,
+                        inlining=inlining,
                     )
                 )
 
@@ -388,13 +415,17 @@ def _create_subagent_span_events(
     records_by_id: dict[str, ConversationRecord],
     roles: dict[str, str],
     depth: int,
+    inlining: frozenset[str],
 ) -> list[Event]:
     """Convert a child conversation to an agent span's events.
 
     Produces ``SpanBeginEvent(type="agent")`` / child events /
-    ``SpanEndEvent``. A child with no local data (e.g. a cancelled spawn)
-    produces no events.
+    ``SpanEndEvent``. A child with no local data (e.g. a cancelled spawn),
+    or one already on the inlining path (a spawn cycle), produces no events.
     """
+    if child_id in inlining:
+        logger.warning("Sub-agent %s spawns an ancestor of itself; skipping", child_id)
+        return []
     if depth >= _MAX_SUBAGENT_DEPTH:
         logger.warning("Max sub-agent depth reached at %s", child_id)
         return []
@@ -403,7 +434,12 @@ def _create_subagent_span_events(
         logger.warning("Sub-agent conversation %s not found on disk", child_id)
         return []
 
+    agent_span_id = f"agent-{child_id}"
     child_steps = _read_steps(child)
+    sub_begin, sub_end = _conversation_time_bounds(child_steps)
+    begin_ts = sub_begin or utcnow()
+    end_ts = sub_end or begin_ts
+
     child_generations = read_generation_metadata(child.db_path) if child.db_path else []
     _, agent_events, _ = _convert_steps(
         child_steps,
@@ -411,13 +447,18 @@ def _create_subagent_span_events(
         records_by_id=records_by_id,
         roles=roles,
         depth=depth + 1,
+        inlining=inlining | {child_id},
     )
+    # Re-parent top-level items so event_tree() nests them under the agent
+    # span (matching atif)
+    for evt in agent_events:
+        if isinstance(evt, SpanBeginEvent):
+            if evt.parent_id is None:
+                evt.parent_id = agent_span_id
+        elif not isinstance(evt, SpanEndEvent):
+            if evt.span_id is None:
+                evt.span_id = agent_span_id
 
-    sub_begin, sub_end = _conversation_time_bounds(child_steps)
-    begin_ts = sub_begin or utcnow()
-    end_ts = sub_end or begin_ts
-
-    agent_span_id = f"agent-{child_id}"
     span_begin = SpanBeginEvent(
         id=agent_span_id,
         type="agent",

@@ -20,6 +20,12 @@ embed prompts, paths, and account details.
 - `dddddddd-…0004` — the spawned sub-agent: chrome-wrapped prompt (subagent
   prompts carry `<USER_REQUEST>` chrome like top-level ones), parallel tool
   calls, `send_message` report.
+- `eeeeeeee-…0005` — typed tool results (`RUN_COMMAND`, `VIEW_FILE`,
+  `INVOKE_SUBAGENT`), which third-party parsers document for agy versions
+  outside the corpus (the corpus records every result as `GENERIC`); the
+  typed spawn result names `ffffffff-…0006`.
+- `ffffffff-…0006` — the sub-agent spawned by `eeeeeeee-…0005` (minimal:
+  prompt + `send_message` report).
 
 Tests that need a `conversations/<id>.db` (generation metadata / token
 usage) construct one at runtime via `helpers.write_generation_db`.

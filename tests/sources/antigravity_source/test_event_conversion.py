@@ -18,6 +18,7 @@ from inspect_scout.sources._antigravity.events import (
     Step,
     ToolCallPairer,
     checkpoint_index,
+    is_tool_result_step,
     model_from_settings,
     parse_settings_change,
     parse_user_request,
@@ -28,7 +29,14 @@ from inspect_scout.sources._antigravity.events import (
 )
 from inspect_scout.sources._antigravity.transcripts import (
     _MAX_SUBAGENT_DEPTH,
+    _convert_steps,
     _create_subagent_span_events,
+    _extract_child_conversation_ids,
+)
+
+SPAWN_RESULT = (
+    "Created the following subagents:\n"
+    '{"conversationId": "dddddddd-0000-0000-0000-000000000004"}'
 )
 
 CHROME_CONTENT = (
@@ -147,7 +155,7 @@ class TestToolCallPairing:
     """Tests for step_tool_calls() and positional result pairing."""
 
     def test_parallel_calls(self) -> None:
-        """Consecutive GENERIC results pair FIFO with a planner's parallel calls."""
+        """Consecutive result steps pair FIFO with a planner's parallel calls."""
         pairer = ToolCallPairer()
         planner = Step.model_validate(
             {
@@ -163,8 +171,12 @@ class TestToolCallPairing:
         step_to_messages(planner, calls, pairer)
         pairer.push(calls)
 
-        result_1 = Step(step_index=2, type="GENERIC", content="src/ tests/")
-        result_2 = Step(step_index=3, type="GENERIC", content="2 matches")
+        result_1 = Step(
+            step_index=2, source="MODEL", type="GENERIC", content="src/ tests/"
+        )
+        result_2 = Step(
+            step_index=3, source="MODEL", type="GREP_SEARCH", content="2 matches"
+        )
         [tool_1] = step_to_messages(result_1, [], pairer)
         [tool_2] = step_to_messages(result_2, [], pairer)
         assert isinstance(tool_1, ChatMessageTool)
@@ -177,10 +189,48 @@ class TestToolCallPairing:
     def test_generic_without_pending_call(self) -> None:
         """Orphaned results (interrupted turns) get an unknown function."""
         [tool] = step_to_messages(
-            Step(step_index=5, type="GENERIC", content="orphan"), [], ToolCallPairer()
+            Step(step_index=5, source="MODEL", type="GENERIC", content="orphan"),
+            [],
+            ToolCallPairer(),
         )
         assert isinstance(tool, ChatMessageTool)
         assert tool.function == "unknown"
+
+
+class TestToolResultDetection:
+    """Tests for is_tool_result_step() and the spawn-result scan built on it."""
+
+    @pytest.mark.parametrize(
+        ("source", "type_", "expected"),
+        [
+            ("MODEL", "GENERIC", True),
+            ("MODEL", "RUN_COMMAND", True),
+            ("MODEL", "INVOKE_SUBAGENT", True),
+            ("MODEL", "PLANNER_RESPONSE", False),
+            ("SYSTEM", "SYSTEM_MESSAGE", False),
+            ("USER_EXPLICIT", "USER_INPUT", False),
+            ("", "FUTURE_TYPE", False),
+        ],
+    )
+    def test_is_tool_result_step(self, source: str, type_: str, expected: bool) -> None:
+        """Any MODEL-sourced step other than a planner response is a result."""
+        assert (
+            is_tool_result_step(Step(step_index=0, source=source, type=type_))
+            is expected
+        )
+
+    def test_typed_spawn_result_yields_child_ids(self) -> None:
+        """A typed INVOKE_SUBAGENT result is scanned for child ids like GENERIC."""
+        typed = Step(
+            step_index=1, source="MODEL", type="INVOKE_SUBAGENT", content=SPAWN_RESULT
+        )
+        # the marker text inside a system message is not a spawn result
+        system = Step(
+            step_index=2, source="SYSTEM", type="SYSTEM_MESSAGE", content=SPAWN_RESULT
+        )
+        assert _extract_child_conversation_ids([typed, system]) == [
+            "dddddddd-0000-0000-0000-000000000004"
+        ]
 
 
 class TestStepToMessages:
@@ -252,16 +302,54 @@ class TestCreateSubagentSpanEvents:
                 records_by_id={},
                 roles={},
                 depth=0,
+                inlining=frozenset(),
             )
         assert events == []
         assert any("not found on disk" in r.message for r in caplog.records)
 
     def test_max_depth_produces_no_events(self) -> None:
-        """Depth-capped recursion (guards reference cycles) → no events."""
+        """Depth-capped nesting → no events."""
         events = _create_subagent_span_events(
             "dddddddd-0000-0000-0000-000000000004",
             records_by_id={},
             roles={},
             depth=_MAX_SUBAGENT_DEPTH,
+            inlining=frozenset(),
         )
         assert events == []
+
+    def test_ancestor_produces_no_events(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """A child already on the inlining path (spawn cycle) → no events + warning."""
+        child_id = "dddddddd-0000-0000-0000-000000000004"
+        with caplog.at_level(logging.WARNING):
+            events = _create_subagent_span_events(
+                child_id,
+                records_by_id={},
+                roles={},
+                depth=0,
+                inlining=frozenset({child_id}),
+            )
+        assert events == []
+        assert any("spawns an ancestor" in r.message for r in caplog.records)
+
+
+class TestConvertSteps:
+    """Tests for _convert_steps()."""
+
+    def test_unmarked_checkpoint_warns(self, caplog: pytest.LogCaptureFixture) -> None:
+        """A CHECKPOINT without a {{ CHECKPOINT N }} marker is dropped with a warning."""
+        steps = [
+            Step(step_index=0, source="SYSTEM", type="CHECKPOINT", content="summary")
+        ]
+        with caplog.at_level(logging.WARNING):
+            messages, events, info = _convert_steps(
+                steps, [], records_by_id={}, roles={}, depth=0, inlining=frozenset()
+            )
+        assert messages == []
+        assert events == []
+        assert info.compaction_count == 0
+        assert any(
+            "without a {{ CHECKPOINT N }} marker" in r.message for r in caplog.records
+        )

@@ -9,7 +9,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
-from inspect_ai.event import CompactionEvent, ModelEvent, SpanBeginEvent, SpanEndEvent
+from inspect_ai.event import (
+    CompactionEvent,
+    EventTreeSpan,
+    ModelEvent,
+    SpanBeginEvent,
+    SpanEndEvent,
+    event_tree,
+)
 from inspect_ai.model import (
     ChatMessageAssistant,
     ChatMessageSystem,
@@ -27,6 +34,9 @@ SIMPLE_ID = "aaaaaaaa-0000-0000-0000-000000000001"
 COMPACTION_ID = "bbbbbbbb-0000-0000-0000-000000000002"
 PARENT_ID = "cccccccc-0000-0000-0000-000000000003"
 CHILD_ID = "dddddddd-0000-0000-0000-000000000004"
+TYPED_ID = "eeeeeeee-0000-0000-0000-000000000005"
+TYPED_CHILD_ID = "ffffffff-0000-0000-0000-000000000006"
+TOP_LEVEL_IDS = {SIMPLE_ID, COMPACTION_ID, PARENT_ID, TYPED_ID}
 
 
 @pytest.fixture
@@ -35,12 +45,30 @@ def fixtures_dir() -> Path:
     return Path(__file__).parent / "fixtures" / "root"
 
 
+def _transcript_path(root: Path, conversation_id: str) -> Path:
+    return (
+        root
+        / "brain"
+        / conversation_id
+        / ".system_generated"
+        / "logs"
+        / "transcript_full.jsonl"
+    )
+
+
+def _copy_fixtures(fixtures_dir: Path, tmp_path: Path) -> Path:
+    """Copy the fixture root somewhere writable."""
+    root = tmp_path / "root"
+    shutil.copytree(fixtures_dir, root)
+    return root
+
+
 @pytest.mark.asyncio
 async def test_top_level_excludes_subagent(fixtures_dir: Path) -> None:
     """Sub-agent conversations are not yielded at the top level."""
     transcripts = [t async for t in antigravity(path=fixtures_dir)]
     ids = {t.transcript_id for t in transcripts}
-    assert ids == {SIMPLE_ID, COMPACTION_ID, PARENT_ID}
+    assert ids == TOP_LEVEL_IDS
 
 
 @pytest.mark.asyncio
@@ -146,8 +174,81 @@ async def test_subagent_inlined_as_agent_span(fixtures_dir: Path) -> None:
     ]
     assert len(inlined) == 2
 
+    # ...and nest under the span in the event tree (span_id re-parenting),
+    # leaving only the parent's own two model calls at the root
+    tree = event_tree(transcript.events)
+    [span] = [n for n in tree if isinstance(n, EventTreeSpan)]
+    assert span.name == "Test researcher"
+    assert [n for n in span.children if isinstance(n, ModelEvent)] == inlined
+    assert len([n for n in tree if isinstance(n, ModelEvent)]) == 2
+
     # child messages do not merge into the parent's message thread
     assert not any("Report sent." in (m.text or "") for m in transcript.messages)
+
+
+@pytest.mark.asyncio
+async def test_typed_tool_results(fixtures_dir: Path) -> None:
+    """Typed result steps pair with their calls and trigger sub-agent inlining."""
+    transcripts = [
+        t async for t in antigravity(path=fixtures_dir, conversation_id=TYPED_ID)
+    ]
+    assert len(transcripts) == 1
+    transcript = transcripts[0]
+
+    tool_messages = [m for m in transcript.messages if isinstance(m, ChatMessageTool)]
+    assert [m.function for m in tool_messages] == [
+        "run_command",
+        "view_file",
+        "invoke_subagent",
+    ]
+    assert tool_messages[1].text == "# Repo\nTwo packages."
+    assert not any(isinstance(m, ChatMessageSystem) for m in transcript.messages)
+
+    span_begins = [e for e in transcript.events if isinstance(e, SpanBeginEvent)]
+    assert [s.name for s in span_begins] == ["Summarizer"]
+    assert transcript.metadata["subagent_conversation_ids"] == [TYPED_CHILD_ID]
+
+
+def _write_transcript(root: Path, conversation_id: str, lines: list[str]) -> None:
+    path = _transcript_path(root, conversation_id)
+    path.parent.mkdir(parents=True)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+@pytest.mark.asyncio
+async def test_spawn_cycle_is_skipped(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A child whose spawn result names its parent is not nested into a cycle."""
+    parent_id = "11111111-0000-0000-0000-000000000001"
+    child_id = "22222222-0000-0000-0000-000000000002"
+
+    def spawn(target: str) -> list[str]:
+        return [
+            '{"step_index":0,"source":"USER_EXPLICIT","type":"USER_INPUT",'
+            '"created_at":"2026-08-25T10:00:00Z","content":"go"}',
+            '{"step_index":1,"source":"MODEL","type":"PLANNER_RESPONSE",'
+            '"created_at":"2026-08-25T10:00:01Z","tool_calls":[{"name":'
+            '"invoke_subagent","args":{"Subagents":[{"Role":"looper"}]}}]}',
+            '{"step_index":2,"source":"MODEL","type":"GENERIC",'
+            '"created_at":"2026-08-25T10:00:02Z","content":"Created the following '
+            f'subagents:\\n{{\\"conversationId\\": \\"{target}\\"}}"}}',
+        ]
+
+    root = tmp_path / "root"
+    _write_transcript(root, parent_id, spawn(child_id))
+    _write_transcript(root, child_id, spawn(parent_id))
+
+    # each names the other, so neither is top-level: target the parent
+    with caplog.at_level(logging.WARNING):
+        transcripts = [
+            t async for t in antigravity(path=root, conversation_id=parent_id)
+        ]
+
+    assert [t.transcript_id for t in transcripts] == [parent_id]
+    span_begins = [e for e in transcripts[0].events if isinstance(e, SpanBeginEvent)]
+    assert [s.id for s in span_begins] == [f"agent-{child_id}"]
+    assert any("spawns an ancestor" in r.message for r in caplog.records)
 
 
 @pytest.mark.asyncio
@@ -167,32 +268,56 @@ async def test_limit_truncates_yield(fixtures_dir: Path) -> None:
     assert len(transcripts) == 1
 
 
-@pytest.mark.asyncio
-async def test_from_time_filters_by_mtime(fixtures_dir: Path, tmp_path: Path) -> None:
-    """`from_time` skips conversations whose transcript mtime is older."""
-    root = tmp_path / "root"
-    shutil.copytree(fixtures_dir, root)
+def _backdate(root: Path, conversation_id: str) -> None:
+    """Freshen every transcript's mtime, then backdate one by an hour.
 
-    # copytree preserves checkout-era mtimes: freshen every transcript, then
-    # backdate the simple conversation's by an hour.
+    copytree preserves checkout-era mtimes, so the freshen step makes the
+    backdated transcript the only one older than a 30-minute window.
+    """
     for transcript_path in root.glob("brain/*/.system_generated/logs/*.jsonl"):
         os.utime(transcript_path)
     old_time = (datetime.now() - timedelta(hours=1)).timestamp()
-    os.utime(
-        root
-        / "brain"
-        / SIMPLE_ID
-        / ".system_generated"
-        / "logs"
-        / "transcript_full.jsonl",
-        (old_time, old_time),
-    )
+    os.utime(_transcript_path(root, conversation_id), (old_time, old_time))
+
+
+@pytest.mark.asyncio
+async def test_from_time_filters_by_mtime(fixtures_dir: Path, tmp_path: Path) -> None:
+    """`from_time` skips conversations whose transcript mtime is older."""
+    root = _copy_fixtures(fixtures_dir, tmp_path)
+    _backdate(root, SIMPLE_ID)
 
     from_time = datetime.now() - timedelta(minutes=30)
     transcripts = [t async for t in antigravity(path=root, from_time=from_time)]
 
     ids = {t.transcript_id for t in transcripts}
-    assert ids == {COMPACTION_ID, PARENT_ID}
+    assert ids == TOP_LEVEL_IDS - {SIMPLE_ID}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("backdated_id", "expected_ids"),
+    [
+        # parent in the window, child outside: the child is still inlined
+        (CHILD_ID, TOP_LEVEL_IDS),
+        # child in the window, parent outside: the child is still withheld
+        (PARENT_ID, TOP_LEVEL_IDS - {PARENT_ID}),
+    ],
+)
+async def test_time_window_does_not_split_subagents(
+    fixtures_dir: Path, tmp_path: Path, backdated_id: str, expected_ids: set[str]
+) -> None:
+    """Sub-agent linkage is resolved outside the time window."""
+    root = _copy_fixtures(fixtures_dir, tmp_path)
+    _backdate(root, backdated_id)
+
+    from_time = datetime.now() - timedelta(minutes=30)
+    transcripts = [t async for t in antigravity(path=root, from_time=from_time)]
+
+    assert {t.transcript_id for t in transcripts} == expected_ids
+    parent = next((t for t in transcripts if t.transcript_id == PARENT_ID), None)
+    if parent is not None:
+        span_begins = [e for e in parent.events if isinstance(e, SpanBeginEvent)]
+        assert [s.name for s in span_begins] == ["Test researcher"]
 
 
 @pytest.mark.asyncio
@@ -212,11 +337,62 @@ async def test_nonexistent_conversation_id_warns(
             t
             async for t in antigravity(
                 path=fixtures_dir,
-                conversation_id="eeeeeeee-0000-0000-0000-000000000005",
+                conversation_id="99999999-0000-0000-0000-000000000009",
             )
         ]
     assert transcripts == []
     assert any("matched no conversations" in r.message for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_undecodable_transcript_is_skipped(
+    fixtures_dir: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Non-UTF-8 bytes in one transcript skip that conversation, not the import."""
+    root = _copy_fixtures(fixtures_dir, tmp_path)
+    _transcript_path(root, SIMPLE_ID).write_bytes(b"\xff\xfe not utf-8\n")
+
+    with caplog.at_level(logging.WARNING):
+        transcripts = [t async for t in antigravity(path=root)]
+
+    assert {t.transcript_id for t in transcripts} == TOP_LEVEL_IDS - {SIMPLE_ID}
+    assert any("Skipping unreadable file" in r.message for r in caplog.records)
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root bypasses directory permissions")
+@pytest.mark.asyncio
+async def test_unreadable_conversation_dir_is_skipped(
+    fixtures_dir: Path, tmp_path: Path
+) -> None:
+    """An unreadable conversation directory skips that conversation, not the import."""
+    root = _copy_fixtures(fixtures_dir, tmp_path)
+    conv_dir = root / "brain" / SIMPLE_ID
+    conv_dir.chmod(0o000)
+    try:
+        transcripts = [t async for t in antigravity(path=root)]
+    finally:
+        conv_dir.chmod(0o755)
+
+    assert {t.transcript_id for t in transcripts} == TOP_LEVEL_IDS - {SIMPLE_ID}
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root bypasses directory permissions")
+@pytest.mark.asyncio
+async def test_unreadable_brain_dir_yields_nothing(
+    fixtures_dir: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """An unreadable brain/ directory yields zero transcripts (logged, not raised)."""
+    root = _copy_fixtures(fixtures_dir, tmp_path)
+    brain = root / "brain"
+    brain.chmod(0o000)
+    try:
+        with caplog.at_level(logging.WARNING):
+            transcripts = [t async for t in antigravity(path=root)]
+    finally:
+        brain.chmod(0o755)
+
+    assert transcripts == []
+    assert any("Cannot list" in r.message for r in caplog.records)
 
 
 def _root_with_generation_db(fixtures_dir: Path, tmp_path: Path) -> Path:

@@ -136,9 +136,11 @@ class SerializedTranscript(BaseModel):
     input_json: bytearray
     """Value for the `input` column: transcript JSON, events pool-condensed."""
 
-    input_data_json: bytearray | None = None
-    """Value for the `input_data` column: `{messages, calls, attachments}`,
-    or None when nothing is pooled and there are no attachments."""
+    input_data_json: bytearray
+    """Value for the `input_data` column: `{messages, calls, attachments}`.
+
+    Always present, empty pools included: the read path only expands an
+    `input` whose row carries an `input_data`."""
 
 
 ReportInput = ScannerInput | SerializedTranscript

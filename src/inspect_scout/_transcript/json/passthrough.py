@@ -13,7 +13,7 @@ attachments table travels inside `input_data` instead.
 from __future__ import annotations
 
 import json
-from typing import Any, Iterable, Iterator
+from typing import Any, Iterable, Iterator, NamedTuple
 
 from inspect_ai.event._pool import (
     POOL_REF_FIELDS,
@@ -35,9 +35,19 @@ _POOLS = ("message_pool", "call_pool")
 _SPOOLED_SAMPLE_METADATA = object()
 
 
+class PassthroughColumns(NamedTuple):
+    """The two recorder column values the passthrough emits."""
+
+    input_json: bytearray
+    """Value for the `input` column."""
+
+    input_data_json: bytearray
+    """Value for the `input_data` column."""
+
+
 def pooled_passthrough(
     info: TranscriptInfo, result: StreamParseResult
-) -> tuple[bytearray, bytearray]:
+) -> PassthroughColumns:
     """Build `(input_json, input_data_json)` from a spooled parse.
 
     The envelope is emitted incrementally: each message and event is
@@ -46,6 +56,13 @@ def pooled_passthrough(
     ``json.dumps`` ever runs over the whole envelope. Only the finished
     value is read back whole, because a parquet cell is a single value --
     that read is the floor this cannot go below.
+
+    Two disclosed gaps against the materialized path: identifiers pydantic
+    synthesizes during validation (`ChatMessage.id`, `Event.uuid`) are not
+    added, because the spooled bytes are copied without being validated --
+    every log inspect_ai writes carries them, but on a legacy log that omits
+    them the scanner sees generated ids these columns do not; and the emitted
+    pool is pruned around top-level refs only (see `_referenced_positions`).
 
     Args:
         info: Transcript metadata for the envelope.
@@ -125,10 +142,10 @@ def pooled_passthrough(
         for index, (key, value) in enumerate(_merged_metadata(info, result).items()):
             emit(("," if index else "") + _dumps(key) + ":")
             if value is _SPOOLED_SAMPLE_METADATA:
-                # Copied through without scanning for attachment refs: inspect_ai
-                # never writes one here. `condense_sample` updates only input,
-                # messages, events, error_retries, attachments and events_data --
-                # metadata is not walked -- and scanning it would mean a regex
+                # Copied through without scanning for attachment refs:
+                # `condense_sample` walks input, messages, events,
+                # error_retries, attachments and events_data, never metadata,
+                # so it writes no ref here -- and scanning would mean a regex
                 # pass over the largest section of a metadata-heavy transcript.
                 for chunk in result.metadata_json.chunks():
                     envelope.write(chunk)
@@ -158,7 +175,9 @@ def pooled_passthrough(
     finally:
         envelope.close()
 
-    return envelope_json, _emit_input_data(result, surviving, attachment_ids)
+    return PassthroughColumns(
+        envelope_json, _emit_input_data(result, surviving, attachment_ids)
+    )
 
 
 def _emit_input_data(
@@ -245,6 +264,13 @@ def _referenced_positions(
     Replaces upstream `collect_pool_ref_positions`, which enumerates each
     range verbatim: a negative bound there counts from zero rather than the
     end, and a huge one walks the whole span that slicing would truncate.
+
+    Top-level events only, deliberately: refs nested in `ToolEvent.events`
+    are dereferenced by nobody -- neither `resolve_model_event_inputs` (the
+    read path) nor `pool._resolve_events_pools` (the materialized load) walks
+    them. Pruning around top-level refs leaves a nested ref pointing at the
+    unpruned positions, which is the same stale shape the materialized path
+    records from the source log's own pool.
     """
     # Walks POOL_REF_FIELDS so a new upstream `*_refs` field is picked up.
     referenced: dict[str, set[int]] = {pool: set() for pool in _POOLS}

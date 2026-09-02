@@ -543,11 +543,10 @@ def _normalize_scalar(key: str, v: Any) -> Any:
         return v
     if isinstance(v, (str, int, float)):
         return v
-    # `input`/`input_data` arrive pre-serialized as UTF-8 JSON: pass the buffer
-    # through, since `to_json` below would wrap it in quotes, and pyarrow
-    # decodes UTF-8 into a string column directly. Scoped to those two columns
-    # because any other one can hold arbitrary user metadata, where non-UTF-8
-    # bytes would reach pyarrow as an `ArrowInvalid` instead of `str(v)`.
+    # `input`/`input_data` arrive pre-serialized as UTF-8 JSON; pyarrow decodes
+    # UTF-8 into a string column directly, while `to_json` below would wrap the
+    # buffer in quotes. Scoped by key because any other column can hold
+    # arbitrary user bytes, which pyarrow rejects with `ArrowInvalid`.
     if key in _SERIALIZED_INPUT_COLUMNS and isinstance(v, (bytes, bytearray)):
         return v
     # datetime/date

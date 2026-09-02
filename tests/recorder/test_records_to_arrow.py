@@ -1,9 +1,8 @@
 """Arrow conversion of the pre-serialized `input`/`input_data` columns.
 
-`_serialize_input` emits UTF-8 JSON buffers rather than `str`. These pin that
-the buffers reach a real string column, that either buffer type the passthrough
-accepts behaves the same, and that no other column takes the passthrough —
-arbitrary metadata can be bytes pyarrow refuses to decode.
+`_serialize_input` emits UTF-8 JSON buffers rather than `str`; these pin that
+the buffers reach a real string column, and that no other column takes the
+passthrough — arbitrary metadata can be bytes pyarrow refuses to decode.
 """
 
 from typing import Any
@@ -58,11 +57,10 @@ def test_bytes_column_preserves_non_ascii(buffer_type: BufferType) -> None:
 def test_other_columns_keep_the_json_encode_fallback(
     value: bytes, expected: str
 ) -> None:
-    """Hoisted metadata columns carry whatever the eval log held.
+    """Metadata columns hold arbitrary eval-log bytes, not pre-serialized JSON.
 
-    Bytes there are not pre-serialized JSON, so they keep the encode-then-
-    `str()` fallback. Passing them through instead makes a non-UTF-8 value an
-    `ArrowInvalid` that aborts the whole recording.
+    Passing those through would turn a non-UTF-8 value into an `ArrowInvalid`
+    that aborts the whole recording.
     """
     table = _records_to_arrow([{"transcript_date": value}])
 
@@ -70,10 +68,10 @@ def test_other_columns_keep_the_json_encode_fallback(
 
 
 def test_mixed_column_decodes_buffers_instead_of_repring_them() -> None:
-    """The mixed-column fallback is the one path left that still sees a buffer.
+    """Latent today: `input` is uniformly bytes-or-None per recorded batch.
 
-    Latent today — `input` is uniformly bytes-or-None per recorded batch — but
-    `str()` there would put a b'...' repr in a public results column.
+    `str()` in the mixed-column fallback would put a b'...' repr in a public
+    results column.
     """
     table = _records_to_arrow([{"input": b'{"a":1}'}, {"input": 3}])
 

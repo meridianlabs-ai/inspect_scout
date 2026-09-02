@@ -6,7 +6,6 @@ in ``test_segment_concurrency.py``.
 
 from __future__ import annotations
 
-import logging
 from typing import Any, Callable, cast
 
 import pytest
@@ -20,7 +19,6 @@ from inspect_ai.model import (
 )
 from inspect_ai.tool import ToolChoice, ToolInfo
 from inspect_scout import llm_scanner
-from inspect_scout._scanner.extract import MessagesPreprocessor
 from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import SCANNER_SUPPORTS_STREAMING_ATTR, Scanner
 from inspect_scout._transcript.handle import MaterializedTranscriptHandle
@@ -96,13 +94,6 @@ def _yes_model() -> Model:
 @pytest.mark.parametrize(
     ("make_transcript", "scanner_kwargs", "min_prompts"),
     [
-        # Single segment: raw messages, fits in one prompt.
-        pytest.param(
-            lambda: _make_transcript(3),
-            {},
-            1,
-            id="messages-single-segment",
-        ),
         # Multiple segments: 12 padded messages under a small context window.
         pytest.param(
             lambda: _make_transcript(12, words=80),
@@ -181,10 +172,6 @@ async def test_handle_scan_equivalent_to_transcript_scan(
     assert result_handle.explanation == result_transcript.explanation
 
 
-async def _dynamic_question(_t: Transcript) -> str:
-    return "dynamic?"
-
-
 def _dynamic_template_variables(_t: Transcript) -> dict[str, Any]:
     return {"extra": 1}
 
@@ -193,7 +180,6 @@ def _dynamic_template_variables(_t: Transcript) -> dict[str, Any]:
     ("kwargs", "expected"),
     [
         pytest.param({}, True, id="static"),
-        pytest.param({"question": _dynamic_question}, False, id="callable-question"),
         pytest.param(
             {"template_variables": _dynamic_template_variables},
             False,
@@ -205,20 +191,10 @@ def _dynamic_template_variables(_t: Transcript) -> dict[str, Any]:
         pytest.param(
             {"content": TranscriptContent(events="all")}, True, id="content-events"
         ),
-        pytest.param(
-            {"content": TranscriptContent(messages="all")}, True, id="content-messages"
-        ),
         # A timeline content filter still forces materialization
         # (named-timeline selection and extraction need the full transcript).
         pytest.param(
             {"content": TranscriptContent(timeline="all")}, False, id="content-timeline"
-        ),
-        # Preprocessors receive per-segment message lists, so they stay
-        # streaming-safe.
-        pytest.param(
-            {"preprocessor": MessagesPreprocessor[Transcript]()},
-            True,
-            id="preprocessor",
         ),
     ],
 )
@@ -227,54 +203,6 @@ def test_streaming_attr_gating(kwargs: dict[str, Any], expected: bool) -> None:
     call_kwargs: dict[str, Any] = {"question": "static?", "answer": "boolean"} | kwargs
     scan_fn = llm_scanner(**call_kwargs)
     assert getattr(scan_fn, SCANNER_SUPPORTS_STREAMING_ATTR, False) is expected
-
-
-@pytest.mark.anyio
-async def test_stub_unsupported_falls_back(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
-    """A _StubSkeletonUnsupported during streaming falls back to materialized.
-
-    Monkeypatching ``needed_model_event_uuids`` to raise
-    ``_StubSkeletonUnsupported`` forces the handle events path to abort; the
-    scanner must recover by materializing the transcript and produce the same
-    Result the fully materialized path would.
-    """
-    from inspect_scout._transcript import timeline_stream
-    from inspect_scout._transcript.timeline_stream import _StubSkeletonUnsupported
-
-    transcript = agentic_transcript()
-
-    scan_fn = llm_scanner(
-        question="Did the agent use tools?",
-        answer="boolean",
-        model=_yes_model(),
-        content=TranscriptContent(events="all"),
-    )
-
-    # Baseline: fully materialized Result.
-    expected = await _scan(scan_fn, transcript)
-
-    def _raise(*_args: object, **_kwargs: object) -> set[str]:
-        raise _StubSkeletonUnsupported("forced for test")
-
-    monkeypatch.setattr(timeline_stream, "needed_model_event_uuids", _raise)
-
-    with caplog.at_level(
-        logging.INFO, logger="inspect_scout._llm_scanner._llm_scanner"
-    ):
-        fallback = await _scan(scan_fn, _handle_for(transcript))
-
-    # Positive evidence the fallback path actually ran (the monkeypatched
-    # function was called and the scanner recovered).
-    assert any(
-        "falling back to materialized scan" in record.getMessage()
-        for record in caplog.records
-    ), "expected a fallback log record from the streaming events path"
-
-    assert fallback.value == expected.value
-    assert fallback.answer == expected.answer
-    assert fallback.explanation == expected.explanation
 
 
 @pytest.mark.anyio

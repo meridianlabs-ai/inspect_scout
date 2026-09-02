@@ -146,6 +146,8 @@ class ByteSpool:
 
     def chunks(self, chunk_size: int = 1024 * 1024) -> Iterator[bytearray]:
         """Yield the value in chunks, so it never exists whole in memory."""
+        if chunk_size <= 0:
+            raise ValueError(f"chunk_size must be positive, got {chunk_size}")
         if self._fd is None:
             raise ValueError("spool is closed")
         offset = 0

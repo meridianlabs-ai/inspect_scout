@@ -216,16 +216,15 @@ async def test_streamed_hydrates_nested_tool_events_materialized_does_not(
     `ToolEvent.events` is typed `list[Any]` (a legacy field for tool-spawned
     agents; see `inspect_ai.event._tool.ToolEvent`), so `Transcript.model_validate`
     on the materialized path (`load_filtered.py`) never coerces its entries --
-    they stay raw dicts. The streamed replay path recursively validates them
-    via `_hydrate_nested_tool_events` (`stream_parse.py`), because a real
-    downstream consumer needs it: `timeline_stream.py`'s span classifier
-    recurses into `ToolEvent.events` expecting real `Event` instances, not
-    dicts. This asserts the actual (differing) behaviour of each path rather
-    than equality, so a future change that silently widens or closes the gap
-    is caught either way. See the PR description for why this is accepted
-    rather than fixed here: hydrating is the behaviour a real consumer needs,
-    so the materialized path -- not the streamed one -- is the one that's
-    arguably incomplete.
+    they stay raw dicts. The streamed replay path validates the ones that are
+    events via `_hydrate_nested_tool_events` (`stream_parse.py`), because
+    consumers that walk nested events expect real `Event` instances. This
+    asserts the actual (differing) behaviour of each path rather than
+    equality, so a future change that silently widens or closes the gap is
+    caught either way. See the PR description for why this is accepted rather
+    than fixed here: hydrating is the behaviour a real consumer needs, so the
+    materialized path -- not the streamed one -- is the one that's arguably
+    incomplete.
     """
     nested_model_event = {
         "event": "model",
@@ -355,8 +354,8 @@ async def test_materialized_preserves_timelines_spooled_drops_them(
 
     This is asserted rather than fixed because spooling the section is a
     feature change, not a carve. It is pinned in both directions so the gap
-    cannot widen or close silently: `_streaming_eligible` only inspects the
-    *requested* `content.timeline`, never whether the sample *stores*
+    cannot widen or close silently: `EvalLogTranscriptsView.open` routes on
+    the *requested* `content.timeline`, never on whether the sample *stores*
     timelines, so a consumer that reads `.timelines` off a transcript
     recovered from a spooled handle sees an empty list with no signal that
     anything was dropped. Closing the gap should turn this test red.

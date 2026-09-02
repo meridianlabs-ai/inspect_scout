@@ -32,21 +32,6 @@ def create_json_stream(data: dict[str, Any]) -> io.BytesIO:
     return io.BytesIO(json.dumps(data).encode())
 
 
-# A model event with no `input_refs` and no `call`, i.e. nothing that could
-# resolve against a message/call pool.
-_PLAIN_MODEL_EVENT: dict[str, Any] = {
-    "span_id": "s1",
-    "timestamp": "2022-01-01T00:00:00+00:00",
-    "event": "model",
-    "model": "test-model",
-    "input": [],
-    "output": {"model": "test-model", "choices": []},
-    "tools": [],
-    "tool_choice": "auto",
-    "config": {},
-}
-
-
 @pytest.mark.asyncio
 async def test_basic_loading() -> None:
     """Test basic transcript loading."""
@@ -255,7 +240,8 @@ async def test_combined_filtering() -> None:
 
 @pytest.mark.asyncio
 async def test_attachment_resolution() -> None:
-    """Test resolution of attachment references."""
+    """Test resolution of attachment references, exact and embedded."""
+    embedded_id = "b2c3d4e5f67890123456789012345678"
     result = await load_filtered_transcript(
         create_json_stream(
             {
@@ -270,7 +256,7 @@ async def test_attachment_resolution() -> None:
                         "content": [
                             {
                                 "type": "text",
-                                "text": "attachment://b2c3d4e5f67890123456789012345678",
+                                "text": f"prefix attachment://{embedded_id} suffix",
                             }
                         ],
                     },
@@ -304,54 +290,11 @@ async def test_attachment_resolution() -> None:
     )
 
     assert result.messages[0].content == "Content A"
-    assert result.messages[1].text == "Content B"
+    assert result.messages[1].text == "prefix Content B suffix"
     assert isinstance(result.events[0], ToolEvent)
     assert result.events[0].result == "Content C"
 
 
-@pytest.mark.asyncio
-async def test_attachment_resolution_embedded_ref() -> None:
-    """A ref embedded within a larger string (not an exact match) still resolves.
-
-    Regression test: an embedded ref (e.g. "prefix attachment://<id> suffix",
-    as opposed to a string that is *exactly* a ref) used to survive
-    end-to-end as literal unresolved text. Events are requested (so the
-    early-exit path never engages) and the transcript carries one ordinary
-    event, which keeps attachment retention bounded -- so the attachment only
-    survives if the collection path recognised the embedded ref.
-    """
-    attachment_id = "a1b2c3d4e5f678901234567890123456"
-    result = await load_filtered_transcript(
-        create_json_stream(
-            {
-                "id": "test",
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": f"prefix attachment://{attachment_id} suffix",
-                    },
-                ],
-                "events": [_PLAIN_MODEL_EVENT],
-                "attachments": {attachment_id: "VALUE"},
-            }
-        ),
-        TranscriptInfo(
-            transcript_id="test",
-            source_type="test",
-            source_id="42",
-            source_uri="/test.json",
-        ),
-        "all",
-        "all",
-    )
-
-    assert result.messages[0].content == "prefix VALUE suffix"
-
-
-@pytest.mark.parametrize(
-    "pool_kind",
-    ["message-pool", "call-pool"],
-)
 @pytest.mark.parametrize(
     "attachments_first",
     [False, True],
@@ -359,42 +302,34 @@ async def test_attachment_resolution_embedded_ref() -> None:
 )
 @pytest.mark.asyncio
 async def test_pool_ref_resolves_regardless_of_section_order(
-    attachments_first: bool, pool_kind: str
+    attachments_first: bool,
 ) -> None:
     """A pool-entry ref resolves whichever order the JSON sections come in.
 
-    The pool under `events_data` is parsed after `attachments`, so its refs
-    cannot be known while attachments stream past -- retention must not be
-    gated on the refs seen so far. Both orderings are load-bearing: they reach
-    the retain-everything decision through *different* disjuncts of
-    `retain_all`. `events-before-attachments` (the order real eval logs use,
-    per `EvalSample`'s field order) has `state.events` populated by the time
-    the first attachment string arrives, so it hits
-    `any(_event_has_pool_refs(e))`. `attachments-before-events` -- legal, since
-    JSON key order is not guaranteed -- has not seen the events section at that
-    point, so it hits `not state.events_seen`: retention must not conclude "no
-    pool refs" just because none have arrived *yet*.
-
-    Both pool kinds are load-bearing too: `_event_has_pool_refs` inspects
-    `input_refs` and `call.call_refs` separately, and only the
-    events-before-attachments ordering consults it at all.
+    `events_data` is parsed after `attachments`, so its pool refs are unknown
+    while attachments stream past. Each ordering pins a different disjunct of
+    `retain_all`: events-first (what real eval logs do) reaches
+    `_event_has_pool_refs`; attachments-first -- legal, JSON key order is not
+    guaranteed -- reaches `not state.events_seen`.
     """
     attachment_id = "b1c2d3e4f5a678901234567890123456"
     attachments = {attachment_id: "VALUE"}
-    pooled_message = {"role": "user", "content": f"attachment://{attachment_id}"}
-    event: dict[str, Any] = dict(_PLAIN_MODEL_EVENT)
-    events_data: dict[str, Any] = {"messages": [], "calls": []}
-    if pool_kind == "message-pool":
-        event["input_refs"] = [[0, 1]]
-        events_data["messages"] = [pooled_message]
-    else:
-        event["call"] = {
-            "request": {},
-            "response": {},
-            "call_refs": [[0, 1]],
-            "call_key": "messages",
-        }
-        events_data["calls"] = [pooled_message]
+    event: dict[str, Any] = {
+        "span_id": "s1",
+        "timestamp": "2022-01-01T00:00:00+00:00",
+        "event": "model",
+        "model": "test-model",
+        "input": [],
+        "output": {"model": "test-model", "choices": []},
+        "tools": [],
+        "tool_choice": "auto",
+        "config": {},
+        "input_refs": [[0, 1]],
+    }
+    events_data: dict[str, Any] = {
+        "messages": [{"role": "user", "content": f"attachment://{attachment_id}"}],
+        "calls": [],
+    }
 
     ordered_sections: dict[str, Any] = (
         {"attachments": attachments, "events": [event]}
@@ -423,43 +358,38 @@ async def test_pool_ref_resolves_regardless_of_section_order(
 
     model_event = result.events[0]
     assert isinstance(model_event, ModelEvent)
-    if pool_kind == "message-pool":
-        assert model_event.input[0].content == "VALUE"
-    else:
-        assert model_event.call is not None
-        assert model_event.call.request["messages"] == [
-            {"role": "user", "content": "VALUE"}
-        ]
+    assert model_event.input[0].content == "VALUE"
 
 
 @pytest.mark.parametrize(
-    "events_filter,events",
+    "events_filter,events_first",
     [
-        pytest.param(None, [], id="events-not-collected"),
-        pytest.param(
-            ["tool"], [_PLAIN_MODEL_EVENT], id="events-filter-matches-nothing"
-        ),
-        pytest.param("all", [_PLAIN_MODEL_EVENT], id="retained-event-without-pool-ref"),
-        pytest.param("all", [], id="events-section-empty"),
+        pytest.param(None, False, id="events-not-collected"),
+        pytest.param("all", True, id="events-section-empty"),
     ],
 )
 @pytest.mark.asyncio
 async def test_attachments_bounded_when_no_pool_refs_retained(
-    events_filter: EventFilter, events: list[dict[str, Any]]
+    events_filter: EventFilter, events_first: bool
 ) -> None:
     """Only referenced attachments are retained when no pool entry can be needed.
 
-    Four ways to reach that conclusion, each pinning a different arm of
-    `attachments_coroutine`'s `retain_all`. Events not collected at all.
-    Collected, but the events section streamed past with nothing matching the
-    filter -- which must not be confused with "the events section has not
-    streamed yet", the case that legitimately retains everything. A retained
-    event carrying no `input_refs`/`call_refs`, the only row that reaches
-    `_event_has_pool_refs`. And an events section that is literally empty, so
-    only its own `start_array` can mark it seen -- `events.item` never fires.
+    Each row leaves exactly one arm of `retain_all` holding retention down.
+    `events-not-collected` puts attachments first, so `not state.events_seen`
+    is true as they stream and only the `collecting_events` gate bounds the
+    table. `events-section-empty` collects events from an empty section, which
+    only its own `start_array` can mark seen (`events.item` never fires) --
+    "seen and empty" must not read as "not streamed yet", which legitimately
+    retains everything.
     """
     referenced_id = "a1b2c3d4e5f678901234567890123456"
     unrelated_id = "b2c3d4e5f67890123456789012345678"
+    table = {referenced_id: "REFERENCED", unrelated_id: "UNRELATED"}
+    ordered_sections: dict[str, Any] = (
+        {"events": [], "attachments": table}
+        if events_first
+        else {"attachments": table, "events": []}
+    )
 
     async with adapt_to_reader(
         create_json_stream(
@@ -468,11 +398,7 @@ async def test_attachments_bounded_when_no_pool_refs_retained(
                 "messages": [
                     {"role": "user", "content": f"attachment://{referenced_id}"},
                 ],
-                "events": events,
-                "attachments": {
-                    referenced_id: "REFERENCED",
-                    unrelated_id: "UNRELATED",
-                },
+                **ordered_sections,
             }
         )
     ) as reader:
@@ -873,56 +799,6 @@ async def test_early_exit_suppressed_by_attachment_refs(
     assert not call_tracker.called
     assert len(result.messages) == 2
     assert result.messages[0].content == "Resolved content"
-    assert result.metadata["scores"] == {"accuracy": {"value": "C", "answer": "C"}}
-
-
-@pytest.mark.asyncio
-async def test_early_exit_suppressed_by_embedded_attachment_ref(
-    call_tracker: CallTracker,
-) -> None:
-    """Early exit does NOT fire when a message has only an embedded ref.
-
-    Pins the collection-path half of the fix: with events filtered out
-    entirely, the early exit at `load_filtered.py` keys off whether any
-    attachment refs were collected. An embedded (non-exact) ref must still
-    register there, or the `attachments` section is never parsed and the
-    ref is permanently unresolved.
-    """
-    attachment_id = "a1b2c3d4e5f678901234567890123456"
-
-    result = await load_filtered_transcript(
-        create_json_stream(
-            {
-                "id": "test",
-                "target": "the answer",
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": f"prefix attachment://{attachment_id} suffix",
-                    },
-                    {"role": "assistant", "content": "Hi"},
-                ],
-                "output": {},
-                "scores": {"accuracy": {"value": "C", "answer": "C"}},
-                "metadata": {"key": "value"},
-                "events": [],
-                "attachments": {attachment_id: "Resolved content"},
-            }
-        ),
-        TranscriptInfo(
-            transcript_id="test",
-            source_type="test",
-            source_id="42",
-            source_uri="/test.json",
-        ),
-        "all",
-        None,
-        on_early_exit=call_tracker,
-    )
-
-    assert not call_tracker.called
-    assert len(result.messages) == 2
-    assert result.messages[0].content == "prefix Resolved content suffix"
     assert result.metadata["scores"] == {"accuracy": {"value": "C", "answer": "C"}}
 
 

@@ -532,17 +532,23 @@ def _sanitize_component(name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_\-=+.,@]", "_", name)
 
 
-def _normalize_scalar(v: Any) -> Any:
+_SERIALIZED_INPUT_COLUMNS = frozenset({"input", "input_data"})
+"""Columns `ResultReport.to_df_columns` fills with pre-serialized UTF-8 JSON."""
+
+
+def _normalize_scalar(key: str, v: Any) -> Any:
     if v is None:
         return None
     if isinstance(v, bool):
         return v
     if isinstance(v, (str, int, float)):
         return v
-    # Pre-serialized UTF-8 JSON (the `input`/`input_data` columns). Passed
-    # through rather than JSON-encoded below, which would wrap it in quotes.
-    # `bytearray` because the spool hands its buffer over without copying it.
-    if isinstance(v, (bytes, bytearray)):
+    # `input`/`input_data` arrive pre-serialized as UTF-8 JSON: pass the buffer
+    # through, since `to_json` below would wrap it in quotes, and pyarrow
+    # decodes UTF-8 into a string column directly. Scoped to those two columns
+    # because any other one can hold arbitrary user metadata, where non-UTF-8
+    # bytes would reach pyarrow as an `ArrowInvalid` instead of `str(v)`.
+    if key in _SERIALIZED_INPUT_COLUMNS and isinstance(v, (bytes, bytearray)):
         return v
     # datetime/date
     try:
@@ -567,7 +573,7 @@ def _records_to_arrow(records: list[dict[str, Any]]) -> "pa.Table":
     import pyarrow as pa
 
     # First normalize scalars
-    norm = [{k: _normalize_scalar(v) for k, v in r.items()} for r in records]
+    norm = [{k: _normalize_scalar(k, v) for k, v in r.items()} for r in records]
 
     # Check for mixed-type columns and convert them to strings
     if norm:
@@ -593,8 +599,15 @@ def _records_to_arrow(records: list[dict[str, Any]]) -> "pa.Table":
         if mixed_cols:
             for record in norm:
                 for col in mixed_cols:
-                    if col in record and record[col] is not None:
-                        record[col] = str(record[col])
+                    value = record.get(col)
+                    if value is not None:
+                        # decode rather than `str()`, which would write the
+                        # b'...' repr into the cell
+                        record[col] = (
+                            value.decode()
+                            if isinstance(value, (bytes, bytearray))
+                            else str(value)
+                        )
 
     # Build arrays column-wise so string columns can use large_string offsets.
     # This avoids the ~2GB limit of Arrow's default string offset type.

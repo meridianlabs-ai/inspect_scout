@@ -392,6 +392,17 @@
             ],
             "title": "Results"
           },
+          "results_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results Buffer"
+          },
           "scanners": {
             "anyOf": [
               {
@@ -647,6 +658,22 @@
           "decision"
         ],
         "title": "ApprovalEvent",
+        "type": "object"
+      },
+      "ArchiveSnapshots": {
+        "description": "One complete compressed tar archive per checkpoint.\n\nCaptures with tools already present in effectively every image\n(tar, dd, sha256sum, zstd or gzip) \u2014 nothing is injected into the\nsandbox. Each checkpoint's archive is self-contained, so restore\nreads a single file. Best choice when restic injection is\nimpractical, or when the captured data is dominated by large,\nhigh-entropy, frequently-rewritten files where incremental backup\nstores roughly the full dataset again at every checkpoint anyway.\n\nUnlike restic (which encrypts its repository with a per-sample\npassword), archives are written unencrypted: checkpoint data \u2014\nincluding any credentials or keys the agent wrote into captured\npaths \u2014 lands in the checkpoint storage location (possibly S3) as\nplaintext tar archives.",
+        "properties": {
+          "name": {
+            "const": "archive",
+            "default": "archive",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ArchiveSnapshots",
         "type": "object"
       },
       "BatchConfig": {
@@ -1506,7 +1533,7 @@
         "type": "object"
       },
       "CheckpointSampleConfig": {
-        "description": "Checkpoint configuration fields that may be set at the sample layer.\n\nThese fields can be specified on ``Sample(checkpoint=...)`` and are\nalso accepted at the task and eval layers (where they participate in\nthe per-field merge \u2014 precedence: eval > sample > task).\n\nThe fields excluded from this base class \u2014 ``checkpoints_location``\nand ``retention`` \u2014 are eval-wide concerns that the sample layer must\nnot influence. They live only on the derived :class:`CheckpointConfig`,\nwhich is the type used at the task and eval layers.",
+        "description": "Checkpoint configuration fields that may be set at the sample layer.\n\nThese fields can be specified on ``Sample(checkpoint=...)`` and are\nalso accepted at the task and eval layers (where they participate in\nthe per-field merge \u2014 precedence: eval > sample > task). Capture\nconfiguration \u2014 what to snapshot and with which strategy \u2014 is a\nproperty of the sample's workload, so it lives here.\n\nExcluded from the sample layer: ``checkpoints_location`` and\n``retention``. These are eval-wide storage-policy concerns that the\nsample layer must not influence; they live only on\n:class:`CheckpointConfig`, the subclass used at the task and eval\nlayers.",
         "properties": {
           "max_consecutive_failures": {
             "anyOf": [
@@ -1523,10 +1550,17 @@
             "anyOf": [
               {
                 "additionalProperties": {
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
+                  "anyOf": [
+                    {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SandboxSnapshotConfig"
+                    }
+                  ]
                 },
                 "type": "object"
               },
@@ -1597,6 +1631,17 @@
               }
             ],
             "title": "Pending"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
           },
           "source": {
             "anyOf": [
@@ -1983,6 +2028,11 @@
       "ContentDocument": {
         "description": "Document content (e.g. a PDF).",
         "properties": {
+          "citations": {
+            "default": false,
+            "title": "Citations",
+            "type": "boolean"
+          },
           "document": {
             "title": "Document",
             "type": "string"
@@ -2016,7 +2066,8 @@
           "type",
           "document",
           "filename",
-          "mime_type"
+          "mime_type",
+          "citations"
         ],
         "title": "ContentDocument",
         "type": "object"
@@ -3001,6 +3052,21 @@
             ],
             "title": "Reasoning History"
           },
+          "reasoning_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "standard",
+                  "pro"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Mode"
+          },
           "reasoning_summary": {
             "anyOf": [
               {
@@ -3063,6 +3129,17 @@
               }
             ],
             "title": "Stop Seqs"
+          },
+          "stream_idle_timeout": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stream Idle Timeout"
           },
           "system_message": {
             "anyOf": [
@@ -3490,6 +3567,21 @@
             ],
             "title": "Reasoning History"
           },
+          "reasoning_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "standard",
+                  "pro"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Mode"
+          },
           "reasoning_summary": {
             "anyOf": [
               {
@@ -3552,6 +3644,17 @@
               }
             ],
             "title": "Stop Seqs"
+          },
+          "stream_idle_timeout": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stream Idle Timeout"
           },
           "system_message": {
             "anyOf": [
@@ -6151,6 +6254,17 @@
             ],
             "title": "Results"
           },
+          "results_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results Buffer"
+          },
           "scanners": {
             "anyOf": [
               {
@@ -6436,6 +6550,17 @@
               }
             ],
             "title": "Results"
+          },
+          "results_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results Buffer"
           },
           "scanners": {
             "anyOf": [
@@ -6768,6 +6893,22 @@
           "json_schema"
         ],
         "title": "ResponseSchema",
+        "type": "object"
+      },
+      "ResticSnapshots": {
+        "description": "Incremental restic-based sandbox snapshots (the default).\n\nEach checkpoint stores only data changed since the previous one.\nBest choice when most files are stable across checkpoints. Requires\ninjecting a restic binary into the sandbox.",
+        "properties": {
+          "name": {
+            "const": "restic-incremental",
+            "default": "restic-incremental",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ResticSnapshots",
         "type": "object"
       },
       "Result": {
@@ -7355,6 +7496,52 @@
         "title": "SandboxEvent",
         "type": "object"
       },
+      "SandboxSnapshotConfig": {
+        "description": "Per-sandbox snapshot configuration: what to capture and how.\n\nUsed as a ``sandbox_paths`` value in place of a bare path list when\na sandbox needs a non-default snapshot strategy. The ``paths``\nfield carries the same semantics as a bare path-list value\n(``None`` = the sandbox default user's home directory; an empty\nlist opts the sandbox out entirely).",
+        "properties": {
+          "paths": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paths"
+          },
+          "strategy": {
+            "anyOf": [
+              {
+                "discriminator": {
+                  "mapping": {
+                    "archive": "#/components/schemas/ArchiveSnapshots",
+                    "restic-incremental": "#/components/schemas/ResticSnapshots"
+                  },
+                  "propertyName": "name"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/ResticSnapshots"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ArchiveSnapshots"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strategy"
+          }
+        },
+        "title": "SandboxSnapshotConfig",
+        "type": "object"
+      },
       "ScanJobConfig": {
         "additionalProperties": false,
         "description": "Scan job configuration.",
@@ -7528,6 +7715,17 @@
               }
             ],
             "title": "Results"
+          },
+          "results_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results Buffer"
           },
           "scanners": {
             "anyOf": [
@@ -7750,6 +7948,17 @@
             "default": 25,
             "title": "Max Transcripts",
             "type": "integer"
+          },
+          "results_buffer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Results Buffer"
           },
           "shuffle": {
             "anyOf": [
@@ -8001,7 +8210,17 @@
             "anyOf": [
               {
                 "additionalProperties": {
-                  "$ref": "#/components/schemas/ModelConfig-Output"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ModelConfig-Output"
+                    },
+                    {
+                      "items": {
+                        "$ref": "#/components/schemas/ModelConfig-Output"
+                      },
+                      "type": "array"
+                    }
+                  ]
                 },
                 "type": "object"
               },
@@ -8780,6 +8999,27 @@
             ],
             "title": "Metadata"
           },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "invalid_response_format",
+                  "refusal",
+                  "no_response",
+                  "grader_failed",
+                  "scoring_failed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
           "value": {
             "anyOf": [
               {
@@ -8904,6 +9144,32 @@
                 "type": "null"
               }
             ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "invalid_response_format",
+                  "refusal",
+                  "no_response",
+                  "grader_failed",
+                  "scoring_failed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "const": "UNCHANGED",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "UNCHANGED",
+            "title": "Reason"
           },
           "value": {
             "anyOf": [
@@ -10293,6 +10559,7 @@
               "limit",
               "approval",
               "cancelled",
+              "sandbox_unavailable",
               "unknown",
               "output_limit"
             ],

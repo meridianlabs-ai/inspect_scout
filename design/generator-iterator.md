@@ -28,6 +28,7 @@ async def count_up(n: int) -> AsyncIterator[int]:
         await asyncio.sleep(0.1)
         yield i
 
+
 async for num in count_up(5):
     print(num)
 ```
@@ -63,6 +64,7 @@ class ManagedStream:
         if data is None:
             raise StopAsyncIteration
         return data
+
 
 # Consuming (context manager):
 async with ManagedStream(resource) as stream:

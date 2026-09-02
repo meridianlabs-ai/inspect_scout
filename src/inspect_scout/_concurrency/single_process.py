@@ -136,14 +136,25 @@ def single_process_strategy(
         def _scanner_job_info(item: ScannerJob) -> str:
             return f"{item.union_transcript.transcript_id, item.scanner_name}"
 
-        @throttle(1)
-        def _update_metrics() -> None:
+        # the finally at the end of the_func delivers the final zeroed update
+        # itself, and sets this so a trailing-edge fire still pending in the
+        # throttle does not deliver a duplicate of it after teardown. the guard
+        # lives in the throttled wrapper, so the suppression holds regardless of
+        # the order of the delivery and the flag in that finally
+        final_metrics_delivered = False
+
+        def _update_metrics_now() -> None:
             if update_metrics:
                 # USS - Unique Set Size
                 metrics.memory_usage = process.memory_full_info().uss
                 # print(f"{diag_prefix} CPU {metrics.cpu_use}")
                 metrics.buffered_scanner_jobs = len(scanner_job_deque)
                 update_metrics(metrics)
+
+        @throttle(1)
+        def _update_metrics() -> None:
+            if not final_metrics_delivered:
+                _update_metrics_now()
 
         def _choose_next_action() -> Literal["parse", "scan", "wait"]:
             """Decide what action this worker should take: 'parse', 'scan', or 'wait'."""
@@ -342,10 +353,15 @@ def single_process_strategy(
             raise inner_exception(ex) from None
         finally:
             set_batch_status_callback(None)
+            set_batch_log_callback(None)
             metrics.process_count = 0
             metrics.tasks_parsing = 0
             metrics.tasks_scanning = 0
             metrics.tasks_idle = 0
-            _update_metrics()
+            # deliver synchronously, since a throttled call would defer to a
+            # trailing-edge fire that may not survive teardown (#569). the flag
+            # suppresses any such fire that is still pending
+            _update_metrics_now()
+            final_metrics_delivered = True
 
     return the_func

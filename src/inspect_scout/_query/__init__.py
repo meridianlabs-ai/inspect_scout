@@ -11,7 +11,7 @@ from .condition_sql import (
 )
 from .order_by import OrderBy
 from .query import Query
-from .sql import SQLDialect
+from .sql import SQLDialect, UnknownColumnError
 
 __all__ = [
     "Column",
@@ -25,6 +25,7 @@ __all__ = [
     "ScalarValue",
     "Query",
     "SQLDialect",
+    "UnknownColumnError",
     "condition_as_sql",
     "condition_from_sql",
 ]

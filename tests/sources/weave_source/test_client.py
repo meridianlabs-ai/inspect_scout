@@ -1,5 +1,6 @@
 """Tests for W&B Weave client management."""
 
+import time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -39,6 +40,11 @@ class TestGetWeaveClient:
 
 class TestRetryApiCall:
     """Tests for retry_api_call function."""
+
+    @pytest.fixture(autouse=True)
+    def no_backoff(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Zero out the retry backoff (tenacity sleeps via time.sleep)."""
+        monkeypatch.setattr(time, "sleep", lambda _: None)
 
     def test_successful_call(self) -> None:
         """Successful call returns result without retry."""

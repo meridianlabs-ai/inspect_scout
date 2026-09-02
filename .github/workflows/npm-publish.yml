@@ -1,9 +1,12 @@
 name: Publish React Viewer Lib
 
 on:
-  push:
-    tags:
-      - "[0-9]+.[0-9]+.[0-9]+"
+  # Auto-publish when Release Please cuts a GitHub Release (App token triggers
+  # this). Replaces the old tag-push trigger — release-please owns tags now, and
+  # triggering on the release avoids a double-fire from tag creation.
+  release:
+    types: [published]
+  # Manual break-glass path (defaults to dry-run).
   workflow_dispatch:
     inputs:
       dry-run:
@@ -18,6 +21,19 @@ on:
         default: false
 
 jobs:
+  # Post the "awaiting approval" Slack ping — un-gated, in this same run, so it
+  # deep-links to the run whose publish job is paused on the npm environment.
+  notify-approval:
+    if: ${{ github.event_name == 'release' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: meridianlabs-ai/actions/slack-approval-ping@v1
+        with:
+          webhook: ${{ secrets.SLACK_APPROVALS_WEBHOOK_URL }}
+          approvers: "jjallaire dragonstyle epatey"
+          message: ":package: *${{ github.repository }}* ${{ github.event.release.tag_name }} — npm viewer-lib publish is *awaiting approval*."
+          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
   publish:
     name: Publish to NPM
     runs-on: ubuntu-latest

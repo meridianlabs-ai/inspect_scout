@@ -20,7 +20,8 @@ import multiprocessing
 import signal
 import time
 from multiprocessing.context import SpawnProcess
-from typing import AsyncIterator, Awaitable, Callable
+from types import FrameType
+from typing import Any, AsyncIterator, Awaitable, Callable
 
 import anyio
 from anyio import create_task_group
@@ -76,6 +77,13 @@ DEFAULT_MAX_PROCESS = 4
 # when parse_jobs iterator is very large. Producer will block when queue is full.
 PARSE_JOB_PREFETCH_SIZE = 50
 
+# Maximum number of items buffered in the upstream (results) queue.
+# Provides backpressure when workers produce results faster than the main
+# process can record them: each ResultItem embeds the scanned transcript(s),
+# so an unbounded queue can grow to many GB over a large scan. Workers block
+# (in a worker thread, not the event loop) when the queue is full.
+UPSTREAM_QUEUE_MAXSIZE = 100
+
 # Sentinel value to signal collectors to shut down during Ctrl-C.
 #
 # MUST be a sentinel: During Ctrl-C shutdown, workers are terminated before they can
@@ -90,6 +98,9 @@ _SHUTDOWN_SENTINEL = ShutdownSentinel()
 
 # Singleton guard - only one multi_process_strategy can be active at a time
 _active: bool = False
+
+# Return/parameter type of signal.signal() (typeshed's private signal._HANDLER)
+SignalHandler = Callable[[int, FrameType | None], Any] | int | None
 
 
 def multi_process_strategy(
@@ -147,22 +158,29 @@ def multi_process_strategy(
                 "Another multi_process_strategy is already running. Only one instance can be active at a time."
             )
         _active = True
-        # Create Manager and parent registry for cross-process semaphore coordination
-        spawn_ctx = multiprocessing.get_context("spawn")
-        manager = spawn_ctx.Manager()
-        parent_registry = ParentSemaphoreRegistry(manager)
 
-        # Initialize parent's concurrency system with cross-process registry
-        # This ensures parent creates ManagerSemaphore instances in shared registry
-        # when it receives SemaphoreRequest from children
-        init_concurrency(parent_registry)
+        # None until SIG_IGN is actually installed; lets the finally below know
+        # whether there is an original handler to restore
+        original_sigint_handler: SignalHandler = None
 
-        inspect_log_handler = find_inspect_log_handler()
-
-        # Block SIGINT before creating processes - workers will inherit SIG_IGN
-        original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
-
+        # The try must begin before any process-wide state is mutated so the
+        # finally can restore it on every failure path, including setup errors
         try:
+            # Create Manager and parent registry for cross-process semaphore coordination
+            spawn_ctx = multiprocessing.get_context("spawn")
+            manager = spawn_ctx.Manager()
+            parent_registry = ParentSemaphoreRegistry(manager)
+
+            # Initialize parent's concurrency system with cross-process registry
+            # This ensures parent creates ManagerSemaphore instances in shared registry
+            # when it receives SemaphoreRequest from children
+            init_concurrency(parent_registry)
+
+            inspect_log_handler = find_inspect_log_handler()
+
+            # Block SIGINT before creating processes - workers will inherit SIG_IGN
+            original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
             # Distribute tasks evenly: some processes get base+1, others get base
             # This ensures we use exactly task_count total tasks
             base_tasks = task_count // max_processes
@@ -176,7 +194,7 @@ def multi_process_strategy(
                 diagnostics=diagnostics,
                 overall_start_time=time.time(),
                 parse_job_queue=spawn_ctx.Queue(maxsize=PARSE_JOB_PREFETCH_SIZE),
-                upstream_queue=spawn_ctx.Queue(),
+                upstream_queue=spawn_ctx.Queue(maxsize=UPSTREAM_QUEUE_MAXSIZE),
                 shutdown_condition=manager.Condition(),
                 workers_ready_event=manager.Event(),
                 semaphore_registry=parent_registry.sync_manager_dict,
@@ -203,7 +221,9 @@ def multi_process_strategy(
             # ParseJob queue is bounded to prevent memory explosion when parse_jobs
             # iterator contains a huge number of items. Producer blocks when queue
             # is full, providing lazy consumption.
-            # Upstream queue is unbounded and multiplexes both results and metrics.
+            # Upstream queue multiplexes results, metrics, logging, and semaphore
+            # requests. It is bounded so result backlog can't grow without limit
+            # when the collector records slower than workers scan.
             parse_job_queue = ipc_ctx.parse_job_queue
             upstream_queue = ipc_ctx.upstream_queue
 
@@ -364,7 +384,13 @@ def multi_process_strategy(
                     )
 
         finally:
-            signal.signal(signal.SIGINT, original_sigint_handler)
+            if original_sigint_handler is not None:
+                signal.signal(signal.SIGINT, original_sigint_handler)
+            # Restore the default in-process registry. Leaving the cross-process
+            # ParentSemaphoreRegistry installed would leak into any subsequent
+            # inspect_ai usage in this process — degrading adaptive/resizable
+            # concurrency requests to fixed-limit MP semaphores.
+            init_concurrency()
             _active = False
 
     return the_func

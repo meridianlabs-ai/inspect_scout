@@ -4,7 +4,6 @@ from types import TracebackType
 from typing import Any
 
 import anyio
-from inspect_ai.util._concurrency import ConcurrencySemaphore
 
 
 class PicklableMPSemaphore:
@@ -45,8 +44,13 @@ class PicklableMPSemaphore:
         return self._value_proxy.value
 
 
-class MPConcurrencySemaphore(ConcurrencySemaphore, AbstractAsyncContextManager[None]):
+class MPConcurrencySemaphore(AbstractAsyncContextManager[None]):
     """ConcurrencySemaphore implementation wrapping MPSemaphoreLike.
+
+    Satisfies the `ConcurrencySemaphore` protocol structurally rather than by
+    inheritance: the protocol declares `concurrency`/`value`/`in_use` as
+    properties, and inheriting those descriptors would block plain attribute
+    assignment in `__init__`.
 
     Since MPSemaphoreLike is synchronous, this class runs acquire/release operations
     in threads to avoid blocking the async event loop. The class itself serves as the
@@ -76,3 +80,7 @@ class MPConcurrencySemaphore(ConcurrencySemaphore, AbstractAsyncContextManager[N
     @property
     def value(self) -> int:
         return self._sem.get_value()
+
+    @property
+    def in_use(self) -> int:
+        return self.concurrency - self._sem.get_value()

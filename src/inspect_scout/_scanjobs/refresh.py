@@ -9,9 +9,11 @@ import asyncio
 import sys
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
+from functools import partial
 from logging import getLogger
 from typing import Protocol
 
+from inspect_ai._util._async import tg_collect
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import FileInfo
 from inspect_ai.util._anyio import inner_exception
@@ -19,6 +21,7 @@ from upath import UPath
 
 from .._recorder.active_scans_store import active_scans_store
 from .._recorder.file import FileRecorder, _is_not_found
+from .._util._async import as_value
 from .convert import scan_row_from_status
 from .store import ScanIndexStore
 
@@ -148,12 +151,17 @@ async def async_listing_to_scans(
         raise
 
     semaphore = asyncio.Semaphore(_METADATA_CONCURRENCY)
-    listings = await asyncio.gather(
-        *(_listing_from_scan_dir(fs, scan_dir, semaphore) for scan_dir in scan_dirs)
+    listings = await tg_collect(
+        [
+            partial(as_value, partial(_listing_from_scan_dir, fs, scan_dir, semaphore))
+            for scan_dir in scan_dirs
+        ]
     )
 
     result: dict[str, ScanListing] = {}
     for listing in listings:
+        if isinstance(listing, BaseException):
+            raise listing
         if listing is not None:
             result[listing.scan_id] = listing
     return result
@@ -215,9 +223,11 @@ async def refresh_index(store: ScanIndexStore, location: str) -> None:
         delta = compute_delta(listed, store.stored_tokens(), active_ids)
 
         # Read Status for the delta in parallel; missing scans are skipped.
-        statuses = await asyncio.gather(
-            *(FileRecorder.status(listing.dir_path) for listing in delta.to_read),
-            return_exceptions=True,
+        statuses = await tg_collect(
+            [
+                partial(as_value, partial(FileRecorder.status, listing.dir_path))
+                for listing in delta.to_read
+            ]
         )
 
     rows = []

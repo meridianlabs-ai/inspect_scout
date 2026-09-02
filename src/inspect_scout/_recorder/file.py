@@ -1,11 +1,15 @@
-import asyncio
+import functools
 import io
 import json
 import os
 import tempfile
 from collections.abc import Iterator, Mapping
-from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence, cast
+from logging import getLogger
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, Literal, NamedTuple, Sequence, cast
 
+import anyio
+import anyio.to_thread
 import duckdb
 import pandas as pd
 import pyarrow as pa
@@ -13,6 +17,7 @@ import pyarrow.compute as pc
 import pyarrow.dataset as ds
 import pyarrow.fs as pafs
 import pyarrow.parquet as pq
+from inspect_ai._util._async import tg_collect
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import file, filesystem
 from inspect_ai._util.json import to_json_str_safe
@@ -24,6 +29,7 @@ if TYPE_CHECKING:
 
 from inspect_scout._recorder.summary import Summary
 
+from .._query.sql import quote_identifier
 from .._recorder.buffer import (
     SCAN_ERRORS,
     SCAN_SUMMARY,
@@ -36,15 +42,20 @@ from .._recorder.buffer import (
 from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec, ScanTranscripts
 from .._transcript.types import TranscriptInfo
+from .._util._async import as_value
+from .._util.duckdb import create_parquet_view, restrict_external_access
 from .recorder import (
     ScanRecorder,
     ScanResultsArrow,
+    ScanResultsBatches,
     ScanResultsDB,
     ScanResultsDF,
     Status,
+    resolve_exclude_columns,
 )
 
 SCAN_JSON = "_scan.json"
+logger = getLogger(__name__)
 
 
 class LazyScannerMapping(Mapping[str, pd.DataFrame]):
@@ -116,6 +127,7 @@ class FileRecorder(ScanRecorder):
         # used the same scan_location (the buffer dir is deterministic per
         # scan_location, so unrelated remnants would otherwise carry over)
         cleanup_buffer_dir(RecorderBuffer.buffer_dir(self._scan_dir.as_posix()))
+        _clear_prior_parquet_cache(self._scan_dir.as_posix())
 
         self._scan_buffer = RecorderBuffer(
             self._scan_dir.as_posix(),
@@ -144,6 +156,10 @@ class FileRecorder(ScanRecorder):
         self._scan_fs = filesystem(self._scan_dir.as_posix())
         self._scan_spec = await _read_scan_spec(self._scan_dir)
 
+        # a new run starts here: any prior parquet cached by an earlier
+        # run against this location is no longer trustworthy
+        _clear_prior_parquet_cache(scan_location)
+
         self._seed_buffer_summary_from_scan_dir()
         # clear errors of transcripts that are about to be retried
         buffer_dir = RecorderBuffer.buffer_dir(self._scan_dir.as_posix())
@@ -169,6 +185,10 @@ class FileRecorder(ScanRecorder):
         self._scan_dir = UPath(scan_location)
         self._scan_fs = filesystem(self._scan_dir.as_posix())
         self._scan_spec = await _read_scan_spec(self._scan_dir)
+
+        # a new run starts here: any prior parquet cached by an earlier
+        # run against this location is no longer trustworthy
+        _clear_prior_parquet_cache(scan_location)
 
         self._seed_buffer_summary_from_scan_dir()
         self._seed_buffer_errors_from_scan_dir()
@@ -283,36 +303,56 @@ class FileRecorder(ScanRecorder):
         # call's buffer rows. once that's in place, cleaning up the buffer
         # after sync is safe — the data lives on in the compacted output.
         #
-        # `scanner_table` uses pyarrow's `ds.dataset(list)` which requires
-        # uniform path types: the buffer dir is always local (per scout's
-        # existing convention — see `RecorderBuffer.buffer_dir`), but the
-        # scan dir may be on a remote filesystem (e.g. s3://). When the
-        # prior compacted parquet is remote, download it to a local temp
-        # file before passing to `scanner_table`.
+        # this may run mid-scan (see the `results_buffer` scan option) with
+        # scanning still in flight, so it must stay off the event loop as
+        # much as possible: compaction runs in a worker thread, remote
+        # priors are downloaded at most once per run, and remote writes go
+        # through the async filesystem.
         #
-        # write to a sibling `.tmp` then atomically rename so the same path
-        # is never simultaneously an input to scanner_table and the target
-        # of an in-progress write (avoids any read/write overlap and gives
-        # crash resilience: a failure mid-write leaves the prior compacted
-        # file intact).
-        sync_fs = filesystem(scan_dir.as_posix())
+        # remote object stores expose new objects atomically (an object only
+        # becomes visible once fully uploaded), so we PUT directly to the
+        # final key. local filesystems expose partial writes, so there we
+        # write to a sibling `.tmp` and atomically rename — either way the
+        # same path is never simultaneously an input to scanner_table and
+        # the target of an in-progress write, and readers always observe a
+        # complete file.
+        remote = scan_dir.protocol not in ("", "file")
         async with AsyncFilesystem() as fs:
             for scanner in sorted(scan_spec.scanners.keys()):
                 output_path = _scanner_parquet_file(scan_dir, scanner)
-                parquet_bytes = await _compact_with_prior(
-                    scan_buffer_dir, scanner, prior=UPath(output_path)
-                )
-                if parquet_bytes is not None:
-                    tmp_path = f"{output_path}.tmp"
-                    await fs.write_file(tmp_path, parquet_bytes)
-                    sync_fs.mv(tmp_path, output_path)
+                if remote:
+                    tmp_fd, compact_file = tempfile.mkstemp(suffix=".parquet")
+                    os.close(tmp_fd)
+                else:
+                    compact_file = f"{output_path}.tmp"
+                try:
+                    if await _compact_with_prior(
+                        fs,
+                        scan_buffer_dir,
+                        scanner,
+                        prior=UPath(output_path),
+                        output_file=compact_file,
+                    ):
+                        if remote:
+                            with open(compact_file, "rb") as f:
+                                await fs.write_file_streaming(output_path, f)
+                        else:
+                            filesystem(scan_dir.as_posix()).mv(
+                                compact_file, output_path
+                            )
+                finally:
+                    # remove leftovers: the remote-upload temp file, or a
+                    # partially-written local `.tmp` after a failure (after
+                    # a successful local rename the path no longer exists)
+                    UPath(compact_file).unlink(missing_ok=True)
 
-        # sync summary and errors
-        _sync_status_files(scan_dir, scan_buffer_dir, scan_spec, complete)
+            # sync summary and errors
+            await _sync_status_files(fs, scan_dir, scan_buffer_dir, scan_spec, complete)
 
         # cleanup scan buffer if we are complete
         if complete:
             cleanup_buffer_dir(scan_buffer_dir)
+            _clear_prior_parquet_cache(scan_location)
 
         return Status(
             complete=complete,
@@ -366,49 +406,24 @@ class FileRecorder(ScanRecorder):
             ) -> tuple[str | io.BytesIO, pafs.FileSystem | None]:
                 """Return (path, filesystem) for opening a parquet file.
 
-                For cloud paths with native PyArrow support (S3, GCS, ABFS),
-                returns a pyarrow filesystem that uses HTTP range requests.
-                For az:// (no native PyArrow support), downloads via fsspec
-                and returns a BytesIO. For local paths, returns (str, None).
+                See `_parquet_source` for the resolution rules.
                 """
-                scanner_path = scan_path / f"{scanner}.parquet"
-                path_str = scanner_path.as_posix()
-
-                if path_str.startswith(
-                    ("s3://", "gs://", "gcs://", "abfs://", "abfss://")
-                ):
-                    pa_fs, pa_path = pafs.FileSystem.from_uri(path_str)
-                    return pa_path, pa_fs
-
-                if path_str.startswith("az://"):
-                    with file(path_str, "rb") as f:
-                        return io.BytesIO(f.read()), None
-
-                return str(scanner_path), None
+                return _parquet_source(scan_path / f"{scanner}.parquet")
 
             @override
             def reader(
                 self,
                 scanner: str,
                 streaming_batch_size: int = 1024,
-                exclude_columns: list[str] | None = None,
+                exclude_columns: Sequence[str] | None = None,
             ) -> pa.RecordBatchReader:
-                pa_path, pa_fs = self._resolve_parquet_source(scanner)
+                # iter_batches() streams lazily for both local files and
+                # PyArrow cloud filesystems (which do ranged reads on demand),
+                # keeping memory bounded by streaming_batch_size.
+                parquet = _open_scanner_parquet(scan_path, scanner)
 
-                if pa_fs is not None:
-                    # Use pre_buffer=True to coalesce HTTP range requests,
-                    # then read() + to_reader() instead of iter_batches()
-                    # which doesn't support pre_buffer.
-                    parquet = pq.ParquetFile(pa_path, filesystem=pa_fs, pre_buffer=True)
-                else:
-                    parquet = pq.ParquetFile(pa_path)
-
-                exclude = set(exclude_columns) if exclude_columns else set()
+                exclude = set(resolve_exclude_columns(exclude_columns))
                 columns = [c for c in parquet.schema.names if c not in exclude]
-
-                if pa_fs is not None:
-                    table = parquet.read(columns=columns)
-                    return table.to_reader(max_chunksize=streaming_batch_size)
 
                 fields_by_name = {f.name: f for f in parquet.schema_arrow}
                 arrow_schema = pa.schema([fields_by_name[name] for name in columns])
@@ -436,7 +451,10 @@ class FileRecorder(ScanRecorder):
                 pa_path, pa_fs = self._resolve_parquet_source(scanner)
 
                 if pa_fs is not None:
-                    pf = pq.ParquetFile(pa_path, filesystem=pa_fs)
+                    # pre_buffer coalesces each row group's column-chunk range
+                    # requests; memory stays bounded by the row group size
+                    # (explicit since the default changed in pyarrow 25).
+                    pf = pq.ParquetFile(pa_path, filesystem=pa_fs, pre_buffer=True)
                     for i in range(pf.metadata.num_row_groups):
                         rg_ids = pf.read_row_group(i, columns=[id_column])
                         mask = pc.equal(rg_ids[id_column], id_value)
@@ -536,10 +554,12 @@ class FileRecorder(ScanRecorder):
         scan_location: str,
         *,
         scanner: str | None = None,
-        exclude_columns: list[str] | None = None,
+        exclude_columns: Sequence[str] | None = None,
     ) -> ScanResultsDF:
         scan_dir = UPath(scan_location)
         status = await FileRecorder.status(scan_location)
+
+        resolved_exclude = resolve_exclude_columns(exclude_columns)
 
         # Determine available scanner names
         if scanner is not None:
@@ -555,7 +575,7 @@ class FileRecorder(ScanRecorder):
         scanners = LazyScannerMapping(
             scanner_names=scanner_names,
             loader=lambda name: _load_scanner_df(
-                scan_dir, name, exclude_columns=exclude_columns
+                scan_dir, name, exclude_columns=resolved_exclude
             ),
         )
 
@@ -570,6 +590,39 @@ class FileRecorder(ScanRecorder):
 
     @override
     @staticmethod
+    def results_batches(
+        scan_location: str,
+        scanner: str,
+        *,
+        batch_size: int = 1024,
+        exclude_columns: Sequence[str] | None = None,
+    ) -> ScanResultsBatches:
+        parquet = _open_scanner_parquet(UPath(scan_location), scanner)
+
+        exclude = set(resolve_exclude_columns(exclude_columns))
+        columns = [c for c in parquet.schema.names if c not in exclude]
+
+        # The single-DataFrame path makes its value-cast decisions over the
+        # whole frame; compute them over the whole file up front (with a
+        # memory-bounded pre-pass) so per-batch transforms are identical.
+        prepass = _results_batches_prepass(parquet, columns)
+
+        def batches() -> Iterator[pd.DataFrame]:
+            for batch in parquet.iter_batches(batch_size=batch_size, columns=columns):
+                df = pa.Table.from_batches([batch]).to_pandas(
+                    types_mapper=pd.ArrowDtype
+                )
+                if prepass.value_type_uniform:
+                    df = _cast_value_column(df)
+                yield df
+
+        return ScanResultsBatches(
+            batches=batches(),
+            resultset_value_types_uniform=prepass.resultset_value_types_uniform,
+        )
+
+    @override
+    @staticmethod
     async def results_db(
         scan_location: str, *, rows: Literal["results", "transcripts"] = "results"
     ) -> ScanResultsDB:
@@ -580,37 +633,69 @@ class FileRecorder(ScanRecorder):
         # Create in-memory DuckDB connection
         conn = duckdb.connect(":memory:")
 
-        # Create views for each parquet file
-        async with AsyncFilesystem() as fs:
-            parquet_uris = sorted(
-                [u async for u in fs.iter_files(scan_location, "*.parquet")]
-            )
-        for parquet_uri in parquet_uris:
-            parquet_file = UPath(parquet_uri)
-            scanner_name = parquet_file.stem
-            # Create a view that references the parquet file
-            # Use absolute path to ensure it works regardless of working directory
-            # iter_files already yields absolute URIs.
-            abs_path = parquet_file.as_posix()
-
-            # Check if we need to expand resultsets
-            if rows == "results" and _has_resultsets(conn, abs_path):
-                # Create expanded view with UNNEST for resultset rows
-                sql = _create_expanded_view_sql(conn, abs_path, scanner_name)
-                conn.execute(sql)
-            else:
-                # Use existing simple view logic (for transcripts mode or non-resultset scanners)
-                # Check if value_type is uniform and needs casting
-                uniform_type = _get_uniform_value_type(conn, abs_path)
-                if uniform_type in ("boolean", "number"):
-                    cast_expr = _cast_value_sql(uniform_type)
-                    select_clause = f"SELECT * REPLACE ({cast_expr} AS value)"
-                else:
-                    select_clause = "SELECT *"
-
-                conn.execute(
-                    f"CREATE VIEW {scanner_name} AS {select_clause} FROM read_parquet('{abs_path}')"
+        scanner_tables: dict[str, str] = {}
+        allowed_paths: list[str] = []
+        try:
+            # Match filesystem entries to scanners declared by the parsed spec.
+            async with AsyncFilesystem() as fs:
+                parquet_uris = sorted(
+                    [u async for u in fs.iter_files(scan_location, "*.parquet")]
                 )
+            declared_scanners = set(status.spec.scanners)
+            parquet_by_scanner: dict[str, str] = {}
+            unexpected_count = 0
+            for parquet_uri in parquet_uris:
+                parquet_file = UPath(parquet_uri)
+                scanner_name = parquet_file.stem
+                if scanner_name not in declared_scanners:
+                    unexpected_count += 1
+                    continue
+                if scanner_name in parquet_by_scanner:
+                    raise ValueError(
+                        f"Multiple Parquet files found for scanner {scanner_name!r}"
+                    )
+                parquet_by_scanner[scanner_name] = parquet_file.as_posix()
+
+            if unexpected_count:
+                logger.warning(
+                    "Ignoring %d undeclared Parquet file(s) in scan results",
+                    unexpected_count,
+                )
+
+            for scanner_name in status.spec.scanners:
+                abs_path = parquet_by_scanner.get(scanner_name)
+                if abs_path is None:
+                    continue
+
+                source_view = create_parquet_view(conn, abs_path)
+                allowed_paths.append(abs_path)
+
+                # Check if we need to expand resultsets
+                if rows == "results" and _has_resultsets(conn, source_view):
+                    # Create expanded view with UNNEST for resultset rows
+                    sql = _create_expanded_view_sql(conn, source_view, scanner_name)
+                    conn.execute(sql)
+                else:
+                    # Use existing simple view logic (for transcripts mode or
+                    # non-resultset scanners). Check if value_type is uniform
+                    # and needs casting.
+                    uniform_type = _get_uniform_value_type(conn, source_view)
+                    if uniform_type in ("boolean", "number"):
+                        cast_expr = _cast_value_sql(uniform_type)
+                        select_clause = f"SELECT * REPLACE ({cast_expr} AS value)"
+                    else:
+                        select_clause = "SELECT *"
+
+                    conn.execute(
+                        f"CREATE VIEW {quote_identifier(scanner_name)} AS "
+                        f"{select_clause} FROM {quote_identifier(source_view)}"
+                    )
+                scanner_tables[scanner_name] = scanner_name
+
+            restrict_external_access(conn, allowed_paths=allowed_paths)
+        except Exception:
+            conn.close()
+            raise
 
         return ScanResultsDB(
             status=status.complete,
@@ -619,6 +704,7 @@ class FileRecorder(ScanRecorder):
             summary=status.summary,
             errors=status.errors,
             conn=conn,
+            scanner_tables=scanner_tables,
         )
 
     @override
@@ -644,10 +730,12 @@ class FileRecorder(ScanRecorder):
                 scan_dirs.append(entry.as_posix())
 
         # Fetch in parallel; skip scans that no longer exist and propagate
-        # any other error. return_exceptions=True keeps one failure from
-        # cancelling its siblings.
-        results = await asyncio.gather(
-            *(FileRecorder.status(d) for d in scan_dirs), return_exceptions=True
+        # any other error.
+        results = await tg_collect(
+            [
+                functools.partial(as_value, functools.partial(FileRecorder.status, d))
+                for d in scan_dirs
+            ]
         )
         scans: list[Status] = []
         for r in results:
@@ -659,32 +747,70 @@ class FileRecorder(ScanRecorder):
         return scans
 
 
+# local copies of previously-compacted scanner parquets, downloaded from
+# remote scan dirs at most once per scan run. keyed by buffer dir (which is
+# deterministic per scan_location), mapping scanner -> local temp path (or
+# None when the scan dir had no prior parquet when first checked). the cache
+# stays valid for the whole run because this process is the only writer of
+# the compacted outputs and everything it adds to them comes from the buffer
+# (which `scanner_table` treats as authoritative per transcript_id), so the
+# pre-run parquet remains the correct merge input for every subsequent sync.
+# without it, each periodic sync (see the `results_buffer` scan option)
+# would re-download the ever-growing compacted output it wrote itself.
+# cleared when a run starts (`init`/`resume`/`attach`) and when a sync
+# completes the scan.
+_prior_parquet_cache: dict[str, dict[str, str | None]] = {}
+
+
+def _clear_prior_parquet_cache(scan_location: str) -> None:
+    cache = _prior_parquet_cache.pop(
+        RecorderBuffer.buffer_dir(scan_location).as_posix(), None
+    )
+    if cache:
+        for local_path in cache.values():
+            if local_path is not None:
+                Path(local_path).unlink(missing_ok=True)
+
+
 async def _compact_with_prior(
-    scan_buffer_dir: UPath, scanner: str, *, prior: UPath
-) -> bytes | None:
-    """Compact buffer parquets, optionally merging in a prior compacted output.
+    fs: AsyncFilesystem,
+    scan_buffer_dir: UPath,
+    scanner: str,
+    *,
+    prior: UPath,
+    output_file: str,
+) -> bool:
+    """Compact buffer parquets, merging in a prior compacted output (if any).
 
-    `scanner_table` requires uniform local paths. If `prior` exists on a
-    remote filesystem, download it to a local temp file before passing it
-    in, then clean up.
+    The compacted result is streamed to `output_file` (a local path);
+    returns True if it was written (False when there was nothing to compact).
+
+    `scanner_table` requires uniform local paths and does blocking CPU +
+    local file work, so remote priors are downloaded through the async
+    filesystem (at most once per run — see `_prior_parquet_cache`) and the
+    compaction itself runs in a worker thread. This keeps the event loop
+    responsive when syncs run mid-scan.
     """
-    if not prior.exists():
-        return scanner_table(scan_buffer_dir, scanner)
-
-    local_prior: UPath | None = None
-    try:
-        if prior.protocol in ("", "file"):
-            extra = [prior]
-        else:
-            tmp_fd, tmp_name = tempfile.mkstemp(suffix=".parquet")
+    if prior.protocol in ("", "file"):
+        extra = [prior] if prior.exists() else None
+    else:
+        cache = _prior_parquet_cache.setdefault(scan_buffer_dir.as_posix(), {})
+        if scanner in cache:
+            local_prior = cache[scanner]
+        elif await fs.exists(prior.as_posix()):
+            tmp_fd, local_prior = tempfile.mkstemp(suffix=".parquet")
             os.close(tmp_fd)
-            local_prior = UPath(tmp_name)
-            local_prior.write_bytes(prior.read_bytes())
-            extra = [local_prior]
-        return scanner_table(scan_buffer_dir, scanner, extra_inputs=extra)
-    finally:
-        if local_prior is not None:
-            local_prior.unlink(missing_ok=True)
+            await fs.get_file(prior.as_posix(), local_prior)
+            cache[scanner] = local_prior
+        else:
+            local_prior = None
+            cache[scanner] = None
+        extra = [UPath(local_prior)] if local_prior is not None else None
+    return await anyio.to_thread.run_sync(
+        functools.partial(
+            scanner_table, scan_buffer_dir, scanner, output_file, extra_inputs=extra
+        )
+    )
 
 
 def _scanner_parquet_file(scan_dir: UPath, scanner: str) -> str:
@@ -800,25 +926,26 @@ def _ensure_scans_dir(scans_dir: UPath) -> None:
     scans_dir.mkdir(parents=True, exist_ok=True)
 
 
-def _has_resultsets(conn: duckdb.DuckDBPyConnection, parquet_path: str) -> bool:
+def _has_resultsets(conn: duckdb.DuckDBPyConnection, source_view: str) -> bool:
     """
     Check if a parquet file contains any resultset rows.
 
     Args:
         conn: DuckDB connection
-        parquet_path: Path to the parquet file
+        source_view: Generated view over the parquet file
 
     Returns:
         True if any rows have value_type == 'resultset', False otherwise
     """
     result = conn.execute(
-        f"SELECT COUNT(*) FROM read_parquet('{parquet_path}') WHERE value_type = 'resultset' LIMIT 1"
+        f"SELECT COUNT(*) FROM {quote_identifier(source_view)} "
+        "WHERE value_type = 'resultset' LIMIT 1"
     ).fetchone()
     return result is not None and result[0] > 0
 
 
 def _create_expanded_view_sql(
-    conn: duckdb.DuckDBPyConnection, parquet_path: str, scanner_name: str
+    conn: duckdb.DuckDBPyConnection, source_view: str, scanner_name: str
 ) -> str:
     """
     Generate SQL to create an expanded view that unnests resultset rows.
@@ -832,7 +959,7 @@ def _create_expanded_view_sql(
 
     Args:
         conn: DuckDB connection to query schema
-        parquet_path: Path to the parquet file
+        source_view: Generated view over the parquet file
         scanner_name: Name for the view
 
     Returns:
@@ -841,7 +968,7 @@ def _create_expanded_view_sql(
     # Query the actual column names from the parquet file to avoid hardcoding
     # We use LIMIT 0 to get just the schema without reading data
     result = conn.execute(
-        f"SELECT * FROM read_parquet('{parquet_path}') LIMIT 0"
+        f"SELECT * FROM {quote_identifier(source_view)} LIMIT 0"
     ).description
     all_columns = [col[0] for col in result]
 
@@ -874,9 +1001,9 @@ def _create_expanded_view_sql(
     }
 
     # Build the non-resultset rows query with explicit column selection
-    non_resultset_cols = ", ".join(all_columns)
+    non_resultset_cols = ", ".join(quote_identifier(column) for column in all_columns)
     non_resultset_query = f"""
-    SELECT {non_resultset_cols} FROM read_parquet('{parquet_path}')
+    SELECT {non_resultset_cols} FROM {quote_identifier(source_view)}
     WHERE value_type != 'resultset' OR value_type IS NULL
     """
 
@@ -898,15 +1025,15 @@ def _create_expanded_view_sql(
     for col in all_columns:
         if col in base_columns:
             # Base columns from the parquet table
-            expanded_col_selects.append(f"base_row.{col}")
+            expanded_col_selects.append(f"base_row.{quote_identifier(col)}")
         elif col in scan_execution_fields:
             # NULL out scan execution fields to avoid incorrect aggregation
-            expanded_col_selects.append(f"NULL AS {col}")
+            expanded_col_selects.append(f"NULL AS {quote_identifier(col)}")
         elif col in validation_fields or col.startswith("validation_result_"):
             # NULL out validation fields in expanded rows because:
             # 1. Label-based validation can't create synthetic rows in SQL
             # 2. Without synthetic rows, validation results are incomplete/misleading
-            expanded_col_selects.append(f"NULL AS {col}")
+            expanded_col_selects.append(f"NULL AS {quote_identifier(col)}")
         elif col == "uuid":
             expanded_col_selects.append(
                 "json_extract_string(CAST(elem AS JSON), '$.uuid') AS uuid"
@@ -953,13 +1080,13 @@ def _create_expanded_view_sql(
     expanded_resultset_query = f"""
     SELECT
         {", ".join(expanded_col_selects)}
-    FROM read_parquet('{parquet_path}') base_row,
-    UNNEST(CAST(json_extract(base_row.value, '$') AS JSON[])) AS t(elem)
-    WHERE base_row.value_type = 'resultset'
+    FROM {quote_identifier(source_view)} base_row,
+    UNNEST(CAST(json_extract(base_row.{quote_identifier("value")}, '$') AS JSON[])) AS t(elem)
+    WHERE base_row.{quote_identifier("value_type")} = 'resultset'
     """
 
     # Combine both queries with UNION ALL
-    return f"""CREATE VIEW {scanner_name} AS
+    return f"""CREATE VIEW {quote_identifier(scanner_name)} AS
     SELECT * FROM (
         {non_resultset_query}
         UNION ALL
@@ -968,20 +1095,21 @@ def _create_expanded_view_sql(
 
 
 def _get_uniform_value_type(
-    conn: duckdb.DuckDBPyConnection, parquet_path: str
+    conn: duckdb.DuckDBPyConnection, source_view: str
 ) -> str | None:
     """
     Check if value_type is uniform across all rows in a parquet file.
 
     Args:
         conn: DuckDB connection
-        parquet_path: Path to the parquet file
+        source_view: Generated view over the parquet file
 
     Returns:
         The uniform value_type if all rows have the same type, None otherwise
     """
     result = conn.execute(
-        f"SELECT DISTINCT value_type FROM read_parquet('{parquet_path}') WHERE value_type IS NOT NULL"
+        f"SELECT DISTINCT value_type FROM {quote_identifier(source_view)} "
+        "WHERE value_type IS NOT NULL"
     ).fetchall()
 
     if len(result) == 1:
@@ -1013,37 +1141,195 @@ def _cast_value_sql(value_type: str) -> str:
         return "value"
 
 
+def _parquet_source(
+    parquet_path: UPath,
+) -> tuple[str | io.BytesIO, pafs.FileSystem | None]:
+    """Return (source, filesystem) for opening a parquet file.
+
+    For cloud paths with native PyArrow support (S3, GCS, ABFS), returns a
+    pyarrow filesystem that uses HTTP range requests, so readers that select
+    columns or row groups only fetch the byte ranges they need. For other
+    remote protocols (e.g. az://, which PyArrow has no native support for),
+    downloads via fsspec and returns a BytesIO. For local paths, returns
+    (path, None).
+    """
+    path_str = parquet_path.as_posix()
+
+    if path_str.startswith(("s3://", "gs://", "gcs://", "abfs://", "abfss://")):
+        pa_fs, pa_path = pafs.FileSystem.from_uri(path_str)
+        return pa_path, pa_fs
+
+    if parquet_path.protocol not in ("", "file"):
+        with file(path_str, "rb") as f:
+            return io.BytesIO(f.read()), None
+
+    return path_str, None
+
+
+class _ResultsBatchesPrepass(NamedTuple):
+    """File-scoped cast decisions for streamed result batches."""
+
+    value_type_uniform: bool
+    """Whether the top-level value_type column has one distinct non-null value."""
+
+    resultset_value_types_uniform: bool
+    """Whether the expanded resultset result value types are uniform."""
+
+
+def _results_batches_prepass(
+    parquet: pq.ParquetFile, columns: list[str]
+) -> _ResultsBatchesPrepass:
+    """Compute the file-scoped decisions that per-batch transforms depend on.
+
+    The single-DataFrame path decides value casting over the whole frame:
+    `_cast_value_column()` keys off the distinct value_type values it sees,
+    and resultset expansion applies the same logic to the *expanded* result
+    value types. Streamed batches are subsets of the file, so both decisions
+    are computed here over the whole file instead.
+
+    Reads one row group at a time, keeping only the distinct types seen so
+    far, so the pre-pass stays memory-bounded like the main read. The value
+    column is only read for row groups that contain resultset rows.
+
+    `columns` is the post-exclusion column list: decisions must reflect the
+    same columns the single-DataFrame path would see after exclusions.
+    """
+    if "value_type" not in columns:
+        return _ResultsBatchesPrepass(
+            value_type_uniform=False, resultset_value_types_uniform=False
+        )
+    has_value = "value" in columns
+
+    top_level_types: set[str] = set()
+    expanded_types: set[str] = set()
+
+    for row_group in range(parquet.metadata.num_row_groups):
+        value_type_column = parquet.read_row_group(
+            row_group, columns=["value_type"]
+        ).column("value_type")
+        top_level_types.update(
+            str(v)
+            for v in pc.unique(value_type_column.drop_null()).to_pylist()
+            if v is not None
+        )
+
+        # both decisions are "mixed" for good once two distinct types are
+        # seen, so stop reading row groups we can no longer learn from
+        if len(top_level_types) > 1 and (not has_value or len(expanded_types) > 1):
+            break
+
+        # expanded types are only needed until two distinct values are seen
+        if not has_value or len(expanded_types) > 1:
+            continue
+        resultset_mask = pc.equal(value_type_column, pa.scalar("resultset"))
+        if not pc.any(resultset_mask).as_py():
+            continue
+        values = (
+            parquet.read_row_group(row_group, columns=["value"])
+            .filter(resultset_mask)
+            .column("value")
+            .to_pylist()
+        )
+        for raw in values:
+            for result in _parse_resultset_value(raw):
+                if isinstance(result, dict):
+                    expanded_types.add(_result_value_type(result))
+
+    return _ResultsBatchesPrepass(
+        value_type_uniform=len(top_level_types) == 1,
+        resultset_value_types_uniform=len(expanded_types) == 1,
+    )
+
+
+def _parse_resultset_value(raw: Any) -> list[Any]:
+    """Parse a resultset row's raw value into its non-null Result dicts.
+
+    Mirrors how `_expand_resultset_rows()` treats the value column: JSON
+    strings are parsed (anything else yields no results), non-list payloads
+    are treated as a single result, and null elements are dropped (explode +
+    notna upstream).
+    """
+    parsed = json.loads(raw) if isinstance(raw, str) and raw else []
+    if not isinstance(parsed, list):
+        parsed = [parsed]
+    return [result for result in parsed if result is not None]
+
+
+def _result_value_type(result: dict[str, Any]) -> str:
+    """Value type of a raw Result dict, mirroring expansion's inference.
+
+    Mirrors `infer_value_type()` inside `_expand_resultset_rows()`, which
+    takes the value straight from the parsed Result dict just as this does,
+    so dict-valued results infer "object" on both paths.
+    Used by the file-level pre-pass to decide expanded value-type uniformity.
+    """
+    vtype = result.get("type")
+    if vtype is not None:
+        return str(vtype)
+    value = result.get("value")
+    if isinstance(value, bool):
+        return "boolean"
+    elif isinstance(value, (int, float)):
+        return "number"
+    elif isinstance(value, str):
+        return "string"
+    elif isinstance(value, list):
+        return "array"
+    elif isinstance(value, dict):
+        return "object"
+    else:
+        return "null"
+
+
+def _open_scanner_parquet(scan_dir: UPath, scanner: str) -> pq.ParquetFile:
+    """Open a scanner's parquet file for streaming reads.
+
+    Uses `_parquet_source()` scheme dispatch so cloud sources are read
+    lazily via HTTP range requests where PyArrow supports them. `pre_buffer`
+    is disabled explicitly (pyarrow >= 25 defaults it to True) because its
+    read-range cache retains every buffered range for the lifetime of the
+    read, so memory for a full `iter_batches()` pass grows to roughly the
+    file size rather than staying bounded by the batch size; we prefer
+    bounded memory over coalesced range requests here.
+    """
+    pa_path, pa_fs = _parquet_source(scan_dir / f"{scanner}.parquet")
+    if pa_fs is not None:
+        return pq.ParquetFile(pa_path, filesystem=pa_fs, pre_buffer=False)
+    return pq.ParquetFile(pa_path, pre_buffer=False)
+
+
 def _load_scanner_df(
     scan_dir: UPath,
     scanner_name: str,
     *,
-    exclude_columns: list[str] | None = None,
+    exclude_columns: list[str],
 ) -> pd.DataFrame:
     """Load a scanner's DataFrame from a parquet file.
 
     Args:
         scan_dir: Directory containing the scan parquet files.
         scanner_name: Name of the scanner (without .parquet extension).
-        exclude_columns: List of column names to exclude when reading.
-            Non-existent columns are silently ignored.
+        exclude_columns: Column names to exclude when reading (callers resolve
+            any default before calling; `[]` excludes nothing). Non-existent
+            columns are silently ignored.
 
     Returns:
         DataFrame with the scanner results, value column cast appropriately.
     """
-    parquet_file = scan_dir / f"{scanner_name}.parquet"
-    # Use file() from inspect_ai to match original AsyncFilesystem behavior
-    with file(parquet_file.as_posix(), "rb") as f:
-        file_bytes = f.read()
+    source, pa_fs = _parquet_source(scan_dir / f"{scanner_name}.parquet")
+    # pre_buffer coalesces column-chunk reads: HTTP range requests on remote
+    # filesystems, and larger sequential reads on local paths (which makes a
+    # big difference on FUSE mounts like mountpoint-s3).
+    with pq.ParquetFile(source, filesystem=pa_fs, pre_buffer=True) as parquet:
+        # Project columns at the source: with a range-request filesystem this
+        # avoids downloading excluded columns at all (heavy columns like `input`
+        # can be >99% of the file), rather than filtering after a full read.
+        columns: list[str] | None = None
+        if exclude_columns:
+            exclude = set(exclude_columns)
+            columns = [c for c in parquet.schema_arrow.names if c not in exclude]
 
-    # Determine columns to read (exclude specified columns if they exist)
-    columns: list[str] | None = None
-    if exclude_columns:
-        parquet_schema = pq.read_schema(io.BytesIO(file_bytes))
-        all_columns = set(parquet_schema.names)
-        columns = [col for col in all_columns if col not in exclude_columns]
-
-    table = pq.read_table(io.BytesIO(file_bytes), columns=columns)
-    df = table.to_pandas(types_mapper=pd.ArrowDtype)
+        df = parquet.read(columns=columns).to_pandas(types_mapper=pd.ArrowDtype)
     return _cast_value_column(df)
 
 
@@ -1075,13 +1361,17 @@ def _cast_value_column(df: pd.DataFrame) -> pd.DataFrame:
 
         try:
             if vtype == "boolean":
-                # Handle various string representations of booleans
+                # Handle string representations of booleans (parquet stores
+                # values as strings) as well as actual bools (resultset
+                # expansion parses JSON into native True/False).
                 df["value"] = df["value"].map(
                     {
                         "true": True,
                         "false": False,
                         "True": True,
                         "False": False,
+                        True: True,
+                        False: False,
                         None: None,
                     }
                 )
@@ -1106,17 +1396,30 @@ def _cast_value_column(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def _sync_status_files(
-    scan_dir: UPath, scan_buffer_dir: UPath, scan_spec: ScanSpec, complete: bool
+async def _sync_status_files(
+    fs: AsyncFilesystem,
+    scan_dir: UPath,
+    scan_buffer_dir: UPath,
+    scan_spec: ScanSpec,
+    complete: bool,
 ) -> None:
-    """Copy summary and errors from buffer to scan directory."""
+    """Copy summary and errors from buffer to scan directory.
+
+    Buffer reads are local (see `RecorderBuffer.buffer_dir`); the scan dir
+    may be remote, so writes go through the async filesystem to keep the
+    event loop free during mid-scan syncs.
+    """
     # copy scan summary (update with complete status)
-    with file((scan_dir / SCAN_SUMMARY).as_posix(), "w") as f:
-        summary = read_scan_summary(scan_buffer_dir, scan_spec)
-        summary.complete = complete
-        f.write(summary.model_dump_json())
+    summary = read_scan_summary(scan_buffer_dir, scan_spec)
+    summary.complete = complete
+    await fs.write_file(
+        (scan_dir / SCAN_SUMMARY).as_posix(),
+        summary.model_dump_json().encode("utf-8"),
+    )
 
     # copy errors
-    with file((scan_dir / SCAN_ERRORS).as_posix(), "w") as f:
-        for error in _read_scan_errors(scan_buffer_dir):
-            f.write(error.model_dump_json(warnings=False) + "\n")
+    errors = "".join(
+        error.model_dump_json(warnings=False) + "\n"
+        for error in _read_scan_errors(scan_buffer_dir)
+    )
+    await fs.write_file((scan_dir / SCAN_ERRORS).as_posix(), errors.encode("utf-8"))

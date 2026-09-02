@@ -2,8 +2,10 @@
 
 from pathlib import Path as PathlibPath
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
+from .._query import UnknownColumnError
 from ._api_v2_config import create_config_router
 from ._api_v2_dist import create_dist_router
 from ._api_v2_scanners import create_scanners_router
@@ -33,6 +35,13 @@ def v2_api_app(
         title="Inspect Scout Viewer API",
         version=API_VERSION,
     )
+
+    @app.exception_handler(UnknownColumnError)
+    async def unknown_column_handler(
+        _request: Request, exc: UnknownColumnError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=400, content={"detail": str(exc)})
+
     app.include_router(create_config_router(view_config=view_config))
     app.include_router(create_dist_router(dist_path=dist_path))
     app.include_router(create_topics_router())

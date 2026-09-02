@@ -1,7 +1,7 @@
 """Tests for runtime type validation in the scanner module."""
 
 from collections.abc import AsyncIterator, Callable
-from typing import Any
+from typing import Any, Union
 
 import pytest
 from inspect_ai._util.registry import registry_info
@@ -17,6 +17,7 @@ from inspect_ai.model._chat_message import (
 )
 from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import SCANNER_CONFIG, Scanner, scanner
+from inspect_scout._scanner.validate import _is_compatible_with_type
 from inspect_scout._transcript.types import Transcript
 
 # Valid scanner tests
@@ -523,3 +524,100 @@ def test_message_validation_matrix(
                 return scan
 
             test_scanner()
+
+
+# Union-spelling regression tests
+#
+# A union type can be written two ways: the pipe form (``X | Y``) and the
+# typing form (``Union[X, Y]``). Before Python 3.14 these had different origins
+# (``types.UnionType`` vs ``typing.Union``); 3.14 unified them into one type.
+# The existing union tests above only exercise the pipe form, so they never
+# covered the typing form — which was mishandled on every Python version. These
+# tests pin the behaviour across both spellings.
+
+_PARTIAL_UNION_PIPE: Any = ChatMessageSystem | ChatMessageUser
+_PARTIAL_UNION_TYPING: Any = Union[ChatMessageSystem, ChatMessageUser]
+_FULL_UNION_PIPE: Any = (
+    ChatMessageSystem | ChatMessageUser | ChatMessageAssistant | ChatMessageTool
+)
+_FULL_UNION_TYPING: Any = Union[
+    ChatMessageSystem, ChatMessageUser, ChatMessageAssistant, ChatMessageTool
+]
+
+
+@pytest.mark.parametrize(
+    "scanner_type",
+    [
+        pytest.param(_PARTIAL_UNION_PIPE, id="pipe"),
+        pytest.param(_PARTIAL_UNION_TYPING, id="typing-union"),
+    ],
+)
+def test_partial_union_rejected_both_spellings(scanner_type: Any) -> None:
+    """A partial union can't satisfy a filter requiring more types.
+
+    Holds whichever way the union is written (pipe or typing.Union).
+    """
+    with pytest.raises(TypeError, match="must be able to handle all types"):
+
+        @scanner(messages=["system", "user", "assistant"])
+        def test_scanner() -> Scanner[scanner_type]:  # pyright: ignore[reportInvalidTypeForm]
+            async def scan(message: scanner_type) -> Result:
+                return Result(value={"bad": True})
+
+            return scan
+
+        test_scanner()
+
+
+def test_full_union_typing_spelling_accepts_all() -> None:
+    """A full union written with typing.Union satisfies messages='all'.
+
+    Guards against a fix that over-rejects by treating every union as a subset.
+    """
+
+    @scanner(messages="all")
+    def test_scanner() -> Scanner[
+        Union[
+            ChatMessageSystem,
+            ChatMessageUser,
+            ChatMessageAssistant,
+            ChatMessageTool,
+        ]
+    ]:
+        async def scan(
+            message: Union[
+                ChatMessageSystem,
+                ChatMessageUser,
+                ChatMessageAssistant,
+                ChatMessageTool,
+            ],
+        ) -> Result:
+            return Result(value={"ok": True})
+
+        return scan
+
+    scanner_instance = test_scanner()
+    assert registry_info(scanner_instance).metadata[SCANNER_CONFIG]
+
+
+@pytest.mark.parametrize(
+    "scanner_type,target,expected",
+    [
+        # A partial union is not the base union, however it is spelled.
+        pytest.param(_PARTIAL_UNION_PIPE, ChatMessage, False, id="partial-pipe"),
+        pytest.param(_PARTIAL_UNION_TYPING, ChatMessage, False, id="partial-typing"),
+        # A full union is equivalent to the base union.
+        pytest.param(_FULL_UNION_PIPE, ChatMessage, True, id="full-pipe"),
+        pytest.param(_FULL_UNION_TYPING, ChatMessage, True, id="full-typing"),
+        # The base alias is trivially compatible with itself.
+        pytest.param(ChatMessage, ChatMessage, True, id="alias"),
+    ],
+)
+def test_is_compatible_with_type_union_semantics(
+    scanner_type: Any, target: Any, expected: bool
+) -> None:
+    """A union counts as the base type only when it covers every member.
+
+    Equivalently, only when it equals the base union — never for a strict subset.
+    """
+    assert _is_compatible_with_type(scanner_type, target) is expected

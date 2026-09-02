@@ -6,15 +6,19 @@ from click.core import ParameterSource
 from inspect_ai._cli.util import (
     int_bool_or_str_flag_callback,
     int_or_bool_flag_callback,
-    parse_cli_args,
     parse_cli_config,
     parse_model_role_cli_args,
 )
-from inspect_ai._util.config import resolve_args
+from inspect_ai._util.config import parse_cli_args, resolve_args
 from inspect_ai._util.constants import DEFAULT_CACHE_DAYS
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.logger import warn_once
-from inspect_ai.model import BatchConfig, CachePolicy, GenerateConfig, Model
+from inspect_ai.model import (
+    BatchConfig,
+    CachePolicy,
+    GenerateConfig,
+    ModelRoles,
+)
 from typing_extensions import Unpack
 
 from inspect_scout._project._project import read_project
@@ -254,6 +258,13 @@ shuffle_option = click.option(
     envvar=["SCOUT_SCAN_SHUFFLE"],
 )
 
+results_buffer_option = click.option(
+    "--results-buffer",
+    type=int,
+    help="Sync in-progress results to the scan location every N recorded results so they can be inspected while the scan runs (defaults to no periodic sync).",
+    envvar="SCOUT_SCAN_RESULTS_BUFFER",
+)
+
 tags_option = click.option(
     "--tags",
     type=str,
@@ -399,6 +410,7 @@ SCAN_OPTIONS: list[Callable[..., Any]] = [
     max_processes_option,
     limit_option,
     shuffle_option,
+    results_buffer_option,
     tags_option,
     metadata_option,
     cache_option,
@@ -456,6 +468,7 @@ def scan_command(
     max_processes: int | None,
     limit: int | None,
     shuffle: int | None,
+    results_buffer: int | None,
     tags: str | None,
     metadata: tuple[str, ...] | None,
     cache: int | str | None,
@@ -482,8 +495,9 @@ def scan_command(
     if ctx.invoked_subcommand is not None:
         return
 
-    # Process common options
-    process_common_options(common)
+    # Process common options. Defer logging init: scan resolves a more specific
+    # log level from the scanjob config below and initializes logging itself.
+    process_common_options(ctx, common, init_logging=False)
 
     # Handle deprecated --results option
     if results is not None:
@@ -562,7 +576,7 @@ def scan_command(
         scanjob.model_args,
     )
     scan_model_roles = cast(
-        dict[str, str | Model] | None,
+        ModelRoles | None,
         resolve_scan_option(
             ctx,
             "model_role",
@@ -665,6 +679,9 @@ def scan_command(
         ctx, "max_processes", max_processes, scanjob.max_processes
     )
     scan_limit = resolve_scan_option(ctx, "limit", limit, scanjob.limit)
+    scan_results_buffer = resolve_scan_option(
+        ctx, "results_buffer", results_buffer, scanjob.results_buffer
+    )
 
     # shuffle
     if shuffle == -1:
@@ -704,6 +721,7 @@ def scan_command(
         max_processes=scan_max_processes,
         limit=scan_limit,
         shuffle=scan_shuffle,
+        results_buffer=scan_results_buffer,
         tags=scan_tags,
         metadata=scan_metadata,
         fail_on_error=common["fail_on_error"],

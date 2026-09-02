@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from functools import reduce
 from typing import Any, Callable
@@ -8,7 +9,7 @@ from typing import Any, Callable
 from .condition import Condition
 from .condition_sql import condition_as_sql
 from .order_by import OrderBy
-from .sql import ExecutableSQLDialect
+from .sql import ExecutableSQLDialect, quote_identifier, validate_column
 
 
 @dataclass
@@ -36,12 +37,14 @@ class Query:
         self,
         dialect: ExecutableSQLDialect,
         shuffle_column: str | None = None,
+        available_columns: Collection[str] | None = None,
     ) -> tuple[str, list[Any], Callable[[Any], None] | None]:
         """Generate SQL suffix (WHERE + ORDER BY + LIMIT).
 
         Args:
             dialect: SQL dialect for placeholders.
             shuffle_column: Column for shuffle ORDER BY (required if self.shuffle is set).
+            available_columns: Active top-level schema used to validate order columns.
 
         Returns:
             (sql_suffix, params, register_shuffle)
@@ -76,11 +79,17 @@ class Query:
                 "order_by is not meaningful when shuffle is enabled"
             )
             seed = 0 if self.shuffle is True else self.shuffle
-            order_by_clauses.append(f"shuffle_hash({shuffle_column})")
+            order_by_clauses.append(f"shuffle_hash({quote_identifier(shuffle_column)})")
             register_shuffle = _make_shuffle_registrar(dialect, seed)
         else:
+            if self.order_by and available_columns is None:
+                raise ValueError("available_columns is required when ordering a query")
             for ob in self.order_by:
-                order_by_clauses.append(f'"{ob.column}" {ob.direction}')
+                assert available_columns is not None
+                column = validate_column(ob.column, available_columns)
+                if ob.direction not in ("ASC", "DESC"):
+                    raise ValueError(f"Unsupported order direction: {ob.direction!r}")
+                order_by_clauses.append(f"{quote_identifier(column)} {ob.direction}")
 
         if order_by_clauses:
             parts.append(" ORDER BY " + ", ".join(order_by_clauses))

@@ -32,7 +32,7 @@ from inspect_ai._util.registry import (
     registry_tag,
     registry_unqualified_name,
 )
-from inspect_ai.model import GenerateConfig, Model, get_model
+from inspect_ai.model import GenerateConfig, Model, ModelRoles, get_model
 from inspect_ai.model._util import resolve_model_roles
 from jsonschema import Draft7Validator
 from typing_extensions import Unpack
@@ -79,11 +79,12 @@ class ScanJob:
         model_base_url: str | None = None,
         model_args: dict[str, Any] | None = None,
         generate_config: GenerateConfig | None = None,
-        model_roles: dict[str, str | Model] | None = None,
+        model_roles: ModelRoles | None = None,
         max_transcripts: int | None = None,
         max_processes: int | None = None,
         limit: int | None = None,
         shuffle: bool | int | None = None,
+        results_buffer: int | None = None,
         tags: list[str] | None = None,
         metadata: dict[str, Any] | None = None,
         log_level: str | None = None,
@@ -123,6 +124,7 @@ class ScanJob:
         self._max_processes = max_processes
         self._limit = limit
         self._shuffle = shuffle
+        self._results_buffer = results_buffer
         self._tags = tags
         self._metadata = metadata
         self._log_level = log_level
@@ -249,7 +251,7 @@ class ScanJob:
         return self._generate_config
 
     @property
-    def model_roles(self) -> dict[str, Model] | None:
+    def model_roles(self) -> dict[str, Model | list[Model]] | None:
         """Named roles for use in `get_model()`."""
         return self._model_roles
 
@@ -272,6 +274,11 @@ class ScanJob:
     def shuffle(self) -> bool | int | None:
         """Shuffle the order of transcripts (pass an `int` to set a seed for shuffling)."""
         return self._shuffle
+
+    @property
+    def results_buffer(self) -> int | None:
+        """Sync in-progress results to the scan location every N recorded results (defaults to no periodic sync)."""
+        return self._results_buffer
 
     @property
     def tags(self) -> list[str] | None:
@@ -590,6 +597,9 @@ def _apply_simple_fallbacks(proj: "ProjectConfig", scanjob: ScanJob) -> None:
 
     if scanjob._shuffle is None and proj.shuffle is not None:
         scanjob._shuffle = proj.shuffle
+
+    if scanjob._results_buffer is None and proj.results_buffer is not None:
+        scanjob._results_buffer = proj.results_buffer
 
     if scanjob._log_level is None and proj.log_level is not None:
         scanjob._log_level = proj.log_level

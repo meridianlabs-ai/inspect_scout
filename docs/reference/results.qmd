@@ -14,6 +14,8 @@ reference: inspect_scout
 ### ScanResultsDF
 ### scan_results_arrow
 ### ScanResultsArrow
+### scan_results_batches
+### HEAVY_COLUMNS
 
 ## Validation
 

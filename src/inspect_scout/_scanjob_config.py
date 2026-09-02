@@ -68,6 +68,9 @@ class ScanJobConfig(BaseModel):
     shuffle: bool | int | None = Field(default=None)
     """Shuffle the order of transcripts (pass an `int` to set a seed for shuffling)."""
 
+    results_buffer: int | None = Field(default=None)
+    """Sync in-progress results to the scan location every N recorded results (defaults to no periodic sync)."""
+
     tags: list[str] | None = Field(default=None)
     """One or more tags for this scan."""
 

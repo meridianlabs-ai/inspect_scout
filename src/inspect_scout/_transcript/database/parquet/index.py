@@ -32,6 +32,13 @@ from inspect_ai._util.file import filesystem
 from inspect_ai.util import trace_message
 from shortuuid import uuid
 
+from ...._query.sql import quote_identifier
+from ...._util.duckdb import (
+    create_parquet_view,
+    drop_view,
+    parquet_view,
+    relation_columns,
+)
 from ..schema import CONTENT_COLUMNS
 from .index_cache import get_index_cache_path, load_cached_index, save_index_cache
 from .migration import migrate_table
@@ -215,37 +222,36 @@ async def create_index(
         # Empty database - nothing to index
         return None
 
-    # Build file list for read_parquet
-    if len(data_files) == 1:
-        file_pattern = f"'{data_files[0]}'"
-    else:
-        file_pattern = "[" + ", ".join(f"'{p}'" for p in data_files) + "]"
+    with parquet_view(
+        conn,
+        data_files,
+        union_by_name=True,
+        filename=True,
+    ) as source_view:
+        all_columns = relation_columns(conn, source_view)
 
-    # Read all metadata from data files, excluding messages/events
-    # First, get the schema to know which columns exist
-    schema_result = conn.execute(
-        f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet({file_pattern}, union_by_name=true))"
-    ).fetchall()
-    all_columns = {row[0] for row in schema_result}
-
-    # Build exclude clause for large content columns if they exist
-    exclude_columns = [c for c in CONTENT_COLUMNS if c in all_columns]
-    exclude_clause = (
-        f" EXCLUDE ({', '.join(exclude_columns)})" if exclude_columns else ""
-    )
-
-    # Read metadata into Arrow table with deduplication.
-    # If the same transcript_id exists in multiple data files (e.g., from
-    # retried inserts after partial failures), keep only one entry.
-    # We use ROW_NUMBER() to pick one arbitrarily per transcript_id.
-    result = conn.execute(f"""
-        SELECT * EXCLUDE (_rn) FROM (
-            SELECT *{exclude_clause},
-                   ROW_NUMBER() OVER (PARTITION BY transcript_id) as _rn
-            FROM read_parquet({file_pattern}, union_by_name=true, filename=true)
+        # Build exclude clause for large content columns if they exist
+        exclude_columns = [c for c in CONTENT_COLUMNS if c in all_columns]
+        exclude_clause = (
+            " EXCLUDE ("
+            + ", ".join(quote_identifier(column) for column in exclude_columns)
+            + ")"
+            if exclude_columns
+            else ""
         )
-        WHERE _rn = 1
-    """).fetch_arrow_table()
+
+        # Read metadata into Arrow table with deduplication.
+        # If the same transcript_id exists in multiple data files (e.g., from
+        # retried inserts after partial failures), keep only one entry.
+        # We use ROW_NUMBER() to pick one arbitrarily per transcript_id.
+        result = conn.execute(f"""
+            SELECT * EXCLUDE (_rn) FROM (
+                SELECT *{exclude_clause},
+                       ROW_NUMBER() OVER (PARTITION BY transcript_id) as _rn
+                FROM {quote_identifier(source_view)}
+            )
+            WHERE _rn = 1
+        """).fetch_arrow_table()
 
     # Convert absolute filenames to relative paths (relative to database location)
     result = _make_filenames_relative(result, storage.location)
@@ -300,7 +306,7 @@ async def init_index_table(
     if not idx_files:
         # No index files - create empty table
         conn.execute(f"""
-            CREATE TABLE {table_name} AS
+            CREATE TABLE {quote_identifier(table_name)} AS
             SELECT ''::VARCHAR AS transcript_id, ''::VARCHAR AS filename
             WHERE FALSE
         """)
@@ -321,19 +327,14 @@ async def init_index_table(
             migrate_table(conn, table_name)
             return cached_count
 
-    # Build file list for read_parquet
-    if len(idx_files) == 1:
-        file_pattern = f"'{idx_files[0]}'"
-    else:
-        file_pattern = "[" + ", ".join(f"'{p}'" for p in idx_files) + "]"
-
     # Create table from index files
     # Handle file-not-found errors from concurrent operations with retry
     try:
-        conn.execute(f"""
-            CREATE TABLE {table_name} AS
-            SELECT * FROM read_parquet({file_pattern}, union_by_name=true)
-        """)
+        with parquet_view(conn, idx_files, union_by_name=True) as source_view:
+            conn.execute(f"""
+                CREATE TABLE {quote_identifier(table_name)} AS
+                SELECT * FROM {quote_identifier(source_view)}
+            """)
     except duckdb.IOException as e:
         error_msg = str(e).lower()
         if (
@@ -347,7 +348,9 @@ async def init_index_table(
         raise
 
     # Return row count
-    result = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()
+    result = conn.execute(
+        f"SELECT COUNT(*) FROM {quote_identifier(table_name)}"
+    ).fetchone()
     row_count = result[0] if result else 0
 
     # For remote storage, save to cache
@@ -604,28 +607,38 @@ def _read_and_deduplicate_index_files(
     """
     if len(idx_files) == 1:
         # Single file - no deduplication needed
-        return conn.execute(
-            f"SELECT * FROM read_parquet('{idx_files[0]}')"
-        ).fetch_arrow_table()
+        with parquet_view(conn, idx_files[0]) as source_view:
+            return conn.execute(
+                f"SELECT * FROM {quote_identifier(source_view)}"
+            ).fetch_arrow_table()
 
     # Read each file with an order tag. Higher order = newer file.
     # The idx_files list is sorted with older files first, so we use
     # the list index as the order (newer files have higher indices).
-    subqueries = []
-    for i, f in enumerate(sorted(idx_files)):
-        subqueries.append(f"SELECT *, {i} as _file_order FROM read_parquet('{f}')")
+    source_views: list[str] = []
+    try:
+        subqueries = []
+        for i, path in enumerate(sorted(idx_files)):
+            source_view = create_parquet_view(conn, path)
+            source_views.append(source_view)
+            subqueries.append(
+                f"SELECT *, {i} AS _file_order FROM {quote_identifier(source_view)}"
+            )
 
-    union_query = " UNION ALL BY NAME ".join(subqueries)
+        union_query = " UNION ALL BY NAME ".join(subqueries)
 
-    # Deduplicate: keep entry from newest file (highest _file_order)
-    return conn.execute(f"""
-        SELECT * EXCLUDE (_file_order, _rn) FROM (
-            SELECT *,
-                   ROW_NUMBER() OVER (
-                       PARTITION BY transcript_id
-                       ORDER BY _file_order DESC
-                   ) as _rn
-            FROM ({union_query})
-        )
-        WHERE _rn = 1
-    """).fetch_arrow_table()
+        # Deduplicate: keep entry from newest file (highest _file_order)
+        return conn.execute(f"""
+            SELECT * EXCLUDE (_file_order, _rn) FROM (
+                SELECT *,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY transcript_id
+                           ORDER BY _file_order DESC
+                       ) as _rn
+                FROM ({union_query})
+            )
+            WHERE _rn = 1
+        """).fetch_arrow_table()
+    finally:
+        for source_view in source_views:
+            drop_view(conn, source_view)

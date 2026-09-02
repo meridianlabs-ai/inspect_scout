@@ -28,7 +28,7 @@ def transcripts_view(location: str) -> TranscriptsView:
     init_environment()
     match _location_type(location):
         case "database":
-            return ParquetTranscriptsDB(location)
+            return ParquetTranscriptsDB(location, read_only=True)
         case "eval_log":
             return EvalLogTranscriptsView(location)
 

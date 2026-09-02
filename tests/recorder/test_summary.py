@@ -210,6 +210,43 @@ class TestComputeValidationMetrics:
         assert metrics.fn == 1  # 0 from a, 1 from b
         assert metrics.tn == 2  # 1 from a, 1 from b
 
+    def test_dict_target_per_key_uses_per_key_positivity(self) -> None:
+        """Dict targets must bucket each key against its OWN target value.
+
+        Regression: target_positive was computed from the whole dict (always
+        positive when non-empty), so a key whose target was False/negative was
+        scored TP/FN instead of TN/FP, inflating per-key precision/specificity.
+        """
+        validations = [
+            # Ground truth: a is present (True), b is absent (False / negative).
+            # Scanner matched truth on both keys -> valid for both.
+            ValidationEntry(
+                id="t1",
+                target={"a": True, "b": False},
+                valid={"a": True, "b": True},
+            ),
+            # Scanner false-alarms the safe key b (truth False, scanner says True)
+            # -> valid is False for b.
+            ValidationEntry(
+                id="t2",
+                target={"a": True, "b": False},
+                valid={"a": True, "b": False},
+            ),
+        ]
+        result = compute_validation_metrics(validations)
+        assert result is not None
+        metrics, per_key = result
+        assert per_key is not None
+        # a: positive truth both times. t1 valid -> TP, t2 valid -> TP.
+        assert per_key["a"].tp == 2
+        assert per_key["a"].tn == 0
+        # b: negative truth both times. t1 valid -> TN (handled a safe label
+        # correctly), t2 not valid -> FP (false alarm on a safe label).
+        assert per_key["b"].tn == 1
+        assert per_key["b"].fp == 1
+        assert per_key["b"].tp == 0
+        assert per_key["b"].fn == 0
+
     def test_mixed_with_legacy(self) -> None:
         """Mixed entries with some legacy (target=None) are handled correctly."""
         validations = [

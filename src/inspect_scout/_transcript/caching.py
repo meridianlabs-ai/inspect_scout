@@ -2,11 +2,15 @@ import io
 import json
 import warnings
 from collections.abc import Callable, Generator
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
+from functools import partial
 from os import PathLike
 from pathlib import Path
 
 import pandas as pd
+from inspect_ai._util._async import run_coroutine, tg_collect
+from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import FileInfo, filesystem
 from inspect_ai._util.kvstore import KVStore, inspect_kvstore
 from inspect_ai.log._file import EvalLogInfo, log_files_from_ls
@@ -14,6 +18,7 @@ from inspect_ai.log._file import EvalLogInfo, log_files_from_ls
 from .types import LogPaths
 
 DEFAULT_MAX_CACHE_ENTRIES = 5000
+DEFAULT_READER_MAX_WORKERS = 16
 _CACHE_VERSION = 10
 _CACHE_VERSION_KEY = "__cache_version__"
 
@@ -78,18 +83,29 @@ def samples_df_with_caching(
     reader: Callable[[str], pd.DataFrame],
     logs: LogPaths,
     cache_store: str = "scout_transcript_info_cache",
+    max_workers: int = DEFAULT_READER_MAX_WORKERS,
 ) -> pd.DataFrame:
     """Read transcript sample info from the logs with caching.
 
     Caching behavior:
-    - Calls reader(path) per file (with caching by etag or mtime:size)
+    - Calls reader(path) per file (with caching by etag or mtime:size),
+      reading cache misses concurrently on a thread pool
+    - Each file is cached as soon as its read completes, so a failure part
+      way through preserves the files already read
     - Concatenates all results into single DataFrame
     - Falls back to direct reader call on any cache errors
+
+    Reads are one file per reader call (rather than one multi-file call)
+    because inspect_ai's samples_df de-duplicates samples by uuid across
+    all logs it is given: eval-set retry logs carry forward completed
+    samples with identical uuids, so two such logs read in one call would
+    each get a partial result. Per-file calls make de-duplication a no-op.
 
     Args:
         reader: Function taking a path, returning DataFrame
         logs: Log paths to read
         cache_store: KVStore name for cache storage
+        max_workers: Maximum number of threads used to read cache misses
 
     Returns:
         DataFrame with transcript data
@@ -103,10 +119,55 @@ def samples_df_with_caching(
     ) as kvstore:
         cache_hits, cache_misses = _get_cached_dfs(kvstore, paths_and_etags)
 
-        # Read and cache the dataframes for all of the cache misses.
-        miss_dfs = [reader(path) for path, _ in cache_misses]
-        for (path, etag), df in zip(cache_misses, miss_dfs, strict=True):
-            _put_cached_df(kvstore, path, etag, df)
+        # Read the cache misses concurrently, caching each file as its read
+        # completes (on this thread -- the kvstore connection is not shared
+        # with reader threads). On the first failure stop submitting new
+        # reads, cache the reads still in flight, then re-raise.
+        miss_df_by_path: dict[str, pd.DataFrame] = {}
+        first_error: Exception | None = None
+        futures: dict[Future[pd.DataFrame], tuple[str, str]] = {}
+        if cache_misses:
+            # fsspec filesystem-instance construction/caching is not
+            # thread-safe, and readers construct filesystems internally,
+            # so instantiate each protocol's filesystem on this thread
+            # before the reader threads can race to create it
+            for path in {
+                _path_protocol(path): path for path, _ in cache_misses
+            }.values():
+                filesystem(path)
+
+            with ThreadPoolExecutor(
+                max_workers=min(max_workers, len(cache_misses))
+            ) as executor:
+                futures = {
+                    executor.submit(reader, path): (path, etag)
+                    for path, etag in cache_misses
+                }
+                for future in as_completed(futures):
+                    path, etag = futures[future]
+                    try:
+                        df = future.result()
+                    except Exception as ex:
+                        # as_completed never yields futures that
+                        # shutdown(cancel_futures=True) drained from the
+                        # queue, so stop iterating and harvest the reads
+                        # still in flight below.
+                        first_error = ex
+                        executor.shutdown(wait=True, cancel_futures=True)
+                        break
+                    _put_cached_df(kvstore, path, etag, df)
+                    miss_df_by_path[path] = df
+        if first_error is not None:
+            # cache the in-flight reads that completed after the failure
+            for future, (path, etag) in futures.items():
+                if path in miss_df_by_path or future.cancelled():
+                    continue
+                try:
+                    _put_cached_df(kvstore, path, etag, future.result())
+                except Exception:
+                    pass
+            raise first_error
+        miss_dfs = [miss_df_by_path[path] for path, _ in cache_misses]
 
     all_dfs = [df for df in cache_hits + miss_dfs if not df.empty]
     if not all_dfs:
@@ -114,6 +175,10 @@ def samples_df_with_caching(
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=FutureWarning)
         return pd.concat(all_dfs, ignore_index=True)
+
+
+def _path_protocol(path: str) -> str:
+    return path.split("://", 1)[0] if "://" in path else "file"
 
 
 def _resolve_logs(logs: LogPaths) -> list[tuple[str, str]]:
@@ -142,17 +207,7 @@ def _resolve_logs(logs: LogPaths) -> list[tuple[str, str]]:
         for log in logs_list
     ]
 
-    # Expand directories
-    file_infos: list[FileInfo] = []
-    for log_str in logs_str:
-        fs = filesystem(log_str)
-        info = fs.info(log_str)
-        if info.type == "directory":
-            file_infos.extend(
-                [fi for fi in fs.ls(info.name, recursive=True) if fi.type == "file"]
-            )
-        else:
-            file_infos.append(info)
+    file_infos = run_coroutine(_expand_logs(logs_str))
 
     # Create dict mapping log file name to etag (or fallback to mtime:size)
     etag_map = {fi.name: fi.etag or f"{fi.mtime}:{fi.size}" for fi in file_infos}
@@ -160,6 +215,34 @@ def _resolve_logs(logs: LogPaths) -> list[tuple[str, str]]:
     eval_log_infos = log_files_from_ls(file_infos, sort=False)
 
     return [(log_file.name, etag_map[log_file.name]) for log_file in eval_log_infos]
+
+
+async def _expand_logs(paths: list[str]) -> list[FileInfo]:
+    """Fetch FileInfo (including etag) for each path, expanding directories.
+
+    All paths are processed concurrently on a shared AsyncFilesystem client:
+    one listing sweep per directory input (which yields file info from the
+    listing itself, with no per-file stat calls) and one stat per file input.
+    """
+    async with AsyncFilesystem() as fs:
+        expanded = await tg_collect([partial(_expand_log, fs, path) for path in paths])
+    return [fi for fis in expanded for fi in fis]
+
+
+async def _expand_log(fs: AsyncFilesystem, path: str) -> list[FileInfo]:
+    async def list_files() -> list[FileInfo]:
+        return [fi async for fi in fs.iter_files(path, recursive=True, detail=True)]
+
+    try:
+        info = await fs.info(path)
+    except Exception:
+        # S3 has no directory objects, so info() raises for directory
+        # prefixes; a path that lists as a non-empty directory is one.
+        # Anything else (missing path, bad credentials) re-raises.
+        if files := await list_files():
+            return files
+        raise
+    return await list_files() if info.type == "directory" else [info]
 
 
 def _get_cached_df(

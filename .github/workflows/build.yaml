@@ -9,13 +9,38 @@ on:
       - main
       - "release/**"
   workflow_dispatch:
+  workflow_call:
 
+# Supersede in-flight PR runs when the branch is pushed again. Every other
+# trigger — pushes to main, manual dispatch, and the nightly, which calls this
+# file and so evaluates the group against its own event and run — keys on
+# run_id, giving each run a group of one. A shared group would let a batch of
+# merges leave an intermediate main commit unbuilt: only one run may pend per
+# group, and a third arrival cancels the pending second.
+#
+# Do not copy this group expression into nightly.yaml. Caller and called
+# workflow would compute the same string and the calling job would pend behind
+# the run that contains it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Every job here only reads the repo. State that rather than inheriting the
+# repo default.
+permissions:
+  contents: read
+
+# Each job carries timeout-minutes well above its observed duration on main
+# (slowest: py-test at ~5m). Without one, a hung step holds a runner to the
+# 6-hour default while the PR sits "in progress".
 jobs:
   py-ruff:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       matrix:
-        python-version: ["3.10", "3.11"]
+        # rationale: test the supported floor and the latest release
+        python-version: &python-versions ["3.10", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - name: Lint with Ruff
@@ -27,82 +52,111 @@ jobs:
 
   py-mypy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: *python-versions
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Cache pip dependencies
-        uses: actions/cache@v3
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9.0.0
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}-${{ matrix.python-version }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          version: "0.9.4"
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
-          python -m pip install .[dev]
+          uv venv --python "$(which python)"
+          # Track inspect_ai main everywhere EXCEPT the release PR, where we
+          # validate against the pinned/shipped version pulled in via .[dev] below.
+          if [ "${{ github.head_ref }}" != "release-please--branches--main" ]; then
+            uv pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
+          fi
+          uv pip install .[dev]
       - name: Run mypy
         run: |
-          mypy src examples tests --python-executable $(which python)
+          .venv/bin/mypy src examples tests
+      - name: Minimize uv cache
+        if: ${{ !cancelled() }}
+        run: uv cache prune --ci
 
   py-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: *python-versions
     steps:
       - uses: actions/checkout@v4
+      # setup-python (not uv's managed python): uv 0.9.4 resolves "3.14" to
+      # CPython 3.14.0, where a string member in a runtime `|` union raises
+      # TypeError (fixed in a later 3.14 patch; hostedtoolcache has 3.14.7).
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Cache pip dependencies
-        uses: actions/cache@v3
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9.0.0
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}-${{ matrix.python-version }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          version: "0.9.4"
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
-          python -m pip install .[dev]
+          uv venv --python "$(which python)"
+          # Track inspect_ai main everywhere EXCEPT the release PR, where we
+          # validate against the pinned/shipped version pulled in via .[dev] below.
+          if [ "${{ github.head_ref }}" != "release-please--branches--main" ]; then
+            uv pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
+          fi
+          uv pip install .[dev]
       - name: Run tests
-        run: pytest
+        # .venv/bin directly, not `uv run`: scout is not a uv-managed project
+        # (no uv.lock), so `uv run` would lock + sync and could replace the
+        # git-installed inspect_ai above with a registry resolution.
+        run: .venv/bin/pytest
+      - name: Minimize uv cache
+        if: ${{ !cancelled() }}
+        run: uv cache prune --ci
 
   py-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: *python-versions
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          version: "0.9.4"
       - name: Install build dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
-          python -m pip install build
+          uv venv --python "$(which python)"
+          # Track inspect_ai main everywhere EXCEPT the release PR, where we
+          # validate against the pinned/shipped version pulled in via . below.
+          if [ "${{ github.head_ref }}" != "release-please--branches--main" ]; then
+            uv pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
+          fi
+          uv pip install build
       - name: Build package
-        run: python -m build
+        run: .venv/bin/python -m build
       - name: Verify package
         run: |
-          python -m pip install dist/*.whl
-          python -c "import inspect_scout; print('Package imported successfully')"
+          uv pip install dist/*.whl
+          .venv/bin/python -c "import inspect_scout; print('Package imported successfully')"
+      - name: Minimize uv cache
+        if: ${{ !cancelled() }}
+        run: uv cache prune --ci
 
   check-schema-and-types:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -122,6 +176,13 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
+          # This job checks that the committed schema/type artifacts are in sync
+          # with the Python source — a regeneration-hygiene check, NOT a
+          # shipped-compatibility gate. The committed artifacts are generated
+          # against inspect_ai main, so this must always run against main; using
+          # the pinned/shipped version on the release PR would flag false drift
+          # for inspect_ai fields not yet released. (Shipped-version compatibility
+          # is covered by py-test / py-build / py-mypy.)
           python -m pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
           python -m pip install .
 
@@ -182,6 +243,7 @@ jobs:
 
   submodule-on-main:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -202,8 +264,45 @@ jobs:
             exit 1
           fi
 
+  # Runs the viewer test suite in the inspect_scout embedding. This includes the
+  # fixture-driven timeline tests (packages/inspect-components), which consume
+  # tests/transcript/nodes/fixtures/events/ from this repo and are skipped in
+  # ts-mono's own standalone CI — so without this job, nothing exercises them
+  # against this repo's corpus. Mirrors inspect_ai's viewer-tests job.
+  viewer-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: src/inspect_scout/_view/ts-mono/package.json
+
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: src/inspect_scout/_view/ts-mono/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: src/inspect_scout/_view/ts-mono
+        run: pnpm install --frozen-lockfile
+
+      - name: Run inspect-components tests
+        working-directory: src/inspect_scout/_view/ts-mono
+        # The variable asserts that this repo's corpus is present, so the suite
+        # fails rather than skipping if it can no longer find the fixtures.
+        env:
+          TSMONO_REQUIRE_FIXTURES: "1"
+        run: pnpm --filter @tsmono/inspect-components test
+
   js-dist-validation:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:

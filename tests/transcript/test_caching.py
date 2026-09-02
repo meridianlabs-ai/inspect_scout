@@ -2,7 +2,7 @@
 
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, AsyncIterator, Iterator
 from unittest.mock import Mock, patch
 
 import pandas as pd
@@ -96,80 +96,98 @@ def mock_kvstore() -> Iterator[Mock]:
         yield mock
 
 
+def create_file_info(
+    path: str, file_type: str = "file", etag: str | None = None
+) -> FileInfo:
+    """Helper to create FileInfo with all required fields."""
+    return FileInfo(
+        name=path,
+        size=1024,
+        type=file_type,
+        mtime=1234567890.0,
+        etag=etag,
+    )
+
+
+class MockAsyncFilesystem:
+    """AsyncFilesystem stand-in: paths ending in "/" are directories, S3 files get etags."""
+
+    async def __aenter__(self) -> "MockAsyncFilesystem":
+        return self
+
+    async def __aexit__(self, *exc: Any) -> None:
+        return None
+
+    async def info(self, path: str) -> FileInfo:
+        # Directories return directory type
+        if path.endswith("/"):
+            return create_file_info(path, "directory", None)
+        # S3 files get etags, local files don't
+        if path.startswith("s3://"):
+            etag = f"etag_{hash(path) % 10000}"
+            return create_file_info(path, "file", etag)
+        return create_file_info(path, "file", None)
+
+    async def iter_files(
+        self,
+        path: str,
+        pattern: str = "*",
+        *,
+        recursive: bool = False,
+        detail: bool = False,
+    ) -> AsyncIterator[FileInfo]:
+        # Return list of files for directory listings
+        if path.rstrip("/") == "s3://bucket/dir":
+            yield create_file_info("s3://bucket/dir/log1.json", "file", "etag_1")
+            yield create_file_info("s3://bucket/dir/log2.json", "file", "etag_2")
+
+
+def mock_log_files_from_ls(
+    file_infos: list[FileInfo], sort: bool = True
+) -> list[EvalLogInfo]:
+    """Mock log_files_from_ls to convert FileInfo to EvalLogInfo."""
+    return [
+        create_evalloginfo(fi.name)
+        for fi in file_infos
+        if fi.type == "file" and fi.name.endswith(".json")
+    ]
+
+
 @pytest.fixture
 def mock_filesystem() -> Iterator[Mock]:
-    """Mock filesystem that returns FileInfo with/without etag."""
-
-    def create_file_info(
-        path: str, file_type: str = "file", etag: str | None = None
-    ) -> FileInfo:
-        return FileInfo(
-            name=path,
-            size=1024,
-            type=file_type,
-            mtime=1234567890.0,
-            etag=etag,
-        )
-
-    class MockFilesystem:
-        def __init__(self, path: str):
-            self.path = path
-
-        def info(self, path: str) -> FileInfo:
-            # Directories return directory type
-            if path.endswith("/"):
-                return create_file_info(path, "directory", None)
-            # S3 files get etags, local files don't
-            if path.startswith("s3://"):
-                etag = f"etag_{hash(path) % 10000}"
-                return create_file_info(path, "file", etag)
-            return create_file_info(path, "file", None)
-
-        def ls(self, path: str, recursive: bool = False) -> list[FileInfo]:
-            # Return list of files for directory listings
-            if path == "s3://bucket/dir/":
-                return [
-                    create_file_info("s3://bucket/dir/log1.json", "file", "etag_1"),
-                    create_file_info("s3://bucket/dir/log2.json", "file", "etag_2"),
-                ]
-            return []
-
-    def mock_log_files_from_ls(
-        file_infos: list[FileInfo], sort: bool = True
-    ) -> list[EvalLogInfo]:
-        """Mock log_files_from_ls to convert FileInfo to EvalLogInfo."""
-        return [
-            create_evalloginfo(fi.name)
-            for fi in file_infos
-            if fi.type == "file" and fi.name.endswith(".json")
-        ]
-
+    """Mock AsyncFilesystem that returns FileInfo with/without etag."""
     with (
         patch(
-            "inspect_scout._transcript.caching.filesystem",
-            side_effect=MockFilesystem,
+            "inspect_scout._transcript.caching.AsyncFilesystem",
+            MockAsyncFilesystem,
         ),
         patch(
             "inspect_scout._transcript.caching.log_files_from_ls",
             side_effect=mock_log_files_from_ls,
         ),
+        patch("inspect_scout._transcript.caching.filesystem") as filesystem_mock,
     ):
-        yield Mock()
+        yield filesystem_mock
+
+
+def _paths_read(mock: Mock) -> list[str]:
+    """All paths passed to a reader mock, across calls, in order."""
+    return [call.args[0] for call in mock.call_args_list]
 
 
 @pytest.fixture
 def mock_reader() -> Mock:
     """Mock reader function that tracks calls and returns DataFrames."""
-    call_counter = {"count": 0}
+    path_counter = {"count": 0}
 
     def reader_impl(path: str) -> pd.DataFrame:
-        call_num = call_counter["count"]
-        call_counter["count"] += 1
+        path_num = path_counter["count"]
+        path_counter["count"] += 1
         return pd.DataFrame(
             {
-                "eval_id": [f"eval_{call_num}"],
-                "id": [f"sample_{call_num}"],
-                "score": [0.5 + call_num * 0.1],
+                "eval_id": [f"eval_{path_num}"],
+                "id": [f"sample_{path_num}"],
+                "score": [0.5 + path_num * 0.1],
             }
         )
 
@@ -177,7 +195,7 @@ def mock_reader() -> Mock:
 
 
 @pytest.mark.parametrize(
-    "logs_input,expected_calls,expected_rows",
+    "logs_input,expected_paths,expected_rows",
     [
         ("s3://bucket/log.json", 1, 1),
         (["s3://bucket/log1.json", "s3://bucket/log2.json"], 2, 2),
@@ -189,12 +207,12 @@ def test_samples_df_with_caching_reads_and_concatenates(
     mock_filesystem: Mock,
     mock_reader: Mock,
     logs_input: Any,
-    expected_calls: int,
+    expected_paths: int,
     expected_rows: int,
 ) -> None:
     """Reads logs and concatenates into single DataFrame."""
     result = samples_df_with_caching(mock_reader, logs_input)
-    assert mock_reader.call_count == expected_calls
+    assert len(_paths_read(mock_reader)) == expected_paths
     assert len(result) == expected_rows
 
 
@@ -212,10 +230,10 @@ def test_samples_df_with_caching_uses_cache_on_second_read(
 ) -> None:
     """Second read with same etag uses cache, doesn't call reader."""
     result1 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
-    assert mock_reader.call_count == 1
+    assert len(_paths_read(mock_reader)) == 1
 
     result2 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
-    assert mock_reader.call_count == 1
+    assert len(_paths_read(mock_reader)) == 1
     pd.testing.assert_frame_equal(result1, result2, check_dtype=False)
 
 
@@ -224,23 +242,18 @@ def test_samples_df_with_caching_invalidates_on_etag_change(
 ) -> None:
     """Etag change invalidates cache and triggers re-read."""
     samples_df_with_caching(mock_reader, "s3://bucket/log.json")
-    assert mock_reader.call_count == 1
+    assert len(_paths_read(mock_reader)) == 1
 
     # Simulate etag change
-    def new_mock_fs(path: str) -> Any:
-        fs = Mock()
-        fs.info.return_value = FileInfo(
-            name=path,
-            size=1024,
-            type="file",
-            mtime=1234567890.0,
-            etag="new_etag_changed",
-        )
-        return fs
+    class ChangedEtagFilesystem(MockAsyncFilesystem):
+        async def info(self, path: str) -> FileInfo:
+            return create_file_info(path, "file", "new_etag_changed")
 
-    with patch("inspect_scout._transcript.caching.filesystem", side_effect=new_mock_fs):
+    with patch(
+        "inspect_scout._transcript.caching.AsyncFilesystem", ChangedEtagFilesystem
+    ):
         samples_df_with_caching(mock_reader, "s3://bucket/log.json")
-        assert mock_reader.call_count == 2
+        assert len(_paths_read(mock_reader)) == 2
 
 
 def test_samples_df_with_caching_dataframe_roundtrip(
@@ -262,10 +275,10 @@ def test_samples_df_with_caching_files_without_etag(
 ) -> None:
     """Files without native etag use mtime:size fallback for caching."""
     result1 = samples_df_with_caching(mock_reader, "/local/log.json")
-    assert mock_reader.call_count == 1
+    assert len(_paths_read(mock_reader)) == 1
 
     result2 = samples_df_with_caching(mock_reader, "/local/log.json")
-    assert mock_reader.call_count == 1
+    assert len(_paths_read(mock_reader)) == 1
     pd.testing.assert_frame_equal(result1, result2, check_dtype=False)
 
 
@@ -274,8 +287,197 @@ def test_samples_df_with_caching_directory_input(
 ) -> None:
     """Directory input expands to multiple files."""
     result = samples_df_with_caching(mock_reader, "s3://bucket/dir/")
-    assert mock_reader.call_count == 2
+    assert len(_paths_read(mock_reader)) == 2
     assert len(result) == 2
+
+
+def test_samples_df_with_caching_caches_per_path(
+    mock_kvstore: Mock, mock_filesystem: Mock
+) -> None:
+    """Each path gets its own cache entry, aligned with its data, in input order."""
+    paths = [f"s3://bucket/log{i}.json" for i in range(4)]
+
+    def reader(path: str) -> pd.DataFrame:
+        return pd.DataFrame({"id": [path]})
+
+    result = samples_df_with_caching(reader, paths)
+    assert result["id"].tolist() == paths
+
+    def fail_reader(path: str) -> pd.DataFrame:
+        raise AssertionError("all paths should be cache hits")
+
+    for path in paths:
+        cached = samples_df_with_caching(fail_reader, path)
+        assert cached["id"].tolist() == [path]
+
+
+def test_samples_df_with_caching_failure_preserves_completed_reads(
+    mock_kvstore: Mock, mock_filesystem: Mock
+) -> None:
+    """A failing read preserves cache entries for reads that succeeded."""
+    paths = [f"s3://bucket/log{i}.json" for i in range(4)]
+    succeeded: list[str] = []
+
+    def failing_reader(path: str) -> pd.DataFrame:
+        if path == paths[2]:
+            raise ValueError("boom")
+        succeeded.append(path)
+        return pd.DataFrame({"id": [path]})
+
+    with pytest.raises(ValueError, match="boom"):
+        samples_df_with_caching(failing_reader, paths)
+
+    read_paths: list[str] = []
+
+    def reader(path: str) -> pd.DataFrame:
+        read_paths.append(path)
+        return pd.DataFrame({"id": [path]})
+
+    # only the failed path and any reads cancelled while still queued are
+    # re-read; every read that succeeded came from the cache
+    result = samples_df_with_caching(reader, paths)
+    assert paths[2] in read_paths
+    assert sorted(read_paths) == sorted(set(paths) - set(succeeded))
+    assert sorted(result["id"].tolist()) == sorted(paths)
+
+
+def test_samples_df_with_caching_warms_filesystems_before_reads(
+    mock_kvstore: Mock, mock_filesystem: Mock
+) -> None:
+    """Each protocol's fsspec instance is constructed before reader threads run.
+
+    fsspec filesystem-instance construction/caching is not thread-safe,
+    so readers must never race to create one.
+    """
+    paths = ["s3://bucket/log1.json", "s3://bucket/log2.json", "/local/log3.json"]
+
+    def reader(path: str) -> pd.DataFrame:
+        assert mock_filesystem.call_count == 2  # warmed before any read started
+        return pd.DataFrame({"id": [path]})
+
+    samples_df_with_caching(reader, paths)
+    warmed = {call.args[0] for call in mock_filesystem.call_args_list}
+    assert len(warmed) == 2
+    assert any(path.startswith("s3://bucket/") for path in warmed)
+    assert "/local/log3.json" in warmed
+
+
+def test_samples_df_with_caching_failure_with_queued_reads_raises(
+    mock_kvstore: Mock, mock_filesystem: Mock
+) -> None:
+    """A failure while reads are still queued raises instead of deadlocking.
+
+    With one worker, the remaining paths are still queued when the first
+    read fails; their futures get cancelled without ever being picked up
+    by a worker, and as_completed never yields such futures.
+    """
+    paths = [f"s3://bucket/log{i}.json" for i in range(4)]
+
+    def failing_reader(path: str) -> pd.DataFrame:
+        if path == paths[0]:
+            raise ValueError("boom")
+        return pd.DataFrame({"id": [path]})
+
+    with pytest.raises(ValueError, match="boom"):
+        samples_df_with_caching(failing_reader, paths, max_workers=1)
+
+
+def test_resolve_logs_concurrent_info_preserves_association(
+    mock_kvstore: Mock,
+) -> None:
+    """Concurrent info fetches keep each etag associated with its path."""
+    import anyio
+
+    paths = [f"s3://bucket/log{i}.json" for i in range(4)]
+    # earlier paths take longer, so completion order inverts input order
+    delays = {path: 0.02 * (len(paths) - i) for i, path in enumerate(paths)}
+    etags = {path: f"etag-{i}" for i, path in enumerate(paths)}
+
+    class DelayedInfoFilesystem(MockAsyncFilesystem):
+        async def info(self, path: str) -> FileInfo:
+            await anyio.sleep(delays[path])
+            return create_file_info(path, "file", etags[path])
+
+    def reader(path: str) -> pd.DataFrame:
+        return pd.DataFrame({"id": [path]})
+
+    with (
+        patch(
+            "inspect_scout._transcript.caching.AsyncFilesystem",
+            DelayedInfoFilesystem,
+        ),
+        patch(
+            "inspect_scout._transcript.caching.log_files_from_ls",
+            side_effect=lambda file_infos, sort: [
+                create_evalloginfo(fi.name) for fi in file_infos
+            ],
+        ),
+    ):
+        result = samples_df_with_caching(reader, paths)
+        assert result["id"].tolist() == paths
+
+        # invalidate a single path's etag: exactly that path is re-read
+        etags[paths[1]] = "etag-changed"
+        read_paths: list[str] = []
+
+        def reader2(path: str) -> pd.DataFrame:
+            read_paths.append(path)
+            return pd.DataFrame({"id": [path]})
+
+        samples_df_with_caching(reader2, paths)
+        assert read_paths == [paths[1]]
+
+
+def test_resolve_logs_s3_directory_prefix(
+    mock_kvstore: Mock, mock_reader: Mock
+) -> None:
+    """A directory prefix where info() raises (S3) expands via a listing sweep."""
+
+    class S3PrefixFilesystem(MockAsyncFilesystem):
+        async def info(self, path: str) -> FileInfo:
+            raise FileNotFoundError(path)
+
+    with (
+        patch("inspect_scout._transcript.caching.AsyncFilesystem", S3PrefixFilesystem),
+        patch(
+            "inspect_scout._transcript.caching.log_files_from_ls",
+            side_effect=mock_log_files_from_ls,
+        ),
+    ):
+        result = samples_df_with_caching(mock_reader, "s3://bucket/dir")
+        assert sorted(_paths_read(mock_reader)) == [
+            "s3://bucket/dir/log1.json",
+            "s3://bucket/dir/log2.json",
+        ]
+        assert len(result) == 2
+
+
+def test_resolve_logs_missing_path_raises(mock_kvstore: Mock) -> None:
+    """A path where info() raises and nothing lists re-raises the info error."""
+
+    class MissingPathFilesystem(MockAsyncFilesystem):
+        async def info(self, path: str) -> FileInfo:
+            raise FileNotFoundError(path)
+
+        async def iter_files(
+            self,
+            path: str,
+            pattern: str = "*",
+            *,
+            recursive: bool = False,
+            detail: bool = False,
+        ) -> AsyncIterator[FileInfo]:
+            return
+            yield
+
+    def fail_reader(path: str) -> pd.DataFrame:
+        raise AssertionError("reader should not be called")
+
+    with patch(
+        "inspect_scout._transcript.caching.AsyncFilesystem", MissingPathFilesystem
+    ):
+        with pytest.raises(FileNotFoundError):
+            samples_df_with_caching(fail_reader, "s3://bucket/nope.json")
 
 
 def test_cache_version_invalidation(
@@ -286,11 +488,11 @@ def test_cache_version_invalidation(
 
     # First call populates cache with current version
     result1 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
-    assert mock_reader.call_count == 1
+    assert len(_paths_read(mock_reader)) == 1
 
     # Second call uses cache (same version)
     result2 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
-    assert mock_reader.call_count == 1
+    assert len(_paths_read(mock_reader)) == 1
     pd.testing.assert_frame_equal(result1, result2, check_dtype=False)
 
     # Simulate version change by patching _CACHE_VERSION
@@ -300,11 +502,11 @@ def test_cache_version_invalidation(
     ):
         # Third call triggers cache invalidation and re-read
         result3 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
-        assert mock_reader.call_count == 2
+        assert len(_paths_read(mock_reader)) == 2
 
         # Fourth call uses cache again (with new version)
         result4 = samples_df_with_caching(mock_reader, "s3://bucket/log.json")
-        assert mock_reader.call_count == 2
+        assert len(_paths_read(mock_reader)) == 2
         pd.testing.assert_frame_equal(result3, result4, check_dtype=False)
 
 

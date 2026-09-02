@@ -14,6 +14,7 @@ from typing import Any
 from .._query import Query, ScalarValue
 from .._query.condition import Condition
 from .._query.condition_sql import condition_as_sql
+from .._query.sql import quote_identifier, validate_column
 from .._view._api_v2_types import ScanRow
 
 SCAN_JOBS_TABLE = "scan_jobs"
@@ -68,9 +69,10 @@ class ScanIndexStore:
 
     def upsert(self, rows: list[tuple[ScanRow, str]]) -> None:
         placeholders = ", ".join(["?"] * len(_ALL_COLUMNS))
-        cols = ", ".join(_ALL_COLUMNS)
+        cols = ", ".join(quote_identifier(column) for column in _ALL_COLUMNS)
         sql = (
-            f"INSERT OR REPLACE INTO {SCAN_JOBS_TABLE} ({cols}) VALUES ({placeholders})"
+            f"INSERT OR REPLACE INTO {quote_identifier(SCAN_JOBS_TABLE)} "
+            f"({cols}) VALUES ({placeholders})"
         )
         self._conn.executemany(
             sql, [self._row_to_tuple(row, token) for row, token in rows]
@@ -81,23 +83,26 @@ class ScanIndexStore:
         if not scan_ids:
             return
         self._conn.executemany(
-            f"DELETE FROM {SCAN_JOBS_TABLE} WHERE scan_id = ?",
+            f"DELETE FROM {quote_identifier(SCAN_JOBS_TABLE)} WHERE scan_id = ?",
             [(sid,) for sid in scan_ids],
         )
         self._conn.commit()
 
     def stored_tokens(self) -> dict[str, str]:
         cursor = self._conn.execute(
-            f"SELECT scan_id, change_token FROM {SCAN_JOBS_TABLE}"
+            f"SELECT scan_id, change_token FROM {quote_identifier(SCAN_JOBS_TABLE)}"
         )
         return {scan_id: token for scan_id, token in cursor.fetchall()}
 
     def select(self, query: Query | None = None) -> list[ScanRow]:
         query = query or Query()
-        suffix, params, _ = query.to_sql_suffix("sqlite")
-        cols = ", ".join(_SCAN_ROW_COLUMNS)
+        suffix, params, _ = query.to_sql_suffix(
+            "sqlite", available_columns=_SCAN_ROW_COLUMNS
+        )
+        cols = ", ".join(quote_identifier(column) for column in _SCAN_ROW_COLUMNS)
         cursor = self._conn.execute(
-            f"SELECT {cols} FROM {SCAN_JOBS_TABLE}{suffix}", params
+            f"SELECT {cols} FROM {quote_identifier(SCAN_JOBS_TABLE)}{suffix}",
+            params,
         )
         return [self._tuple_to_row(row) for row in cursor.fetchall()]
 
@@ -106,24 +111,26 @@ class ScanIndexStore:
         count_query = Query(where=query.where)
         suffix, params, _ = count_query.to_sql_suffix("sqlite")
         result = self._conn.execute(
-            f"SELECT COUNT(*) FROM {SCAN_JOBS_TABLE}{suffix}", params
+            f"SELECT COUNT(*) FROM {quote_identifier(SCAN_JOBS_TABLE)}{suffix}",
+            params,
         ).fetchone()
         return int(result[0])
 
     def distinct(self, column: str, condition: Condition | None) -> list[ScalarValue]:
-        if column not in _SCAN_ROW_COLUMNS:
-            raise ValueError(f"Unknown column: {column!r}")
+        column = validate_column(column, _SCAN_ROW_COLUMNS)
+        quoted_column = quote_identifier(column)
+        quoted_table = quote_identifier(SCAN_JOBS_TABLE)
         if condition is not None:
             where_sql, params = condition_as_sql(condition, "sqlite")
             sql = (
-                f'SELECT DISTINCT "{column}" FROM {SCAN_JOBS_TABLE} '
-                f'WHERE {where_sql} ORDER BY "{column}" ASC'
+                f"SELECT DISTINCT {quoted_column} FROM {quoted_table} "
+                f"WHERE {where_sql} ORDER BY {quoted_column} ASC"
             )
         else:
             params = []
             sql = (
-                f'SELECT DISTINCT "{column}" FROM {SCAN_JOBS_TABLE} '
-                f'ORDER BY "{column}" ASC'
+                f"SELECT DISTINCT {quoted_column} FROM {quoted_table} "
+                f"ORDER BY {quoted_column} ASC"
             )
         return [row[0] for row in self._conn.execute(sql, params).fetchall()]
 

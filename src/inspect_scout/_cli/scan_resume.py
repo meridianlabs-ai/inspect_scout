@@ -18,9 +18,13 @@ def scan_resume_command(
 ) -> None:
     """Resume a scan which is incomplete due to interruption or errors (errors are retried)."""
     # Process common options
-    process_common_options(common)
+    process_common_options(ctx, common)
 
-    status = scan_resume(scan_location, fail_on_error=common["fail_on_error"])
+    status = scan_resume(
+        scan_location,
+        log_level=common["log_level"],
+        fail_on_error=common["fail_on_error"],
+    )
 
     # exit non-zero when the user asked us to fail on error and the scan
     # didn't complete cleanly

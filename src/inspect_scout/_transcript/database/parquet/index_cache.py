@@ -26,6 +26,8 @@ import duckdb
 
 from inspect_scout._util.appdirs import scout_cache_dir
 
+from ...._query.sql import quote_identifier
+from ...._util.duckdb import parquet_view
 from .types import IndexStorage
 
 # Cache version - bump this to invalidate all existing caches
@@ -106,11 +108,14 @@ def load_cached_index(
         return None
 
     try:
-        conn.execute(f"""
-            CREATE TABLE {table_name} AS
-            SELECT * FROM read_parquet('{cache_path}')
-        """)
-        result = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()
+        with parquet_view(conn, str(cache_path)) as source_view:
+            conn.execute(f"""
+                CREATE TABLE {quote_identifier(table_name)} AS
+                SELECT * FROM {quote_identifier(source_view)}
+            """)
+        result = conn.execute(
+            f"SELECT COUNT(*) FROM {quote_identifier(table_name)}"
+        ).fetchone()
         return result[0] if result else 0
     except Exception:
         # Cache is corrupted or incompatible - will rebuild
@@ -141,10 +146,13 @@ def save_index_cache(
     tmp_path = cache_path.with_suffix(".tmp")
 
     try:
-        conn.execute(f"""
-            COPY {table_name} TO '{tmp_path}'
+        conn.execute(
+            f"""
+            COPY (SELECT * FROM {quote_identifier(table_name)}) TO ?
             (FORMAT PARQUET, COMPRESSION 'zstd')
-        """)
+            """,
+            [str(tmp_path)],
+        )
 
         # Atomic rename - on POSIX this atomically replaces any existing file
         os.rename(tmp_path, cache_path)

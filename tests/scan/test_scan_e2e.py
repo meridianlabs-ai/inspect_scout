@@ -1,12 +1,22 @@
 import json
 import shutil
 import tempfile
+from collections.abc import AsyncIterator
 from pathlib import Path
 
 import pytest
-from inspect_ai.model import ModelOutput
+from inspect_ai.model import ModelOutput, get_model
 from inspect_ai.model._chat_message import ChatMessageUser
-from inspect_scout import Result, Scanner, llm_scanner, scan, scanner, transcripts_db
+from inspect_scout import (
+    Loader,
+    Result,
+    Scanner,
+    llm_scanner,
+    loader,
+    scan,
+    scanner,
+    transcripts_db,
+)
 from inspect_scout._scanresults import scan_results_df
 from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._transcript.types import Transcript
@@ -47,6 +57,32 @@ def simple_scanner_factory() -> Scanner[Transcript]:
 def llm_scanner_factory() -> Scanner[Transcript]:
     """LLM scanner that uses mockllm for testing."""
     return llm_scanner(question="Is this conversation helpful?", answer="boolean")
+
+
+@loader(name="multi_item_model_usage_loader", messages=["user"])
+def multi_item_model_usage_loader_factory() -> Loader[ChatMessageUser]:
+    """Create a loader that makes one model call before yielding each message."""
+
+    async def load(transcript: Transcript) -> AsyncIterator[ChatMessageUser]:
+        for message in transcript.messages:
+            if isinstance(message, ChatMessageUser):
+                await get_model().generate([message])
+                yield message
+
+    return load
+
+
+@scanner(
+    name="multi_item_model_usage_scanner",
+    loader=multi_item_model_usage_loader_factory(),
+)
+def multi_item_model_usage_scanner_factory() -> Scanner[ChatMessageUser]:
+    """Create a scanner whose model usage occurs only inside its loader."""
+
+    async def scan_message(message: ChatMessageUser) -> Result:
+        return Result(value=bool(message.text))
+
+    return scan_message
 
 
 @scanner(name="llm_dynamic_question_scanner", messages="all")
@@ -337,3 +373,56 @@ def test_scan_model_usage_not_cumulative(tmp_path: Path) -> None:
         assert usage == first_usage, (
             f"scan_model_usage for scan {i} differs from scan 0: {usage} != {first_usage}"
         )
+
+
+def test_scan_model_usage_is_per_loader_item(tmp_path: Path) -> None:
+    """Each report includes the loader call made immediately before its item."""
+    db_path = tmp_path / "transcript_db"
+    scans_path = tmp_path / "scans"
+    db_path.mkdir()
+    scans_path.mkdir()
+    transcript = Transcript(
+        transcript_id="loader-model-usage",
+        source_type="test",
+        source_id="source-0",
+        source_uri="test://loader-model-usage",
+        messages=[
+            ChatMessageUser(content="First message"),
+            ChatMessageUser(content="Second message"),
+            ChatMessageUser(content="Third message"),
+        ],
+        events=[],
+    )
+
+    import asyncio
+
+    async def insert_transcript() -> None:
+        async with transcripts_db(str(db_path)) as db:
+            await db.insert([transcript])
+
+    asyncio.run(insert_transcript())
+    status = scan(
+        scanners=[multi_item_model_usage_scanner_factory()],
+        transcripts=transcripts_from(str(db_path)),
+        scans=str(scans_path),
+        max_processes=1,
+        model="mockllm/model",
+        model_args={
+            "custom_outputs": [
+                ModelOutput.from_content(model="mockllm", content="ok")
+                for _ in range(3)
+            ]
+        },
+        display="none",
+    )
+    assert status.complete
+    assert status.location is not None
+    df = scan_results_df(
+        status.location, scanner="multi_item_model_usage_scanner"
+    ).scanners["multi_item_model_usage_scanner"]
+    first_tokens = int(df["scan_total_tokens"].iloc[0])
+    assert first_tokens > 0
+    assert df["scan_total_tokens"].tolist() == [first_tokens] * 3
+    assert status.summary.scanners["multi_item_model_usage_scanner"].tokens == (
+        3 * first_tokens
+    )

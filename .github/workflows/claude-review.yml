@@ -1,0 +1,30 @@
+# Copy to .github/workflows/claude-review.yml in any Meridian repo to add the
+# read-only reviewer. Reviews PRs on demand via an @review comment.
+# Independent of the dev agent (claude.yml) — different trigger, different
+# (lower) permissions.
+#
+# Auto-review-on-open is intentionally disabled in this repo: the upstream
+# template also subscribes to `pull_request` (opened, reopened,
+# ready_for_review), which we have dropped so PRs are only reviewed when
+# someone asks with @review.
+
+name: Review
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  review:
+    # Run on a PR comment containing @review. `@review` does not collide with
+    # the dev agent's `@claude` trigger.
+    if: >
+      github.event.issue.pull_request != null &&
+      contains(github.event.comment.body, '@review')
+    uses: meridianlabs-ai/agents/.github/workflows/claude-review.yml@main
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+      actions: read

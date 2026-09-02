@@ -212,10 +212,11 @@ __marimo__/
 # Dynamic version
 src/inspect_scout/_version.py
 
-# Inspect logs and scans
+# Inspect logs, scans and transcripts
 /logs/
 /logs-*/
 /scans/
+/transcripts/
 
 # Scout local configuration (developer-only, not checked in)
 scout.local.yaml

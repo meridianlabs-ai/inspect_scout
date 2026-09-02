@@ -11,6 +11,7 @@ from inspect_ai._display.core.results import model_usage_summary
 from inspect_ai._display.core.rich import is_vscode_notebook, rich_theme
 from inspect_ai._util.constants import CONSOLE_DISPLAY_WIDTH
 from inspect_ai._util.format import format_progress_time
+from inspect_ai._util.rich import clean_control_characters
 from inspect_ai.model import ModelUsage
 from inspect_ai.util import throttle
 from rich.console import Group, RenderableType
@@ -63,6 +64,10 @@ class DisplayRich(Display):
         highlight: bool | None = None,
     ) -> None:
         console = rich.get_console()
+        objects = tuple(
+            clean_control_characters(obj) if isinstance(obj, str) else obj
+            for obj in objects
+        )
         console.print(*objects, sep=sep, end=end, markup=markup, highlight=False)
 
     @contextlib.contextmanager
@@ -211,7 +216,7 @@ class TextProgressRich(TextProgress):
         caption: str,
         count: bool | int,
     ):
-        self._caption = caption
+        self._caption = clean_control_characters(caption)
         self._count = count
 
         # Build count format string for a separate column
@@ -236,7 +241,7 @@ class TextProgressRich(TextProgress):
             transient=True,
         )
         self._task_id = self._progress.add_task(
-            caption,
+            self._caption,
             total=count
             if isinstance(count, int) and not isinstance(count, bool)
             else None,
@@ -257,6 +262,7 @@ class TextProgressRich(TextProgress):
             self._progress.stop()
 
     def update(self, text: str) -> None:
+        text = clean_control_characters(text)
         if self._started is False:
             self._progress.start()
             self._started = True
@@ -304,7 +310,9 @@ def scanners_table(spec: ScanSpec, summary: Summary) -> Table:
     # columns dynamic based on validation/metrics
     rowdef = ["[bold]scanner[/bold]"]
     if have_metric:
-        rowdef.append(f"[bold]{_summary_metric_label(summary.scanners)}[/bold]")
+        rowdef.append(
+            f"[bold]{clean_control_characters(_summary_metric_label(summary.scanners))}[/bold]"
+        )
     if have_validation:
         rowdef.append("[bold]validation[/bold]")
     rowdef.extend(
@@ -321,7 +329,7 @@ def scanners_table(spec: ScanSpec, summary: Summary) -> Table:
     for scanner in spec.scanners.keys():
         results = summary[scanner]
         validation_accuracy = _summary_validation(results.validation)
-        row_data: list[str | None] = [scanner]
+        row_data: list[str | None] = [clean_control_characters(scanner)]
         if have_metric:
             metric = _summary_metric(results.metrics)
             row_data.append(metric)
@@ -414,7 +422,7 @@ def scan_panel(
             usage_table.add_column()
             for model, usage in total_usage.items():
                 usage_table.add_row(
-                    *model_usage_summary(model, usage),
+                    *model_usage_summary(clean_control_characters(model), usage),
                     style=theme.light,
                 )
             table.add_row(usage_table, "", "")

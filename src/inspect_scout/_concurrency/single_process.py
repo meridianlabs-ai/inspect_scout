@@ -17,7 +17,7 @@ from inspect_ai.util._anyio import inner_exception
 from .._display import display
 from .._scanner.result import ResultReport
 from .._transcript.transcripts import TranscriptsReader
-from .._transcript.types import Transcript, TranscriptInfo
+from .._transcript.types import TranscriptInfo
 from ._iterator import SerializedAsyncIterator
 from .common import (
     ConcurrencyStrategy,
@@ -30,12 +30,6 @@ from .common import (
 
 # Module-level counter for assigning unique worker IDs
 worker_id_counter: int = 0
-
-
-def _scanner_job_transcript_info(job: ScannerJob) -> TranscriptInfo:
-    """The job's transcript info; a materialized `Transcript` is itself one."""
-    union = job.union_transcript
-    return union if isinstance(union, Transcript) else union.info
 
 
 def single_process_strategy(
@@ -141,7 +135,7 @@ def single_process_strategy(
                 )
 
         def _scanner_job_info(item: ScannerJob) -> str:
-            transcript_id = _scanner_job_transcript_info(item).transcript_id
+            transcript_id = item.transcript_info.transcript_id
             return f"{transcript_id, item.scanner_name}"
 
         # the finally at the end of the_func delivers the final zeroed update
@@ -270,7 +264,7 @@ def single_process_strategy(
 
             try:
                 await record_results(
-                    _scanner_job_transcript_info(scanner_job),
+                    scanner_job.transcript_info,
                     scanner_job.scanner_name,
                     await scan_function(scanner_job),
                 )

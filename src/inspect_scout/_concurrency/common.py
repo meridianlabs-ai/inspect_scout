@@ -99,11 +99,23 @@ class ScannerJob(NamedTuple):
     """
 
     on_complete: Callable[[], Awaitable[None]] | None = None
-    """Awaited once by `_scan_one` in a finally block after the scan completes.
+    """Awaited once after this job's scan completes, or once by the strategy's
+    teardown drain if the job is stranded undispatched.
 
     Closes the shared `TranscriptHandle` once the last job (lead + all
     followers) has finished. `None` for the materialized-`Transcript` path.
+
+    Both callers run it in a `finally`, so it must be cheap and total: the
+    drain runs after the reader context manager has exited and swallows
+    whatever it raises (`single_process.py`), and `_scan_one` awaits it while
+    another exception may be propagating.
     """
+
+    @property
+    def transcript_info(self) -> TranscriptInfo:
+        """Metadata for the union transcript; a `Transcript` is itself one."""
+        union = self.union_transcript
+        return union if isinstance(union, Transcript) else union.info
 
 
 ParseFunctionResult = (

@@ -1060,16 +1060,6 @@ async def _scan_dry_run(scan: ScanContext) -> Status:
     )
 
 
-def _job_transcript_id(job: ScannerJob) -> str:
-    """Transcript id for a job's union transcript (Transcript or handle)."""
-    union = job.union_transcript
-    return (
-        union.transcript_id
-        if isinstance(union, Transcript)
-        else union.info.transcript_id
-    )
-
-
 async def _single_item_iter(item: Any) -> AsyncIterator[Any]:
     """Yield a single item as an async iterator (bypasses the loader)."""
     yield item
@@ -1097,9 +1087,10 @@ async def _transcript_for_record(
         if isinstance(handle, SpooledTranscriptHandle):
             parsed = await handle.parsed_result()
             if parsed is not None:
-                input_json, input_data_json = pooled_passthrough(handle.info, parsed)
+                columns = pooled_passthrough(handle.info, parsed)
                 return SerializedTranscript(
-                    input_json=input_json, input_data_json=input_data_json
+                    input_json=columns.input_json,
+                    input_data_json=columns.input_data_json,
                 )
         return await handle.load()
 
@@ -1178,12 +1169,12 @@ async def _scan_one(
             report_input = _info_placeholder_transcript(union.info)
         return ResultReport(
             input_type="transcript",
-            input_ids=[_job_transcript_id(job)],
+            input_ids=[job.transcript_info.transcript_id],
             input=report_input,
             result=None,
             validation=None,
             error=Error(
-                transcript_id=_job_transcript_id(job),
+                transcript_id=job.transcript_info.transcript_id,
                 scanner=job.scanner_name,
                 error=str(ex),
                 traceback=traceback.format_exc(),
@@ -1299,7 +1290,7 @@ async def _scan_one(
                 if fail_on_error:
                     raise
                 error = Error(
-                    transcript_id=_job_transcript_id(job),
+                    transcript_id=job.transcript_info.transcript_id,
                     scanner=job.scanner_name,
                     error=str(ex),
                     traceback=traceback.format_exc(),
@@ -1404,30 +1395,7 @@ def _reports_for_parse_error(
     job: ParseJob, exception: Exception, scanner_names: list[str]
 ) -> list[ResultReport]:
     # Create placeholder transcript since parse failed
-    placeholder_transcript = Transcript(
-        transcript_id=job.transcript_info.transcript_id,
-        source_type=job.transcript_info.source_type,
-        source_id=job.transcript_info.source_id,
-        source_uri=job.transcript_info.source_uri,
-        date=job.transcript_info.date,
-        task_set=job.transcript_info.task_set,
-        task_id=job.transcript_info.task_id,
-        task_repeat=job.transcript_info.task_repeat,
-        agent=job.transcript_info.agent,
-        agent_args=job.transcript_info.agent_args,
-        model=job.transcript_info.model,
-        model_options=job.transcript_info.model_options,
-        score=job.transcript_info.score,
-        success=job.transcript_info.success,
-        message_count=job.transcript_info.message_count,
-        total_time=job.transcript_info.total_time,
-        total_tokens=job.transcript_info.total_tokens,
-        error=job.transcript_info.error,
-        limit=job.transcript_info.limit,
-        metadata=job.transcript_info.metadata,
-        messages=[],
-        events=[],
-    )
+    placeholder_transcript = _info_placeholder_transcript(job.transcript_info)
     return [
         ResultReport(
             input_type="transcript",

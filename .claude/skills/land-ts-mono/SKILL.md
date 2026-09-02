@@ -166,8 +166,9 @@ moment the gate clears.
 1. Tell the user both PRs are ready and the ts-mono PR is safe to merge —
    then immediately start watching it (background poll of its merged state,
    e.g. `gh pr view <n> --json state,mergeCommit`); a human merges it (agents
-   cannot). React to the merge the moment it lands — the blocking window
-   opens at merge, so don't wait for the user to come back and tell you.
+   should not without explicit approval). React to the merge the moment it
+   lands — the blocking window opens at merge, so don't wait for the user to
+   come back and tell you.
 2. Fetch in the submodule, then compare the gitlink SHA against ts-mono
    `origin/main`:
    - **SHA changed** (squash or rebase merge — anything the ts-mono PR UI can

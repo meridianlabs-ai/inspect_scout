@@ -1054,7 +1054,7 @@ async def _scan_one(
         # Both reset per iteration and before the `try`: the error path below
         # reads them, so a raise inside the `try` must not leave them holding
         # the previous item's validation/ids (this runs in a loop) or unbound.
-        validation_result = None
+        validation_result: ResultValidation | None = None
         type_and_ids: tuple[ScannerInputNames, list[str]] | None = None
 
         try:

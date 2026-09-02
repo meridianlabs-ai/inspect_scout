@@ -11,6 +11,8 @@ from ijson.utils import coroutine as _ijson_coroutine  # type: ignore
 ATTACHMENT_PREFIX = "attachment://"
 ATTACHMENT_PREFIX_LEN = len(ATTACHMENT_PREFIX)
 ATTACHMENT_REF_PATTERN = re.compile(r"attachment://([a-f0-9]{32})")
+# Length of an exact ref: the prefix plus the pattern's 32-char hex id.
+ATTACHMENT_REF_LEN = ATTACHMENT_PREFIX_LEN + 32
 ATTACHMENTS_PREFIX = "attachments."
 MESSAGES_ITEM_PREFIX = "messages.item"
 EVENTS_ITEM_PREFIX = "events.item"
@@ -124,7 +126,7 @@ def _item_coroutine(
             # fall back to the regex only for embedded refs. This is a
             # per-ijson-event loop like the one load_filtered.py warns about
             # (56M+ calls) -- profile before removing.
-            if len(value) == 45 and value.startswith(ATTACHMENT_PREFIX):
+            if len(value) == ATTACHMENT_REF_LEN and value.startswith(ATTACHMENT_PREFIX):
                 attachments.add(value[ATTACHMENT_PREFIX_LEN:])
             else:
                 for m in ATTACHMENT_REF_PATTERN.finditer(value):
@@ -203,7 +205,7 @@ def _event_has_pool_refs(event_dict: dict[str, Any]) -> bool:
     if event_dict.get("input_refs"):
         return True
     call = event_dict.get("call")
-    return bool(call and call.get("call_refs") is not None)
+    return isinstance(call, dict) and call.get("call_refs") is not None
 
 
 @_ijson_coroutine  # type: ignore

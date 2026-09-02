@@ -32,6 +32,21 @@ def create_json_stream(data: dict[str, Any]) -> io.BytesIO:
     return io.BytesIO(json.dumps(data).encode())
 
 
+# A model event with no `input_refs` and no `call`, i.e. nothing that could
+# resolve against a message/call pool.
+_PLAIN_MODEL_EVENT: dict[str, Any] = {
+    "span_id": "s1",
+    "timestamp": "2022-01-01T00:00:00+00:00",
+    "event": "model",
+    "model": "test-model",
+    "input": [],
+    "output": {"model": "test-model", "choices": []},
+    "tools": [],
+    "tool_choice": "auto",
+    "config": {},
+}
+
+
 @pytest.mark.asyncio
 async def test_basic_loading() -> None:
     """Test basic transcript loading."""
@@ -300,10 +315,10 @@ async def test_attachment_resolution_embedded_ref() -> None:
 
     Regression test: an embedded ref (e.g. "prefix attachment://<id> suffix",
     as opposed to a string that is *exactly* a ref) used to survive
-    end-to-end as literal unresolved text. This exercises resolution with
-    events requested (so the early-exit path never engages); see
-    `test_early_exit_suppressed_by_embedded_attachment_ref` for the
-    collection-path half of the fix, which this test does not pin on its own.
+    end-to-end as literal unresolved text. Events are requested (so the
+    early-exit path never engages) and the transcript carries one ordinary
+    event, which keeps attachment retention bounded -- so the attachment only
+    survives if the collection path recognised the embedded ref.
     """
     attachment_id = "a1b2c3d4e5f678901234567890123456"
     result = await load_filtered_transcript(
@@ -316,7 +331,7 @@ async def test_attachment_resolution_embedded_ref() -> None:
                         "content": f"prefix attachment://{attachment_id} suffix",
                     },
                 ],
-                "events": [],
+                "events": [_PLAIN_MODEL_EVENT],
                 "attachments": {attachment_id: "VALUE"},
             }
         ),
@@ -334,48 +349,57 @@ async def test_attachment_resolution_embedded_ref() -> None:
 
 
 @pytest.mark.parametrize(
+    "pool_kind",
+    ["message-pool", "call-pool"],
+)
+@pytest.mark.parametrize(
     "attachments_first",
     [False, True],
     ids=["events-before-attachments", "attachments-before-events"],
 )
 @pytest.mark.asyncio
 async def test_pool_ref_resolves_regardless_of_section_order(
-    attachments_first: bool,
+    attachments_first: bool, pool_kind: str
 ) -> None:
     """A pool-entry ref resolves whichever order the JSON sections come in.
 
     The pool under `events_data` is parsed after `attachments`, so its refs
     cannot be known while attachments stream past -- retention must not be
-    gated on the refs seen so far. Both rows are load-bearing: they reach the
-    retain-everything decision through *different* disjuncts of `retain_all`.
-    `events-before-attachments` (the order real eval logs use, per
-    `EvalSample`'s field order) has `state.events` populated by the time the
-    first attachment string arrives, so it hits `any(_event_has_pool_refs(e))`.
-    `attachments-before-events` -- legal, since JSON key order is not
-    guaranteed -- leaves `state.events` empty at that point, so it hits
-    `not state.events`: retention must not conclude "no pool refs" just
-    because none have arrived *yet*.
+    gated on the refs seen so far. Both orderings are load-bearing: they reach
+    the retain-everything decision through *different* disjuncts of
+    `retain_all`. `events-before-attachments` (the order real eval logs use,
+    per `EvalSample`'s field order) has `state.events` populated by the time
+    the first attachment string arrives, so it hits
+    `any(_event_has_pool_refs(e))`. `attachments-before-events` -- legal, since
+    JSON key order is not guaranteed -- has not seen the events section at that
+    point, so it hits `not state.events_seen`: retention must not conclude "no
+    pool refs" just because none have arrived *yet*.
+
+    Both pool kinds are load-bearing too: `_event_has_pool_refs` inspects
+    `input_refs` and `call.call_refs` separately, and only the
+    events-before-attachments ordering consults it at all.
     """
     attachment_id = "b1c2d3e4f5a678901234567890123456"
     attachments = {attachment_id: "VALUE"}
-    events = [
-        {
-            "span_id": "s1",
-            "timestamp": "2022-01-01T00:00:00+00:00",
-            "event": "model",
-            "model": "test-model",
-            "input": [],
-            "input_refs": [[0, 1]],
-            "output": {"model": "test-model", "choices": []},
-            "tools": [],
-            "tool_choice": "auto",
-            "config": {},
+    pooled_message = {"role": "user", "content": f"attachment://{attachment_id}"}
+    event: dict[str, Any] = dict(_PLAIN_MODEL_EVENT)
+    events_data: dict[str, Any] = {"messages": [], "calls": []}
+    if pool_kind == "message-pool":
+        event["input_refs"] = [[0, 1]]
+        events_data["messages"] = [pooled_message]
+    else:
+        event["call"] = {
+            "request": {},
+            "response": {},
+            "call_refs": [[0, 1]],
+            "call_key": "messages",
         }
-    ]
+        events_data["calls"] = [pooled_message]
+
     ordered_sections: dict[str, Any] = (
-        {"attachments": attachments, "events": events}
+        {"attachments": attachments, "events": [event]}
         if attachments_first
-        else {"events": events, "attachments": attachments}
+        else {"events": [event], "attachments": attachments}
     )
 
     result = await load_filtered_transcript(
@@ -384,12 +408,7 @@ async def test_pool_ref_resolves_regardless_of_section_order(
                 "id": "test",
                 "messages": [],
                 **ordered_sections,
-                "events_data": {
-                    "messages": [
-                        {"role": "user", "content": f"attachment://{attachment_id}"}
-                    ],
-                    "calls": [],
-                },
+                "events_data": events_data,
             }
         ),
         TranscriptInfo(
@@ -404,22 +423,13 @@ async def test_pool_ref_resolves_regardless_of_section_order(
 
     model_event = result.events[0]
     assert isinstance(model_event, ModelEvent)
-    assert model_event.input[0].content == "VALUE"
-
-
-# A model event with no `input_refs` and no `call`, i.e. nothing that could
-# resolve against a message/call pool.
-_PLAIN_MODEL_EVENT: dict[str, Any] = {
-    "span_id": "s1",
-    "timestamp": "2022-01-01T00:00:00+00:00",
-    "event": "model",
-    "model": "test-model",
-    "input": [],
-    "output": {"model": "test-model", "choices": []},
-    "tools": [],
-    "tool_choice": "auto",
-    "config": {},
-}
+    if pool_kind == "message-pool":
+        assert model_event.input[0].content == "VALUE"
+    else:
+        assert model_event.call is not None
+        assert model_event.call.request["messages"] == [
+            {"role": "user", "content": "VALUE"}
+        ]
 
 
 @pytest.mark.parametrize(

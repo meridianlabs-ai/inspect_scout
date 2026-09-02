@@ -469,9 +469,11 @@ def _expand_events_in_df(df: pd.DataFrame) -> pd.DataFrame:
         input_data_json = str(df["input_data"].iloc[pos])
         input_type = str(df["input_type"].iloc[pos])
 
-        # A row the installed inspect_ai cannot validate (e.g. an event kind
-        # newer than this environment) must not make the whole file unreadable;
-        # leave it condensed and carry on.
+        # One row the installed inspect_ai cannot validate (an event kind
+        # newer than this environment, say) must not make the whole file
+        # unreadable. The trade: `input_data` is dropped from the frame below,
+        # so this row keeps its pool refs with nothing left to resolve them
+        # against -- a degraded row rather than no rows at all.
         try:
             attachments = _input_data_attachments(input_data_json)
 

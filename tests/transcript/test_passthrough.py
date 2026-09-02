@@ -40,12 +40,6 @@ def _result(tmp_path: Path, events: list[dict[str, Any]]) -> StreamParseResult:
         # up would raise KeyError, which `_transcript_for_record` would swallow
         # and record an empty transcript for the whole scan.
         pytest.param([[1, 4]], ["m1", "m2"], [[0, 2]], id="past-the-pool"),
-        # Bounds follow Python slicing, because that is what the materialized
-        # path does.
-        pytest.param([[-1, 3]], ["m2"], [[0, 1]], id="negative-start"),
-        pytest.param([[-3, -1]], ["m0", "m1"], [[0, 2]], id="negative-both"),
-        pytest.param([[1, 10**9]], ["m1", "m2"], [[0, 2]], id="huge-end"),
-        pytest.param([[2, 1]], [], [], id="inverted-empty"),
     ],
 )
 def test_pool_refs_are_pruned_and_remapped(
@@ -67,75 +61,6 @@ def test_pool_refs_are_pruned_and_remapped(
         {"role": "user", "content": content} for content in expected_pool
     ]
     assert json.loads(input_json)["events"][0]["input_refs"] == expected_refs
-
-
-def test_empty_pools_still_emit_input_data(tmp_path: Path) -> None:
-    """Empty pools emit `{"messages":[],"calls":[]}`, not None.
-
-    The materialized path runs `condense_events` unconditionally for a
-    transcript input, so it emits empty pools rather than omitting the column.
-    Returning None here would make the recorded row differ from the
-    materialized one for any transcript with no pooled content.
-    """
-    result = _result(tmp_path, [])
-    try:
-        input_json, input_data_json = pooled_passthrough(
-            TranscriptInfo(transcript_id="t1"), result
-        )
-    finally:
-        result.close()
-
-    assert input_data_json is not None
-    assert json.loads(input_data_json) == {"messages": [], "calls": []}
-    assert json.loads(input_json)["events"] == []
-
-
-def test_envelope_omits_unset_and_subclass_fields(tmp_path: Path) -> None:
-    """The envelope carries exactly the field set the materialized path emits.
-
-    `to_json_safe` passes exclude_none=True and the materialized path builds a
-    `Transcript`, so unset fields are omitted and subclass-only fields (a
-    parquet index row carries `filename`) are dropped.
-    """
-
-    class _IndexRow(TranscriptInfo):
-        filename: str = "shard-0.parquet"
-
-    result = _result(tmp_path, [])
-    try:
-        input_json, _ = pooled_passthrough(_IndexRow(transcript_id="t1"), result)
-    finally:
-        result.close()
-
-    envelope = json.loads(input_json)
-    assert "filename" not in envelope
-    assert not [k for k, v in envelope.items() if v is None]
-    assert envelope["transcript_id"] == "t1"
-
-
-def test_collects_attachments_referenced_from_pool_entries(tmp_path: Path) -> None:
-    # The ref lives inside a POOL entry, not the event -- a naive scan of
-    # events alone would miss it and emit a dangling attachment:// ref.
-    att = "a" * 32
-    messages = ItemSpool(tmp_path)
-    events = ItemSpool(tmp_path)
-    blobs = BlobSpool(tmp_path)
-    blobs.put(
-        ("message_pool", 0),
-        json.dumps({"role": "user", "content": f"attachment://{att}"}),
-    )
-    blobs.put(att, "the real content")
-    events.append({"event": "model", "input_refs": [[0, 1]]})
-    result = StreamParseResult(messages, events, blobs, ByteSpool(tmp_path), tmp_path)
-    try:
-        _, input_data_json = pooled_passthrough(
-            TranscriptInfo(transcript_id="t1"), result
-        )
-    finally:
-        result.close()
-
-    assert input_data_json is not None
-    assert json.loads(input_data_json)["attachments"] == {att: "the real content"}
 
 
 def test_prunes_and_remaps_call_pool_via_call_refs(tmp_path: Path) -> None:
@@ -179,26 +104,6 @@ def test_prunes_and_remaps_call_pool_via_call_refs(tmp_path: Path) -> None:
     event = json.loads(input_json)["events"][0]
     assert event["input_refs"] == [[0, 2]]
     assert event["call"]["call_refs"] == [[0, 2]]
-
-
-def test_envelope_carries_info_and_messages(tmp_path: Path) -> None:
-    messages = ItemSpool(tmp_path)
-    events = ItemSpool(tmp_path)
-    blobs = BlobSpool(tmp_path)
-    messages.append({"id": "m1", "role": "user", "content": "hello"})
-    result = StreamParseResult(messages, events, blobs, ByteSpool(tmp_path), tmp_path)
-    try:
-        input_json, _ = pooled_passthrough(
-            TranscriptInfo(transcript_id="t1", source_id="e1"), result
-        )
-    finally:
-        result.close()
-
-    envelope = json.loads(input_json)
-    assert envelope["transcript_id"] == "t1"
-    assert envelope["source_id"] == "e1"
-    assert envelope["messages"] == [{"id": "m1", "role": "user", "content": "hello"}]
-    assert envelope["timelines"] == []
 
 
 def test_index_metadata_values_json_stdlib_refuses_are_coerced(

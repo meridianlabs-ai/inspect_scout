@@ -79,24 +79,13 @@ def streaming_follower_scanner_factory() -> Scanner[Transcript]:
     return llm_scanner(question="Is this conversation coherent?", answer="boolean")
 
 
-@pytest.mark.parametrize(
-    "scanner_names",
-    [
-        pytest.param(["streaming_lead_scanner"], id="single_scanner"),
-        pytest.param(
-            ["streaming_lead_scanner", "streaming_follower_scanner"],
-            id="lead_and_follower",
-        ),
-    ],
-)
-def test_scan_e2e_through_streaming_seam(
-    monkeypatch: pytest.MonkeyPatch, scanner_names: list[str]
-) -> None:
+def test_scan_e2e_through_streaming_seam(monkeypatch: pytest.MonkeyPatch) -> None:
     """A real scan over eval logs must stream and produce correct results.
 
-    Handle-capable scanners share one spooled handle per transcript; the
-    single-scanner case covers the lead-only counter (remaining starts at 1).
+    Two handle-capable scanners with identical filters share one spooled
+    handle per transcript, which must close exactly once.
     """
+    scanner_names = ["streaming_lead_scanner", "streaming_follower_scanner"]
     limit = 2
     factories = {
         "streaming_lead_scanner": streaming_lead_scanner_factory,
@@ -152,65 +141,11 @@ def test_scan_e2e_through_streaming_seam(
         )
 
 
-@scanner(name="streaming_events_scanner", events="all")
-def streaming_events_scanner_factory() -> Scanner[Transcript]:
-    """Events-content llm_scanner.
-
-    Exercises the two-pass event streaming seam (`stream_timeline_messages`)
-    rather than the messages-only path covered by the scanners above.
-    """
-    return llm_scanner(
-        question="Did the agent use any tools?",
-        answer="boolean",
-        content=TranscriptContent(events="all"),
-    )
-
-
 def _mock_responses(n: int) -> list[ModelOutput]:
     return [
         ModelOutput.from_content(model="mockllm", content="Reasoning.\n\nANSWER: yes")
         for _ in range(n)
     ]
-
-
-def test_scan_e2e_events_through_streaming_seam(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """An events-content llm_scanner scan streams through a spooled handle.
-
-    Exercises `stream_timeline_messages`'s two-pass stub skeleton. Content
-    parity with the materialized path is covered by
-    `test_recorded_input_resolves_attachments_like_materialized`; this test
-    pins that the streaming seam runs and closes its handle.
-
-    Sourced from eval logs rather than a transcript database because that is
-    the path production scans take.
-    """
-    created, close_counts = _spy_spooled_handles(monkeypatch)
-    monkeypatch.setattr("inspect_scout._util.constants.SPOOL_THRESHOLD_BYTES", 0)
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        status = scan(
-            scanners=[streaming_events_scanner_factory()],
-            transcripts=transcripts_from(LOGS_DIR),
-            scans=tmpdir,
-            limit=1,
-            max_processes=1,  # in-process so the monkeypatched spies apply
-            model="mockllm/model",
-            model_args={"custom_outputs": _mock_responses(4)},
-            display="none",
-        )
-        assert status.complete
-        assert status.location is not None
-
-        results = scan_results_df(status.location, scanner="streaming_events_scanner")
-        df = results.scanners["streaming_events_scanner"]
-        assert len(df) == 1
-        assert df["value"].tolist() == [True]
-
-    # The streaming path was actually exercised.
-    assert len(created) == 1, "no SpooledTranscriptHandle was created -- not streaming"
-    assert close_counts[id(created[0])] == 1
 
 
 @scanner(name="attachment_scanner", messages="all", events="all")

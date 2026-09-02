@@ -31,8 +31,10 @@ from inspect_scout._transcript.util import union_transcript_contents
 
 
 @scanner(messages="all", events="all")
-def _handle_scanner() -> Scanner[Transcript]:
+def _handle_scanner(received: list[Any] | None = None) -> Scanner[Transcript]:
     async def scan(transcript: Transcript) -> Result:
+        if received is not None:
+            received.append(transcript)
         return Result(value="ok")
 
     setattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, True)
@@ -87,9 +89,11 @@ async def test_scan_one_with_handle_scanner() -> None:
     )
     handle = _materialized_handle(transcript)
 
-    s = _handle_scanner()
+    received: list[Any] = []
+    s = _handle_scanner(received)
     job = ScannerJob(union_transcript=handle, scanner=s, scanner_name="hs")
     reports = await _scan_one(job, validation=None, fail_on_error=True)
+    assert received == [handle]
     assert len(reports) == 1
     assert reports[0].input_type == "transcript"
     assert reports[0].input == transcript

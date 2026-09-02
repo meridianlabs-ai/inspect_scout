@@ -28,12 +28,20 @@ def _sample_bytes() -> bytes:
     so a wrong remap surfaces as a content mismatch, not just a structural
     one (Task 2's tests already cover the raw-ref-level remap; this checks
     remapped refs expand back to the *right* content).
+
+    The unthinned fields (`metadata`, `target`, `scores`) are here because the
+    passthrough splices them with its own `_merged_metadata` rather than
+    `handle._merge_unthinned`; `1e-07` renders differently under stdlib json
+    and pydantic, so it pins that the difference stays textual.
     """
     att = "b" * 32
     top_att = "c" * 32
     return json.dumps(
         {
             "id": "t1",
+            "metadata": {"cost": 1e-07, "note": "sample metadata"},
+            "target": "the-target",
+            "scores": {"accuracy": {"value": 1.0}},
             "messages": [
                 {"id": "m1", "role": "user", "content": f"attachment://{top_att}"}
             ],
@@ -133,3 +141,5 @@ async def test_passthrough_expands_to_the_materialized_transcript(
         _CHAT_MESSAGE_ADAPTER.validate_python(m).model_dump(mode="json")
         for m in resolved_messages
     ] == [m.model_dump(mode="json") for m in materialized.messages]
+
+    assert envelope["metadata"] == materialized.metadata

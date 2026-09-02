@@ -1,9 +1,4 @@
-"""Tests for llm_scanner's bounded segment concurrency window.
-
-Covers that `_scan_segments_bounded` admits no more than `_SEGMENT_WINDOW_CAP`
-segments at once, and that segment order survives concurrent scanning +
-reduction.
-"""
+"""Tests for llm_scanner's bounded segment concurrency window."""
 
 from __future__ import annotations
 

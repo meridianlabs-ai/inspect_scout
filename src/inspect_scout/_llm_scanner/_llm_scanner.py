@@ -43,7 +43,10 @@ from .types import AnswerSpec
 if sys.version_info < (3, 11):
     from exceptiongroup import ExceptionGroup
 
-_SEGMENT_WINDOW_CAP = 16  # bound memory: one rendered segment string per slot
+# Bounds memory (one rendered segment string per slot), not connections:
+# inspect_ai's own per-model semaphore gates the real generate calls, so a
+# surplus admitted task costs a string and nothing else.
+_SEGMENT_WINDOW_CAP = 16
 
 
 async def _scan_segments_bounded(
@@ -52,15 +55,11 @@ async def _scan_segments_bounded(
 ) -> list[tuple[str | None, Result]]:
     """Scan lazily-yielded segments with bounded concurrency, in segment order.
 
-    inspect_ai's own per-model semaphore gates real connections, so the cap is
-    purely the memory policy: a surplus admitted task costs one rendered string.
-
     Each result is paired with its originating span id (None on non-timeline
     paths) so ``aggregate_results`` can group timeline chunks by span.
 
-    A failing segment aborts the whole scan; its own exception is re-raised in
-    place of the task group's ``ExceptionGroup`` so callers see the scanner
-    error rather than the wrapper.
+    A failing segment aborts the scan and raises its own exception, unwrapped
+    from the task group's ``ExceptionGroup``.
     """
     window = anyio.Semaphore(_SEGMENT_WINDOW_CAP)
     indexed: list[tuple[int, str | None, Result]] = []

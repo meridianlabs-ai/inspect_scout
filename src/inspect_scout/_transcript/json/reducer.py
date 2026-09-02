@@ -219,8 +219,9 @@ def attachments_coroutine(
     that section follows ``attachments`` in the file, so they are unknowable
     here. Retain everything when a retained event carries a pool ref -- or
     when the events section has not streamed yet, since JSON key order is not
-    guaranteed and guessing wrong drops data permanently. Otherwise the ref
-    filter applies and the table stays bounded.
+    guaranteed and guessing wrong drops data permanently. A section that has
+    streamed counts as seen even when it was empty or filtered down to
+    nothing. Otherwise the ref filter applies and the table stays bounded.
     """
     attachments_prefix_len = len(ATTACHMENTS_PREFIX)
     retain_all: bool | None = None

@@ -11,9 +11,25 @@ on:
   workflow_dispatch:
   workflow_call:
 
+# Supersede in-flight PR runs when the branch is pushed again; runs on main
+# queue instead, so every merge commit gets a full build. Under workflow_call
+# the group resolves to the caller (nightly), which never cancels.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Every job here only reads the repo. State that rather than inheriting the
+# repo default.
+permissions:
+  contents: read
+
+# Each job carries timeout-minutes at ~4x its observed duration on main
+# (slowest: py-test at ~5m). Without one, a hung step holds a runner to the
+# 6-hour default while the PR sits "in progress".
 jobs:
   py-ruff:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       matrix:
         # rationale: test the supported floor and the latest release
@@ -29,6 +45,7 @@ jobs:
 
   py-mypy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       matrix:
         python-version: *python-versions
@@ -60,6 +77,7 @@ jobs:
 
   py-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       matrix:
         python-version: *python-versions
@@ -96,6 +114,7 @@ jobs:
 
   py-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       matrix:
         python-version: *python-versions
@@ -130,6 +149,7 @@ jobs:
 
   check-schema-and-types:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -216,6 +236,7 @@ jobs:
 
   submodule-on-main:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -238,6 +259,7 @@ jobs:
 
   js-dist-validation:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:

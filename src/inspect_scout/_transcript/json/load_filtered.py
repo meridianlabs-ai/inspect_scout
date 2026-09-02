@@ -33,6 +33,7 @@ from .reducer import (
     SCORES_PREFIX,
     TARGET_PREFIX,
     TIMELINES_ITEM_PREFIX,
+    CoroutineGen,
     ListProcessingConfig,
     ParseState,
     attachments_coroutine,
@@ -294,7 +295,7 @@ async def _parse_and_filter(
     timelines_coro = timeline_item_coroutine(state)
     attachments_coro = attachments_coroutine(state, events_coro is not None)
     metadata_coro = metadata_coroutine(state)
-    target_coro = target_coroutine(state)
+    target_coro: CoroutineGen | None = target_coroutine(state)
     scores_coro = scores_coroutine(state)
     # One coroutine per pool prefix (see reducer.py for the two shapes);
     # both target the same state field, so only the matching one activates.

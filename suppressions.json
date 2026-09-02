@@ -194,18 +194,12 @@
   },
   "src/inspect_scout/_transcript/json/reducer.py": {
     "type: ignore": {
-      "count": 8,
-      "undescribed": 8
-    },
-    "type: ignore[untyped-decorator]": {
-      "count": 1
+      "count": 2,
+      "undescribed": 2
     }
   },
   "src/inspect_scout/_transcript/json/stream_parse.py": {
     "type: ignore[import-untyped]": {
-      "count": 2
-    },
-    "type: ignore[untyped-decorator]": {
       "count": 1
     }
   },

@@ -4,7 +4,7 @@ import json
 import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Generator, Literal, Protocol, cast
+from typing import Any, Generator, Literal, ParamSpec, Protocol
 
 from ijson import ObjectBuilder  # type: ignore
 from ijson.utils import coroutine as _ijson_coroutine  # type: ignore
@@ -76,6 +76,18 @@ class ParseState:
 
 EventTuple = tuple[str, str, Any]
 CoroutineGen = Generator[None, EventTuple, None]
+_P = ParamSpec("_P")
+
+
+def _coroutine(fn: Callable[_P, CoroutineGen]) -> Callable[_P, CoroutineGen]:
+    """``ijson.utils.coroutine`` with the decorated signature preserved.
+
+    The upstream decorator is untyped, so applying it directly erases the
+    function to ``Any`` -- which silently switches off argument checking on
+    every coroutine here, including the ``ItemSink`` protocol below.
+    """
+    decorated: Callable[_P, CoroutineGen] = _ijson_coroutine(fn)
+    return decorated
 
 
 class ItemSink(Protocol):
@@ -89,7 +101,7 @@ class ItemSink(Protocol):
     def append(self, item: dict[str, Any], /) -> None: ...
 
 
-@_ijson_coroutine  # type: ignore
+@_coroutine
 def _item_coroutine(
     target_list: ItemSink,
     attachment_refs: set[str],
@@ -152,20 +164,16 @@ def _item_coroutine(
 def message_item_coroutine(
     state: ParseState, config: ListProcessingConfig
 ) -> CoroutineGen:
-    return cast(
-        CoroutineGen, _item_coroutine(state.messages, state.attachment_refs, config)
-    )
+    return _item_coroutine(state.messages, state.attachment_refs, config)
 
 
 def event_item_coroutine(
     state: ParseState, config: ListProcessingConfig
 ) -> CoroutineGen:
-    return cast(
-        CoroutineGen, _item_coroutine(state.events, state.attachment_refs, config)
-    )
+    return _item_coroutine(state.events, state.attachment_refs, config)
 
 
-@_ijson_coroutine  # type: ignore
+@_coroutine
 def _unfiltered_item_coroutine(
     target_list: ItemSink,
     item_prefix: str,
@@ -200,20 +208,15 @@ def _unfiltered_item_coroutine(
 
 
 def timeline_item_coroutine(state: ParseState) -> CoroutineGen:
-    return cast(
-        CoroutineGen,
-        _unfiltered_item_coroutine(state.timelines, TIMELINES_ITEM_PREFIX),
-    )
+    return _unfiltered_item_coroutine(state.timelines, TIMELINES_ITEM_PREFIX)
 
 
 def message_pool_item_coroutine(state: ParseState, item_prefix: str) -> CoroutineGen:
-    return cast(
-        CoroutineGen, _unfiltered_item_coroutine(state.message_pool, item_prefix)
-    )
+    return _unfiltered_item_coroutine(state.message_pool, item_prefix)
 
 
 def call_pool_item_coroutine(state: ParseState, item_prefix: str) -> CoroutineGen:
-    return cast(CoroutineGen, _unfiltered_item_coroutine(state.call_pool, item_prefix))
+    return _unfiltered_item_coroutine(state.call_pool, item_prefix)
 
 
 def _event_has_pool_refs(event_dict: dict[str, Any]) -> bool:
@@ -228,7 +231,7 @@ def _event_has_pool_refs(event_dict: dict[str, Any]) -> bool:
     return isinstance(call, dict) and call.get("call_refs") is not None
 
 
-@_ijson_coroutine  # type: ignore
+@_coroutine
 def attachments_coroutine(
     state: ParseState, collecting_events: bool
 ) -> CoroutineGen:  # pragma: no cover
@@ -266,7 +269,7 @@ def attachments_coroutine(
             state.attachments[attachment_id] = value
 
 
-@_ijson_coroutine  # type: ignore
+@_coroutine
 def metadata_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
     """Coroutine to build the metadata object from streaming JSON events."""
     builder: ObjectBuilder | None = None
@@ -348,7 +351,7 @@ class JsonTextWriter:
         self._write(self._ENCODER.encode(value).encode("utf-8"))
 
 
-@_ijson_coroutine  # type: ignore[untyped-decorator]  # ijson.utils.coroutine has no type stubs
+@_coroutine
 def spooling_metadata_coroutine(
     write: Callable[[bytes], Any],
 ) -> CoroutineGen:  # pragma: no cover
@@ -378,7 +381,7 @@ def spooling_metadata_coroutine(
 SCORES_PREFIX = "scores."
 
 
-@_ijson_coroutine  # type: ignore
+@_coroutine
 def scores_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
     """Coroutine to build the scores object from streaming JSON events."""
     builder: ObjectBuilder | None = None
@@ -410,7 +413,7 @@ def scores_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
 TARGET_PREFIX = "target."
 
 
-@_ijson_coroutine  # type: ignore
+@_coroutine
 def target_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
     """Coroutine to capture the target field (scalar string or list of strings)."""
     while True:

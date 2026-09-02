@@ -619,10 +619,6 @@ class _FlakyHandle:
     of `stream_timeline_messages` selects the event's uuid from the first
     stream; pass 2 must fail to find a full event for it on the second
     stream, and must say so rather than silently substituting a stub.
-
-    The members `stream_timeline_messages` never touches raise instead of
-    returning a placeholder, so a future caller that starts using them fails
-    loudly here rather than against a fabricated transcript.
     """
 
     def __init__(self, events: list[Event], *, omit_uuid: str) -> None:

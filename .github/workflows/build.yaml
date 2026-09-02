@@ -11,11 +11,16 @@ on:
   workflow_dispatch:
   workflow_call:
 
-# Supersede in-flight PR runs when the branch is pushed again. Everything else
-# — pushes to main, the nightly's workflow_call, manual dispatch — keys on
-# run_id so each run is alone in its group: a shared group would let a batch of
-# merges leave an intermediate main commit unbuilt, because only one run may
-# pend per group and a third arrival cancels the pending second.
+# Supersede in-flight PR runs when the branch is pushed again. Every other
+# trigger — pushes to main, manual dispatch, and the nightly, which calls this
+# file and so evaluates the group against its own event and run — keys on
+# run_id, giving each run a group of one. A shared group would let a batch of
+# merges leave an intermediate main commit unbuilt: only one run may pend per
+# group, and a third arrival cancels the pending second.
+#
+# Do not copy this group expression into nightly.yaml. Caller and called
+# workflow would compute the same string and the calling job would pend behind
+# the run that contains it.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}

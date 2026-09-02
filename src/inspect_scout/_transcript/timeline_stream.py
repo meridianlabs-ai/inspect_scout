@@ -8,8 +8,8 @@ stand-ins ("stubs"), and runs the unmodified ``timeline_build`` classifier on
 the resulting skeleton to determine span structure and which events the
 scanning path actually reads. Pass 2 re-streams the handle and substitutes
 the *full* events back in. ``stream_timeline_messages`` orchestrates both and
-yields the same ``TimelineMessages`` segments as running over a fully
-materialized transcript.
+yields the same *extracted messages* -- span ids and rendered segment strings
+-- as running over a fully materialized transcript.
 
 Stubs must preserve every signal the classifier reads, so ``stub_event`` and
 its helpers keep uuids/span_ids/timestamps, system prompts, tool-call
@@ -17,11 +17,19 @@ presence, warmup signals, and agent-span fields; see those functions for the
 per-field details. One stub per original event, always (the classifier counts
 ModelEvents/ToolEvents per span).
 
-Accepted fidelity loss: the stub sets ``ToolEvent.result = ""`` and reduces
-``ModelEvent.input`` to system messages, which is every field
-``_extract_agent_results`` reads -- so all three of its sources (tool-spawned,
-sibling-ToolEvent, and bridge flow) leave ``TimelineSpan.agent_result``
-unpopulated. Harmless here: the field has no reader in inspect_ai outside
+Accepted fidelity loss, all in the ``TimelineMessages.span`` metadata rather
+than the messages:
+
+- ``TimelineSpan.agent_result`` is unpopulated. The stub sets
+  ``ToolEvent.result = ""`` and reduces ``ModelEvent.input`` to system
+  messages, which is every field ``_extract_agent_results`` reads, so all
+  three of its sources (tool-spawned, sibling-ToolEvent, bridge flow) come up
+  empty.
+- Events pass 1 did *not* select stay stubs in the returned tree: pass 2
+  substitutes only the ``ModelEvent``s the message extraction reads.
+
+Harmless for this module's callers: they consume ``span.id`` and
+``messages_str``, ``agent_result`` has no reader in inspect_ai outside
 ``_extract_agent_results`` itself and none in scout, and these spans are
 transient -- never serialized into results or sent to the viewer.
 """
@@ -140,7 +148,17 @@ def _stub_model_event(event: ModelEvent, interner: _PromptInterner) -> ModelEven
         stub_message = first_choice.message.model_copy(
             update={"content": "", "tool_calls": stub_tool_calls}
         )
-        stub_choices = [first_choice.model_copy(update={"message": stub_message})]
+        # logprobs carry per-token top-k tables that can dwarf the message
+        # itself, and no classifier or extractor reads them.
+        stub_choices = [
+            first_choice.model_copy(
+                update={
+                    "message": stub_message,
+                    "logprobs": None,
+                    "prompt_logprobs": None,
+                }
+            )
+        ]
     else:
         stub_choices = []
     stub_output = event.output.model_copy(
@@ -184,9 +202,15 @@ def stub_event(event: Event, interner: _PromptInterner) -> Event:
     """Return a bulk-content-stripped stand-in for `event`.
 
     `ModelEvent` and `ToolEvent` are reduced to the fields the classifier
-    reads (see module docstring); every other event type is already small and
-    returned unchanged. Always preserves `uuid` and `span_id` so pass 2 can
-    substitute full events back in by uuid.
+    reads (see module docstring); every other event type is returned
+    unchanged. Always preserves `uuid` and `span_id` so pass 2 can substitute
+    full events back in by uuid.
+
+    Stubbing is therefore partial: over this repo's four `.eval` fixtures the
+    stub skeleton retains 58-86% of the full events' serialized size, the
+    balance being untouched kinds (`StateEvent.changes` and `ScoreEvent.score`
+    dominate). It bounds the two kinds that grow with conversation length,
+    not total memory.
     """
     if isinstance(event, ModelEvent):
         return _stub_model_event(event, interner)
@@ -350,10 +374,12 @@ def _substitute_full_events(
 ) -> None:
     """In-place: replace stub `ModelEvent`s in `span`'s tree with full ones.
 
-    Walks `span.content` (recursing into nested `TimelineSpan`s) and
-    `span.branches`, replacing every `TimelineEvent` wrapping a `ModelEvent`
-    whose uuid is in `full_by_uuid`. Reaches nested tool-spawned-agent events
-    too, since the tree builder expands such `ToolEvent`s into nested spans.
+    Walks `span.content`, recursing into nested `TimelineSpan`s, and replaces
+    every `TimelineEvent` wrapping a `ModelEvent` whose uuid is in
+    `full_by_uuid`. Reaches nested tool-spawned-agent events too, since the
+    tree builder expands such `ToolEvent`s into nested spans. `span.branches`
+    is not walked: `full_by_uuid` is keyed by the uuids `_walk_spans` selected,
+    and it does not descend into branches either.
     """
     for item in span.content:
         if isinstance(item, TimelineEvent):
@@ -362,8 +388,6 @@ def _substitute_full_events(
                 item.event = full_by_uuid[event.uuid]
         else:
             _substitute_full_events(item, full_by_uuid)
-    for branch in span.branches:
-        _substitute_full_events(branch, full_by_uuid)
 
 
 async def stream_timeline_messages(
@@ -381,10 +405,11 @@ async def stream_timeline_messages(
 
     Pass 1 builds a stub skeleton and selects which `ModelEvent`s the scanning
     path reads; pass 2 re-streams the handle, substitutes those full events
-    back in, and hands the skeleton to `timeline_messages`. The result is
-    identical to running `timeline_messages` on a fully materialized
+    back in, and hands the skeleton to `timeline_messages`. The extracted
+    messages match running `timeline_messages` on a fully materialized
     transcript, without ever holding more than one pass's events plus the stub
-    skeleton in memory. See the module docstring for the full design.
+    skeleton in memory. See the module docstring for the full design and the
+    span-metadata divergences.
 
     Args:
         handle: Multi-shot streaming access to the transcript's events.
@@ -399,15 +424,18 @@ async def stream_timeline_messages(
         prompt_reserve: Context-window allowance for prompt scaffolding.
 
     Yields:
-        `TimelineMessages` segments, identical to calling
-        `transcript_messages` on the fully materialized transcript.
+        `TimelineMessages` segments whose span ids and rendered strings match
+        `transcript_messages` over the fully materialized transcript. The
+        `span` metadata carries the divergences listed in the module
+        docstring.
 
     Raises:
         _StubSkeletonUnsupported: If pass 1 selects a `ModelEvent` lacking a
-            uuid (see `needed_model_event_uuids`), or if pass 2's stream
-            does not contain a full event for every uuid pass 1 selected
-            (a multi-shot contract violation: `handle.events()` returned
-            different content across the two calls).
+            uuid (see `needed_model_event_uuids`). Raised before any segment
+            is yielded, so callers may fall back to a materialized scan.
+        RuntimeError: If pass 2's stream does not contain a full event for
+            every uuid pass 1 selected -- `handle.events()` returned different
+            content across the two calls, violating the multi-shot contract.
     """
     interner = _PromptInterner()
     stubs: list[Event] = [stub_event(ev, interner) async for ev in handle.events()]
@@ -423,7 +451,10 @@ async def stream_timeline_messages(
 
     missing = needed - full_by_uuid.keys()
     if missing:
-        raise _StubSkeletonUnsupported(
+        # Not _StubSkeletonUnsupported: callers fall back to a materialized
+        # scan on that, and a handle that streams different content twice
+        # cannot be trusted to materialize correctly either.
+        raise RuntimeError(
             "pass 2 did not find a full event for every uuid selected in "
             f"pass 1 (missing {sorted(missing)!r}); this indicates "
             "handle.events() returned different content across its two "

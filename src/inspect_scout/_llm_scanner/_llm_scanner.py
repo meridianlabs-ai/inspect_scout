@@ -295,6 +295,19 @@ def llm_scanner(
     # @scanner decorator declares messages="all").
     content_has_events = content is not None and content.events is not None
 
+    # Streaming needs the full transcript only for callable template inputs or
+    # timeline extraction (by argument or by content filter). Computed once:
+    # scan() reads it to decide whether to materialize a handle, and the
+    # factory-level opt-in at the bottom reads the same value, so the two
+    # cannot drift. (The preprocessor gets per-segment message lists, so it
+    # stays streaming-safe.)
+    full_transcript_needed = (
+        callable(question)
+        or callable(template_variables)
+        or timeline is not None
+        or (content is not None and content.timeline is not None)
+    )
+
     # resolve retry_refusals
     retry_refusals = (
         retry_refusals
@@ -317,12 +330,6 @@ def llm_scanner(
             else None
         )
 
-        # Streaming needs the full transcript only for callable template inputs
-        # or timeline extraction. (The preprocessor gets per-segment message
-        # lists, so it stays streaming-safe.)
-        full_transcript_needed = (
-            callable(question) or callable(template_variables) or timeline is not None
-        )
         if handle is not None and full_transcript_needed:
             transcript = await handle.load()
             handle = None
@@ -334,12 +341,23 @@ def llm_scanner(
         # fields, so pass a content-empty Transcript where one is required.
         info_transcript: Transcript
         if handle is not None:
-            info = handle.info
+            # Exclude the content fields: Transcript subclasses TranscriptInfo,
+            # so a handle whose info *is* a Transcript would collide with the
+            # empties below.
             info_transcript = Transcript.model_construct(
-                **info.model_dump(), messages=[], events=[], timelines=[]
+                **handle.info.model_dump(exclude={"messages", "events", "timelines"}),
+                messages=[],
+                events=[],
+                timelines=[],
             )
+        elif isinstance(transcript, Transcript):
+            info_transcript = transcript
         else:
-            info_transcript = cast(Transcript, transcript)
+            raise TypeError(
+                f"llm_scanner cannot scan {type(transcript).__name__}: expected a "
+                "Transcript, a MaterializedTranscriptHandle or a "
+                "SpooledTranscriptHandle."
+            )
 
         # Shared numbering scope across all segments
         messages_as_str_fn, extract_references = message_numbering(
@@ -438,51 +456,47 @@ def llm_scanner(
                 reducer=reducer,
             )
 
-        if handle is not None and content_has_events:
-            # _StubSkeletonUnsupported is raised in pass 1 (building the stub
-            # skeleton / selecting needed uuids), before any segment is yielded
-            # and thus before any LLM call, so the fallback re-runs from scratch
-            # with no duplicated scan work.
-            try:
-                results = await _scan_segments_bounded(
-                    stream_timeline_messages(
-                        handle,
-                        messages_as_str=messages_as_str_fn,
-                        model=resolved_model,
-                        context_window=context_window,
-                        compaction=compaction,
-                        depth=depth,
-                        prompt_reserve=template_tokens,
-                    ),
-                    scan_segment,
+        if handle is not None:
+            # The source is picked from the *requested* filter, so it can come
+            # up empty on a transcript the materialized path would still scan
+            # (events="all" over a transcript carrying none). Reducing over
+            # zero segments would answer the question with no transcript
+            # content, so fall back instead.
+            segments: AsyncIterator[MessagesSegment | TimelineMessages]
+            if content_has_events:
+                segments = stream_timeline_messages(
+                    handle,
+                    messages_as_str=messages_as_str_fn,
+                    model=resolved_model,
+                    context_window=context_window,
+                    compaction=compaction,
+                    depth=depth,
+                    prompt_reserve=template_tokens,
                 )
+            else:
+                segments = stream_segment_messages(
+                    handle.messages(),
+                    messages_as_str=messages_as_str_fn,
+                    model=resolved_model,
+                    context_window=context_window,
+                    prompt_reserve=template_tokens,
+                )
+            try:
+                results = await _scan_segments_bounded(segments, scan_segment)
             except _StubSkeletonUnsupported as ex:
+                # Raised while building the pass-1 stub skeleton, before any
+                # segment is yielded and thus before any LLM call, so the
+                # fallback re-runs from scratch with no duplicated scan work.
                 logger.info(
                     "Streaming events skeleton unsupported for transcript %s "
                     "(%s); falling back to materialized scan.",
                     handle.info.transcript_id,
                     ex,
                 )
+                results = []
+            if not results:
                 return await scan_materialized(await handle.load())
             # A handle carries events, not named timelines.
-            return await aggregate_results(
-                results=results,
-                timeline=False,
-                answer=answer,
-                reducer=reducer,
-            )
-
-        if handle is not None:
-            results = await _scan_segments_bounded(
-                stream_segment_messages(
-                    handle.messages(),
-                    messages_as_str=messages_as_str_fn,
-                    model=resolved_model,
-                    context_window=context_window,
-                    prompt_reserve=template_tokens,
-                ),
-                scan_segment,
-            )
             return await aggregate_results(
                 results=results,
                 timeline=False,
@@ -500,17 +514,7 @@ def llm_scanner(
     if content is not None:
         setattr(scan, SCANNER_CONTENT_ATTR, content)
 
-    # Opt in per-instance when the scan needs no full transcript (must mirror
-    # `full_transcript_needed` in scan(), plus the content `timeline` case).
-    content_forces_materialization = (
-        content is not None and content.timeline is not None
-    )
-    if (
-        not callable(question)
-        and not callable(template_variables)
-        and timeline is None
-        and not content_forces_materialization
-    ):
+    if not full_transcript_needed:
         setattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, True)
 
     return scan

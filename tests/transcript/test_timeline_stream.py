@@ -321,22 +321,25 @@ def test_trim_at_span_end_does_not_over_select() -> None:
     assert needed == set()
 
 
-def test_selection_is_minimal_all() -> None:
+@pytest.mark.parametrize("compaction", ["all", "last", 2])
+def test_selection_is_minimal(compaction: Literal["all", "last"] | int) -> None:
     """Blanking any *selected* ModelEvent must change span_messages output.
 
     Complements the coverage test: proves selection is not merely a
     superset. Every selected event is load-bearing -- blanking it alone
-    perturbs the reconstructed messages of some scannable span.
+    perturbs the reconstructed messages of some scannable span. This is the
+    memory guard; the under-selection direction is pinned by
+    ``test_selection_covers_span_messages_reads``.
     """
     from inspect_scout._transcript.timeline_stream import needed_model_event_uuids
 
     events = agentic_events()
     tree = timeline_build(events)
-    needed = needed_model_event_uuids(tree.root, compaction="all", depth=None)
+    needed = needed_model_event_uuids(tree.root, compaction=compaction, depth=None)
     assert needed  # sanity
 
     baseline = [
-        _dump(span_messages(span, compaction="all"))
+        _dump(span_messages(span, compaction=compaction))
         for span in _walk_spans(tree.root, depth=None)
     ]
 
@@ -347,7 +350,7 @@ def test_selection_is_minimal_all() -> None:
         blanked = _blank_events_except(events, all_uuids - {target})
         blanked_tree = timeline_build(blanked)
         blanked_dump = [
-            _dump(span_messages(span, compaction="all"))
+            _dump(span_messages(span, compaction=compaction))
             for span in _walk_spans(blanked_tree.root, depth=None)
         ]
         assert blanked_dump != baseline, (
@@ -605,8 +608,11 @@ class _FlakyHandle:
     on its first call, but omits that same event on the second call. Pass 1
     of `stream_timeline_messages` selects the event's uuid from the first
     stream; pass 2 must fail to find a full event for it on the second
-    stream, which should surface as `_StubSkeletonUnsupported` rather than
-    silently substituting a stub or crashing.
+    stream, and must say so rather than silently substituting a stub.
+
+    The members `stream_timeline_messages` never touches raise instead of
+    returning a placeholder, so a future caller that starts using them fails
+    loudly here rather than against a fabricated transcript.
     """
 
     def __init__(self, events: list[Event], *, omit_uuid: str) -> None:
@@ -614,7 +620,11 @@ class _FlakyHandle:
         self._omit_uuid = omit_uuid
         self._call_count = 0
 
-    async def events(self, *, types: object = None) -> AsyncIterator[Event]:
+    @property
+    def info(self) -> TranscriptInfo:
+        return TranscriptInfo(transcript_id="flaky")
+
+    async def events(self) -> AsyncIterator[Event]:
         self._call_count += 1
         first_call = self._call_count == 1
         for event in self._events:
@@ -622,26 +632,44 @@ class _FlakyHandle:
                 continue
             yield event
 
+    def messages(self) -> AsyncIterator[ChatMessage]:
+        raise AssertionError("_FlakyHandle exercises the events() path only")
+
+    async def load(self) -> Transcript:
+        raise AssertionError("_FlakyHandle exercises the events() path only")
+
+    async def __aenter__(self) -> _FlakyHandle:
+        return self
+
+    async def __aexit__(self, *exc: object) -> None:
+        return None
+
+    async def aclose(self) -> None:
+        return None
+
 
 @pytest.mark.asyncio
 async def test_stream_raises_on_multi_shot_violation() -> None:
-    """A handle whose second `events()` call omits a pass-1-selected event must raise."""
+    """A handle whose second `events()` call omits a pass-1-selected event must raise.
+
+    The error must not be `_StubSkeletonUnsupported`: `llm_scanner` treats that
+    as "fall back to a materialized scan", which would hand the same untrusted
+    handle a second chance instead of surfacing the broken contract.
+    """
     from inspect_scout._scanner.extract import message_numbering
-    from inspect_scout._transcript.timeline_stream import (
-        _StubSkeletonUnsupported,
-        stream_timeline_messages,
-    )
+    from inspect_scout._transcript.timeline_stream import stream_timeline_messages
 
     events = agentic_events()
     omit_uuid = _last_model_event(events).uuid
     assert omit_uuid is not None
     handle = _FlakyHandle(events, omit_uuid=omit_uuid)
 
-    with pytest.raises(_StubSkeletonUnsupported):
+    # Not _StubSkeletonUnsupported, which is not a RuntimeError.
+    with pytest.raises(RuntimeError, match="multi-shot contract"):
         [
             seg
             async for seg in stream_timeline_messages(
-                handle,  # type: ignore[arg-type]  # _FlakyHandle only implements the events() subset of TranscriptHandle
+                handle,
                 messages_as_str=message_numbering()[0],
                 model="mockllm/model",
                 compaction="last",

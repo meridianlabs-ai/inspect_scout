@@ -266,6 +266,10 @@ jobs:
 
       - name: Run inspect-components tests
         working-directory: src/inspect_scout/_view/ts-mono
+        # The variable asserts that this repo's corpus is present, so the suite
+        # fails rather than skipping if it can no longer find the fixtures.
+        env:
+          TSMONO_REQUIRE_FIXTURES: "1"
         run: pnpm --filter @tsmono/inspect-components test
 
   js-dist-validation:

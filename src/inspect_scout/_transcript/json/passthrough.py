@@ -36,13 +36,10 @@ _SPOOLED_SAMPLE_METADATA = object()
 
 
 class PassthroughColumns(NamedTuple):
-    """The two recorder column values the passthrough emits."""
+    """The `input` and `input_data` column values the passthrough emits."""
 
     input_json: bytearray
-    """Value for the `input` column."""
-
     input_data_json: bytearray
-    """Value for the `input_data` column."""
 
 
 def pooled_passthrough(

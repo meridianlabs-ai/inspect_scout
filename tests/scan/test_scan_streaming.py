@@ -174,7 +174,7 @@ def _mock_responses(n: int) -> list[ModelOutput]:
 
 
 def test_scan_e2e_events_through_streaming_seam(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """An events-content llm_scanner scan streams through a spooled handle.
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 import json
 from pathlib import Path
-from typing import Any, Callable
+from typing import IO, Any, Callable
 
 import ijson  # type: ignore[import-untyped]  # no published stubs
 import pytest
@@ -129,10 +129,10 @@ async def test_parse_nan_raises_and_closes_every_spool(
     files are unlinked at creation on POSIX, so the directory is empty
     whether or not the unwind ever runs.
     """
-    opened: list[Any] = []
+    opened: list[IO[bytes]] = []
     real_open = spool_mod._open_spool_file
 
-    def spy_open(dir: Path, suffix: str) -> Any:
+    def spy_open(dir: Path, suffix: str) -> IO[bytes]:
         spool_file = real_open(dir, suffix)
         opened.append(spool_file)
         return spool_file
@@ -436,10 +436,9 @@ async def test_spool_write_failure_surfaces_instead_of_dropping_items(
 ) -> None:
     """A failing spool write must raise, not silently drop the item.
 
-    Both item coroutines tolerate a malformed item by design, but that guard
-    used to wrap the sink append too -- so a full disk or a closed fd dropped
-    a message, event or pool entry while the parse went on to report success.
-    Data loss that a caller cannot see is worse than a crash.
+    Both item coroutines tolerate a malformed item by design; that tolerance
+    must not extend to the sink append, or a full disk or a closed fd drops a
+    message, event or pool entry while the parse reports success.
     """
     break_sink(monkeypatch)
 

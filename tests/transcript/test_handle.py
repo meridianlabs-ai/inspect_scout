@@ -162,8 +162,8 @@ async def test_handle_use_after_close_raises(
 ) -> None:
     """A closed handle refuses use -- including one that already loaded.
 
-    The memoized transcript used to be served from in front of the closed
-    check, so a closed handle kept handing out content.
+    The memoized transcript must not be served from in front of the closed
+    check.
     """
     handle: SpooledTranscriptHandle | MaterializedTranscriptHandle = (
         _spooled_handle(tmp_path)
@@ -187,7 +187,6 @@ async def test_handle_use_after_close_raises(
 async def test_spooled_handle_concurrent_first_use_parses_once(
     tmp_path: Path,
 ) -> None:
-    """Concurrent first use parses once and materializes once."""
     calls = 0
 
     async def parse() -> StreamParseResult:

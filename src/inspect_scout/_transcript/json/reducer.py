@@ -60,6 +60,8 @@ class ParseState:
     scores: dict[str, Any] = field(default_factory=dict)
     message_pool: list[dict[str, Any]] = field(default_factory=list)
     call_pool: list[dict[str, Any]] = field(default_factory=list)
+    # Set once the events section starts streaming (see attachments_coroutine).
+    events_seen: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -243,7 +245,8 @@ def attachments_coroutine(
             continue
         if retain_all is None:
             retain_all = collecting_events and (
-                not state.events or any(_event_has_pool_refs(e) for e in state.events)
+                not state.events_seen
+                or any(_event_has_pool_refs(e) for e in state.events)
             )
         end = prefix.find(".", attachments_prefix_len)
         attachment_id = (

@@ -193,9 +193,8 @@
     }
   },
   "src/inspect_scout/_transcript/json/reducer.py": {
-    "type: ignore": {
-      "count": 2,
-      "undescribed": 2
+    "type: ignore[import-untyped]": {
+      "count": 2
     }
   },
   "src/inspect_scout/_transcript/json/stream_parse.py": {

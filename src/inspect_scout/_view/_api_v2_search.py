@@ -259,8 +259,8 @@ def create_search_router() -> APIRouter:
                 async with handle:
                     # llm_scanner() is typed as Scanner[Transcript] but its
                     # scan fn also accepts a TranscriptHandle (streaming path).
-                    # Cast to the runtime contract rather than to Scanner[Any],
-                    # which would also erase the argument check.
+                    # Cast to the runtime contract, not Scanner[Any] -- that
+                    # would erase the argument check too.
                     scan = cast(
                         Callable[[TranscriptHandle], Awaitable[Result | list[Result]]],
                         llm_scanner(

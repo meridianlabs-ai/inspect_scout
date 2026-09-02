@@ -296,11 +296,9 @@ def llm_scanner(
     content_has_events = content is not None and content.events is not None
 
     # Streaming needs the full transcript only for callable template inputs or
-    # timeline extraction (by argument or by content filter). Computed once:
-    # scan() reads it to decide whether to materialize a handle, and the
-    # factory-level opt-in at the bottom reads the same value, so the two
-    # cannot drift. (The preprocessor gets per-segment message lists, so it
-    # stays streaming-safe.)
+    # timeline extraction (by argument or by content filter). Hoisted so scan()
+    # and the streaming opt-in at the bottom cannot drift apart. (The
+    # preprocessor gets per-segment message lists, so it stays streaming-safe.)
     full_transcript_needed = (
         callable(question)
         or callable(template_variables)
@@ -341,9 +339,8 @@ def llm_scanner(
         # fields, so pass a content-empty Transcript where one is required.
         info_transcript: Transcript
         if handle is not None:
-            # Exclude the content fields: Transcript subclasses TranscriptInfo,
-            # so a handle whose info *is* a Transcript would collide with the
-            # empties below.
+            # Transcript subclasses TranscriptInfo, so a handle whose info
+            # *is* a Transcript would collide with the empties below.
             info_transcript = Transcript.model_construct(
                 **handle.info.model_dump(exclude={"messages", "events", "timelines"}),
                 messages=[],

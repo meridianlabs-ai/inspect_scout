@@ -122,11 +122,9 @@ async def test_timeline_request_uses_materialized_handle(
 
 
 # None of the fixture logs in tests/recorder/logs/ contain an `events_data`
-# pool (all four only have the legacy top-level `attachments` dict). Pool
-# resolution during streaming replay (attachment refs inside pool items,
-# range-encoded refs, and the consolidated `events_data` schema) is covered
-# at the `stream_parse_to_spool`/`replay_*` level in
-# tests/transcript/test_stream_parse.py instead.
+# pool (all four only have the legacy top-level `attachments` dict), so pool
+# resolution during streaming replay is covered by the `pooled_log` fixture
+# below and by test_attachment_refs_only_inside_pool_entries_resolve.
 
 
 @pytest.mark.parametrize(

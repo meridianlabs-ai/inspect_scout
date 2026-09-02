@@ -37,7 +37,13 @@ class TranscriptHandle(Protocol):
 
     @property
     def info(self) -> TranscriptInfo:
-        """Transcript identifier, location, and metadata."""
+        """Transcript identifier, location, and metadata.
+
+        Available without reading the transcript, so the metadata is whatever
+        the source listed: ``SpooledTranscriptHandle`` splices unthinned
+        ``sample_metadata``/``target``/``scores`` from the spool only in
+        ``load()``, so those fields can differ from the loaded transcript's.
+        """
         ...
 
     def messages(self) -> AsyncIterator[ChatMessage]:
@@ -270,3 +276,15 @@ def _merge_unthinned(base: dict[str, Any], result: StreamParseResult) -> dict[st
     if result.scores:
         overrides["scores"] = result.scores
     return base.copy() | overrides if overrides else base
+
+
+def is_transcript_handle_type(type_hint: Any) -> bool:
+    """Whether a type hint is the ``TranscriptHandle`` protocol or a concrete impl.
+
+    Identity comparison, since the protocol's non-method ``info`` member breaks
+    ``issubclass``.
+    """
+    return type_hint is TranscriptHandle or type_hint in (
+        MaterializedTranscriptHandle,
+        SpooledTranscriptHandle,
+    )

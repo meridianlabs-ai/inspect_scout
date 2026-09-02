@@ -37,11 +37,7 @@ from inspect_ai.model._chat_message import (
     ChatMessageUser,
 )
 
-from .._transcript.handle import (
-    MaterializedTranscriptHandle,
-    SpooledTranscriptHandle,
-    TranscriptHandle,
-)
+from .._transcript.handle import is_transcript_handle_type
 from .._transcript.types import EventType, MessageType, Transcript
 from .._util.type_hints import is_union_type
 
@@ -492,18 +488,6 @@ def _union_covers_union(scanner_type: Any, target_type: Any) -> bool:
     )
 
 
-def _is_transcript_handle_type(type_hint: Any) -> bool:
-    """Whether a type hint is the TranscriptHandle protocol or a concrete impl.
-
-    Identity comparison, since the protocol's non-method ``info`` member breaks
-    ``issubclass``.
-    """
-    return type_hint is TranscriptHandle or type_hint in (
-        MaterializedTranscriptHandle,
-        SpooledTranscriptHandle,
-    )
-
-
 def _is_compatible_with_type(scanner_type: Any, target_type: Any) -> bool:
     """
     Check if scanner_type is compatible with target_type.
@@ -532,7 +516,7 @@ def _is_compatible_with_type(scanner_type: Any, target_type: Any) -> bool:
                 m for m in union_members if not _is_compatible_with_type(m, target_type)
             }
             if 0 < len(others) < len(union_members) and all(
-                _is_transcript_handle_type(m) for m in others
+                is_transcript_handle_type(m) for m in others
             ):
                 return True
 

@@ -178,9 +178,10 @@ def test_scan_e2e_events_through_streaming_seam(
 ) -> None:
     """An events-content llm_scanner scan streams through a spooled handle.
 
-    Exercises `stream_timeline_messages`'s two-pass stub skeleton and
-    produces the same result as a materialized control run over the same
-    log with no threshold override.
+    Exercises `stream_timeline_messages`'s two-pass stub skeleton. Content
+    parity with the materialized path is covered by
+    `test_recorded_input_resolves_attachments_like_materialized`; this test
+    pins that the streaming seam runs and closes its handle.
 
     Sourced from eval logs rather than a transcript database because that is
     the path production scans take.
@@ -205,36 +206,11 @@ def test_scan_e2e_events_through_streaming_seam(
         results = scan_results_df(status.location, scanner="streaming_events_scanner")
         df = results.scanners["streaming_events_scanner"]
         assert len(df) == 1
-        streamed_values = df["value"].tolist()
+        assert df["value"].tolist() == [True]
 
     # The streaming path was actually exercised.
     assert len(created) == 1, "no SpooledTranscriptHandle was created -- not streaming"
     assert close_counts[id(created[0])] == 1
-
-    # Control run: same database, same scanner, no threshold override ->
-    # small agentic fixture content uses MaterializedTranscriptHandle.
-    monkeypatch.undo()
-    with tempfile.TemporaryDirectory() as tmpdir:
-        control_status = scan(
-            scanners=[streaming_events_scanner_factory()],
-            transcripts=transcripts_from(LOGS_DIR),
-            scans=tmpdir,
-            limit=1,
-            max_processes=1,
-            model="mockllm/model",
-            model_args={"custom_outputs": _mock_responses(4)},
-            display="none",
-        )
-        assert control_status.complete
-        assert control_status.location is not None
-
-        control_results = scan_results_df(
-            control_status.location, scanner="streaming_events_scanner"
-        )
-        control_df = control_results.scanners["streaming_events_scanner"]
-        control_values = control_df["value"].tolist()
-
-    assert streamed_values == control_values
 
 
 @scanner(name="attachment_scanner", messages="all", events="all")

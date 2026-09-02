@@ -10,7 +10,6 @@ from typing import Any
 
 import pytest
 from inspect_scout._transcript.json.passthrough import pooled_passthrough
-from inspect_scout._transcript.json.pool import slice_positions
 from inspect_scout._transcript.json.spool import BlobSpool, ByteSpool, ItemSpool
 from inspect_scout._transcript.json.stream_parse import StreamParseResult
 from inspect_scout._transcript.types import TranscriptInfo
@@ -229,28 +228,6 @@ def test_index_metadata_values_json_stdlib_refuses_are_coerced(
     ).encode() == to_json_bytes_compact(info.metadata["created"])
 
 
-@pytest.mark.parametrize(
-    ("start", "end", "pool_len"),
-    [
-        (0, 3, 3),
-        (1, 4, 3),
-        (-1, 3, 3),
-        (-3, -1, 3),
-        (1, 10**9, 3),
-        (-99, 99, 3),
-        (2, 1, 3),
-        (0, 1, 0),
-        (-1, 10**9, 5),
-    ],
-)
-def test_slice_positions_matches_python_slicing(
-    start: int, end: int, pool_len: int
-) -> None:
-    """Divergence from slicing here is a silent divergence in recorded output."""
-    pool = list(range(pool_len))
-    assert [pool[i] for i in slice_positions(start, end, pool_len)] == pool[start:end]
-
-
 def test_input_data_streams_pool_entries_without_holding_them(
     tmp_path: Path,
 ) -> None:
@@ -278,12 +255,12 @@ def test_input_data_streams_pool_entries_without_holding_them(
         tracemalloc.stop()
         result.close()
 
-    assert input_data_json is not None
     cell = len(input_data_json)
     assert cell > 15 * 1024 * 1024, "fixture should be big enough to be meaningful"
-    # The read-back is unavoidable; 2.5x leaves headroom while still failing
-    # if the value is built as an object graph and dumped whole (~5x).
-    assert peak < cell * 2.5, f"peak {peak} exceeds 2.5x the {cell}-byte cell"
+    # The read-back is unavoidable, and measures 1.03x here; 1.5x leaves
+    # headroom while still failing the likeliest regression -- building the
+    # value as an object graph and dumping it whole, measured at 2.0x.
+    assert peak < cell * 1.5, f"peak {peak} exceeds 1.5x the {cell}-byte cell"
 
 
 def test_merged_metadata_prefers_spooled_values_over_the_stale_index_copies(

@@ -479,6 +479,15 @@ def _scrub_agent_result(obj: Any) -> Any:
 async def test_stream_equals_materialized_segments(
     compaction: Literal["all", "last"] | int, depth: int | None
 ) -> None:
+    """Streamed and materialized extraction agree on messages and span structure.
+
+    Two assertions for two properties. The `messages_str` equality is the
+    content guard: it is what fails if an unsubstituted stub ever reaches
+    rendered output. The span-dump equality is the structure guard. They are
+    not redundant -- dropping one pass-2 substitution fails the first and
+    leaves the second green, because `TimelineEvent` serializes its event as
+    a bare uuid.
+    """
     from inspect_scout._scanner.extract import message_numbering
     from inspect_scout._transcript.handle import MaterializedTranscriptHandle
     from inspect_scout._transcript.messages import transcript_messages
@@ -519,8 +528,10 @@ async def test_stream_equals_materialized_segments(
     materialized = [(seg.span.id, seg.messages_str) for seg in materialized_segments]
     assert streamed == materialized
 
-    # Pin the accepted fidelity loss: streamed and materialized span trees
-    # differ only in `agent_result` (see timeline_stream's module docstring).
+    # Span structure, not payloads: `TimelineEvent` serializes its event as a
+    # bare uuid, so this pins per-span event identity and ordering. Payload
+    # divergence is caught by the `messages_str` equality above. `agent_result`
+    # is a span field, hence the scrub (see timeline_stream's module docstring).
     for s_seg, m_seg in zip(streamed_segments, materialized_segments, strict=True):
         assert _scrub_agent_result(s_seg.span.model_dump()) == _scrub_agent_result(
             m_seg.span.model_dump()
@@ -590,9 +601,8 @@ async def test_stream_equals_materialized_segments_eval_logs(
         assert streamed  # non-vacuous: the fixture must yield >=1 segment
         assert streamed == materialized_tuples
 
-        # Pin the accepted fidelity loss: streamed and materialized span
-        # trees differ only in `agent_result` (see timeline_stream's module
-        # docstring).
+        # Span structure, not payloads -- see the in-memory equivalence test
+        # above for why this and the `messages_str` equality are both needed.
         for s_seg, m_seg in zip(streamed_segments, materialized_segments, strict=True):
             assert _scrub_agent_result(s_seg.span.model_dump()) == _scrub_agent_result(
                 m_seg.span.model_dump()

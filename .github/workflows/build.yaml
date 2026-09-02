@@ -243,6 +243,7 @@ jobs:
   # against this repo's corpus. Mirrors inspect_ai's viewer-tests job.
   viewer-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:

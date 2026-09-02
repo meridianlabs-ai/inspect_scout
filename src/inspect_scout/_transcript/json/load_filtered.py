@@ -385,6 +385,7 @@ async def _parse_and_filter(
                     and prefix[:_EVENTS_ITEM_PREFIX_LEN] == EVENTS_ITEM_PREFIX
                 ):
                     current_section = _SECTION_EVENTS
+                    state.events_seen = True
                 elif (
                     p_len >= _EVENTS_DATA_MESSAGES_ITEM_PREFIX_LEN
                     and prefix[:_EVENTS_DATA_MESSAGES_ITEM_PREFIX_LEN]

@@ -407,13 +407,44 @@ async def test_pool_ref_resolves_regardless_of_section_order(
     assert model_event.input[0].content == "VALUE"
 
 
-@pytest.mark.asyncio
-async def test_attachments_bounded_when_no_pool_refs_retained() -> None:
-    """A messages-only scan retains only referenced attachments, not the whole table.
+# A model event with no `input_refs` and no `call`, i.e. nothing that could
+# resolve against a message/call pool.
+_PLAIN_MODEL_EVENT: dict[str, Any] = {
+    "span_id": "s1",
+    "timestamp": "2022-01-01T00:00:00+00:00",
+    "event": "model",
+    "model": "test-model",
+    "input": [],
+    "output": {"model": "test-model", "choices": []},
+    "tools": [],
+    "tool_choice": "auto",
+    "config": {},
+}
 
-    With events filtered out entirely no event survives to need a pool entry, so
-    the conservative retain-everything path in `attachments_coroutine` must not
-    engage.
+
+@pytest.mark.parametrize(
+    "events_filter,events",
+    [
+        pytest.param(None, [], id="events-not-collected"),
+        pytest.param(
+            ["tool"], [_PLAIN_MODEL_EVENT], id="events-filter-matches-nothing"
+        ),
+        pytest.param("all", [_PLAIN_MODEL_EVENT], id="retained-event-without-pool-ref"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_attachments_bounded_when_no_pool_refs_retained(
+    events_filter: EventFilter, events: list[dict[str, Any]]
+) -> None:
+    """Only referenced attachments are retained when no pool entry can be needed.
+
+    Three ways to reach that conclusion, each pinning a different arm of
+    `attachments_coroutine`'s `retain_all`. Events not collected at all.
+    Collected, but the events section streamed past with nothing matching the
+    filter -- which must not be confused with "the events section has not
+    streamed yet", the case that legitimately retains everything. And a
+    retained event carrying no `input_refs`/`call_refs`, the only row that
+    reaches `_event_has_pool_refs`.
     """
     referenced_id = "a1b2c3d4e5f678901234567890123456"
     unrelated_id = "b2c3d4e5f67890123456789012345678"
@@ -425,7 +456,7 @@ async def test_attachments_bounded_when_no_pool_refs_retained() -> None:
                 "messages": [
                     {"role": "user", "content": f"attachment://{referenced_id}"},
                 ],
-                "events": [],
+                "events": events,
                 "attachments": {
                     referenced_id: "REFERENCED",
                     unrelated_id: "UNRELATED",
@@ -442,7 +473,7 @@ async def test_attachments_bounded_when_no_pool_refs_retained() -> None:
                 source_uri="/test.json",
             ),
             "all",
-            None,
+            events_filter,
         )
 
     assert set(attachments) == {referenced_id}

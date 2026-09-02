@@ -1,6 +1,7 @@
 import asyncio
 import json
 from collections.abc import AsyncIterator, Iterator, Sequence
+from logging import getLogger
 from typing import Any, Literal
 
 import pandas as pd
@@ -19,6 +20,8 @@ from ._recorder.recorder import (
 )
 from ._transcript.json.reducer import ATTACHMENT_PREFIX, ATTACHMENT_REF_PATTERN
 from ._validation.validate import is_positive_value
+
+logger = getLogger(__name__)
 
 
 def scan_status(scan_location: str) -> Status:
@@ -465,22 +468,35 @@ def _expand_events_in_df(df: pd.DataFrame) -> pd.DataFrame:
         input_json = str(new_input[pos])
         input_data_json = str(df["input_data"].iloc[pos])
         input_type = str(df["input_type"].iloc[pos])
-        attachments = _input_data_attachments(input_data_json)
 
-        if input_type == "transcript":
-            transcript = json.loads(input_json)
-            events_json = json.dumps(transcript.get("events", []))
-            expanded = expand_events(events_json, input_data_json)
-            transcript["events"] = [e.model_dump() for e in expanded]
-            new_input[pos] = json.dumps(
-                _resolve_attachment_refs(transcript, attachments)
-            )
-        elif input_type == "events":
-            expanded = expand_events(input_json, input_data_json)
-            new_input[pos] = json.dumps(
-                _resolve_attachment_refs(
-                    [e.model_dump() for e in expanded], attachments
+        # A row the installed inspect_ai cannot validate (e.g. an event kind
+        # newer than this environment) must not make the whole file unreadable;
+        # leave it condensed and carry on.
+        try:
+            attachments = _input_data_attachments(input_data_json)
+
+            if input_type == "transcript":
+                transcript = json.loads(input_json)
+                events_json = json.dumps(transcript.get("events", []))
+                expanded = expand_events(events_json, input_data_json)
+                transcript["events"] = [e.model_dump() for e in expanded]
+                new_input[pos] = json.dumps(
+                    _resolve_attachment_refs(transcript, attachments)
                 )
+            elif input_type == "events":
+                expanded = expand_events(input_json, input_data_json)
+                new_input[pos] = json.dumps(
+                    _resolve_attachment_refs(
+                        [e.model_dump() for e in expanded], attachments
+                    )
+                )
+        except Exception as ex:
+            logger.warning(
+                "Unable to expand events for input row %d (%s); "
+                "returning it in condensed form: %s",
+                pos,
+                input_type,
+                ex,
             )
 
     df["input"] = pd.Series(new_input, index=df.index, dtype=df["input"].dtype)
@@ -507,6 +523,11 @@ def _resolve_attachment_refs(value: Any, attachments: dict[str, str]) -> Any:
     """Recursively replace `attachment://<id>` refs with their content.
 
     Mirrors the viewer's `resolveAttachments`: unknown ids are left as-is.
+
+    Walks the whole value, metadata included, where the materialized loader
+    resolves only messages and events. Deliberate: `condense_sample` writes
+    refs nowhere else, and an unknown id is left alone, so the wider walk can
+    only differ on a hand-written ref that names a real attachment.
     """
     if not attachments:
         return value

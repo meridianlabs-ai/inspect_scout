@@ -18,7 +18,11 @@ from ._recorder.recorder import (
     ScanResultsDF,
     Status,
 )
-from ._transcript.json.reducer import ATTACHMENT_PREFIX, ATTACHMENT_REF_PATTERN
+from ._transcript.json.reducer import (
+    ATTACHMENT_PREFIX,
+    ATTACHMENT_PREFIX_LEN,
+    ATTACHMENT_REF_LEN,
+)
 from ._validation.validate import is_positive_value
 
 logger = getLogger(__name__)
@@ -522,9 +526,11 @@ def _input_data_attachments(input_data_json: str) -> dict[str, str]:
 
 
 def _resolve_attachment_refs(value: Any, attachments: dict[str, str]) -> Any:
-    """Recursively replace `attachment://<id>` refs with their content.
+    """Recursively replace `attachment://<id>` values with their content.
 
-    Mirrors the viewer's `resolveAttachments`: unknown ids are left as-is.
+    A ref is the whole string or it is not a ref, as on both load paths:
+    `create_attachment` replaces the entire field and inspect_ai reads refs
+    back with `startswith`. Unknown ids are left as-is.
 
     Walks the whole value, metadata included, where the materialized loader
     resolves only messages and events. Deliberate: `condense_sample` writes
@@ -534,11 +540,9 @@ def _resolve_attachment_refs(value: Any, attachments: dict[str, str]) -> Any:
     if not attachments:
         return value
     if isinstance(value, str):
-        if ATTACHMENT_PREFIX not in value:
+        if len(value) != ATTACHMENT_REF_LEN or not value.startswith(ATTACHMENT_PREFIX):
             return value
-        return ATTACHMENT_REF_PATTERN.sub(
-            lambda m: attachments.get(m.group(1), m.group(0)), value
-        )
+        return attachments.get(value[ATTACHMENT_PREFIX_LEN:], value)
     if isinstance(value, dict):
         return {k: _resolve_attachment_refs(v, attachments) for k, v in value.items()}
     if isinstance(value, list):

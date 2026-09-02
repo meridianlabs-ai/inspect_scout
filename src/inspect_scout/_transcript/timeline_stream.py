@@ -39,6 +39,7 @@ from inspect_ai.event import (
     TimelineSpan,
     ToolEvent,
     timeline_build,
+    timeline_filter,
 )
 from inspect_ai.model import ChatMessageSystem, ChatMessageUser, ContentText, Model
 
@@ -373,6 +374,7 @@ async def stream_timeline_messages(
     context_window: int | None = None,
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
+    include_scorers: bool = False,
     prompt_reserve: int | float = 0.2,
 ) -> AsyncIterator[TimelineMessages]:
     """Yield timeline message segments by streaming a `TranscriptHandle` twice.
@@ -391,11 +393,14 @@ async def stream_timeline_messages(
         context_window: Override for the model's context window size.
         compaction: How to handle compaction boundaries.
         depth: Maximum nesting level of scannable spans to process.
+        include_scorers: Whether to include scorer events. Defaults to
+            ``False``, matching ``transcript_messages()`` -- a grader's rubric
+            typically contains the expected answer.
         prompt_reserve: Context-window allowance for prompt scaffolding.
 
     Yields:
-        `TimelineMessages` segments, identical to calling `timeline_messages`
-        on the fully materialized transcript's built timeline.
+        `TimelineMessages` segments, identical to calling
+        `transcript_messages` on the fully materialized transcript.
 
     Raises:
         _StubSkeletonUnsupported: If pass 1 selects a `ModelEvent` lacking a
@@ -407,6 +412,8 @@ async def stream_timeline_messages(
     interner = _PromptInterner()
     stubs: list[Event] = [stub_event(ev, interner) async for ev in handle.events()]
     tree = timeline_build(stubs)
+    if not include_scorers:
+        tree = timeline_filter(tree, lambda s: s.span_type != "scorers")
 
     needed = needed_model_event_uuids(tree.root, compaction=compaction, depth=depth)
 

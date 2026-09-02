@@ -478,7 +478,8 @@ async def test_stream_equals_materialized_segments(
 ) -> None:
     from inspect_scout._scanner.extract import message_numbering
     from inspect_scout._transcript.handle import MaterializedTranscriptHandle
-    from inspect_scout._transcript.timeline import timeline_messages
+    from inspect_scout._transcript.messages import transcript_messages
+    from inspect_scout._transcript.timeline import TimelineMessages
     from inspect_scout._transcript.timeline_stream import stream_timeline_messages
 
     transcript = agentic_transcript()
@@ -501,16 +502,16 @@ async def test_stream_equals_materialized_segments(
             depth=depth,
         )
     ]
-    materialized_segments = [
-        seg
-        async for seg in timeline_messages(
-            timeline_build(transcript.events).root,
-            messages_as_str=numbering(),
-            model="mockllm/model",
-            compaction=compaction,
-            depth=depth,
-        )
-    ]
+    materialized_segments: list[TimelineMessages] = []
+    async for seg in transcript_messages(
+        transcript,
+        messages_as_str=numbering(),
+        model="mockllm/model",
+        compaction=compaction,
+        depth=depth,
+    ):
+        assert isinstance(seg, TimelineMessages)
+        materialized_segments.append(seg)
     streamed = [(seg.span.id, seg.messages_str) for seg in streamed_segments]
     materialized = [(seg.span.id, seg.messages_str) for seg in materialized_segments]
     assert streamed == materialized
@@ -537,7 +538,8 @@ async def test_stream_equals_materialized_segments_eval_logs(
     from inspect_scout._scanner.extract import message_numbering
     from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
     from inspect_scout._transcript.handle import SpooledTranscriptHandle
-    from inspect_scout._transcript.timeline import timeline_build, timeline_messages
+    from inspect_scout._transcript.messages import transcript_messages
+    from inspect_scout._transcript.timeline import TimelineMessages
     from inspect_scout._transcript.timeline_stream import stream_timeline_messages
     from inspect_scout._transcript.types import TranscriptContent
     from inspect_scout._util import constants as constants_mod
@@ -568,16 +570,16 @@ async def test_stream_equals_materialized_segments_eval_logs(
                     depth=None,
                 )
             ]
-        materialized_segments = [
-            seg
-            async for seg in timeline_messages(
-                timeline_build(materialized.events).root,
-                messages_as_str=numbering(),
-                model="mockllm/model",
-                compaction="all",
-                depth=None,
-            )
-        ]
+        materialized_segments: list[TimelineMessages] = []
+        async for seg in transcript_messages(
+            materialized,
+            messages_as_str=numbering(),
+            model="mockllm/model",
+            compaction="all",
+            depth=None,
+        ):
+            assert isinstance(seg, TimelineMessages)
+            materialized_segments.append(seg)
         streamed = [(seg.span.id, seg.messages_str) for seg in streamed_segments]
         materialized_tuples = [
             (seg.span.id, seg.messages_str) for seg in materialized_segments

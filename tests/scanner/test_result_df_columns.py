@@ -1,13 +1,11 @@
 """`ResultReport.to_df_columns` emits the input columns as UTF-8 JSON buffers.
 
 The recorder hands these straight to pyarrow, so the producer must not decode
-them to `str` — every branch of `_serialize_input` is covered here, since the
-`input_data` split makes it easy to fix one and miss another.
+them to `str`.
 """
 
 import json
 from datetime import datetime
-from typing import Any
 
 import pytest
 from inspect_ai.event import InfoEvent
@@ -68,12 +66,12 @@ def test_input_columns_are_utf8_json_buffers(
         model_usage={},
     )
 
-    columns: dict[str, Any] = report.to_df_columns(pool_dedup=pool_dedup)
+    columns = report.to_df_columns(pool_dedup=pool_dedup)
 
     assert isinstance(columns["input"], (bytes, bytearray))
-    assert json.loads(bytes(columns["input"]))
+    assert json.loads(columns["input"])
     if expect_input_data:
         assert isinstance(columns["input_data"], (bytes, bytearray))
-        assert json.loads(bytes(columns["input_data"])) is not None
+        assert json.loads(columns["input_data"]) is not None
     else:
         assert columns["input_data"] is None

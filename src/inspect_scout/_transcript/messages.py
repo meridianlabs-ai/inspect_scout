@@ -277,54 +277,41 @@ async def stream_segment_messages(
         ),
     )
 
+    async def chunks() -> AsyncIterator[tuple[list[ChatMessage], list[str], int]]:
+        """Group rendered messages into chunks, counting tokens once per chunk."""
+        pending: list[tuple[ChatMessage, str]] = []
+        pending_chars = 0
+
+        async def close() -> tuple[list[ChatMessage], list[str], int]:
+            texts = [text for _, text in pending]
+            return (
+                [msg for msg, _ in pending],
+                texts,
+                await model.count_tokens("\n".join(texts)),
+            )
+
+        async for msg in source:
+            text = await messages_as_str([msg])
+            if not text:  # Skip empty renders (e.g. filtered system messages)
+                continue
+
+            if pending and pending_chars + len(text) > chunk_char_target:
+                yield await close()
+                pending = []
+                pending_chars = 0
+
+            pending.append((msg, text))
+            pending_chars += len(text)
+
+        if pending:
+            yield await close()
+
     segment_counter = 0
     current_messages: list[ChatMessage] = []
     current_texts: list[str] = []
     running_tokens = 0
 
-    pending_chunk: list[tuple[ChatMessage, str]] = []
-    pending_chars = 0
-
-    async def close_chunk() -> tuple[list[ChatMessage], list[str], int]:
-        """Count tokens for the pending chunk and return its contents."""
-        nonlocal pending_chunk, pending_chars
-        chunk_messages = [msg for msg, _ in pending_chunk]
-        chunk_texts = [text for _, text in pending_chunk]
-        chunk_str = "\n".join(chunk_texts)
-        tokens = await model.count_tokens(chunk_str)
-        pending_chunk = []
-        pending_chars = 0
-        return chunk_messages, chunk_texts, tokens
-
-    async for msg in source:
-        text = await messages_as_str([msg])
-        if not text:  # Skip empty renders (e.g. filtered system messages)
-            continue
-
-        if pending_chunk and pending_chars + len(text) > chunk_char_target:
-            chunk_messages, chunk_texts, tokens = await close_chunk()
-
-            if current_messages and running_tokens + tokens > effective_budget:
-                yield MessagesSegment(
-                    messages=current_messages,
-                    messages_str="\n".join(current_texts),
-                    segment=segment_counter,
-                )
-                segment_counter += 1
-                current_messages = []
-                current_texts = []
-                running_tokens = 0
-
-            current_messages.extend(chunk_messages)
-            current_texts.extend(chunk_texts)
-            running_tokens += tokens
-
-        pending_chunk.append((msg, text))
-        pending_chars += len(text)
-
-    if pending_chunk:
-        chunk_messages, chunk_texts, tokens = await close_chunk()
-
+    async for chunk_messages, chunk_texts, tokens in chunks():
         if current_messages and running_tokens + tokens > effective_budget:
             yield MessagesSegment(
                 messages=current_messages,

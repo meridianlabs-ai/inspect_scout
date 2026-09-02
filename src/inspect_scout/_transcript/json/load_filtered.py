@@ -350,11 +350,16 @@ async def _parse_and_filter(
             if p_len == 0 or prefix[0] not in ("m", "e", "a", "t", "s", "c"):
                 current_section = _SECTION_OTHER
             elif p_len < _MIN_SECTION_PREFIX_LEN:
-                # Short prefixes: "scores" (6), "target" (6)
+                # Short prefixes: "events" (6), "scores" (6), "target" (6)
                 if prefix == "scores":
                     current_section = _SECTION_SCORES
                 elif prefix == "target":
                     current_section = _SECTION_TARGET
+                elif prefix == "events":
+                    # The section's own start_array, which fires even for an
+                    # empty array -- unlike "events.item".
+                    state.events_seen = True
+                    current_section = _SECTION_OTHER
                 else:
                     current_section = _SECTION_OTHER
             elif prefix[0] == "m":
@@ -385,7 +390,6 @@ async def _parse_and_filter(
                     and prefix[:_EVENTS_ITEM_PREFIX_LEN] == EVENTS_ITEM_PREFIX
                 ):
                     current_section = _SECTION_EVENTS
-                    state.events_seen = True
                 elif (
                     p_len >= _EVENTS_DATA_MESSAGES_ITEM_PREFIX_LEN
                     and prefix[:_EVENTS_DATA_MESSAGES_ITEM_PREFIX_LEN]

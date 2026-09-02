@@ -440,6 +440,7 @@ async def test_pool_ref_resolves_regardless_of_section_order(
             ["tool"], [_PLAIN_MODEL_EVENT], id="events-filter-matches-nothing"
         ),
         pytest.param("all", [_PLAIN_MODEL_EVENT], id="retained-event-without-pool-ref"),
+        pytest.param("all", [], id="events-section-empty"),
     ],
 )
 @pytest.mark.asyncio
@@ -448,13 +449,14 @@ async def test_attachments_bounded_when_no_pool_refs_retained(
 ) -> None:
     """Only referenced attachments are retained when no pool entry can be needed.
 
-    Three ways to reach that conclusion, each pinning a different arm of
+    Four ways to reach that conclusion, each pinning a different arm of
     `attachments_coroutine`'s `retain_all`. Events not collected at all.
     Collected, but the events section streamed past with nothing matching the
     filter -- which must not be confused with "the events section has not
-    streamed yet", the case that legitimately retains everything. And a
-    retained event carrying no `input_refs`/`call_refs`, the only row that
-    reaches `_event_has_pool_refs`.
+    streamed yet", the case that legitimately retains everything. A retained
+    event carrying no `input_refs`/`call_refs`, the only row that reaches
+    `_event_has_pool_refs`. And an events section that is literally empty, so
+    only its own `start_array` can mark it seen -- `events.item` never fires.
     """
     referenced_id = "a1b2c3d4e5f678901234567890123456"
     unrelated_id = "b2c3d4e5f67890123456789012345678"

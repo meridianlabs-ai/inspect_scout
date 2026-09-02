@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 from inspect_ai._util.registry import registry_info
+from inspect_ai.event._event import Event
 from inspect_ai.event._model import ModelEvent
 from inspect_ai.event._tool import ToolEvent
 from inspect_ai.model._chat_message import (
@@ -15,6 +16,7 @@ from inspect_ai.model._chat_message import (
 )
 from inspect_scout import Result, Scanner, Transcript, scanner
 from inspect_scout._scanner.scanner import SCANNER_CONFIG
+from inspect_scout._scanner.validate import infer_filters_from_type
 
 
 def test_infer_single_message_type() -> None:
@@ -327,3 +329,158 @@ def test_decorator_without_parentheses_fails_for_base_type() -> None:
             return scan
 
         base_scanner()
+
+
+def test_infer_newly_filterable_event_types() -> None:
+    """Event types added to the filter enum should infer like any other."""
+    from inspect_ai.event._score_edit import ScoreEditEvent
+
+    @scanner()
+    def score_edit_scanner() -> Scanner[ScoreEditEvent]:
+        async def scan(event: ScoreEditEvent) -> Result:
+            return Result(value={"name": event.score_name})
+
+        return scan
+
+    instance: Any = score_edit_scanner()
+    assert registry_info(instance).metadata[SCANNER_CONFIG].content.events == [
+        "score_edit"
+    ]
+
+
+def test_unmapped_event_type_raises() -> None:
+    """An Event with no filter mapping must fail loudly, not scan zero events."""
+    from inspect_ai.event._subtask import SubtaskEvent
+
+    with pytest.raises(TypeError, match="no corresponding events filter"):
+
+        @scanner()
+        def subtask_scanner() -> Scanner[SubtaskEvent]:
+            async def scan(event: SubtaskEvent) -> Result:
+                return Result(value={"name": event.name})
+
+            return scan
+
+        subtask_scanner()
+
+
+@pytest.mark.parametrize(
+    "annotation",
+    [
+        pytest.param(Event, id="bare-event"),
+        pytest.param(Event | None, id="optional-event"),
+        pytest.param(ChatMessageUser | Event, id="message-or-event"),
+    ],
+)
+def test_full_event_union_infers_no_filter(annotation: Any) -> None:
+    """`Event` is a Union alias, so these flatten to every concrete event type.
+
+    They name the base type rather than a selection, and inference declines
+    base types. Without this, their deprecated StepEvent/SubtaskEvent members
+    trip the unmapped-type check, replacing the loader's own diagnostic with a
+    misleading one. See `test_full_event_union_still_rejected_by_loader` for
+    what these annotations actually do end to end.
+    """
+
+    def scan(value: Any) -> None: ...
+
+    scan.__annotations__ = {"value": annotation}
+    assert infer_filters_from_type(scan, globals()) == (None, None, False)
+
+
+@pytest.mark.parametrize(
+    "annotation",
+    [
+        pytest.param(Event | None, id="optional-event"),
+        pytest.param(ChatMessageUser | Event, id="message-or-event"),
+    ],
+)
+def test_full_event_union_still_rejected_by_loader(annotation: Any) -> None:
+    """Declining inference is not the same as supporting the annotation.
+
+    These were rejected before the EventType widening too. The loader cannot
+    route a union spanning both input kinds (or one including None), and that
+    is the error the author should see -- not a complaint about the deprecated
+    event types the alias happens to contain.
+    """
+
+    def factory() -> Any:
+        async def scan(value: Any) -> Result:
+            return Result(value={})
+
+        scan.__annotations__ = {"value": annotation, "return": Result}
+        return scan
+
+    factory.__annotations__ = {"return": Scanner[annotation]}
+
+    # With an explicit events= filter, inference is bypassed entirely and the
+    # loader rejects the union either way -- that path cannot tell a working
+    # _spans_event_union from a broken one. Without a filter it can: declining
+    # inference yields the "requires at least one of" error, while the
+    # unmapped-type check would raise about StepEvent/SubtaskEvent instead.
+    with pytest.raises(ValueError, match="requires at least one of"):
+        scanner()(factory)()
+    with pytest.raises(RuntimeError, match="must conform to ChatMessage or Event"):
+        scanner(events="all")(factory)()
+
+
+def test_events_selection_widens_a_timeline_filter() -> None:
+    """An `events=` selection must survive timeline pruning.
+
+    Timeline content is filtered independently of `content.events`, and
+    interleaved `[E#]` entries render from the timeline. `timeline=True`
+    resolves to a default set that excludes `score`, so without widening,
+    `llm_scanner(events=["score"])` under `@scanner(timeline=True)` renders
+    nothing at all -- silently.
+    """
+    from inspect_scout._llm_scanner._llm_scanner import llm_scanner
+    from inspect_scout._scanner.scanner import config_for_scanner
+
+    @scanner(timeline=True)
+    def scores_visible() -> Scanner[Transcript]:
+        return llm_scanner(question="q", answer="boolean", events=["score"])
+
+    timeline = config_for_scanner(scores_visible()).content.timeline
+    assert isinstance(timeline, list)
+    assert "score" in timeline
+    # the default types are still there
+    assert "model" in timeline and "span_begin" in timeline
+
+
+def test_events_selection_does_not_force_a_timeline_on_message_scanners() -> None:
+    """Widening must not drag a messages-only scanner onto the timeline path."""
+    from inspect_scout._llm_scanner._llm_scanner import llm_scanner
+    from inspect_scout._scanner.scanner import config_for_scanner
+
+    @scanner(messages="all")
+    def flat() -> Scanner[Transcript]:
+        return llm_scanner(question="q", answer="boolean", events=["score"])
+
+    assert config_for_scanner(flat()).content.timeline is None
+
+
+def test_explicit_timeline_override_cannot_drop_the_events_selection() -> None:
+    """Widening must survive a caller-supplied `content.timeline`.
+
+    The override is applied after inference, so widening has to come last --
+    otherwise an explicit timeline silently prunes the very events the caller
+    asked to have rendered.
+    """
+    from inspect_scout._llm_scanner._llm_scanner import llm_scanner
+    from inspect_scout._scanner.scanner import config_for_scanner
+    from inspect_scout._transcript.types import TranscriptContent
+
+    @scanner(timeline=True)
+    def narrow_timeline() -> Scanner[Transcript]:
+        return llm_scanner(
+            question="q",
+            answer="boolean",
+            events=["score"],
+            content=TranscriptContent(timeline=["model", "span_begin", "span_end"]),
+        )
+
+    timeline = config_for_scanner(narrow_timeline()).content.timeline
+    assert isinstance(timeline, list)
+    assert "score" in timeline
+    # the caller's own selection is still honoured
+    assert "model" in timeline and "span_end" in timeline

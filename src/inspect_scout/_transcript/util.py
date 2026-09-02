@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 from functools import reduce
-from typing import TYPE_CHECKING, Any, Iterable, TypeVar
+from typing import TYPE_CHECKING, Any, Final, Iterable, TypeVar, get_args
 
 from inspect_ai.event._event import Event
+from inspect_ai.event._tool import ToolEvent
 from inspect_ai.model._chat_message import ChatMessage, ChatMessageBase
 
 from .types import (
@@ -331,3 +332,18 @@ def _matches_filter(
     )
     assert isinstance(attr, str)
     return attr in filter
+
+
+_EVENT_CLASSES: Final[tuple[type[Event], ...]] = get_args(Event)
+
+
+def nested_tool_events(event: ToolEvent) -> list[Event]:
+    """Sub-events of a ToolEvent, skipping legacy raw-dict entries.
+
+    ``ToolEvent.events`` is typed ``list[Any]`` upstream and is not validated,
+    so logs written before the field was deprecated deserialize their
+    sub-events as plain dicts. Passing one on raises ``AttributeError`` in any
+    caller that expects an ``Event``, and it carries nothing the top-level
+    event list lacks.
+    """
+    return [e for e in event.events if isinstance(e, _EVENT_CLASSES)]

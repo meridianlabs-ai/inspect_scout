@@ -1,0 +1,1118 @@
+"""Tests for per-span event interleaving in ``timeline_messages``."""
+
+from __future__ import annotations
+
+import re
+from typing import Literal
+
+import pytest
+from inspect_ai.event import (
+    BranchEvent,
+    CompactionEvent,
+    ErrorEvent,
+    Event,
+    ModelEvent,
+    SampleLimitEvent,
+    ScoreEvent,
+    SpanEndEvent,
+    Timeline,
+    TimelineEvent,
+    TimelineSpan,
+    timeline_build,
+)
+from inspect_ai.log import EvalError
+from inspect_ai.model import (
+    ChatMessage,
+    ChatMessageSystem,
+    ChatMessageUser,
+    ContentReasoning,
+    GenerateConfig,
+    ModelOutput,
+    get_model,
+)
+from inspect_ai.scorer import Score
+from inspect_scout._scanner.extract import message_numbering
+from inspect_scout._transcript.interleave import EventsSpec
+from inspect_scout._transcript.messages import segment_messages, transcript_messages
+from inspect_scout._transcript.timeline import (
+    _ORPHAN_SPAN_ID,
+    TimelineMessages,
+    timeline_messages,
+)
+from inspect_scout._transcript.types import Transcript
+
+from tests.transcript.fixtures_agentic import (
+    _compaction_event,
+    _span_begin,
+    _span_end,
+    agentic_events,
+    reset_ids,
+)
+from tests.transcript.fixtures_agentic import (
+    _model_event as _agentic_model_event,
+)
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _model_event(input_msgs: list[ChatMessage], output: ModelOutput) -> ModelEvent:
+    return ModelEvent.model_construct(
+        event="model",
+        model="mockllm",
+        input=list(input_msgs),
+        output=output,
+        role="assistant",
+        config=GenerateConfig(),
+    )
+
+
+def _span(span_id: str, name: str, events: list[Event]) -> TimelineSpan:
+    return TimelineSpan(
+        id=span_id,
+        name=name,
+        span_type="agent",
+        content=[TimelineEvent.model_construct(type="event", event=e) for e in events],
+    )
+
+
+def _span_of(
+    span_id: str,
+    name: str,
+    content: list[Event | TimelineSpan],
+    *,
+    span_type: str | None = "agent",
+) -> TimelineSpan:
+    """Like ``_span`` but accepts a mix of events and nested spans, and a span_type."""
+    items: list[TimelineEvent | TimelineSpan] = [
+        item
+        if isinstance(item, TimelineSpan)
+        else TimelineEvent.model_construct(type="event", event=item)
+        for item in content
+    ]
+    return TimelineSpan(id=span_id, name=name, span_type=span_type, content=items)
+
+
+async def _collect_transcript(
+    root: TimelineSpan,
+    *,
+    events: EventsSpec | None,
+    include_scorers: bool = False,
+    context_window: int = 10_000,
+    depth: int | None = None,
+) -> tuple[list[TimelineMessages], str]:
+    """Drive segments through transcript_messages()."""
+    transcript = Transcript(
+        transcript_id="t1",
+        timelines=[Timeline(name="Default", description="", root=root)],
+    )
+    msgs_as_str, _ = message_numbering()
+    model = get_model("mockllm/model")
+    results: list[TimelineMessages] = []
+    async for seg in transcript_messages(
+        transcript,
+        messages_as_str=msgs_as_str,
+        model=model,
+        context_window=context_window,
+        events=events,
+        include_scorers=include_scorers,
+        depth=depth,
+    ):
+        assert isinstance(seg, TimelineMessages)
+        results.append(seg)
+    combined = "\n".join(r.messages_str for r in results)
+    return results, combined
+
+
+async def _collect(
+    root: TimelineSpan,
+    *,
+    events: EventsSpec | None,
+    compaction: Literal["all", "last"] | int = "all",
+    context_window: int = 10_000,
+    depth: int | None = None,
+) -> tuple[list[TimelineMessages], str]:
+    """Collect segments plus a combined messages_str for convenience assertions."""
+    msgs_as_str, _ = message_numbering()
+    model = get_model("mockllm/model")
+    results: list[TimelineMessages] = []
+    async for seg in timeline_messages(
+        root,
+        messages_as_str=msgs_as_str,
+        model=model,
+        context_window=context_window,
+        compaction=compaction,
+        depth=depth,
+        events=events,
+    ):
+        results.append(seg)
+    combined = "\n".join(r.messages_str for r in results)
+    return results, combined
+
+
+# ---------------------------------------------------------------------------
+# Fixtures shared across tests
+# ---------------------------------------------------------------------------
+
+_u1 = ChatMessageUser(content="q1")
+_u2 = ChatMessageUser(content="q2")
+
+
+def _two_turn_events() -> tuple[ModelEvent, ModelEvent]:
+    """Two ModelEvents where the second's input carries the running thread."""
+    out1 = ModelOutput.from_content(model="mockllm", content="first")
+    a1 = out1.choices[0].message
+    ev1 = _model_event([_u1], out1)
+
+    out2 = ModelOutput.from_content(model="mockllm", content="second")
+    ev2 = _model_event([_u1, a1, _u2], out2)
+    return ev1, ev2
+
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_mid_span_score_between_model_events_orders_correctly() -> None:
+    """A mid-span ScoreEvent lands between the two ModelEvents' messages."""
+    ev1, ev2 = _two_turn_events()
+    score = ScoreEvent(score=Score(value=0.5), scorer="graded", intermediate=True)
+    scored_span = _span("span-a", "agent-a", [ev1, score, ev2])
+
+    # A sibling span with no events must be unaffected.
+    plain_out = ModelOutput.from_content(model="mockllm", content="plain")
+    plain_span = _span(
+        "span-b", "agent-b", [_model_event([ChatMessageUser(content="p1")], plain_out)]
+    )
+
+    root = TimelineSpan(
+        id="root", name="root", span_type=None, content=[scored_span, plain_span]
+    )
+
+    results, _ = await _collect(root, events=["score"])
+
+    assert len(results) == 2
+    scored_text = results[0].messages_str
+    plain_text = results[1].messages_str
+
+    # [M...] [E1] [M...] ordering inside the scored span.
+    assert re.search(r"\[M2\].*\[E1\] SCORE.*\[M3\]", scored_text, re.DOTALL)
+    # The other span is untouched: no event markers at all.
+    assert "[E" not in plain_text
+
+
+@pytest.mark.anyio
+async def test_sibling_spans_each_get_own_event_numbering_continues() -> None:
+    """Two sibling spans, each scoring itself; [E#] numbering is shared/global."""
+    out_a = ModelOutput.from_content(model="mockllm", content="answer-a")
+    span_a = _span(
+        "span-a",
+        "agent-a",
+        [
+            _model_event([ChatMessageUser(content="qa")], out_a),
+            ScoreEvent(score=Score(value="A"), scorer="match-a"),
+        ],
+    )
+    out_b = ModelOutput.from_content(model="mockllm", content="answer-b")
+    span_b = _span(
+        "span-b",
+        "agent-b",
+        [
+            _model_event([ChatMessageUser(content="qb")], out_b),
+            ScoreEvent(score=Score(value="B"), scorer="match-b"),
+        ],
+    )
+    root = TimelineSpan(
+        id="root", name="root", span_type=None, content=[span_a, span_b]
+    )
+
+    results, _ = await _collect(root, events=["score"])
+
+    assert len(results) == 2
+    assert "[E1] SCORE (match-a)" in results[0].messages_str
+    assert "[E2] SCORE (match-b)" in results[1].messages_str
+    # Each span's rendering contains only its own event.
+    assert "match-b" not in results[0].messages_str
+    assert "match-a" not in results[1].messages_str
+
+
+@pytest.mark.anyio
+async def test_events_filter_excludes_same_span_error_event() -> None:
+    """events=["score"] renders the ScoreEvent but drops a same-span ErrorEvent."""
+    out = ModelOutput.from_content(model="mockllm", content="answer")
+    span = _span(
+        "span-a",
+        "agent-a",
+        [
+            _model_event([ChatMessageUser(content="q")], out),
+            ScoreEvent(score=Score(value="C"), scorer="match"),
+            ErrorEvent(
+                error=EvalError(message="boom", traceback="", traceback_ansi="")
+            ),
+        ],
+    )
+    root = TimelineSpan(id="root", name="root", span_type=None, content=[span])
+
+    results, combined = await _collect(root, events=["score"])
+
+    assert len(results) == 1
+    assert "SCORE (match)" in combined
+    assert "ERROR" not in combined
+    assert "boom" not in combined
+
+
+@pytest.mark.anyio
+async def test_events_none_matches_direct_segment_messages() -> None:
+    """events=None must not interleave anything: identical to segment_messages(span)."""
+    out = ModelOutput.from_content(model="mockllm", content="answer")
+    span = _span(
+        "span-a",
+        "agent-a",
+        [
+            _model_event([ChatMessageUser(content="q")], out),
+            ScoreEvent(score=Score(value="C"), scorer="match"),
+        ],
+    )
+    root = TimelineSpan(id="root", name="root", span_type=None, content=[span])
+
+    model = get_model("mockllm/model")
+
+    msgs_as_str_a, _ = message_numbering()
+    via_timeline = [
+        seg
+        async for seg in timeline_messages(
+            root,
+            messages_as_str=msgs_as_str_a,
+            model=model,
+            context_window=10_000,
+        )
+    ]
+
+    msgs_as_str_b, _ = message_numbering()
+    via_segment_messages = [
+        seg
+        async for seg in segment_messages(
+            span,
+            messages_as_str=msgs_as_str_b,
+            model=model,
+            context_window=10_000,
+        )
+    ]
+
+    assert [s.messages_str for s in via_timeline] == [
+        s.messages_str for s in via_segment_messages
+    ]
+    assert [s.messages for s in via_timeline] == [
+        s.messages for s in via_segment_messages
+    ]
+    # Sanity: the score is genuinely not interleaved on the default path.
+    assert "[E" not in via_timeline[0].messages_str
+    assert "SCORE" not in via_timeline[0].messages_str
+
+
+@pytest.mark.anyio
+async def test_compaction_last_drops_anchor_event_fork_still_renders() -> None:
+    """compaction='last': a genuine fork renders while the pruned turn hides.
+
+    `ev1` is the compacted-away region "last": present in the untruncated
+    compaction="all" thread, so the discriminator (`_AnchorWalk`'s
+    `excluded_ids`) hides it rather than resurrecting it as a branch. The
+    fork's output never joins ANY thread, so it still renders as a
+    `MODEL (BRANCH)` entry. The score, anchored to the dropped `ev1` turn,
+    leads the span.
+    """
+    out1 = ModelOutput.from_content(model="mockllm", content="first")
+    a1 = out1.choices[0].message
+    ev1 = _model_event([_u1], out1)
+    score = ScoreEvent(score=Score(value=0.5), scorer="graded", intermediate=True)
+    compaction_event = CompactionEvent(type="summary")
+
+    fork_out = ModelOutput.from_content(model="mockllm", content="forked")
+    fork_ev = _model_event([_u1, a1], fork_out)
+
+    out2 = ModelOutput.from_content(model="mockllm", content="second")
+    # Fresh input (no history carried) -- mirrors what remains post-compaction.
+    # fork_ev sits between the boundary and ev2 without ev2 consuming its
+    # output, so fork_ev never joins compaction="last" NOR compaction="all"'s
+    # thread (only ev2, the region's last, is kept in either case).
+    ev2 = _model_event([_u2], out2)
+
+    span = _span("span-a", "agent-a", [ev1, score, compaction_event, fork_ev, ev2])
+    root = TimelineSpan(id="root", name="root", span_type=None, content=[span])
+
+    results, combined = await _collect(root, events=["score"], compaction="last")
+
+    assert len(results) == 1
+    # ev1 (compaction-pruned) stays hidden; fork_ev (genuine fork) renders as
+    # a branch entry, leading alongside the score, ahead of the surviving
+    # M1/M2 turns.
+    assert re.search(
+        r"\[E1\] SCORE.*\[E2\] MODEL \(BRANCH\):\n.*forked.*\[M1\].*\[M2\]",
+        combined,
+        re.DOTALL,
+    )
+    assert a1.text not in combined  # the compacted-away turn stays absent
+    assert "forked" in combined  # the genuine fork still surfaces
+
+
+@pytest.mark.anyio
+async def test_off_thread_model_event_renders_as_branch_entry() -> None:
+    """A fork's ModelEvent output that never joins the thread still renders.
+
+    span-a has model events A1, FORK, A2 where FORK's output is not part
+    of A2's input (A1's is): FORK is an off-thread branch that diverged
+    and was discarded. It must render as a `[E1] MODEL (BRANCH):` entry
+    anchored right after A1, not be silently dropped.
+    """
+    out1 = ModelOutput.from_content(model="mockllm", content="first")
+    a1 = out1.choices[0].message
+    ev1 = _model_event([_u1], out1)
+
+    fork_out = ModelOutput.from_content(model="mockllm", content="forked reasoning")
+    fork_ev = _model_event([_u1, a1], fork_out)
+
+    out2 = ModelOutput.from_content(model="mockllm", content="second")
+    ev2 = _model_event([_u1, a1, _u2], out2)
+
+    span = _span("span-a", "agent-a", [ev1, fork_ev, ev2])
+    root = TimelineSpan(id="root", name="root", span_type=None, content=[span])
+
+    # events=[] still renders off-thread outputs -- they are always-on and
+    # not gated by the `events` selection.
+    results, combined = await _collect(root, events=[])
+
+    assert len(results) == 1
+    assert re.search(
+        r"\[M2\].*\[E1\] MODEL \(BRANCH\):\n.*forked reasoning.*\[M3\]",
+        combined,
+        re.DOTALL,
+    )
+    # Not double-counted as a normal turn.
+    assert combined.count("forked reasoning") == 1
+
+
+@pytest.mark.anyio
+async def test_off_thread_model_event_with_reasoning_only_content_renders() -> None:
+    """A fork output with only reasoning content (empty `.completion`) still renders.
+
+    Rendering must go through `message_as_str` on the output message, not
+    `event.output.completion`: a message whose content is entirely
+    `ContentReasoning` parts has an empty `.completion`/`.text`, so relying
+    on `completion` would silently drop the branch entirely.
+    """
+    out1 = ModelOutput.from_content(model="mockllm", content="first")
+    a1 = out1.choices[0].message
+    ev1 = _model_event([_u1], out1)
+
+    fork_out = ModelOutput.from_content(
+        model="mockllm",
+        content=[ContentReasoning(reasoning="secret forked plan")],
+    )
+    assert fork_out.completion == ""  # sanity: the trap this test guards against
+    fork_ev = _model_event([_u1, a1], fork_out)
+
+    out2 = ModelOutput.from_content(model="mockllm", content="second")
+    ev2 = _model_event([_u1, a1, _u2], out2)
+
+    span = _span("span-a", "agent-a", [ev1, fork_ev, ev2])
+    root = TimelineSpan(id="root", name="root", span_type=None, content=[span])
+
+    results, combined = await _collect(root, events=[])
+
+    assert len(results) == 1
+    assert re.search(
+        r"\[M2\].*\[E1\] MODEL \(BRANCH\):\n.*<thinking>secret forked plan</thinking>.*\[M3\]",
+        combined,
+        re.DOTALL,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Scorer-span model suppression and branch/depth attribution via
+# transcript_messages()
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_scorers_span_score_event_attaches_to_last_scannable_span() -> None:
+    """The scorers span's ScoreEvent is owned by the last walked span.
+
+    The scorers span also contains a grader ModelEvent, which by default
+    is suppressed (model-only) rather than walked, so it never becomes
+    its own thread; the ScoreEvent is unaffected and still renders.
+    """
+    out_a = ModelOutput.from_content(model="mockllm", content="answer-a")
+    span_a = _span_of(
+        "span-a", "agent-a", [_model_event([ChatMessageUser(content="qa")], out_a)]
+    )
+    grader_out = ModelOutput.from_content(model="mockllm", content="grader assessment")
+    grader_event = _model_event([ChatMessageUser(content="grade this")], grader_out)
+    score = ScoreEvent(score=Score(value=1), scorer="match")
+    scorers_span = _span_of(
+        "span-scorers", "scorers", [grader_event, score], span_type="scorers"
+    )
+    root = _span_of("root", "root", [span_a, scorers_span], span_type=None)
+
+    results, combined = await _collect_transcript(root, events=["score"])
+
+    assert len(results) == 1
+    assert results[0].span.id == "span-a"
+    assert re.search(r"answer-a.*\[E1\] SCORE \(match\)", combined, re.DOTALL)
+    # The grader's model call never becomes its own rendered thread.
+    assert "grader assessment" not in combined
+    assert "grade this" not in combined
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "position",
+    ["before_first_span", "between_spans"],
+)
+async def test_root_level_event_attaches_to_last_preceding_span(
+    position: str,
+) -> None:
+    """A root-level event attaches to the last preceding scannable span (or leads the first)."""
+    out_a = ModelOutput.from_content(model="mockllm", content="answer-a")
+    span_a = _span_of(
+        "span-a", "agent-a", [_model_event([ChatMessageUser(content="qa")], out_a)]
+    )
+    limit_event = SampleLimitEvent(type="operator", message="stopped early")
+    out_b = ModelOutput.from_content(model="mockllm", content="answer-b")
+    span_b = _span_of(
+        "span-b", "agent-b", [_model_event([ChatMessageUser(content="qb")], out_b)]
+    )
+    content: list[Event | TimelineSpan] = (
+        [limit_event, span_a, span_b]
+        if position == "before_first_span"
+        else [span_a, limit_event, span_b]
+    )
+    root = _span_of("root", "root", content, span_type=None)
+
+    results, _ = await _collect_transcript(root, events=["sample_limit"])
+
+    assert len(results) == 2
+    span_a_text = results[0].messages_str
+    span_b_text = results[1].messages_str
+    assert "LIMIT" not in span_b_text
+    if position == "before_first_span":
+        # No preceding span: leads the first span.
+        assert re.match(r"\[E1\] LIMIT \(operator\)", span_a_text)
+    else:
+        assert "LIMIT (operator)" in span_a_text
+
+
+@pytest.mark.anyio
+async def test_include_scorers_true_renders_grader_thread_and_score_once() -> None:
+    """include_scorers=True: grader thread renders AND score interleaves, once."""
+    out_a = ModelOutput.from_content(model="mockllm", content="answer-a")
+    span_a = _span_of(
+        "span-a", "agent-a", [_model_event([ChatMessageUser(content="qa")], out_a)]
+    )
+    grader_out = ModelOutput.from_content(model="mockllm", content="grader assessment")
+    grader_event = _model_event([ChatMessageUser(content="grade this")], grader_out)
+    score = ScoreEvent(score=Score(value=1), scorer="match")
+    scorers_span = _span_of(
+        "span-scorers", "scorers", [grader_event, score], span_type="scorers"
+    )
+    root = _span_of("root", "root", [span_a, scorers_span], span_type=None)
+
+    results, combined = await _collect_transcript(
+        root, events=["score"], include_scorers=True
+    )
+
+    # Both the agent span and the scorers span (now walked) render.
+    assert len(results) == 2
+    assert results[1].span.id == "span-scorers"
+    # The grader's model call now renders as its own thread.
+    assert "grader assessment" in combined
+    # The score entry appears exactly once (spliced into the scorers
+    # span's own thread) -- not doubled by external collection.
+    assert combined.count("SCORE (match)") == 1
+
+
+@pytest.mark.anyio
+async def test_include_scorers_true_non_model_graded_score_collected_once() -> None:
+    """include_scorers=True: score from a scorers span with no ModelEvent.
+
+    A scorers span with no ModelEvent (e.g. a non-model-graded scorer like
+    ``match``) is never walked as its own scannable span, so its ScoreEvent
+    must still surface -- attributed to the last scannable span via the
+    ownership traversal -- rather than being silently dropped.
+    """
+    out_a = ModelOutput.from_content(model="mockllm", content="answer-a")
+    span_a = _span_of(
+        "span-a", "agent-a", [_model_event([ChatMessageUser(content="qa")], out_a)]
+    )
+    score = ScoreEvent(score=Score(value=1), scorer="match")
+    scorers_span = _span_of("span-scorers", "scorers", [score], span_type="scorers")
+    root = _span_of("root", "root", [span_a, scorers_span], span_type=None)
+
+    results, combined = await _collect_transcript(
+        root, events=["score"], include_scorers=True
+    )
+
+    # The scorers span has no direct ModelEvent, so it is never walked as
+    # its own scannable span; its score must instead surface as an
+    # external event attached to the last scannable span (span-a).
+    assert len(results) == 1
+    assert results[0].span.id == "span-a"
+    assert combined.count("SCORE (match)") == 1
+
+
+@pytest.mark.anyio
+async def test_depth_excluded_scannable_span_model_output_renders_after_parent() -> (
+    None
+):
+    """A depth-excluded but structurally scannable span's own ModelEvent renders as a branch entry after the parent.
+
+    The event is an on-thread turn, had the span been walked, and renders
+    as a ``MODEL (BRANCH)`` entry after the parent, exactly like every
+    other event type already excluded by ``depth`` -- there is no splice
+    reconstructing the child's thread for it to be "on".
+    """
+    out_parent = ModelOutput.from_content(model="mockllm", content="parent-answer")
+    out_child = ModelOutput.from_content(model="mockllm", content="child-answer")
+    child = _span_of(
+        "child",
+        "child-agent",
+        [_model_event([ChatMessageUser(content="child-q")], out_child)],
+    )
+    parent = _span_of(
+        "parent",
+        "parent-agent",
+        [_model_event([ChatMessageUser(content="parent-q")], out_parent), child],
+    )
+    root = _span_of("root", "root", [parent], span_type=None)
+
+    results, combined = await _collect_transcript(root, events=[], depth=1)
+
+    assert len(results) == 1
+    assert results[0].span.id == "parent"
+    assert re.search(
+        r"parent-answer.*\[E1\] MODEL \(BRANCH\):\nchild-answer",
+        combined,
+        re.DOTALL,
+    )
+
+
+def _agentic_events_with_scores() -> list[Event]:
+    """``agentic_events()`` augmented to exercise every attachment path.
+
+    - ``ScoreEvent(span_id="main")``: in-span, owned by "main"'s splice.
+    - ``ScoreEvent(span_id="sub")``: inside a utility span, collected
+      externally and attributed to "main".
+    - ``ScoreEvent(span_id="sub2")``: inside a nested scannable span --
+      owned by its own splice at ``depth=None``, external (attributed to
+      "main") at ``depth=1``.
+    - A "scorers" span with grader ``ModelEvent`` + ``ScoreEvent``: the
+      grader call is suppressed (model-only) by default and never walked,
+      so the score surfaces attributed to whichever span owns it.
+    - A genuine off-thread fork ``ModelEvent`` ("fork-1") in "main",
+      rendering as a ``[E#] MODEL (BRANCH):`` entry.
+    - (From plain ``agentic_events()``) the "sub" utility span's
+      ``ModelEvent``s: model calls with no thread of their own, rendered
+      as ``MODEL (BRANCH)`` entries attributed to "main".
+    """
+    events = list(agentic_events())
+
+    # Genuine off-thread fork inserted before the closing "main-3" turn:
+    # its output id never joins any reconstructed thread at any compaction
+    # value, so it must render as `[E#] MODEL (BRANCH):` with real output
+    # text on both the streaming and materialized paths.
+    main3_index = next(
+        i
+        for i, e in enumerate(events)
+        if isinstance(e, ModelEvent) and e.uuid == "evt-main-3"
+    )
+    events.insert(
+        main3_index,
+        _agentic_model_event(
+            label="fork-1",
+            system_prompt="MAIN",
+            output_text="fork-output-1",
+            span_id="main",
+        ),
+    )
+
+    main_end = next(
+        i
+        for i, e in enumerate(events)
+        if isinstance(e, SpanEndEvent) and e.id == "main"
+    )
+    events.insert(
+        main_end,
+        ScoreEvent(
+            uuid="evt-in-span-score",
+            span_id="main",
+            scorer="in-span",
+            score=Score(value=1),
+        ),
+    )
+
+    sub_end = next(
+        i for i, e in enumerate(events) if isinstance(e, SpanEndEvent) and e.id == "sub"
+    )
+    events.insert(
+        sub_end,
+        ScoreEvent(
+            uuid="evt-sub-external-score",
+            span_id="sub",
+            scorer="sub-external",
+            score=Score(value=0),
+        ),
+    )
+
+    sub2_end = next(
+        i
+        for i, e in enumerate(events)
+        if isinstance(e, SpanEndEvent) and e.id == "sub2"
+    )
+    events.insert(
+        sub2_end,
+        ScoreEvent(
+            uuid="evt-sub2-nested-score",
+            span_id="sub2",
+            scorer="sub2-nested",
+            score=Score(value=0.75),
+        ),
+    )
+
+    grader_event = _agentic_model_event(
+        label="grader-1",
+        system_prompt="GRADER",
+        output_text="grader-output",
+        span_id="scorers",
+    )
+    events += [
+        _span_begin(
+            span_id="scorers", name="scorers", span_type="scorers", parent_id=None
+        ),
+        grader_event,
+        ScoreEvent(
+            uuid="evt-scorers-score",
+            span_id="scorers",
+            scorer="graded",
+            score=Score(value=0.5),
+        ),
+        _span_end(span_id="scorers"),
+    ]
+    return events
+
+
+def _cumulative_compaction_events() -> list[Event]:
+    """A single "main" span with genuinely CUMULATIVE, multi-region compaction.
+
+    Three compaction regions: "t1" then "t2" (whose input embeds "t1"'s
+    output, as real transcripts do); "t3"; a genuine off-thread fork then
+    "t4"; plus a trailing in-span ``ScoreEvent``.
+
+    Under ``compaction in ("last", 2)`` region 1 is pruned, and "t1"'s
+    output is only recoverable through "t2"'s cumulative input -- so "t2"
+    must be retained in full (not output-only) for the discriminator to
+    classify "t1" as compaction-pruned rather than a fork.
+    """
+    ev_t1 = _agentic_model_event(
+        label="cc-t1", system_prompt="MAIN", output_text="turn1-output", span_id="main"
+    )
+    a1 = ev_t1.output.choices[0].message
+    ev_t2 = _agentic_model_event(
+        label="cc-t2",
+        system_prompt="MAIN",
+        output_text="turn2-output",
+        span_id="main",
+        input_messages=[
+            ChatMessageSystem(content="MAIN"),
+            ev_t1.input[1],
+            a1,
+            ChatMessageUser(content="user-input-cc-t2b"),
+        ],
+    )
+    compaction1 = _compaction_event(label="cc-c1", type="summary", span_id="main")
+    ev_t3 = _agentic_model_event(
+        label="cc-t3", system_prompt="MAIN", output_text="turn3-output", span_id="main"
+    )
+    compaction2 = _compaction_event(label="cc-c2", type="summary", span_id="main")
+    fork_ev = _agentic_model_event(
+        label="cc-fork", system_prompt="MAIN", output_text="fork-output", span_id="main"
+    )
+    ev_t4 = _agentic_model_event(
+        label="cc-t4", system_prompt="MAIN", output_text="turn4-output", span_id="main"
+    )
+    score = ScoreEvent(
+        uuid="evt-cc-score", span_id="main", scorer="final", score=Score(value=1)
+    )
+    return [
+        _span_begin(span_id="main", name="main", span_type="agent", parent_id=None),
+        ev_t1,
+        ev_t2,
+        compaction1,
+        ev_t3,
+        compaction2,
+        fork_ev,
+        ev_t4,
+        score,
+        _span_end(span_id="main"),
+    ]
+
+
+@pytest.mark.anyio
+async def test_number6_instance1_utility_events_render_in_document_position() -> None:
+    """agentic_events: the 'sub' utility span's outputs render in document order.
+
+    They render before main-output-3, not appended after the whole thread.
+    """
+    tree = timeline_build(agentic_events())
+    results, combined = await _collect_transcript(tree.root, events="all")
+    assert combined.index("sub-output-1") < combined.index("main-output-3")
+
+
+@pytest.mark.anyio
+async def test_number6_instance2_helper_renders_in_owner_segment() -> None:
+    """agentic_events: the utility span at main.content[11] renders in document order.
+
+    It renders in MAIN's segment, not in a later judge call's.
+    """
+    tree = timeline_build(agentic_events())
+    results, _ = await _collect_transcript(tree.root, events="all")
+    by_span: dict[str, str] = {r.span.id: "" for r in results}
+    for r in results:
+        by_span[r.span.id] += r.messages_str
+    main_id = next(sid for sid in by_span if "main" in sid or sid == "main")
+    assert "helper-output-1" in by_span[main_id]
+    assert all(
+        "helper-output-1" not in text for sid, text in by_span.items() if sid != main_id
+    )
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "shape",
+    ["score_only", "all_utility", "scorers_only", "container_with_branch"],
+)
+async def test_number5_zero_walked_shapes_yield_orphan_segment(shape: str) -> None:
+    root: TimelineSpan
+    if shape == "score_only":
+        root = _span_of(
+            "root",
+            "root",
+            [ScoreEvent(score=Score(value=1.0), scorer="s")],
+            span_type=None,
+        )
+    elif shape == "all_utility":
+        out = ModelOutput.from_content(model="mockllm", content="u")
+        util = _span("u1", "helper", [_model_event([_u1], out)])
+        util = util.model_copy(update={"utility": True})
+        root = _span_of("root", "root", [util], span_type=None)
+    elif shape == "scorers_only":
+        out = ModelOutput.from_content(model="mockllm", content="grader assessment")
+        grader = _span(
+            "g",
+            "grader",
+            [
+                _model_event([_u1], out),
+                ScoreEvent(score=Score(value=1.0), scorer="s"),
+            ],
+        )
+        root = _span_of(
+            "root",
+            "root",
+            [_span_of("sc", "scorers", [grader], span_type="scorers")],
+            span_type=None,
+        )
+    else:  # container_with_branch
+        alt_out = ModelOutput.from_content(model="mockllm", content="BRANCH-ALT")
+        branch = _span_of("b", "branch", [BranchEvent(), _model_event([_u1], alt_out)])
+        parent = _span_of(
+            "p",
+            "parent",
+            [ScoreEvent(score=Score(value=1.0), scorer="s")],
+            span_type=None,
+        )
+        parent = parent.model_copy(update={"branches": [branch]})
+        root = _span_of("root", "root", [parent], span_type=None)
+
+    results, combined = await _collect_transcript(root, events="all")
+    assert len(results) >= 1
+    assert all(r.span.id == _ORPHAN_SPAN_ID for r in results)
+    assert "[E" in combined  # entries actually rendered
+    if shape == "scorers_only":
+        assert "grader assessment" not in combined  # ModelEvents still suppressed
+    if shape == "container_with_branch":
+        assert "BRANCH-ALT" in combined  # branch appended after items
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("depth", [0, -1])
+async def test_depth_nonpositive_suppresses_orphan_homing(depth: int) -> None:
+    root = _span_of(
+        "root",
+        "root",
+        [ScoreEvent(score=Score(value=1.0), scorer="s")],
+        span_type=None,
+    )
+    results, _ = await _collect_transcript(root, events="all", depth=depth)
+    assert results == []
+
+
+@pytest.mark.anyio
+async def test_include_scorers_true_renders_grader_events_exactly_once() -> None:
+    """The double-render fix (design 'The problem', 4th consequence)."""
+    out_m = ModelOutput.from_content(model="mockllm", content="answer")
+    main = _span("m", "main", [_model_event([_u1], out_m)])
+    out_g = ModelOutput.from_content(model="mockllm", content="grader assessment")
+    grader = _span(
+        "g",
+        "grader",
+        [
+            _model_event([ChatMessageUser(content="grade")], out_g),
+            ScoreEvent(score=Score(value=1.0), scorer="s"),
+        ],
+    )
+    scorers = _span_of("sc", "scorers", [grader], span_type="scorers")
+    root = _span_of("root", "root", [main, scorers], span_type=None)
+
+    results, combined = await _collect_transcript(
+        root, events="all", include_scorers=True
+    )
+    assert combined.count("SCORE") == 1
+
+
+@pytest.mark.anyio
+async def test_extract_references_resolves_event_in_orphan_segment() -> None:
+    """[E#] resolvable in a segment with zero [M#] (design 'New tests')."""
+    root = _span_of(
+        "root",
+        "root",
+        [ScoreEvent(score=Score(value=1.0), scorer="s")],
+        span_type=None,
+    )
+    transcript = Transcript(
+        transcript_id="t1",
+        timelines=[Timeline(name="Default", description="", root=root)],
+    )
+    msgs_as_str, extract_refs = message_numbering()
+    model = get_model("mockllm/model")
+    segs = [
+        seg
+        async for seg in transcript_messages(
+            transcript,
+            messages_as_str=msgs_as_str,
+            model=model,
+            context_window=10_000,
+            events="all",
+        )
+    ]
+    assert segs and "[E1]" in segs[0].messages_str
+    refs = extract_refs("the evidence is [E1]")
+    assert refs and refs[0].type == "event"
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("compaction", ["last", 1])
+async def test_number6_position_holds_under_noncumulative_compaction(
+    compaction: Literal["last"] | int,
+) -> None:
+    """The design's untested corner: compaction='last' and int against #6.
+
+    Under 'last' the foreign event's anchoring turn is compacted away, so it
+    anchors to the previous surviving turn or leads the span -- either way it
+    must still RENDER, in-segment, before the surviving turn's successor
+    content (never appended after the whole thread).
+    """
+    ev1, ev2 = _two_turn_events()
+    for ev in (ev1, ev2):
+        ev.span_id = "span-a"
+    util = _span_of(
+        "util",
+        "helper",
+        [
+            SampleLimitEvent.model_construct(
+                event="sample_limit", type="message", limit=1, message="mid-limit"
+            )
+        ],
+    )
+    util = util.model_copy(update={"utility": True})
+    owner = _span_of("span-a", "agent-a", [ev1, util, ev2])
+    root = _span_of("root", "root", [owner], span_type=None)
+
+    results, combined = await _collect(root, events="all", compaction=compaction)
+    assert "LIMIT" in combined
+    assert combined.index("LIMIT") < combined.index("second")
+
+
+@pytest.mark.anyio
+async def test_segment_messages_emits_for_all_marker_list() -> None:
+    """Pins the behavior #5's fix depends on (design, Evidence base)."""
+    from inspect_scout._transcript.interleave import _event_message
+
+    msgs = [_event_message("e1", "SCORE: 1.0"), _event_message("e2", "LIMIT: hit")]
+    msgs_as_str, _ = message_numbering()
+    segs = [
+        s
+        async for s in segment_messages(
+            msgs,
+            messages_as_str=msgs_as_str,
+            model=get_model("mockllm/model"),
+            context_window=10_000,
+        )
+    ]
+    assert len(segs) == 1
+    assert "[E1]" in segs[0].messages_str and "[E2]" in segs[0].messages_str
+
+
+@pytest.mark.anyio
+async def test_orphan_only_segment_reduces_to_scalar_result() -> None:
+    """Design §3: an orphan segment can never flip a scalar Result into a resultset.
+
+    This pins reduce_timeline_results' single-key fast path. The brief's guessed import path/call shape (inspect_scout._scanner._reducer,
+    inspect_scout.types.Result, sync call) does not match the actual code:
+    reduce_timeline_results lives in inspect_scout._llm_scanner._reducer, is
+    async, and takes a required ``reducer`` callable; Result lives in
+    inspect_scout._scanner.result. Corrected per the two production call
+    sites (_llm_scanner.py's scan_materialized/stream_via_timeline) and the
+    closest existing fixture (test_reducer.py::TestAggregateResults).
+    """
+    from unittest.mock import AsyncMock
+
+    from inspect_scout._llm_scanner._reducer import reduce_timeline_results
+    from inspect_scout._scanner.result import Result
+
+    reducer = AsyncMock()
+    reduced = await reduce_timeline_results(
+        [(_ORPHAN_SPAN_ID, Result(value=0.5))], reducer
+    )
+    assert reduced.type != "resultset"
+    assert reduced.value == 0.5
+    reducer.assert_not_called()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("events", [None, "all"])
+async def test_agentic_events_yields_each_walked_span_exactly_once(
+    events: EventsSpec | None,
+) -> None:
+    """Pins walk_owned_spans' one-OwnedSpan-per-walked-span discipline.
+
+    A regression once split this into multiple "runs" per span to satisfy a
+    (since-corrected) global cross-segment ordering reading of oracle 1; that
+    made ``main``'s thread render three times under events=None -- a +50%
+    scan-cost, duplicate-results defect. context_window is high enough that
+    no segment splits on size, so any extra segment here would mean a span
+    rendered more than once, not a legitimate content split.
+    """
+    tree = timeline_build(agentic_events())
+    results, combined = await _collect(tree.root, events=events, context_window=100_000)
+
+    assert [seg.span.id for seg in results] == [
+        "main",
+        "sub2",
+        "browser",
+        "tool-agent-call-handoff-tool",
+    ]
+    assert all(seg.span.id != _ORPHAN_SPAN_ID for seg in results)
+    assert combined.count("main-output-3") == 1
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("depth", [None, 1])
+@pytest.mark.parametrize("compaction", ["all", "last", 2])
+async def test_agentic_scores_render_once_across_compaction_and_depth(
+    compaction: Literal["all", "last"] | int, depth: int | None
+) -> None:
+    """Sub-agent output and scores survive every compaction/depth combination.
+
+    Each sub-agent output must render exactly once and land in the owning
+    span's segment; the off-thread fork must render as a branch entry; the
+    grader's model call must stay suppressed while its score still surfaces.
+    """
+    results, combined = await _collect(
+        timeline_build(_agentic_events_with_scores()).root,
+        events=["score"],
+        compaction=compaction,
+        depth=depth,
+    )
+    assert results
+
+    assert "fork-output-1" in combined
+    assert "MODEL (BRANCH)" in combined
+    assert combined.count("sub-output-1") == 1
+    assert combined.count("sub-output-2") == 1
+
+    main_text = next(
+        text
+        for span_id, text in ((r.span.id, r.messages_str) for r in results)
+        if span_id == "main"
+    )
+    assert "sub-output-1" in main_text
+
+    # grader model calls stay out; the score itself is shown
+    assert "grader-output" not in combined
+    assert "SCORE" in combined
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("compaction", ["all", "last", 2])
+async def test_cumulative_compaction_does_not_resurface_pruned_regions(
+    compaction: Literal["all", "last"] | int,
+) -> None:
+    """A pruned region must stay hidden, not reappear as a spurious branch.
+
+    Region 1's output is only recoverable through region 2's cumulative
+    input, so a discriminator that misreads it classifies a compaction-pruned
+    turn as a genuine fork and renders it as `MODEL (BRANCH)`.
+    """
+    _, combined = await _collect(
+        timeline_build(_cumulative_compaction_events()).root,
+        events=["score"],
+        compaction=compaction,
+    )
+
+    if compaction == "all":
+        assert "turn1-output" in combined
+    else:
+        assert "turn1-output" not in combined, "a pruned region must not resurface"
+    assert combined.count("turn4-output") == 1
+
+
+@pytest.mark.anyio
+async def test_events_selection_does_not_bypass_compaction_on_span_transcripts() -> (
+    None
+):
+    """`events=` must not reroute a span-structured transcript to the flat path.
+
+    The flat interleave path segments `transcript.messages` directly and
+    passes neither `compaction` nor `depth`. A transcript that carries real
+    spans must keep going through the timeline path, or adding `events=`
+    silently turns `compaction` into a no-op.
+    """
+    from inspect_ai.model import ChatMessageAssistant, ChatMessageUser
+    from inspect_scout._transcript.messages import transcript_messages
+    from inspect_scout._transcript.types import Transcript
+
+    async def render(
+        compaction: Literal["all", "last"], events: EventsSpec | None
+    ) -> str:
+        reset_ids()
+        transcript = Transcript(
+            transcript_id="t",
+            messages=[ChatMessageUser(content="q"), ChatMessageAssistant(content="a")],
+            events=agentic_events(),
+        )
+        msgs_as_str, _ = message_numbering()
+        out: list[str] = []
+        async for seg in transcript_messages(
+            transcript,
+            messages_as_str=msgs_as_str,
+            model=get_model("mockllm/model"),
+            compaction=compaction,
+            events=events,
+        ):
+            out.append(seg.messages_str)
+        return "\n".join(out)
+
+    # compaction discriminates with and without an events selection alike
+    assert await render("all", None) != await render("last", None)
+    assert await render("all", ["score"]) != await render("last", ["score"])

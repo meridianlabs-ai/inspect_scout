@@ -240,8 +240,7 @@ async def test_combined_filtering() -> None:
 
 @pytest.mark.asyncio
 async def test_attachment_resolution() -> None:
-    """Test resolution of attachment references, exact and embedded."""
-    embedded_id = "b2c3d4e5f67890123456789012345678"
+    """Test resolution of attachment references."""
     result = await load_filtered_transcript(
         create_json_stream(
             {
@@ -256,7 +255,7 @@ async def test_attachment_resolution() -> None:
                         "content": [
                             {
                                 "type": "text",
-                                "text": f"prefix attachment://{embedded_id} suffix",
+                                "text": "attachment://b2c3d4e5f67890123456789012345678",
                             }
                         ],
                     },
@@ -290,9 +289,67 @@ async def test_attachment_resolution() -> None:
     )
 
     assert result.messages[0].content == "Content A"
-    assert result.messages[1].text == "prefix Content B suffix"
+    assert result.messages[1].text == "Content B"
     assert isinstance(result.events[0], ToolEvent)
     assert result.events[0].result == "Content C"
+
+
+@pytest.mark.asyncio
+async def test_embedded_attachment_ref_is_not_a_ref() -> None:
+    """An id that merely appears inside a larger string is not a reference.
+
+    `create_attachment` returns `attachment://<hash>` as an entire field value
+    and inspect_ai reads refs back with `startswith`, so mid-string text is
+    author-written: it must neither retain its attachment nor be substituted.
+    """
+    attachment_id = "a1b2c3d4e5f678901234567890123456"
+    embedded = f"see attachment://{attachment_id} for details"
+    info = TranscriptInfo(
+        transcript_id="test",
+        source_type="test",
+        source_id="42",
+        source_uri="/test.json",
+    )
+    messages: list[dict[str, Any]] = [{"role": "user", "content": embedded}]
+    table = {attachment_id: "SECRET"}
+    event: dict[str, Any] = {
+        "span_id": "s1",
+        "timestamp": 1.0,
+        "event": "info",
+        "data": {},
+    }
+
+    # Events first and not collected, so the ref filter is what bounds the
+    # table: an embedded id must not put its attachment in it.
+    async with adapt_to_reader(
+        create_json_stream(
+            {
+                "id": "test",
+                "messages": messages,
+                "events": [event],
+                "attachments": table,
+            }
+        )
+    ) as reader:
+        _, attachments = await _parse_and_filter(reader, info, "all", None)
+    assert attachments == {}
+
+    # Attachments first with events collected latches `retain_all`, so the
+    # whole table is held and only the resolution rule keeps the text intact.
+    result = await load_filtered_transcript(
+        create_json_stream(
+            {
+                "id": "test",
+                "messages": messages,
+                "attachments": table,
+                "events": [event],
+            }
+        ),
+        info,
+        "all",
+        "all",
+    )
+    assert result.messages[0].content == embedded
 
 
 @pytest.mark.parametrize(

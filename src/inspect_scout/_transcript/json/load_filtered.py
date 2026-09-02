@@ -1,6 +1,5 @@
 import io
 import json
-import re
 from collections.abc import AsyncIterable
 from dataclasses import dataclass
 from typing import IO, Any, Callable
@@ -21,7 +20,8 @@ from ..util import filter_transcript
 from .pool import resolve_pools
 from .reducer import (
     ATTACHMENT_PREFIX,
-    ATTACHMENT_REF_PATTERN,
+    ATTACHMENT_PREFIX_LEN,
+    ATTACHMENT_REF_LEN,
     ATTACHMENTS_PREFIX,
     CALL_POOL_ITEM_PREFIX,
     EVENTS_DATA_CALLS_ITEM_PREFIX,
@@ -504,18 +504,15 @@ def _resolve_attachments(
     """
 
     def resolve_string(text: str) -> str:
-        """Replace attachment references in a string."""
-        # Fast path: skip regex if no attachment prefix found
-        if ATTACHMENT_PREFIX not in text:
+        """Resolve a string that is itself an attachment reference.
+
+        A ref is never a substring: `create_attachment` replaces the whole
+        field, and inspect_ai reads refs back with `startswith`. Substituting
+        one found mid-string would rewrite author-written text.
+        """
+        if len(text) != ATTACHMENT_REF_LEN or not text.startswith(ATTACHMENT_PREFIX):
             return text
-
-        def replace_ref(match: re.Match[str]) -> str:
-            attachment_id = match.group(1)
-            return attachments.get(
-                attachment_id, match.group(0)
-            )  # Return original if not found
-
-        return ATTACHMENT_REF_PATTERN.sub(replace_ref, text)
+        return attachments.get(text[ATTACHMENT_PREFIX_LEN:], text)
 
     # Resolve references in messages (already raw dicts, no need to model_dump)
     resolved_messages = []

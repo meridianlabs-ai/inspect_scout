@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 from typing import Any, Generator, Literal, cast
 
@@ -10,8 +9,7 @@ from ijson.utils import coroutine as _ijson_coroutine  # type: ignore
 # Public constants / prefixes
 ATTACHMENT_PREFIX = "attachment://"
 ATTACHMENT_PREFIX_LEN = len(ATTACHMENT_PREFIX)
-ATTACHMENT_REF_PATTERN = re.compile(r"attachment://([a-f0-9]{32})")
-# Length of an exact ref: the prefix plus the pattern's 32-char hex id.
+# A ref is the prefix plus a 32-char hex id, and nothing else.
 ATTACHMENT_REF_LEN = ATTACHMENT_PREFIX_LEN + 32
 ATTACHMENTS_PREFIX = "attachments."
 MESSAGES_ITEM_PREFIX = "messages.item"
@@ -121,16 +119,12 @@ def _item_coroutine(
         except Exception:
             builder = None
             continue
-        if event == "string" and isinstance(value, str) and ATTACHMENT_PREFIX in value:
-            # Exact-ref fast path avoids the regex engine for the common case;
-            # fall back to the regex only for embedded refs. This is a
-            # per-ijson-event loop like the one load_filtered.py warns about
-            # (56M+ calls) -- profile before removing.
+        if event == "string" and isinstance(value, str):
+            # A ref is the whole value, never a substring -- inspect_ai's
+            # create_attachment replaces the entire field. Length-first keeps
+            # this cheap in a loop that runs per ijson event.
             if len(value) == ATTACHMENT_REF_LEN and value.startswith(ATTACHMENT_PREFIX):
                 attachments.add(value[ATTACHMENT_PREFIX_LEN:])
-            else:
-                for m in ATTACHMENT_REF_PATTERN.finditer(value):
-                    attachments.add(m.group(1))
 
 
 def message_item_coroutine(
@@ -348,7 +342,7 @@ __all__ = [
     "TARGET_PREFIX",
     "ATTACHMENT_PREFIX",
     "ATTACHMENT_PREFIX_LEN",
-    "ATTACHMENT_REF_PATTERN",
+    "ATTACHMENT_REF_LEN",
     "ATTACHMENTS_PREFIX",
     "MESSAGES_ITEM_PREFIX",
     "EVENTS_ITEM_PREFIX",

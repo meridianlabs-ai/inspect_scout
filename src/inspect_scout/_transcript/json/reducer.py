@@ -214,28 +214,13 @@ def attachments_coroutine(
 ) -> CoroutineGen:  # pragma: no cover
     """Collect the attachments table.
 
-    Pool entries under ``events_data`` can carry refs too, and that section
-    follows ``attachments`` in the file, so a plain ``attachment_refs``
-    membership test here cannot know about them yet. Only a *retained* event
-    can ever resolve a pool entry, so this only needs to retain every
-    attachment when a retained event carries a pool ref -- but JSON object
-    key order is not guaranteed, so at the point the first attachment string
-    arrives, ``state.events`` may simply not have been populated yet rather
-    than genuinely being empty. ``collecting_events`` (whether an events
-    coroutine exists at all -- i.e. events are wanted, regardless of whether
-    any have arrived) tells us when that ambiguity is even possible:
-
-    - Not collecting events at all: no event can ever need a pool entry, so
-      the original referenced-ID filter applies -- this is what keeps a
-      messages-only scan bounded.
-    - Collecting events, and none retained *yet*: cannot yet know whether a
-      pool-ref-carrying event is still to come, so retain everything
-      (conservative -- guessing wrong here drops data permanently).
-    - Collecting events, and at least one retained event has a pool ref:
-      retain everything (it's needed).
-
-    ``state.attachment_refs`` is still collected in all cases, because the
-    early exit in ``load_filtered`` keys off it.
+    Filtering on ``state.attachment_refs`` alone is unsafe once events are
+    collected: pool entries under ``events_data`` carry refs of their own, and
+    that section follows ``attachments`` in the file, so they are unknowable
+    here. Retain everything when a retained event carries a pool ref -- or
+    when the events section has not streamed yet, since JSON key order is not
+    guaranteed and guessing wrong drops data permanently. Otherwise the ref
+    filter applies and the table stays bounded.
     """
     attachments_prefix_len = len(ATTACHMENTS_PREFIX)
     retain_all: bool | None = None

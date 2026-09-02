@@ -247,7 +247,7 @@ async def test_recorder_buffer_doesnt_materialize_metadata() -> None:
     )
 
     # Normalize it (this is what buffer.py does)
-    result = _normalize_scalar(metadata)
+    result = _normalize_scalar("transcript_metadata", metadata)
 
     # Should be a JSON string
     assert isinstance(result, str)

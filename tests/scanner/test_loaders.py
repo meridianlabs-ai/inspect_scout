@@ -16,10 +16,7 @@ from inspect_ai.model._chat_message import (
     ChatMessageUser,
 )
 from inspect_ai.model._generate_config import GenerateConfig
-from inspect_scout._scanner._loaders import (
-    _matches_transcript_or_handle,
-    create_implicit_loader,
-)
+from inspect_scout._scanner._loaders import create_implicit_loader
 from inspect_scout._transcript.handle import (
     MaterializedTranscriptHandle,
     SpooledTranscriptHandle,
@@ -438,26 +435,44 @@ def test_bare_list_type_should_raise_error() -> None:
 
 
 @pytest.mark.parametrize(
-    ("annotation", "expected"),
+    ("annotation", "expected_loader"),
     [
-        pytest.param(Transcript | TranscriptHandle, True, id="transcript-and-handle"),
+        pytest.param(
+            Transcript | TranscriptHandle, "IdentityLoader", id="transcript-and-handle"
+        ),
         pytest.param(
             Transcript | MaterializedTranscriptHandle | SpooledTranscriptHandle,
-            True,
+            "IdentityLoader",
             id="transcript-and-both-concrete-handles",
         ),
-        pytest.param(Transcript | int, False, id="incompatible-member-rejected"),
+        pytest.param(Transcript, "IdentityLoader", id="bare-transcript"),
+        pytest.param(Transcript | int, None, id="incompatible-member-rejected"),
         pytest.param(
             TranscriptHandle | MaterializedTranscriptHandle,
-            False,
+            None,
             id="no-transcript-member",
         ),
-        pytest.param(Transcript, False, id="bare-transcript-not-a-union"),
     ],
 )
-def test_matches_transcript_or_handle(annotation: Any, expected: bool) -> None:
-    """Only a `Transcript | <handle types>` union matches; nothing else does.
+def test_transcript_or_handle_union_takes_the_identity_loader(
+    annotation: Any, expected_loader: str | None
+) -> None:
+    """A `Transcript | <handle types>` union routes to the identity loader.
 
-    Guards `create_implicit_loader`'s identity-loader routing.
+    Asserts through `create_implicit_loader`, since that routing — not the
+    predicate — is what a handle-accepting scanner needs at registration.
+    ``None`` marks annotations that are not a transcript-or-handle union and
+    so fall through to the message/event loaders, which reject them.
     """
-    assert _matches_transcript_or_handle(annotation) is expected
+
+    async def scanner_fn(input: Any) -> Any:
+        return None
+
+    scanner_fn.__annotations__["input"] = annotation
+
+    if expected_loader is None:
+        with pytest.raises(RuntimeError):
+            create_implicit_loader(scanner_fn, does_not_matter_filter)
+    else:
+        loader = create_implicit_loader(scanner_fn, does_not_matter_filter)
+        assert registry_unqualified_name(loader) == expected_loader

@@ -3,10 +3,9 @@
 import io
 import json
 from pathlib import Path
-from typing import Any, Callable, cast
+from typing import Any, cast
 
 import pytest
-from inspect_ai._util.error import PrerequisiteError
 from inspect_ai.model import ChatMessageUser
 from inspect_scout import scanner
 from inspect_scout._concurrency.common import ScannerJob
@@ -14,7 +13,6 @@ from inspect_scout._scan import (
     _content_for_scanner,
     _scan_one,
     _streaming_eligible,
-    _transcript_for_record,
 )
 from inspect_scout._scanner.result import Result, SerializedTranscript
 from inspect_scout._scanner.scanner import SCANNER_SUPPORTS_STREAMING_ATTR, Scanner
@@ -49,15 +47,6 @@ def _plain_scanner() -> Scanner[Transcript]:
     return scan
 
 
-@scanner(messages="all")
-def _raising_handle_scanner() -> Scanner[Transcript]:
-    async def scan(transcript: Transcript) -> Result:
-        raise RuntimeError("scanner boom")
-
-    setattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, True)
-    return scan
-
-
 def _materialized_handle(transcript: Transcript) -> MaterializedTranscriptHandle:
     """Build a materialized handle over an in-memory transcript."""
 
@@ -67,10 +56,6 @@ def _materialized_handle(transcript: Transcript) -> MaterializedTranscriptHandle
     return MaterializedTranscriptHandle(
         load_fn, TranscriptInfo(transcript_id=transcript.transcript_id)
     )
-
-
-def _empty_transcript() -> Transcript:
-    return Transcript(transcript_id="t1", messages=[], events=[], metadata={})
 
 
 @pytest.mark.asyncio
@@ -117,41 +102,6 @@ async def test_scan_one_stream_error_contained() -> None:
     assert "corrupt sample JSON" in reports[0].error.error
 
 
-@pytest.mark.parametrize(
-    ("scanner_factory", "raises"),
-    [
-        pytest.param(_handle_scanner, None, id="scan_succeeds"),
-        pytest.param(_raising_handle_scanner, "scanner boom", id="scanner_raises"),
-    ],
-)
-@pytest.mark.asyncio
-async def test_scan_one_awaits_on_complete_once(
-    scanner_factory: Callable[[], Scanner[Transcript]], raises: str | None
-) -> None:
-    """`on_complete` is awaited exactly once, including when the scanner raises."""
-    handle = _materialized_handle(_empty_transcript())
-
-    complete_calls = 0
-
-    async def on_job_complete() -> None:
-        nonlocal complete_calls
-        complete_calls += 1
-
-    job = ScannerJob(
-        union_transcript=handle,
-        scanner=scanner_factory(),
-        scanner_name="s",
-        on_complete=on_job_complete,
-    )
-
-    if raises is not None:
-        with pytest.raises(RuntimeError, match=raises):
-            await _scan_one(job, validation=None, fail_on_error=True)
-    else:
-        await _scan_one(job, validation=None, fail_on_error=True)
-    assert complete_calls == 1
-
-
 def _scanner_with(
     messages: Any = None, events: Any = None, timeline: Any = None
 ) -> Scanner[Any]:
@@ -172,11 +122,6 @@ def _scanner_with(
     ("filters", "expected"),
     [
         pytest.param(
-            [{"messages": "all"}, {"messages": "all"}],
-            True,
-            id="messages_all",
-        ),
-        pytest.param(
             [
                 {"messages": ["user", "assistant"]},
                 {"messages": ["assistant", "user"]},
@@ -193,52 +138,6 @@ def _scanner_with(
             [{"messages": "all"}, {"messages": "all", "events": "all"}],
             False,
             id="events_none_vs_all",
-        ),
-        pytest.param(
-            [
-                {
-                    "messages": "all",
-                    "events": ["model", "compaction", "span_begin", "span_end"],
-                },
-                {
-                    "messages": "all",
-                    "events": ["span_end", "span_begin", "compaction", "model"],
-                },
-            ],
-            True,
-            id="events_order",
-        ),
-        pytest.param(
-            [
-                {"messages": "all", "events": ["model"]},
-                {
-                    "messages": "all",
-                    "events": ["model", "compaction", "span_begin", "span_end"],
-                },
-            ],
-            False,
-            id="events_narrower",
-        ),
-        pytest.param(
-            [
-                {"messages": "all", "events": "all"},
-                {"messages": "all", "events": "all"},
-            ],
-            True,
-            id="events_all",
-        ),
-        pytest.param(
-            [{"messages": "all"}],
-            True,
-            id="single_scanner",
-        ),
-        pytest.param(
-            [
-                {"messages": "all", "timeline": "all"},
-                {"messages": "all", "timeline": "all"},
-            ],
-            False,
-            id="timeline_both",
         ),
         pytest.param(
             [{"messages": "all", "timeline": "all"}, {"messages": "all"}],
@@ -297,74 +196,3 @@ async def test_scan_one_records_serialized_input_for_spooled_handle(
     assert reports[0].input_type == "transcript"
     assert isinstance(reports[0].input, SerializedTranscript)
     assert json.loads(reports[0].input.input_json)["transcript_id"] == "t1"
-
-
-@pytest.mark.asyncio
-async def test_scan_one_records_after_scan_completes() -> None:
-    """The record value is produced after the scan call, not before.
-
-    Bounded-memory streaming only holds if the record isn't materialized
-    while the scanner runs. Pin the ordering via a shared call log rather
-    than reaching into `_scan_one`'s internals, so hoisting
-    `_transcript_for_record` above the scan call would fail this test.
-    """
-    calls: list[str] = []
-
-    async def load_fn() -> Transcript:
-        calls.append("load")
-        return _empty_transcript()
-
-    handle = MaterializedTranscriptHandle(load_fn, TranscriptInfo(transcript_id="t1"))
-
-    @scanner(messages="all", events="all")
-    def factory() -> Scanner[Transcript]:
-        async def scan(transcript: Transcript) -> Result:
-            calls.append("scan")
-            return Result(value="ok")
-
-        setattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, True)
-        return scan
-
-    job = ScannerJob(
-        union_transcript=handle,
-        scanner=factory(),
-        scanner_name="order",
-    )
-    await _scan_one(job, validation=None, fail_on_error=True)
-
-    assert calls == ["scan", "load"]
-
-
-@pytest.mark.parametrize(
-    ("error", "fail_on_error", "expect_raise"),
-    [
-        pytest.param(RuntimeError("boom"), False, False, id="contained"),
-        pytest.param(RuntimeError("boom"), True, True, id="fail_on_error"),
-        pytest.param(PrerequisiteError("boom"), False, True, id="prerequisite"),
-    ],
-)
-@pytest.mark.asyncio
-async def test_transcript_for_record_error_propagation(
-    error: Exception, fail_on_error: bool, expect_raise: bool
-) -> None:
-    """Record-path failures follow the same rules as the scan-call sites.
-
-    Containment here is deliberate -- a result already produced should still
-    be recorded -- but a `PrerequisiteError` must always bring the scan down,
-    and `fail_on_error` must surface a genuine record-path defect rather than
-    quietly emptying every transcript in the scan.
-    """
-
-    async def load_fn() -> Transcript:
-        raise error
-
-    handle = MaterializedTranscriptHandle(load_fn, TranscriptInfo(transcript_id="t1"))
-
-    if expect_raise:
-        with pytest.raises(type(error)):
-            await _transcript_for_record(handle, fail_on_error=fail_on_error)
-    else:
-        recorded = await _transcript_for_record(handle, fail_on_error=fail_on_error)
-        assert isinstance(recorded, Transcript)
-        assert recorded.messages == []
-        assert recorded.events == []

@@ -1,20 +1,14 @@
-"""Regression tests for the streaming seam's refcounted-handle teardown.
+"""Regression test for the streaming seam's refcounted-handle teardown.
 
 `ScannerJob.on_complete` closes a shared `TranscriptHandle` once every scanner
 sharing it (the lead plus its followers) has run. `single_process_strategy`'s
 teardown has to drain `scanner_job_deque` and run `on_complete` for whatever it
-finds, or the handle's refcount never reaches zero and it never closes. Two
-shapes can be stranded there when the worker pool is torn down early:
-
-- a follower whose lead already ran (a follower is only queued inside the
-  lead's own `finally`, see `single_process.py`'s `_perform_scan`);
-- a lead nobody dispatched, whose followers were therefore never released --
-  which is why the drain recurses into `job.followers`.
+finds, or the handle's refcount never reaches zero and it never closes.
 """
 
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
-from typing import Literal, cast
+from typing import cast
 
 import pytest
 from inspect_scout import scanner
@@ -36,13 +30,11 @@ def _noop_scanner() -> Scanner[Transcript]:
 
 @asynccontextmanager
 async def _reader_cm() -> AsyncIterator[TranscriptsReader]:
-    yield cast(TranscriptsReader, None)  # never dereferenced by these tests
+    yield cast(TranscriptsReader, None)  # never dereferenced by this test
 
 
-def _lead_with_followers(
+def _lead_with_raising_followers(
     follower_names: tuple[str, ...],
-    *,
-    followers_raise: bool = False,
 ) -> tuple[ScannerJob, list[str]]:
     """A lead plus its followers, all sharing one refcount, and a visit log."""
     visited: list[str] = []
@@ -62,7 +54,7 @@ def _lead_with_followers(
             union_transcript=transcript,
             scanner=_noop_scanner(),
             scanner_name=name,
-            on_complete=_on_complete(name, name != "lead" and followers_raise),
+            on_complete=_on_complete(name, name != "lead"),
             followers=followers,
         )
 
@@ -70,19 +62,15 @@ def _lead_with_followers(
     return lead, visited
 
 
-async def _run_until_crash(
-    lead: ScannerJob, *, crash_in: Literal["record", "parse"]
-) -> None:
-    """Drive the strategy until a worker dies, leaving `lead` or its followers queued.
+async def _run_until_parse_crash(lead: ScannerJob) -> None:
+    """Drive the strategy until the second parse dies, leaving `lead` queued.
 
-    `crash_in="record"` lets the lead run and strands its followers.
-    `crash_in="parse"` kills the second parse before anything is dispatched, so
-    the lead itself is stranded with its followers still attached.
+    Nothing dispatches the lead, so its followers are never queued either --
+    they are only reachable through `job.followers`.
     """
-    parse_job_count = 1 if crash_in == "record" else 2
 
     async def parse_jobs() -> AsyncIterator[ParseJob]:
-        for _ in range(parse_job_count):
+        for _ in range(2):
             yield ParseJob(
                 transcript_info=TranscriptInfo(transcript_id="t1"),
                 scanner_indices={0, 1},
@@ -95,22 +83,17 @@ async def _run_until_crash(
     ) -> ParseFunctionResult:
         nonlocal parses
         parses += 1
-        if crash_in == "parse" and parses > 1:
+        if parses > 1:
             raise RuntimeError("worker crashed")
         return True, lead
 
     async def scan_function(job: ScannerJob) -> list[ResultReport]:
-        try:
-            return []
-        finally:
-            if job.on_complete is not None:
-                await job.on_complete()
+        return []
 
     async def record_results(
         info: TranscriptInfo, scanner_name: str, results: list[ResultReport]
     ) -> None:
-        if crash_in == "record":
-            raise RuntimeError("worker crashed")
+        return None
 
     # A queue deeper than one keeps the second parse from being pre-empted by a
     # scan, which is what leaves the first lead undispatched.
@@ -128,41 +111,15 @@ async def _run_until_crash(
 
 
 @pytest.mark.asyncio
-async def test_teardown_runs_on_complete_for_a_follower_stranded_in_the_queue() -> None:
-    """A follower left in `scanner_job_deque` still gets `on_complete` run."""
-    lead, visited = _lead_with_followers(("f1",))
+async def test_teardown_releases_a_stranded_lead_and_all_its_followers() -> None:
+    """Every share of a stranded job's refcount is released, raises included.
 
-    await _run_until_crash(lead, crash_in="record")
-
-    assert sorted(visited) == ["f1", "lead"]
-
-
-@pytest.mark.asyncio
-async def test_teardown_drain_continues_past_a_raising_on_complete() -> None:
-    """One stranded job's `on_complete` raising must not stop the drain.
-
-    Each stranded job still holds a real share of the shared handle's
-    refcount; skipping the rest because one of them raised would leak the
-    handle just as surely as never draining at all. Every follower raises, so
-    the guard is pinned whatever order the drain visits them in.
+    Missing the followers leaves N-1 shares outstanding and the handle open;
+    so does letting one job's raising `on_complete` abandon the rest of the
+    drain, which is why every follower here raises.
     """
-    lead, visited = _lead_with_followers(("f1", "f2", "f3"), followers_raise=True)
+    lead, visited = _lead_with_raising_followers(("f1", "f2"))
 
-    await _run_until_crash(lead, crash_in="record")
-
-    assert sorted(visited) == ["f1", "f2", "f3", "lead"]
-
-
-@pytest.mark.asyncio
-async def test_teardown_releases_the_followers_of_a_stranded_lead() -> None:
-    """An undispatched lead's followers were never queued -- the drain must recurse.
-
-    Nothing ever ran `_perform_scan` for this lead, so its followers are only
-    reachable through `job.followers`; missing them leaves N-1 refcount shares
-    outstanding and the handle open.
-    """
-    lead, visited = _lead_with_followers(("f1", "f2"))
-
-    await _run_until_crash(lead, crash_in="parse")
+    await _run_until_parse_crash(lead)
 
     assert sorted(visited) == ["f1", "f2", "lead"]

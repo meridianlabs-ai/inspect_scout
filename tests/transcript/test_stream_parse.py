@@ -14,6 +14,7 @@ from inspect_scout._transcript.json import spool as spool_mod
 from inspect_scout._transcript.json.spool import SpoolKey
 from inspect_scout._transcript.json.stream_parse import (
     replay_events,
+    replay_messages,
     stream_parse_to_spool,
 )
 
@@ -185,3 +186,34 @@ async def test_nested_tool_events_that_are_not_events_pass_through(
         assert event.events == nested
     finally:
         result.close()
+
+
+@pytest.mark.asyncio
+async def test_embedded_attachment_ref_is_not_a_ref(tmp_path: Path) -> None:
+    """Mid-string ids are left alone, as on the materialized path.
+
+    The spool keeps every attachment, so the resolution rule is the only thing
+    standing between an id that appears inside author-written text and the
+    attachment body being pasted over it.
+    """
+    attachment_id = "a" * 32
+    embedded = f"see attachment://{attachment_id} for details"
+    sample: dict[str, Any] = {
+        "id": "s-embedded",
+        "messages": [
+            {"id": "m1", "role": "user", "content": embedded},
+            {
+                "id": "m2",
+                "role": "assistant",
+                "content": f"attachment://{attachment_id}",
+            },
+        ],
+        "attachments": {attachment_id: "SECRET"},
+    }
+    result = await stream_parse_to_spool(_stream(sample), "all", None, tmp_path)
+    try:
+        messages = list(replay_messages(result))
+    finally:
+        result.close()
+    assert messages[0].content == embedded
+    assert messages[1].content == "SECRET"

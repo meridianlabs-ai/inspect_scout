@@ -217,9 +217,25 @@ def test_byte_spool_roundtrips_across_chunk_boundaries(
     [_populated_blob_spool, _populated_item_spool, _populated_byte_spool],
     ids=["blob", "item", "byte"],
 )
-def test_spool_no_file_left_behind(
+def test_spool_close_releases_the_file(
     factory: Callable[[Path], Any], tmp_path: Path
 ) -> None:
+    """The file is auto-deleting, so releasing the fd is what reclaims the disk.
+
+    Asserted on the file object rather than on ``tmp_path.iterdir()``: POSIX
+    unlinks at creation, so the directory is empty while the fd is still open.
+    """
     spool = factory(tmp_path)
+    spool_file = spool._file
     spool.close()
-    assert list(tmp_path.iterdir()) == []  # deleted when the fd closes
+    assert spool_file.closed
+
+
+def test_byte_spool_rejects_non_positive_chunk_size(tmp_path: Path) -> None:
+    """A zero chunk size would otherwise loop forever yielding empty buffers."""
+    spool = _populated_byte_spool(tmp_path)
+    try:
+        with pytest.raises(ValueError, match="chunk_size must be positive"):
+            next(spool.chunks(0))
+    finally:
+        spool.close()

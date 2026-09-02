@@ -113,12 +113,14 @@ def _fallback_transcript() -> Transcript:
 
 
 def _spooled_handle_with_bad_parse(
-    fallback_transcript: Transcript,
+    fallback_transcript: Transcript, counts: dict[str, int]
 ) -> SpooledTranscriptHandle:
     async def parse() -> StreamParseResult:
+        counts["parse"] += 1
         raise ijson.JSONError("nan")
 
     async def fallback() -> Transcript:
+        counts["fallback"] += 1
         return fallback_transcript
 
     return SpooledTranscriptHandle(INFO, parse, fallback)
@@ -127,8 +129,14 @@ def _spooled_handle_with_bad_parse(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("first_call", ["messages", "load"])
 async def test_spooled_handle_fallback(first_call: str) -> None:
+    """The fallback is taken once and then memoized, however it is reached.
+
+    ``load_fallback`` is a full re-read of the source member, so repeating it
+    per call would re-download and re-parse a >64MB transcript every time.
+    """
     fallback_transcript = _fallback_transcript()
-    async with _spooled_handle_with_bad_parse(fallback_transcript) as handle:
+    counts = {"parse": 0, "fallback": 0}
+    async with _spooled_handle_with_bad_parse(fallback_transcript, counts) as handle:
         if first_call == "messages":
             messages = [m async for m in handle.messages()]
             loaded = await handle.load()
@@ -138,15 +146,32 @@ async def test_spooled_handle_fallback(first_call: str) -> None:
         assert [m.id for m in messages] == ["fb1"]
         assert loaded is fallback_transcript
 
+        # Three more round-trips must not re-parse or re-fetch.
+        for _ in range(3):
+            assert [m async for m in handle.messages()] == messages
+            assert [e async for e in handle.events()] == []
+            assert (await handle.load()) is fallback_transcript
+        assert counts == {"parse": 1, "fallback": 1}
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("handle_kind", ["spooled", "materialized"])
-async def test_handle_use_after_close_raises(handle_kind: str, tmp_path: Path) -> None:
+@pytest.mark.parametrize("load_first", [False, True], ids=["cold", "loaded"])
+async def test_handle_use_after_close_raises(
+    handle_kind: str, load_first: bool, tmp_path: Path
+) -> None:
+    """A closed handle refuses use -- including one that already loaded.
+
+    The memoized transcript used to be served from in front of the closed
+    check, so a closed handle kept handing out content.
+    """
     handle: SpooledTranscriptHandle | MaterializedTranscriptHandle = (
         _spooled_handle(tmp_path)
         if handle_kind == "spooled"
         else _materialized_handle()
     )
+    if load_first:
+        await handle.load()
     await handle.aclose()
     await handle.aclose()  # idempotent
 
@@ -162,6 +187,7 @@ async def test_handle_use_after_close_raises(handle_kind: str, tmp_path: Path) -
 async def test_spooled_handle_concurrent_first_use_parses_once(
     tmp_path: Path,
 ) -> None:
+    """Concurrent first use parses once and materializes once."""
     calls = 0
 
     async def parse() -> StreamParseResult:
@@ -184,17 +210,24 @@ async def test_spooled_handle_concurrent_first_use_parses_once(
         async def collect_messages() -> None:
             messages_result.extend([m.id async for m in handle.messages()])
 
+        loaded: list[Transcript] = []
+
         async def collect_load() -> None:
             transcript = await handle.load()
+            loaded.append(transcript)
             load_result.extend([m.id for m in transcript.messages])
 
         async with anyio.create_task_group() as tg:
             tg.start_soon(collect_messages)
             tg.start_soon(collect_load)
+            tg.start_soon(collect_load)
 
     assert calls == 1
     assert messages_result == ["m1", "m2"]
-    assert load_result == ["m1", "m2"]
+    assert load_result == ["m1", "m2", "m1", "m2"]
+    # One transcript, not one per caller: each is a full materialization of a
+    # spool that can be multiple GB.
+    assert loaded[0] is loaded[1]
 
 
 @pytest.mark.asyncio

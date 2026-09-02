@@ -569,9 +569,10 @@ class EvalLogTranscriptsView(TranscriptsView):
         The returned handle references ``self`` (filesystem, ``read``), so use
         it within the view's `connect()`/`disconnect()` lifetime.
 
-        A remote source may be streamed twice only if the spooled parse hits
-        malformed JSON (NaN/Inf) and falls back to `read()`; accepted rather
-        than adding dedicated member spooling.
+        A spooled parse that hits malformed JSON (NaN/Inf) falls back to
+        `read()`, which re-reads the ZIP member -- and `read()` itself retries
+        ijson before its own json5 fallback, so such a sample is streamed
+        three times. Accepted rather than adding dedicated member spooling.
         """
         if not t.source_uri:
             raise ValueError("source_uri must be set")
@@ -590,11 +591,16 @@ class EvalLogTranscriptsView(TranscriptsView):
         ):
             return MaterializedTranscriptHandle(lambda: self.read(t, content), t)
 
+        # A subdirectory of the files cache, not the cache root: on Windows
+        # the spool files stay listed until their fds close, and the cache's
+        # size accounting (`LocalFilesCache.resolve_remote_uri_to_local`)
+        # would count multi-GB spools against its own budget.
         spool_dir = (
-            self._files_cache.cache_dir
+            self._files_cache.cache_dir / "spool"
             if self._files_cache
             else Path(tempfile.gettempdir())
         )
+        spool_dir.mkdir(parents=True, exist_ok=True)
 
         async def parse() -> StreamParseResult:
             async with await zip_reader.open_member(entry) as json_iterable:

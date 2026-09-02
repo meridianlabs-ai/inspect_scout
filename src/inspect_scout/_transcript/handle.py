@@ -1,8 +1,8 @@
 """TranscriptHandle protocol and implementations for streaming transcript reads.
 
-``MaterializedTranscriptHandle`` wraps an in-memory ``Transcript`` (small-file
+``MaterializedTranscriptHandle`` loads a whole ``Transcript`` (small-file
 path); ``SpooledTranscriptHandle`` wraps a disk-spool-backed
-``StreamParseResult`` (large-file path), deferring the parse until first use.
+``StreamParseResult`` (large-file path). Both defer the work to first use.
 """
 
 from __future__ import annotations
@@ -49,10 +49,11 @@ class TranscriptHandle(Protocol):
         ...
 
     async def load(self) -> Transcript:
-        """Materialize the full transcript in memory (memoized).
+        """Materialize the transcript in memory (memoized).
 
         May parse a multi-GB sample; prefer ``messages()``/``events()`` for
-        bounded-memory access.
+        bounded-memory access. Content is whatever the handle was opened for
+        -- ``SpooledTranscriptHandle`` never restores ``timelines``.
         """
         ...
 
@@ -66,7 +67,7 @@ class TranscriptHandle(Protocol):
 
 
 class MaterializedTranscriptHandle:
-    """Handle over an already/eagerly loaded Transcript (small-file path)."""
+    """Handle that loads a whole Transcript on first use (small-file path)."""
 
     def __init__(
         self, load_fn: Callable[[], Awaitable[Transcript]], info: TranscriptInfo
@@ -87,6 +88,8 @@ class MaterializedTranscriptHandle:
         return self._info
 
     async def load(self) -> Transcript:
+        if self._closed:
+            raise RuntimeError("TranscriptHandle is closed")
         if self._transcript is not None:
             return self._transcript
         async with self._lock:
@@ -138,6 +141,7 @@ class SpooledTranscriptHandle:
         self._transcript: Transcript | None = None
         self._closed = False
         self._lock = anyio.Lock()
+        self._load_lock = anyio.Lock()
 
     def __reduce__(self) -> NoReturn:
         raise TypeError(
@@ -167,7 +171,8 @@ class SpooledTranscriptHandle:
     async def parsed_result(self) -> StreamParseResult | None:
         """The spooled parse, or None if the JSON-error fallback was used.
 
-        Parses on first use like the iterators do, so the record path works
+        For callers that need the spools themselves rather than validated
+        items. Parses on first use like the iterators do, so it works
         regardless of whether anything has streamed yet.
         """
         return await self._ensure_parsed()
@@ -201,22 +206,29 @@ class SpooledTranscriptHandle:
             yield event
 
     async def load(self) -> Transcript:
-        if self._transcript is not None:
-            return self._transcript
         if self._closed:
             raise RuntimeError("TranscriptHandle is closed")
+        if self._transcript is not None:
+            return self._transcript
+        # Its own lock: `_ensure_parsed` takes `_lock`, which is not
+        # reentrant. Without a lock here, concurrent callers each materialize
+        # the whole spool and return different transcripts.
+        async with self._load_lock:
+            if self._transcript is None:
+                self._transcript = await self._build_transcript()
+        return self._transcript
 
+    async def _build_transcript(self) -> Transcript:
         result = await self._ensure_parsed()
         if result is None:
             assert self._fallback_transcript is not None
-            self._transcript = self._fallback_transcript
-            return self._transcript
+            return self._fallback_transcript
 
         messages = [m async for m in self.messages()]
         events = [e async for e in self.events()]
         metadata = _merge_unthinned(self._info.metadata, result)
 
-        self._transcript = Transcript.model_construct(
+        return Transcript.model_construct(
             **self._info.model_dump(exclude={"metadata"}),
             metadata=metadata,
             messages=messages,
@@ -228,7 +240,6 @@ class SpooledTranscriptHandle:
             # test_materialized_preserves_timelines_spooled_drops_them.
             timelines=[],
         )
-        return self._transcript
 
     async def aclose(self) -> None:
         async with self._lock:

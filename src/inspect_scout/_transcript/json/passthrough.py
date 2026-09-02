@@ -24,7 +24,7 @@ from pydantic import JsonValue
 from ..._util._json import to_json_bytes_compact
 from ..types import Transcript, TranscriptInfo
 from .pool import slice_positions
-from .reducer import ATTACHMENT_REF_BYTES
+from .reducer import ATTACHMENT_REF_JSON_BYTES
 from .spool import ByteSpool
 from .stream_parse import StreamParseResult
 
@@ -93,9 +93,10 @@ def pooled_passthrough(
     #
     # Attachment ids may be referenced from messages, from events, or from
     # inside a pool entry -- scan all three or refs dangle. Each chunk is
-    # scanned as it is emitted: an id cannot straddle two chunks because every
-    # item is serialized whole, so this sees exactly what a scan of the
-    # finished envelope would.
+    # scanned as it is emitted: a quoted ref cannot straddle two chunks because
+    # every item is serialized whole, so both of a value's delimiters land in
+    # the same chunk and this sees exactly what a scan of the finished envelope
+    # would.
     #
     # Chunks accumulate on a spool, not in memory: only the finished envelope
     # has to exist contiguously, and holding the pieces as well would double
@@ -106,7 +107,8 @@ def pooled_passthrough(
 
         def emit_bytes(data: bytes | memoryview) -> None:
             attachment_ids.update(
-                match.decode("ascii") for match in ATTACHMENT_REF_BYTES.findall(data)
+                match.decode("ascii")
+                for match in ATTACHMENT_REF_JSON_BYTES.findall(data)
             )
             envelope.write(data)
 
@@ -190,16 +192,18 @@ def _emit_input_data(
     transcript this value is the largest thing in the process.
     """
     # Entries are parsed and re-serialized individually rather than spliced
-    # verbatim, so the bytes match a dump of the whole structure. Attachments
-    # come last because their ids are only complete once every pool entry has
-    # been scanned.
+    # verbatim, so the bytes match a dump of the whole structure -- and each
+    # entry arrives whole, so a quoted ref never straddles two writes.
+    # Attachments come last because their ids are only complete once every pool
+    # entry has been scanned.
     spool = ByteSpool(result.spool_dir)
     try:
 
         def emit(text: str) -> None:
             data = text.encode("utf-8")
             attachment_ids.update(
-                match.decode("ascii") for match in ATTACHMENT_REF_BYTES.findall(data)
+                match.decode("ascii")
+                for match in ATTACHMENT_REF_JSON_BYTES.findall(data)
             )
             spool.write(data)
 

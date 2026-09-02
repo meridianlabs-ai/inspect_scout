@@ -206,3 +206,77 @@ def test_merged_metadata_prefers_spooled_values_over_the_stale_index_copies(
         "target": "t",
         "scores": {"accuracy": 1.0},
     }
+
+
+def _embedded(attachment_id: str) -> str:
+    return f"see attachment://{attachment_id} for details"
+
+
+def test_envelope_collects_only_whole_value_attachment_refs(tmp_path: Path) -> None:
+    """An id inside author-written text is not a ref, so its body is not shipped.
+
+    Over-collection is not cosmetic here: attachment bodies are large by
+    construction, so one mention would bloat the public `input_data` column by
+    the whole body of an attachment nothing will ever resolve.
+    """
+    embedded_id, quoted_id, whole_id = "a" * 32, "e" * 32, "b" * 32
+    messages = ItemSpool(tmp_path)
+    messages.append({"role": "user", "content": _embedded(embedded_id)})
+    # Text opening with a quote character: JSON escapes it, so the serialized
+    # bytes read `\"attachment://<id>"` and the value's own closing delimiter
+    # would otherwise complete a match.
+    messages.append({"role": "user", "content": f'"attachment://{quoted_id}'})
+    messages.append({"role": "assistant", "content": f"attachment://{whole_id}"})
+    blobs = BlobSpool(tmp_path)
+    blobs.put(embedded_id, "MENTIONED")
+    blobs.put(quoted_id, "QUOTED")
+    blobs.put(whole_id, "REFERENCED")
+    result = StreamParseResult(
+        messages, ItemSpool(tmp_path), blobs, ByteSpool(tmp_path), tmp_path
+    )
+    try:
+        input_json, input_data_json = pooled_passthrough(
+            TranscriptInfo(transcript_id="t1"), result
+        )
+    finally:
+        result.close()
+
+    assert json.loads(input_data_json)["attachments"] == {whole_id: "REFERENCED"}
+    assert json.loads(input_json)["messages"][0]["content"] == _embedded(embedded_id)
+
+
+def test_pool_entries_collect_only_whole_value_attachment_refs(
+    tmp_path: Path,
+) -> None:
+    """The same rule on the second scan site: refs reached through a pool ref.
+
+    The event carries positions, not text, so nothing here is collectable from
+    the envelope -- only from the pool entries `_emit_input_data` re-serializes.
+    """
+    embedded_id, whole_id = "c" * 32, "d" * 32
+    blobs = BlobSpool(tmp_path)
+    blobs.put(
+        ("message_pool", 0),
+        json.dumps({"role": "user", "content": _embedded(embedded_id)}),
+    )
+    blobs.put(
+        ("message_pool", 1),
+        json.dumps({"role": "user", "content": f"attachment://{whole_id}"}),
+    )
+    blobs.put(embedded_id, "MENTIONED")
+    blobs.put(whole_id, "REFERENCED")
+    events = ItemSpool(tmp_path)
+    events.append({"event": "model", "input_refs": [[0, 2]]})
+    result = StreamParseResult(
+        ItemSpool(tmp_path), events, blobs, ByteSpool(tmp_path), tmp_path
+    )
+    try:
+        _, input_data_json = pooled_passthrough(
+            TranscriptInfo(transcript_id="t1"), result
+        )
+    finally:
+        result.close()
+
+    data = json.loads(input_data_json)
+    assert data["attachments"] == {whole_id: "REFERENCED"}
+    assert data["messages"][0]["content"] == _embedded(embedded_id)

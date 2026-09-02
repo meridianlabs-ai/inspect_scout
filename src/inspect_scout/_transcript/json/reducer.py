@@ -14,9 +14,17 @@ from ijson.utils import (  # type: ignore[import-untyped]  # no published stubs
 # Public constants / prefixes
 ATTACHMENT_PREFIX = "attachment://"
 ATTACHMENT_PREFIX_LEN = len(ATTACHMENT_PREFIX)
-ATTACHMENT_REF_BYTES = re.compile(rb"attachment://([a-f0-9]{32})")
-"""Ref pattern over UTF-8 bytes, for scanning serialized JSON without decoding
-it first. Refs are ASCII."""
+ATTACHMENT_REF_JSON_BYTES = re.compile(rb'(?<!\\)"attachment://([a-f0-9]{32})"')
+"""A whole-value ref as serialized JSON spells it, delimiters included.
+
+Scans serialized JSON without decoding it first (refs are ASCII). The quotes
+are load-bearing: a ref is only a ref when it is the entire string value, and
+JSON writes a value's own delimiters unescaped, so requiring them is what
+separates a ref from an id mentioned inside author-written text.
+
+The lookbehind rejects `\\"attachment://<id>"`, which is text whose content
+opens with a quote character, not a value. It can never reject a real ref: a
+value's opening delimiter follows `:`, `,` or `[`, never a backslash."""
 # A ref is the prefix plus a 32-char hex id, and nothing else.
 ATTACHMENT_REF_LEN = ATTACHMENT_PREFIX_LEN + 32
 ATTACHMENTS_PREFIX = "attachments."
@@ -453,7 +461,7 @@ __all__ = [
     "ATTACHMENT_PREFIX",
     "ATTACHMENT_PREFIX_LEN",
     "ATTACHMENT_REF_LEN",
-    "ATTACHMENT_REF_BYTES",
+    "ATTACHMENT_REF_JSON_BYTES",
     "JsonTextWriter",
     "spooling_metadata_coroutine",
     "ATTACHMENTS_PREFIX",

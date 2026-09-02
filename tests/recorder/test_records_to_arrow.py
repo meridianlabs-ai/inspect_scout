@@ -1,7 +1,9 @@
-"""Arrow conversion of the pre-serialized (bytes/bytearray) `input` columns.
+"""Arrow conversion of the pre-serialized `input`/`input_data` columns.
 
-`_serialize_input` emits UTF-8 buffers rather than `str`; these pin that the
-buffers survive into a real string column, for both buffer types.
+`_serialize_input` emits UTF-8 JSON buffers rather than `str`. These pin that
+the buffers reach a real string column, that either buffer type the passthrough
+accepts behaves the same, and that no other column takes the passthrough —
+arbitrary metadata can be bytes pyarrow refuses to decode.
 """
 
 from typing import Any
@@ -44,3 +46,35 @@ def test_bytes_column_preserves_non_ascii(buffer_type: BufferType) -> None:
     table = _records_to_arrow([{"input": encoded}])
 
     assert table.column("input").to_pylist() == ['{"text":"héllo 你好"}']
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        pytest.param(b'{"a":1}', '"{\\"a\\":1}"', id="utf8-json-encoded"),
+        pytest.param(b"\xff", "b'\\xff'", id="non-utf8-stringified"),
+    ],
+)
+def test_other_columns_keep_the_json_encode_fallback(
+    value: bytes, expected: str
+) -> None:
+    """Hoisted metadata columns carry whatever the eval log held.
+
+    Bytes there are not pre-serialized JSON, so they keep the encode-then-
+    `str()` fallback. Passing them through instead makes a non-UTF-8 value an
+    `ArrowInvalid` that aborts the whole recording.
+    """
+    table = _records_to_arrow([{"transcript_date": value}])
+
+    assert table.column("transcript_date").to_pylist() == [expected]
+
+
+def test_mixed_column_decodes_buffers_instead_of_repring_them() -> None:
+    """The mixed-column fallback is the one path left that still sees a buffer.
+
+    Latent today — `input` is uniformly bytes-or-None per recorded batch — but
+    `str()` there would put a b'...' repr in a public results column.
+    """
+    table = _records_to_arrow([{"input": b'{"a":1}'}, {"input": 3}])
+
+    assert table.column("input").to_pylist() == ['{"a":1}', "3"]

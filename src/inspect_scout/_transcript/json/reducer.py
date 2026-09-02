@@ -6,8 +6,10 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Generator, Literal, ParamSpec, Protocol
 
-from ijson import ObjectBuilder  # type: ignore
-from ijson.utils import coroutine as _ijson_coroutine  # type: ignore
+from ijson import ObjectBuilder  # type: ignore[import-untyped]  # no published stubs
+from ijson.utils import (  # type: ignore[import-untyped]  # no published stubs
+    coroutine as _ijson_coroutine,
+)
 
 # Public constants / prefixes
 ATTACHMENT_PREFIX = "attachment://"

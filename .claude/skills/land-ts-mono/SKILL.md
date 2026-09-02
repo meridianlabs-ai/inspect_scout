@@ -132,19 +132,19 @@ breaking shared-package changes in the ts-mono PR description.
 3. Cross-link the two PRs in each other's descriptions.
 
 Result: this repo's PR is green **except** `submodule-on-main`. That one red
-gate is the expected signal meaning "waiting on ts-mono merge" — do not try
-to fix it yet. It stays red *through* the merge and clears only once you bump
-the gitlink to the merged SHA in step 4.2; don't tell anyone it will clear on
-its own. Note: `submodule-on-main` is a job inside the "Build" workflow, so
-that whole workflow shows as failing in rollup views — read job-level status
-before concluding anything else broke.
+gate is the expected signal meaning "waiting on ts-mono merge". Do not try
+to fix it yet. It stays red through the merge. It clears only after you bump
+the gitlink to the merged SHA in step 4.2, so do not tell anyone the merge
+alone will clear it. Note: `submodule-on-main` is a job inside the "Build"
+workflow, so that whole workflow shows as failing in rollup views. Read
+job-level status before concluding anything else broke.
 
 **Why two-phase:** once ts-mono merges, its `main` depends on Python changes
 that aren't merged yet, blocking anyone else who pulls ts-mono `main`. The
 goal is to make that window as short as possible: get *everything else* green
 on both PRs first, and only then merge ts-mono.
 
-### 4. Endgame — phase 2: merge in order, quickly
+### 4. Phase 2: merge in order, quickly
 
 Preconditions — ALL of these before anyone merges anything:
 
@@ -157,22 +157,25 @@ The provisional approval matters: it puts review latency *before* the
 blocking window opens. Once ts-mono merges, the only remaining work should
 be re-running one gate — not waiting on a reviewer.
 
-Auto-merge: NEVER enable it on the ts-mono PR — its merge is the deliberate,
-human-timed act that opens the blocking window, and it must not fire just
-because checks pass. The Python PR is the opposite: once ts-mono is merged,
-enable auto-merge on it yourself (`gh pr merge --auto`) so it lands the
-moment the gate clears.
+Auto-merge: NEVER enable it on the ts-mono PR. Merging it opens the blocking
+window, so it needs explicit approval and must not fire just because checks
+pass. The Python PR is the opposite. Once ts-mono is merged, enable
+auto-merge on it yourself (`gh pr merge --auto`) so it lands the moment the
+gate clears.
 
-1. Tell the user both PRs are ready and the ts-mono PR is safe to merge —
-   then immediately start watching it (background poll of its merged state,
-   e.g. `gh pr view <n> --json state,mergeCommit`); a human merges it (agents
-   cannot). React to the merge the moment it lands — the blocking window
+1. Tell the user both PRs are ready, and ask for approval to merge the
+   ts-mono PR. Merging it is the deliberate act that opens the blocking
+   window. Do it only with the user's explicit approval, never on your own
+   initiative. Start watching its merged state as soon as you ask (background
+   poll, e.g. `gh pr view <n> --json state,mergeCommit`), because whoever
+   merges it may not be you. React the moment it lands. The blocking window
    opens at merge, so don't wait for the user to come back and tell you.
 2. Fetch in the submodule, then compare the gitlink SHA against ts-mono
    `origin/main`:
-   - **SHA changed** (squash or rebase merge — anything the ts-mono PR UI can
-     do): bump the gitlink to the merged `main` SHA. The bump picks up **every** ts-mono `main` change since the
-     last bump, not just yours — so rebuild the viewer bundle at the new
+   - **SHA changed** (squash or rebase merge, which is anything the ts-mono
+     PR UI can do): bump the gitlink to the merged `main` SHA. The bump picks
+     up **every** ts-mono `main` change since the last bump, not just yours,
+     so rebuild the viewer bundle at the new
      commit (`pnpm install --frozen-lockfile && pnpm build` in the
      submodule; the build copies output into this repo's
      `src/inspect_scout/_view/dist`) and commit the gitlink together with
@@ -220,4 +223,4 @@ moment the gate clears.
   a later branch commit can change the Python models and leave
   `openapi.json` stale against the branch's *own* source. When
   resuming mid-flight, re-run the regeneration command and confirm it's a
-  no-op before entering the endgame.
+  no-op before entering phase 2.

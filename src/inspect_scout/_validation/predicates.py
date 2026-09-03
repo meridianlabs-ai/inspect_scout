@@ -1,3 +1,4 @@
+import inspect
 from typing import Awaitable, Callable, Literal, TypeAlias
 
 from inspect_ai._util._async import is_callable_coroutine
@@ -30,6 +31,15 @@ PredicateType: TypeAlias = Literal[
 # Union type for all validation predicates (strings + callables)
 ValidationPredicate: TypeAlias = PredicateType | PredicateFn
 """Predicate used to compare scanner result with target value."""
+
+
+def is_async_predicate(predicate: object) -> bool:
+    """Return whether a predicate is an async callable that can be awaited."""
+    if inspect.isasyncgenfunction(predicate):
+        return False
+    if callable(predicate) and inspect.isasyncgenfunction(predicate.__call__):
+        return False
+    return is_callable_coroutine(predicate)
 
 
 # Numeric comparison predicates
@@ -199,7 +209,7 @@ def resolve_predicate(
     if predicate is None:
         return _eq
     if callable(predicate):
-        if not is_callable_coroutine(predicate):
+        if not is_async_predicate(predicate):
             raise TypeError("Validation predicates must be async functions.")
         return predicate
     if isinstance(predicate, str):

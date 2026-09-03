@@ -1,5 +1,8 @@
 """Tests for validation predicates."""
 
+from collections.abc import AsyncIterator
+from typing import cast
+
 import pytest
 from inspect_scout._scanner.result import Result
 from inspect_scout._validation import ValidationCase, ValidationPredicate, ValidationSet
@@ -197,6 +200,23 @@ async def test_custom_callable_predicate() -> None:
     assert await validate(validation, Result(value=123), "456") is False
 
 
+@pytest.mark.asyncio
+async def test_async_generator_predicate_is_rejected() -> None:
+    """Test that async generators are rejected before predicate execution."""
+
+    async def async_generator_predicate(
+        result: Result, target: JsonValue
+    ) -> AsyncIterator[bool]:
+        yield result.value == target
+
+    validation = ValidationSet(
+        cases=[],
+        predicate=cast(ValidationPredicate, async_generator_predicate),
+    )
+    with pytest.raises(TypeError, match="must be async functions"):
+        await validate(validation, Result(value=True), True)
+
+
 # Test dict target validation (string predicates applied to each key)
 
 
@@ -274,8 +294,8 @@ def test_predicate_serialization() -> None:
     assert restored.predicate == "gt"
 
 
-def test_custom_predicate_serialization() -> None:
-    """Test that custom predicates serialize via dill."""
+def test_custom_predicate_model_dump_does_not_encode_executable_state() -> None:
+    """Runtime predicates are not converted to executable artifact strings."""
 
     async def custom(result: Result, target: object) -> bool:
         return result.value == target
@@ -284,14 +304,8 @@ def test_custom_predicate_serialization() -> None:
         cases=[ValidationCase(id="test1", target=10)], predicate=custom
     )
 
-    # Serialize to dict
     data = validation.model_dump()
-    assert isinstance(data["predicate"], str)
-    assert data["predicate"] != "eq"  # Should be base64-encoded dill
-
-    # Deserialize from dict
-    restored = ValidationSet.model_validate(data)
-    assert callable(restored.predicate)
+    assert data["predicate"] is custom
 
 
 def test_predicate_serialization_with_dict_target() -> None:

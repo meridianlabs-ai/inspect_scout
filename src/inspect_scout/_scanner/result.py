@@ -16,6 +16,17 @@ from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
 from inspect_scout._transcript.types import Transcript
 from inspect_scout._util._json import to_json_str_compact
 
+# Reference comes from inspect_ai; __all__ marks it re-exported for strict mypy.
+__all__ = [
+    "Error",
+    "ParsedT",
+    "Reference",
+    "Result",
+    "ResultReport",
+    "ResultValidation",
+    "as_resultset",
+]
+
 logger = getLogger(__name__)
 
 

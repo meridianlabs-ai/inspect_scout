@@ -1,6 +1,7 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Sequence, Set, cast
+from typing import Any, Iterable, Sequence, cast
 
 import importlib_metadata
 from inspect_ai._util.constants import PKG_NAME as INSPECT_PKG_NAME
@@ -27,6 +28,11 @@ from inspect_scout._util.constants import (
     PKG_NAME,
 )
 from inspect_scout._util.revision import scan_revision
+from inspect_scout._validation.predicates import PredicateFn
+from inspect_scout._validation.spec import (
+    validation_sets_from_specs,
+    validation_sets_to_specs,
+)
 from inspect_scout._validation.types import ValidationSet
 
 from ._recorder.factory import scan_recorder_type_for_location
@@ -98,7 +104,7 @@ async def create_scan(scanjob: ScanJob) -> ScanContext:
         options=options or ScanOptions(),
         scanners=_spec_scanners(scanjob.scanners),
         worklist=list(scanjob.worklist) if scanjob.worklist else None,
-        validation=scanjob.validation,
+        validation=validation_sets_to_specs(scanjob.validation),
         tags=scanjob.tags,
         metadata=scanjob.metadata,
         model=ModelConfig(
@@ -123,7 +129,10 @@ async def create_scan(scanjob: ScanJob) -> ScanContext:
     )
 
 
-async def resume_scan(scan_location: str) -> ScanContext:
+async def resume_scan(
+    scan_location: str,
+    predicate_overrides: Mapping[str, PredicateFn] | None = None,
+) -> ScanContext:
     # load the spec
     recorder_type = scan_recorder_type_for_location(scan_location)
     status = await recorder_type.status(scan_location)
@@ -133,14 +142,20 @@ async def resume_scan(scan_location: str) -> ScanContext:
     spec = status.spec
     if spec.transcripts is None:
         raise RuntimeError("Cannot resume scan because it has no transcripts snapshot.")
+    loaded_files: set[str] = set()
+    validation = validation_sets_from_specs(
+        spec.validation,
+        predicate_overrides,
+        loaded_files=loaded_files,
+    )
     transcripts = await transcripts_from_snapshot(spec.transcripts)
-    scanners = scanners_from_spec_dict(spec.scanners)
+    scanners = scanners_from_spec_dict(spec.scanners, loaded_files=loaded_files)
     return ScanContext(
         spec=spec,
         transcripts=transcripts,
         scanners=scanners,
         worklist=spec.worklist,
-        validation=spec.validation,
+        validation=validation,
     )
 
 
@@ -169,15 +184,22 @@ def _scanner_package_version(scanner: Scanner[Any]) -> str | None:
 
 def scanners_from_spec_dict(
     scanner_specs: dict[str, ScannerSpec],
+    *,
+    loaded_files: set[str] | None = None,
 ) -> dict[str, Scanner[Any]]:
-    scanners = scanners_from_spec_list(scanner_specs.values())
+    scanners = scanners_from_spec_list(
+        scanner_specs.values(),
+        loaded_files=loaded_files,
+    )
     return dict(zip(scanner_specs.keys(), scanners, strict=True))
 
 
 def scanners_from_spec_list(
     scanner_specs: Iterable[ScannerSpec],
+    *,
+    loaded_files: set[str] | None = None,
 ) -> list[Scanner[Any]]:
-    loaded: Set[str] = set()
+    loaded = loaded_files if loaded_files is not None else set()
     scanners: list[Scanner[Any]] = []
     for scanner in scanner_specs:
         # we need to ensure that any files scanners were defined in have been loaded/parsed

@@ -16,6 +16,9 @@ on:
     - cron: "0 8 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   ci:
     uses: ./.github/workflows/build.yaml
@@ -24,6 +27,7 @@ jobs:
     needs: ci
     if: always() && needs.ci.result != 'cancelled'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Get short SHA
         id: commit

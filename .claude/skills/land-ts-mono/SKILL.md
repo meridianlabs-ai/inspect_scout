@@ -31,6 +31,15 @@ submodule gitlink (see the submodule guide in repo facts for background).
   - `check-schema-and-types` — artifacts must match the Python source (docstring-only drift tolerated) and each other (exactly)
   - `submodule-on-main` — the gitlink SHA must be reachable from ts-mono `main`
   - `js-dist-validation` — the checked-in viewer bundle `src/inspect_scout/_view/dist` must match `pnpm build` run at the pinned submodule commit (the scout app's vite build copies its output into this repo's `dist/`)
+- ts-mono has merge commits **disabled** (squash or rebase only). Both of
+  those rewrite the commit, so the merged change lands under a *new* SHA and
+  the branch head the gitlink points at in phase 1 does not become reachable
+  from ts-mono `main` — plan on the second gitlink bump in step 4.2. This
+  holds even for a single-commit PR sitting directly on `main`: GitHub's
+  "Rebase and merge" re-commits rather than fast-forwarding (measured on
+  ts-mono#609, 1 commit / 0 behind — `d9fcc775` → `24b515da`, identical
+  tree). A true fast-forward push straight to `main` would keep the SHA, but
+  that is not a path the PR UI offers.
 - Submodule checks before pushing: `pnpm typecheck` and `pnpm test` from the ts-mono root (turbo), not per-package tsc
 - Pipeline internals: "Type Sharing" section of `CLAUDE.md`; submodule workflows: `src/inspect_scout/_view/ts-mono/docs/submodule-guide.md`
 - Sibling consumer: `inspect_ai` (also embeds ts-mono, at `src/inspect_ai/_view/ts-mono`; its regen `python src/inspect_ai/_view/schema.py` produces `packages/inspect-common/src/types/generated.ts`). Types flow inspect_ai → scout: scout's `generated.ts` imports inspect-originated types from `@tsmono/inspect-common`, and nothing on the inspect_ai side duplicates scout's types — so scout Python changes rarely require a sibling sync (see step 2a).
@@ -123,9 +132,11 @@ breaking shared-package changes in the ts-mono PR description.
 3. Cross-link the two PRs in each other's descriptions.
 
 Result: this repo's PR is green **except** `submodule-on-main`. That one red
-gate is the expected signal meaning "waiting on ts-mono merge" — do not try
-to fix it yet. Note: `submodule-on-main` is a job inside the "Build"
-workflow, so that whole workflow shows as failing in rollup views — read
+gate is the expected signal meaning "waiting on ts-mono merge". Do not try
+to fix it yet. It stays red through the merge. It clears only after you bump
+the gitlink to the merged SHA in step 4.2, so do not tell anyone the merge
+alone will clear it. Note: `submodule-on-main` is a job inside the "Build"
+workflow, so that whole workflow shows as failing in rollup views. Read
 job-level status before concluding anything else broke.
 
 **Why two-phase:** once ts-mono merges, its `main` depends on Python changes
@@ -133,7 +144,7 @@ that aren't merged yet, blocking anyone else who pulls ts-mono `main`. The
 goal is to make that window as short as possible: get *everything else* green
 on both PRs first, and only then merge ts-mono.
 
-### 4. Endgame — phase 2: merge in order, quickly
+### 4. Phase 2: merge in order, quickly
 
 Preconditions — ALL of these before anyone merges anything:
 
@@ -146,22 +157,25 @@ The provisional approval matters: it puts review latency *before* the
 blocking window opens. Once ts-mono merges, the only remaining work should
 be re-running one gate — not waiting on a reviewer.
 
-Auto-merge: NEVER enable it on the ts-mono PR — its merge is the deliberate,
-human-timed act that opens the blocking window, and it must not fire just
-because checks pass. The Python PR is the opposite: once ts-mono is merged,
-enable auto-merge on it yourself (`gh pr merge --auto`) so it lands the
-moment the gate clears.
+Auto-merge: NEVER enable it on the ts-mono PR. Merging it opens the blocking
+window, so it needs explicit approval and must not fire just because checks
+pass. The Python PR is the opposite. Once ts-mono is merged, enable
+auto-merge on it yourself (`gh pr merge --auto`) so it lands the moment the
+gate clears.
 
-1. Tell the user both PRs are ready and the ts-mono PR is safe to merge —
-   then immediately start watching it (background poll of its merged state,
-   e.g. `gh pr view <n> --json state,mergeCommit`); a human merges it (agents
-   cannot). React to the merge the moment it lands — the blocking window
+1. Tell the user both PRs are ready, and ask for approval to merge the
+   ts-mono PR. Merging it is the deliberate act that opens the blocking
+   window. Do it only with the user's explicit approval, never on your own
+   initiative. Start watching its merged state as soon as you ask (background
+   poll, e.g. `gh pr view <n> --json state,mergeCommit`), because whoever
+   merges it may not be you. React the moment it lands. The blocking window
    opens at merge, so don't wait for the user to come back and tell you.
 2. Fetch in the submodule, then compare the gitlink SHA against ts-mono
    `origin/main`:
-   - **SHA changed** (squash/rebase merge): bump the gitlink to the merged
-     `main` SHA. The bump picks up **every** ts-mono `main` change since the
-     last bump, not just yours — so rebuild the viewer bundle at the new
+   - **SHA changed** (squash or rebase merge, which is anything the ts-mono
+     PR UI can do): bump the gitlink to the merged `main` SHA. The bump picks
+     up **every** ts-mono `main` change since the last bump, not just yours,
+     so rebuild the viewer bundle at the new
      commit (`pnpm install --frozen-lockfile && pnpm build` in the
      submodule; the build copies output into this repo's
      `src/inspect_scout/_view/dist`) and commit the gitlink together with
@@ -169,7 +183,9 @@ moment the gate clears.
      identically — but `js-dist-validation` fails if you skip the check and
      something did change). Push.
    - **SHA unchanged** (merge commit; branch head now reachable from main):
-     just re-run the red `submodule-on-main` check.
+     just re-run the red `submodule-on-main` check. Requires the branch head
+     itself to land on `main` — merge commits are disabled on ts-mono and
+     rebase merge rewrites the commit, so expect this case not to arise.
 3. Enable auto-merge on this repo's PR (`gh pr merge --auto`) and tell the
    user — the PR lands automatically the moment the gate clears. Watch until
    it actually merges; if auto-merge is unavailable (repo settings), watch CI
@@ -207,4 +223,4 @@ moment the gate clears.
   a later branch commit can change the Python models and leave
   `openapi.json` stale against the branch's *own* source. When
   resuming mid-flight, re-run the regeneration command and confirm it's a
-  no-op before entering the endgame.
+  no-op before entering phase 2.

@@ -10,6 +10,7 @@ reference: "inspect_scout.sources"
 ### weave
 ### claude_code
 ### atif
+### antigravity
 
 
 

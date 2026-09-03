@@ -1,11 +1,12 @@
 import json
 from logging import getLogger
-from typing import Any, Generic, Literal, Sequence, cast
+from typing import Any, Generic, Sequence, cast
 
 from inspect_ai._util.json import jsonable_python
 from inspect_ai.event._event import Event
 from inspect_ai.log import condense_events
 from inspect_ai.model import ModelUsage
+from inspect_ai.scorer import Reference
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 from pydantic.json_schema import SkipJsonSchema
 from shortuuid import uuid
@@ -15,23 +16,18 @@ from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
 from inspect_scout._transcript.types import Transcript
 from inspect_scout._util._json import to_json_str_compact
 
+# Reference comes from inspect_ai; __all__ marks it re-exported for strict mypy.
+__all__ = [
+    "Error",
+    "ParsedT",
+    "Reference",
+    "Result",
+    "ResultReport",
+    "ResultValidation",
+    "as_resultset",
+]
+
 logger = getLogger(__name__)
-
-
-class Reference(BaseModel):
-    """Reference to scanned content."""
-
-    type: Literal["message", "event"]
-    """Reference type."""
-
-    cite: str | None = Field(default=None)
-    """Cite text used when the entity was referenced (optional).
-
-    For example, a model may have pointed to a message using something like [M22], which is the cite.
-    """
-
-    id: str
-    """Reference id (message or event id)"""
 
 
 ParsedT = TypeVar("ParsedT", default=Any)

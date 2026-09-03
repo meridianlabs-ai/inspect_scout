@@ -219,20 +219,6 @@
       "undescribed": 1
     }
   },
-  "src/inspect_scout/_validation/types.py": {
-    "type: ignore": {
-      "count": 1,
-      "undescribed": 1
-    },
-    "type: ignore[no-any-return]": {
-      "count": 3,
-      "undescribed": 3
-    },
-    "type: ignore[return-value]": {
-      "count": 2,
-      "undescribed": 2
-    }
-  },
   "src/inspect_scout/_view/_api_v2_scans.py": {
     "noqa:B008": {
       "count": 2,
@@ -657,6 +643,11 @@
     "type: ignore[arg-type]": {
       "count": 1,
       "undescribed": 1
+    }
+  },
+  "tests/validation/test_predicate_specs.py": {
+    "type: ignore[dict-item]": {
+      "count": 1
     }
   },
   "tests/validation/test_predicates.py": {

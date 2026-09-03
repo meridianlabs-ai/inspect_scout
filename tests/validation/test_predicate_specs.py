@@ -196,7 +196,7 @@ def test_builtin_name_override_for_custom_predicate_is_rejected() -> None:
                     predicate=UnavailablePredicateSpec(reason="anonymous"),
                 )
             },
-            {"scanner": "eq"},  # type: ignore[dict-item]
+            {"scanner": "eq"},  # type: ignore[dict-item]  # deliberately wrong type; asserts the runtime rejection
         )
 
 

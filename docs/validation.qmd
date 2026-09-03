@@ -208,6 +208,11 @@ objects are not. Non-finite floating-point values are rejected rather than
 silently changed in the scan artifact. The predicate's module or package must
 be available when the scan is resumed.
 
+If the predicate is defined in a local source file rather than an installed
+package, Scout records the file path and loads that file when the scan is
+resumed (the same way it loads the source file of a scanner defined outside a
+package). Listing or viewing a scan never loads predicate code.
+
 An unregistered async callable can still be used for the current scan:
 
 ``` python
@@ -236,8 +241,9 @@ scan_resume(
 ```
 
 Completed scans remain viewable without loading predicate code. A scan with an
-unregistered or legacy custom predicate cannot be resumed by location alone,
-and Scout never substitutes a missing predicate with equality.
+unregistered or legacy custom predicate cannot be resumed by location alone
+(including with `scout scan resume`), and Scout never substitutes a missing
+predicate with equality.
 
 ## Advanced
 

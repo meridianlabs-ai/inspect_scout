@@ -94,23 +94,46 @@ class ValidationSet(BaseModel):
 
 
 class RegisteredPredicateSpec(BaseModel):
-    """Portable reference to a registered custom predicate."""
+    """Portable reference to a custom predicate registered with `@validation_predicate`.
+
+    Only the registered name and creation arguments are stored; the predicate
+    is recreated from the registry when the scan is resumed.
+    """
 
     model_config = ConfigDict(allow_inf_nan=False)
 
     kind: Literal["registered"] = "registered"
+    """Discriminator for the predicate spec type."""
+
     name: str
+    """Registered predicate name (prefixed with the package name if in a package)."""
+
     args: dict[str, JsonValue] = Field(default_factory=dict)
+    """Arguments used to create the predicate (Inspect registry parameter form)."""
+
     file: str | None = None
+    """Predicate source file (if not in a package). Loaded when the scan is resumed."""
+
     package_version: str | None = None
+    """Predicate package version (if in a package)."""
 
 
 class UnavailablePredicateSpec(BaseModel):
-    """Inert marker for a custom predicate unavailable during resume."""
+    """Inert marker for a custom predicate that cannot be recreated from the scan artifact.
+
+    Written for anonymous callables (not registered with `@validation_predicate`)
+    and substituted in memory for legacy serialized predicates. Resuming a scan
+    with an unavailable predicate requires `predicate_overrides`.
+    """
 
     kind: Literal["unavailable"] = "unavailable"
+    """Discriminator for the predicate spec type."""
+
     display_name: str | None = None
+    """Name of the original callable, for display only."""
+
     reason: Literal["anonymous", "legacy"]
+    """Why the predicate is unavailable: an unregistered callable, or a legacy serialized predicate."""
 
 
 PredicateSpec = (
@@ -119,11 +142,21 @@ PredicateSpec = (
 
 
 class ValidationSetSpec(BaseModel):
-    """Data-only validation set stored in portable scan specifications."""
+    """Data-only validation set stored in portable scan specifications (`_scan.json`).
+
+    Unlike `ValidationSet`, the predicate is never a callable: it is a built-in
+    predicate name, a `RegisteredPredicateSpec`, or an `UnavailablePredicateSpec`.
+    Parsing a spec never imports or executes predicate code.
+    """
 
     cases: list[ValidationCase]
+    """Cases to compare scanner values against."""
+
     predicate: PredicateSpec = Field(default="eq")
+    """Predicate used to compare scanner results to validation targets."""
+
     split: str | list[str] | None = Field(default=None)
+    """Active split filter applied to this validation set (informational)."""
 
     @model_validator(mode="before")
     @classmethod

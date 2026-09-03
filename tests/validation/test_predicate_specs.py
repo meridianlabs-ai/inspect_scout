@@ -466,3 +466,58 @@ def test_registered_predicate_resumes_from_recorded_source(tmp_path: Path) -> No
 
     assert resumed.complete is True
     assert loads.read_text() == "2"
+
+
+def test_unknown_predicate_spec_kind_is_rejected() -> None:
+    """A predicate spec with an unrecognized kind fails validation loudly."""
+    with pytest.raises(ValidationError):
+        ValidationSetSpec.model_validate(
+            {
+                "cases": [],
+                "predicate": {"kind": "import", "module": "os", "attr": "system"},
+            }
+        )
+
+
+@pytest.mark.asyncio
+async def test_status_does_not_load_registered_predicate_source(
+    tmp_path: Path,
+) -> None:
+    """Reading a scan whose registered predicate names a source file never loads it."""
+    import_marker = tmp_path / "imported.txt"
+    predicate_file = tmp_path / "predicate.py"
+    predicate_file.write_text(
+        f"from pathlib import Path\nPath({str(import_marker)!r}).write_text('IMPORTED')\n"
+    )
+    scan_dir = tmp_path / "scan_id=registered"
+    scan_dir.mkdir()
+    (scan_dir / "_scan.json").write_text(
+        json.dumps(
+            {
+                "scan_id": "registered",
+                "scan_name": "registered",
+                "scanners": {"scanner": {"name": "scanner"}},
+                "validation": {
+                    "scanner": {
+                        "cases": [{"id": "id-1", "target": True}],
+                        "predicate": {
+                            "kind": "registered",
+                            "name": "missing/predicate",
+                            "file": predicate_file.as_posix(),
+                        },
+                    }
+                },
+            }
+        )
+    )
+    (scan_dir / "_summary.json").write_text(
+        Summary(scanners=["scanner"]).model_dump_json()
+    )
+
+    status = await FileRecorder.status(scan_dir.as_posix())
+
+    assert not import_marker.exists()
+    assert status.spec.validation is not None
+    predicate = status.spec.validation["scanner"].predicate
+    assert isinstance(predicate, RegisteredPredicateSpec)
+    assert predicate.file == predicate_file.as_posix()

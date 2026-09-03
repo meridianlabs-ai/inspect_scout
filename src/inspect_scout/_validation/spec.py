@@ -65,9 +65,10 @@ def validation_set_to_spec(
         )
         scanner_context = f" for scanner '{scanner}'" if scanner else ""
         logger.warning(
-            "Custom validation predicate%s is not registered and will not be "
-            "available from the scan artifact during resume. Register it with "
-            "@validation_predicate or supply predicate_overrides.",
+            "Custom validation predicate%s is not registered, so this scan "
+            "cannot be resumed by location alone (e.g. with 'scout scan "
+            "resume'). Register it with @validation_predicate, or resume from "
+            "Python with scan_resume(location, predicate_overrides=...).",
             scanner_context,
         )
 
@@ -128,10 +129,13 @@ def validation_sets_from_specs(
     }
     if missing_overrides:
         raise PrerequisiteError(
-            "This scan contains unavailable custom validation predicates for: "
+            "This scan cannot be resumed from its location alone because its "
+            "custom validation predicate is not stored in the scan (scanners: "
             + ", ".join(sorted(missing_overrides))
-            + ". Resume from the original trusted scan configuration or supply "
-            "predicate_overrides."
+            + "). Resume from Python with scan_resume(location, "
+            "predicate_overrides={<scanner>: <predicate>}), or register the "
+            "predicate with @validation_predicate so future scans can be "
+            "resumed by location."
         )
 
     invalid_overrides = {

@@ -6751,7 +6751,7 @@
         "type": "object"
       },
       "RegisteredPredicateSpec": {
-        "description": "Portable reference to a registered custom predicate.",
+        "description": "Portable reference to a custom predicate registered with `@validation_predicate`.\n\nOnly the registered name and creation arguments are stored; the predicate\nis recreated from the registry when the scan is resumed.",
         "properties": {
           "args": {
             "additionalProperties": {
@@ -11655,7 +11655,7 @@
         "type": "object"
       },
       "UnavailablePredicateSpec": {
-        "description": "Inert marker for a custom predicate unavailable during resume.",
+        "description": "Inert marker for a custom predicate that cannot be recreated from the scan artifact.\n\nWritten for anonymous callables (not registered with `@validation_predicate`)\nand substituted in memory for legacy serialized predicates. Resuming a scan\nwith an unavailable predicate requires `predicate_overrides`.",
         "properties": {
           "display_name": {
             "anyOf": [
@@ -12245,7 +12245,7 @@
         "type": "object"
       },
       "ValidationSetSpec": {
-        "description": "Data-only validation set stored in portable scan specifications.",
+        "description": "Data-only validation set stored in portable scan specifications (`_scan.json`).\n\nUnlike `ValidationSet`, the predicate is never a callable: it is a built-in\npredicate name, a `RegisteredPredicateSpec`, or an `UnavailablePredicateSpec`.\nParsing a spec never imports or executes predicate code.",
         "properties": {
           "cases": {
             "items": {

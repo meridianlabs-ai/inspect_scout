@@ -1,6 +1,5 @@
 import io
 import json
-import re
 from collections.abc import AsyncIterable
 from dataclasses import dataclass
 from typing import IO, Any, Callable
@@ -21,6 +20,8 @@ from ..util import filter_transcript
 from .pool import resolve_pools
 from .reducer import (
     ATTACHMENT_PREFIX,
+    ATTACHMENT_PREFIX_LEN,
+    ATTACHMENT_REF_LEN,
     ATTACHMENTS_PREFIX,
     CALL_POOL_ITEM_PREFIX,
     EVENTS_DATA_CALLS_ITEM_PREFIX,
@@ -44,9 +45,6 @@ from .reducer import (
     target_coroutine,
     timeline_item_coroutine,
 )
-
-# Pre-compiled regex patterns for performance
-ATTACHMENT_PATTERN = re.compile(r"attachment://([a-f0-9]{32})")
 
 # Section constants for prefix classification
 _SECTION_OTHER = 0
@@ -300,7 +298,7 @@ async def _parse_and_filter(
     )
     events_coro = event_item_coroutine(state, events_config) if events_config else None
     timelines_coro = timeline_item_coroutine(state)
-    attachments_coro = attachments_coroutine(state)
+    attachments_coro = attachments_coroutine(state, events_coro is not None)
     metadata_coro = metadata_coroutine(state)
     target_coro = target_coroutine(state)
     scores_coro = scores_coroutine(state)
@@ -352,11 +350,16 @@ async def _parse_and_filter(
             if p_len == 0 or prefix[0] not in ("m", "e", "a", "t", "s", "c"):
                 current_section = _SECTION_OTHER
             elif p_len < _MIN_SECTION_PREFIX_LEN:
-                # Short prefixes: "scores" (6), "target" (6)
+                # Short prefixes: "events" (6), "scores" (6), "target" (6)
                 if prefix == "scores":
                     current_section = _SECTION_SCORES
                 elif prefix == "target":
                     current_section = _SECTION_TARGET
+                elif prefix == "events":
+                    # The section's own start_array, which fires even for an
+                    # empty array -- unlike "events.item".
+                    state.events_seen = True
+                    current_section = _SECTION_OTHER
                 else:
                     current_section = _SECTION_OTHER
             elif prefix[0] == "m":
@@ -501,18 +504,15 @@ def _resolve_attachments(
     """
 
     def resolve_string(text: str) -> str:
-        """Replace attachment references in a string."""
-        # Fast path: skip regex if no attachment prefix found
-        if ATTACHMENT_PREFIX not in text:
+        """Resolve a string that is itself an attachment reference.
+
+        A ref is never a substring: `create_attachment` replaces the whole
+        field, and inspect_ai reads refs back with `startswith`. Substituting
+        one found mid-string would rewrite author-written text.
+        """
+        if len(text) != ATTACHMENT_REF_LEN or not text.startswith(ATTACHMENT_PREFIX):
             return text
-
-        def replace_ref(match: re.Match[str]) -> str:
-            attachment_id = match.group(1)
-            return attachments.get(
-                attachment_id, match.group(0)
-            )  # Return original if not found
-
-        return ATTACHMENT_PATTERN.sub(replace_ref, text)
+        return attachments.get(text[ATTACHMENT_PREFIX_LEN:], text)
 
     # Resolve references in messages (already raw dicts, no need to model_dump)
     resolved_messages = []

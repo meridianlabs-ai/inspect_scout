@@ -9,6 +9,8 @@ from ijson.utils import coroutine as _ijson_coroutine  # type: ignore
 # Public constants / prefixes
 ATTACHMENT_PREFIX = "attachment://"
 ATTACHMENT_PREFIX_LEN = len(ATTACHMENT_PREFIX)
+# A ref is the prefix plus a 32-char hex id, and nothing else.
+ATTACHMENT_REF_LEN = ATTACHMENT_PREFIX_LEN + 32
 ATTACHMENTS_PREFIX = "attachments."
 MESSAGES_ITEM_PREFIX = "messages.item"
 EVENTS_ITEM_PREFIX = "events.item"
@@ -58,6 +60,8 @@ class ParseState:
     scores: dict[str, Any] = field(default_factory=dict)
     message_pool: list[dict[str, Any]] = field(default_factory=list)
     call_pool: list[dict[str, Any]] = field(default_factory=list)
+    # Set once the events section starts streaming (see attachments_coroutine).
+    events_seen: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -116,7 +120,10 @@ def _item_coroutine(
             builder = None
             continue
         if event == "string" and isinstance(value, str):
-            if len(value) == 45 and value.startswith(ATTACHMENT_PREFIX):
+            # A ref is the whole value, never a substring -- inspect_ai's
+            # create_attachment replaces the entire field. Length-first keeps
+            # this cheap in a loop that runs per ijson event.
+            if len(value) == ATTACHMENT_REF_LEN and value.startswith(ATTACHMENT_PREFIX):
                 attachments.add(value[ATTACHMENT_PREFIX_LEN:])
 
 
@@ -183,22 +190,53 @@ def call_pool_item_coroutine(state: ParseState, item_prefix: str) -> CoroutineGe
     return cast(CoroutineGen, _unfiltered_item_coroutine(state.call_pool, item_prefix))
 
 
+def _event_has_pool_refs(event_dict: dict[str, Any]) -> bool:
+    """Does this event dict carry an unresolved message/call pool ref?
+
+    Must stay in step with the conditions `pool.py`'s `_resolve_events_pools`
+    checks before expanding a ref.
+    """
+    if event_dict.get("input_refs"):
+        return True
+    call = event_dict.get("call")
+    return isinstance(call, dict) and call.get("call_refs") is not None
+
+
 @_ijson_coroutine  # type: ignore
-def attachments_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
+def attachments_coroutine(
+    state: ParseState, collecting_events: bool
+) -> CoroutineGen:  # pragma: no cover
+    """Collect the attachments table.
+
+    Filtering on ``state.attachment_refs`` alone is unsafe once events are
+    collected: pool entries under ``events_data`` carry refs of their own, and
+    that section follows ``attachments`` in the file, so they are unknowable
+    here. Retain everything when a retained event carries a pool ref -- or
+    when the events section has not streamed yet, since JSON key order is not
+    guaranteed and guessing wrong drops data permanently. A section that has
+    streamed counts as seen even when it was empty or filtered down to
+    nothing. Otherwise the ref filter applies and the table stays bounded.
+    """
     attachments_prefix_len = len(ATTACHMENTS_PREFIX)
+    retain_all: bool | None = None
     while True:
         prefix, event, value = yield
         if event != "string":
             continue
         if not prefix.startswith(ATTACHMENTS_PREFIX):
             continue
+        if retain_all is None:
+            retain_all = collecting_events and (
+                not state.events_seen
+                or any(_event_has_pool_refs(e) for e in state.events)
+            )
         end = prefix.find(".", attachments_prefix_len)
         attachment_id = (
             prefix[attachments_prefix_len:]
             if end == -1
             else prefix[attachments_prefix_len:end]
         )
-        if attachment_id in state.attachment_refs:
+        if retain_all or attachment_id in state.attachment_refs:
             state.attachments[attachment_id] = value
 
 
@@ -304,6 +342,7 @@ __all__ = [
     "TARGET_PREFIX",
     "ATTACHMENT_PREFIX",
     "ATTACHMENT_PREFIX_LEN",
+    "ATTACHMENT_REF_LEN",
     "ATTACHMENTS_PREFIX",
     "MESSAGES_ITEM_PREFIX",
     "EVENTS_ITEM_PREFIX",

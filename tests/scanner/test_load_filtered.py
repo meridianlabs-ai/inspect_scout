@@ -14,12 +14,16 @@ import pytest
 if TYPE_CHECKING:
     from tests.conftest import CallTracker
 
+from inspect_ai._util.async_bytes_reader import adapt_to_reader
 from inspect_ai._util.async_zip import AsyncZipReader
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai.event import ToolEvent
 from inspect_ai.event._model import ModelEvent
 from inspect_scout import Transcript, TranscriptInfo
-from inspect_scout._transcript.json.load_filtered import load_filtered_transcript
+from inspect_scout._transcript.json.load_filtered import (
+    _parse_and_filter,
+    load_filtered_transcript,
+)
 from inspect_scout._transcript.types import EventFilter, MessageFilter
 
 
@@ -288,6 +292,186 @@ async def test_attachment_resolution() -> None:
     assert result.messages[1].text == "Content B"
     assert isinstance(result.events[0], ToolEvent)
     assert result.events[0].result == "Content C"
+
+
+@pytest.mark.asyncio
+async def test_embedded_attachment_ref_is_not_a_ref() -> None:
+    """An id that merely appears inside a larger string is not a reference.
+
+    `create_attachment` returns `attachment://<hash>` as an entire field value
+    and inspect_ai reads refs back with `startswith`, so mid-string text is
+    author-written: it must neither retain its attachment nor be substituted.
+    """
+    attachment_id = "a1b2c3d4e5f678901234567890123456"
+    embedded = f"see attachment://{attachment_id} for details"
+    info = TranscriptInfo(
+        transcript_id="test",
+        source_type="test",
+        source_id="42",
+        source_uri="/test.json",
+    )
+    messages: list[dict[str, Any]] = [{"role": "user", "content": embedded}]
+    table = {attachment_id: "SECRET"}
+    event: dict[str, Any] = {
+        "span_id": "s1",
+        "timestamp": 1.0,
+        "event": "info",
+        "data": {},
+    }
+
+    # Events first and not collected, so the ref filter is what bounds the
+    # table: an embedded id must not put its attachment in it.
+    async with adapt_to_reader(
+        create_json_stream(
+            {
+                "id": "test",
+                "messages": messages,
+                "events": [event],
+                "attachments": table,
+            }
+        )
+    ) as reader:
+        _, attachments = await _parse_and_filter(reader, info, "all", None)
+    assert attachments == {}
+
+    # Attachments first with events collected latches `retain_all`, so the
+    # whole table is held and only the resolution rule keeps the text intact.
+    result = await load_filtered_transcript(
+        create_json_stream(
+            {
+                "id": "test",
+                "messages": messages,
+                "attachments": table,
+                "events": [event],
+            }
+        ),
+        info,
+        "all",
+        "all",
+    )
+    assert result.messages[0].content == embedded
+
+
+@pytest.mark.parametrize(
+    "attachments_first",
+    [False, True],
+    ids=["events-before-attachments", "attachments-before-events"],
+)
+@pytest.mark.asyncio
+async def test_pool_ref_resolves_regardless_of_section_order(
+    attachments_first: bool,
+) -> None:
+    """A pool-entry ref resolves whichever order the JSON sections come in.
+
+    `events_data` is parsed after `attachments`, so its pool refs are unknown
+    while attachments stream past. Each ordering pins a different disjunct of
+    `retain_all`: events-first (what real eval logs do) reaches
+    `_event_has_pool_refs`; attachments-first -- legal, JSON key order is not
+    guaranteed -- reaches `not state.events_seen`.
+    """
+    attachment_id = "b1c2d3e4f5a678901234567890123456"
+    attachments = {attachment_id: "VALUE"}
+    event: dict[str, Any] = {
+        "span_id": "s1",
+        "timestamp": "2022-01-01T00:00:00+00:00",
+        "event": "model",
+        "model": "test-model",
+        "input": [],
+        "output": {"model": "test-model", "choices": []},
+        "tools": [],
+        "tool_choice": "auto",
+        "config": {},
+        "input_refs": [[0, 1]],
+    }
+    events_data: dict[str, Any] = {
+        "messages": [{"role": "user", "content": f"attachment://{attachment_id}"}],
+        "calls": [],
+    }
+
+    ordered_sections: dict[str, Any] = (
+        {"attachments": attachments, "events": [event]}
+        if attachments_first
+        else {"events": [event], "attachments": attachments}
+    )
+
+    result = await load_filtered_transcript(
+        create_json_stream(
+            {
+                "id": "test",
+                "messages": [],
+                **ordered_sections,
+                "events_data": events_data,
+            }
+        ),
+        TranscriptInfo(
+            transcript_id="test",
+            source_type="test",
+            source_id="42",
+            source_uri="/test.json",
+        ),
+        "all",
+        "all",
+    )
+
+    model_event = result.events[0]
+    assert isinstance(model_event, ModelEvent)
+    assert model_event.input[0].content == "VALUE"
+
+
+@pytest.mark.parametrize(
+    "events_filter,events_first",
+    [
+        pytest.param(None, False, id="events-not-collected"),
+        pytest.param("all", True, id="events-section-empty"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_attachments_bounded_when_no_pool_refs_retained(
+    events_filter: EventFilter, events_first: bool
+) -> None:
+    """Only referenced attachments are retained when no pool entry can be needed.
+
+    Each row leaves exactly one arm of `retain_all` holding retention down.
+    `events-not-collected` puts attachments first, so `not state.events_seen`
+    is true as they stream and only the `collecting_events` gate bounds the
+    table. `events-section-empty` collects events from an empty section, which
+    only its own `start_array` can mark seen (`events.item` never fires) --
+    "seen and empty" must not read as "not streamed yet", which legitimately
+    retains everything.
+    """
+    referenced_id = "a1b2c3d4e5f678901234567890123456"
+    unrelated_id = "b2c3d4e5f67890123456789012345678"
+    table = {referenced_id: "REFERENCED", unrelated_id: "UNRELATED"}
+    ordered_sections: dict[str, Any] = (
+        {"events": [], "attachments": table}
+        if events_first
+        else {"attachments": table, "events": []}
+    )
+
+    async with adapt_to_reader(
+        create_json_stream(
+            {
+                "id": "test",
+                "messages": [
+                    {"role": "user", "content": f"attachment://{referenced_id}"},
+                ],
+                **ordered_sections,
+            }
+        )
+    ) as reader:
+        _, attachments = await _parse_and_filter(
+            reader,
+            TranscriptInfo(
+                transcript_id="test",
+                source_type="test",
+                source_id="42",
+                source_uri="/test.json",
+            ),
+            "all",
+            events_filter,
+        )
+
+    assert set(attachments) == {referenced_id}
 
 
 @pytest.mark.asyncio

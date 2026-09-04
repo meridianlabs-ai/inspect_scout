@@ -14,7 +14,7 @@ from typing_extensions import TypeVar
 
 from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
 from inspect_scout._transcript.types import Transcript
-from inspect_scout._util._json import to_json_str_compact
+from inspect_scout._util._json import to_json_bytes_compact, to_json_str_compact
 
 # Reference comes from inspect_ai; __all__ marks it re-exported for strict mypy.
 __all__ = [
@@ -109,6 +109,45 @@ class ResultValidation(BaseModel):
     """The split the validation case belongs to (e.g., 'dev', 'test')."""
 
 
+class SerializedTranscript(BaseModel):
+    """Recorder column values for an already-serialized transcript.
+
+    Produced by the spooled pooled-passthrough path, which emits the compact
+    (pool-condensed, attachment-ref) form straight from the transcript spool
+    rather than building a `Transcript` and re-condensing it.
+    `_serialize_input` passes these values through unchanged.
+    """
+
+    # UTF-8 buffers rather than `str`: the values go straight into a parquet
+    # column, which pyarrow encodes as UTF-8 regardless, so decoding would only
+    # allocate a second full copy of the transcript (1, 2, or 4 bytes per
+    # character, per PEP 393's sizing of `str`).
+    #
+    # `bytearray`, and not a `bytes | bytearray` union: pydantic copies the
+    # buffer to satisfy a `bytes` member, which for a union it does while
+    # deciding which one matches. arbitrary_types_allowed because pydantic has
+    # no bytearray schema.
+    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
+
+    input_json: bytearray
+    """Value for the `input` column: transcript JSON, events pool-condensed."""
+
+    input_data_json: bytearray
+    """Value for the `input_data` column: `{messages, calls, attachments}`.
+
+    Always present, empty pools included: the read path only expands an
+    `input` whose row carries an `input_data`."""
+
+
+ReportInput = ScannerInput | SerializedTranscript
+"""What a `ResultReport` may carry: a live scanner input, or -- for spooled
+transcript handles -- pre-serialized column values.
+
+Deliberately NOT part of `ScannerInput`: that alias is public API, bounds
+`Loader[T]` and the `@scanner` type parameter, and drives the OpenAPI schema.
+"""
+
+
 class ResultReport(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
@@ -116,7 +155,7 @@ class ResultReport(BaseModel):
 
     input_ids: list[str]
 
-    input: ScannerInput
+    input: ReportInput
 
     result: Result | None
 
@@ -130,8 +169,9 @@ class ResultReport(BaseModel):
 
     def to_df_columns(
         self, *, pool_dedup: bool = True
-    ) -> dict[str, str | bool | int | float | None]:
-        columns: dict[str, str | bool | int | float | None] = {}
+    ) -> dict[str, str | bytes | bytearray | bool | int | float | None]:
+        # `input`/`input_data` are UTF-8 bytes: see `_serialize_input`.
+        columns: dict[str, str | bytes | bytearray | bool | int | float | None] = {}
 
         # input (transcript, event, or message)
         columns["input_type"] = self.input_type
@@ -228,27 +268,33 @@ class ResultReport(BaseModel):
 
 
 def _serialize_input(
-    input: ScannerInput,
+    input: ReportInput,
     input_type: ScannerInputNames,
     *,
     pool_dedup: bool,
-) -> tuple[str, str | None]:
-    """Serialize scanner input, optionally condensing events.
+) -> tuple[bytes | bytearray, bytes | bytearray | None]:
+    """Serialize scanner input as UTF-8 JSON bytes, optionally condensing events.
+
+    A `SerializedTranscript` is already in column form and is passed through
+    unchanged.
 
     Returns:
         (input_json, input_data_json | None)
     """
+    if isinstance(input, SerializedTranscript):
+        return input.input_json, input.input_data_json
+
     if not pool_dedup or input_type not in ("transcript", "events"):
-        return to_json_str_compact(input), None
+        return to_json_bytes_compact(input), None
 
     if input_type == "transcript":
         assert isinstance(input, Transcript)
         condensed_events, events_data = condense_events(input.events)
         condensed = input.model_copy(update={"events": condensed_events})
-        return to_json_str_compact(condensed), to_json_str_compact(events_data)
+        return to_json_bytes_compact(condensed), to_json_bytes_compact(events_data)
 
     # input_type == "events"
     assert isinstance(input, Sequence)
     events = cast(Sequence[Event], input)
     condensed_events, events_data = condense_events(events)
-    return to_json_str_compact(condensed_events), to_json_str_compact(events_data)
+    return to_json_bytes_compact(condensed_events), to_json_bytes_compact(events_data)

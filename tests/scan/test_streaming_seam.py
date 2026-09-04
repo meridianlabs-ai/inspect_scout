@@ -1,0 +1,198 @@
+"""Tests for the streaming scanner seam: input plumbing and dispatch."""
+
+import io
+import json
+from pathlib import Path
+from typing import Any, cast
+
+import pytest
+from inspect_ai.model import ChatMessageUser
+from inspect_scout import scanner
+from inspect_scout._concurrency.common import ScannerJob
+from inspect_scout._scan import (
+    _content_for_scanner,
+    _scan_one,
+    _streaming_eligible,
+)
+from inspect_scout._scanner.result import Result, SerializedTranscript
+from inspect_scout._scanner.scanner import SCANNER_SUPPORTS_STREAMING_ATTR, Scanner
+from inspect_scout._transcript.handle import (
+    MaterializedTranscriptHandle,
+    SpooledTranscriptHandle,
+)
+from inspect_scout._transcript.json.stream_parse import (
+    StreamParseResult,
+    stream_parse_to_spool,
+)
+from inspect_scout._transcript.types import Transcript, TranscriptInfo
+from inspect_scout._transcript.util import union_transcript_contents
+
+
+@scanner(messages="all", events="all")
+def _handle_scanner(received: list[Any] | None = None) -> Scanner[Transcript]:
+    async def scan(transcript: Transcript) -> Result:
+        if received is not None:
+            received.append(transcript)
+        return Result(value="ok")
+
+    setattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, True)
+    return scan
+
+
+@scanner(messages="all", events="all")
+def _plain_scanner() -> Scanner[Transcript]:
+    async def scan(transcript: Transcript) -> Result:
+        return Result(value="ok")
+
+    return scan
+
+
+def _materialized_handle(transcript: Transcript) -> MaterializedTranscriptHandle:
+    """Build a materialized handle over an in-memory transcript."""
+
+    async def load_fn() -> Transcript:
+        return transcript
+
+    return MaterializedTranscriptHandle(
+        load_fn, TranscriptInfo(transcript_id=transcript.transcript_id)
+    )
+
+
+@pytest.mark.asyncio
+async def test_scan_one_with_handle_scanner() -> None:
+    """A handle scanner gets the handle, but the record keeps the full transcript.
+
+    Results must stay self-contained (readable without the original logs), so
+    the streamed transcript is materialized for the record even though the
+    scanner itself never held it.
+    """
+    transcript = Transcript(
+        transcript_id="t1",
+        messages=[ChatMessageUser(content="hello", id="m1")],
+        events=[],
+        metadata={},
+    )
+    handle = _materialized_handle(transcript)
+
+    received: list[Any] = []
+    s = _handle_scanner(received)
+    job = ScannerJob(union_transcript=handle, scanner=s, scanner_name="hs")
+    reports = await _scan_one(job, validation=None, fail_on_error=True)
+    assert received == [handle]
+    assert len(reports) == 1
+    assert reports[0].input_type == "transcript"
+    assert reports[0].input == transcript
+
+
+@pytest.mark.asyncio
+async def test_scan_one_stream_error_contained() -> None:
+    """Errors raised during handle iteration produce an Error report, not a crash."""
+    info = TranscriptInfo(transcript_id="t1")
+
+    async def failing_load() -> Transcript:
+        raise ValueError("corrupt sample JSON")
+
+    handle = MaterializedTranscriptHandle(failing_load, info)
+
+    s = _plain_scanner()
+    job = ScannerJob(union_transcript=handle, scanner=s, scanner_name="ps")
+    reports = await _scan_one(job, validation=None, fail_on_error=False)
+    assert len(reports) == 1
+    assert reports[0].error is not None
+    assert "corrupt sample JSON" in reports[0].error.error
+
+
+def _scanner_with(
+    messages: Any = None, events: Any = None, timeline: Any = None
+) -> Scanner[Any]:
+    """Build a handle-accepting scanner with the given content filters."""
+
+    @scanner(messages=messages, events=events, timeline=timeline)
+    def factory() -> Scanner[Transcript]:
+        async def scan(transcript: Transcript) -> Result:
+            return Result(value="ok")
+
+        setattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, True)
+        return scan
+
+    return cast(Scanner[Any], factory())
+
+
+@pytest.mark.parametrize(
+    ("filters", "expected"),
+    [
+        pytest.param(
+            [
+                {"messages": ["user", "assistant"]},
+                {"messages": ["assistant", "user"]},
+            ],
+            True,
+            id="messages_order",
+        ),
+        pytest.param(
+            [{"messages": ["user"]}, {"messages": ["user", "assistant"]}],
+            False,
+            id="messages_narrower",
+        ),
+        pytest.param(
+            [{"messages": "all"}, {"messages": "all", "events": "all"}],
+            False,
+            id="events_none_vs_all",
+        ),
+        pytest.param(
+            [{"messages": "all", "timeline": "all"}, {"messages": "all"}],
+            False,
+            id="timeline_one",
+        ),
+    ],
+)
+def test_streaming_eligible(filters: list[dict[str, Any]], expected: bool) -> None:
+    """Scanners can share a union-filtered handle only when each filter equals the union."""
+    scanners = [_scanner_with(**f) for f in filters]
+    union_content = union_transcript_contents(
+        [_content_for_scanner(s) for s in scanners]
+    )
+    assert _streaming_eligible(scanners, union_content) is expected
+
+
+@pytest.mark.asyncio
+async def test_scan_one_records_serialized_input_for_spooled_handle(
+    tmp_path: Path,
+) -> None:
+    """A spooled handle records pre-serialized columns, not a Transcript.
+
+    The scanner streams; the record must still be self-contained, but it is
+    produced from the spool rather than by materializing the transcript.
+    """
+    data = json.dumps(
+        {
+            "id": "t1",
+            "messages": [{"id": "m1", "role": "user", "content": "hi"}],
+            "events": [],
+            "attachments": {},
+        }
+    ).encode()
+    parsed = await stream_parse_to_spool(io.BytesIO(data), "all", "all", tmp_path)
+
+    async def parse() -> StreamParseResult:
+        return parsed
+
+    async def fallback() -> Transcript:
+        raise AssertionError("fallback should not be called")
+
+    handle = SpooledTranscriptHandle(
+        TranscriptInfo(transcript_id="t1"), parse, fallback
+    )
+
+    job = ScannerJob(
+        union_transcript=handle, scanner=_handle_scanner(), scanner_name="hs"
+    )
+    try:
+        reports = await _scan_one(job, validation=None, fail_on_error=True)
+    finally:
+        await handle.aclose()
+
+    assert len(reports) == 1
+    assert reports[0].input_type == "transcript"
+    assert isinstance(reports[0].input, SerializedTranscript)
+    assert json.loads(reports[0].input.input_json)["transcript_id"] == "t1"

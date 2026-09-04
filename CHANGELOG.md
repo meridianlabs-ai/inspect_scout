@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.5.0](https://github.com/meridianlabs-ai/inspect_scout/compare/0.4.46...0.5.0) (2026-09-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* callers that rely on input, input_data, or scan_events being present in default dataframe/reader output must pass exclude_columns=[] (or use ScanResultsArrow.get_fields() for per-row access).
+
+### Features
+
+* add scan_results_batches() — scan_results_df() semantics without loading everything in memory ([#541](https://github.com/meridianlabs-ai/inspect_scout/issues/541)) ([b332c1e](https://github.com/meridianlabs-ai/inspect_scout/commit/b332c1e46b9d5f7cfe79dd0232d4dc53034ae940))
+* carry the scorer's explanation on TranscriptInfo ([#614](https://github.com/meridianlabs-ai/inspect_scout/issues/614)) ([094e11c](https://github.com/meridianlabs-ai/inspect_scout/commit/094e11c540ca616f0864e688c20daccab0f8ede9))
+* cron kind, operator provenance, reconstruction fidelity + spawn-less session placement in the openclaw telemetry-hal example ([#566](https://github.com/meridianlabs-ai/inspect_scout/issues/566)) ([817a8f0](https://github.com/meridianlabs-ai/inspect_scout/commit/817a8f076ca14cede9d6da2863ea7d9cbf88f2c0))
+* exclude heavy columns by default when reading scan results ([#583](https://github.com/meridianlabs-ai/inspect_scout/issues/583)) ([886d339](https://github.com/meridianlabs-ai/inspect_scout/commit/886d3396570b497c283f0eebf186e05fcc266a6a))
+* typed parsed answers on scanner results ([#579](https://github.com/meridianlabs-ai/inspect_scout/issues/579)) ([d5a7df5](https://github.com/meridianlabs-ai/inspect_scout/commit/d5a7df53778e55bfa441a34e1b7fd9fc366578c5))
+
+
+### Bug Fixes
+
+* bound the multiprocess results queue ([#555](https://github.com/meridianlabs-ai/inspect_scout/issues/555)) ([3985b81](https://github.com/meridianlabs-ai/inspect_scout/commit/3985b81f10c7740e5c064d973a6a91b6955a2ee1))
+* bump openai to &gt;=3.0.0; pass allow_remote_mcp to inspect_ai bridge tool converters ([#562](https://github.com/meridianlabs-ai/inspect_scout/issues/562)) ([e799945](https://github.com/meridianlabs-ai/inspect_scout/commit/e79994514349d740e7b914fd5fdd2b9dc0b25619))
+* complete the interrupted-status sync under Ctrl-C ([#578](https://github.com/meridianlabs-ai/inspect_scout/issues/578)) ([548f464](https://github.com/meridianlabs-ai/inspect_scout/commit/548f464f762d35e9e54a534755ae0859de998ecd))
+* conform to inspect_ai model-role lists and regenerate schema/types ([#581](https://github.com/meridianlabs-ai/inspect_scout/issues/581)) ([1fb066a](https://github.com/meridianlabs-ai/inspect_scout/commit/1fb066ab2a46f79f19f4c47414960b410c782526))
+* deliver the final metrics update synchronously at strategy teardown ([#572](https://github.com/meridianlabs-ai/inspect_scout/issues/572)) ([548f464](https://github.com/meridianlabs-ai/inspect_scout/commit/548f464f762d35e9e54a534755ae0859de998ecd))
+* **examples/openclaw_telemetry_hal:** accept 'explicit' session kind as an orchestrator surface ([#565](https://github.com/meridianlabs-ai/inspect_scout/issues/565)) ([6563d39](https://github.com/meridianlabs-ai/inspect_scout/commit/6563d39346b8d5ea09a71c7b5c5a87583e158157))
+* prevent deferred metrics write to closed active scans store ([#564](https://github.com/meridianlabs-ai/inspect_scout/issues/564)) ([bbacfbb](https://github.com/meridianlabs-ai/inspect_scout/commit/bbacfbb2200fdcc53ee716a326f2905002796871))
+* report per-item model usage for custom loaders ([#586](https://github.com/meridianlabs-ai/inspect_scout/issues/586)) ([4f47afc](https://github.com/meridianlabs-ai/inspect_scout/commit/4f47afc19a5559146a1692ca5adaae2998e0549f))
+* stream scan result compaction to disk ([#554](https://github.com/meridianlabs-ai/inspect_scout/issues/554)) ([5234d59](https://github.com/meridianlabs-ai/inspect_scout/commit/5234d5938dc9f05ea541c9e5f9c7d33f84565f96))
+
+
+### Performance Improvements
+
+* fix quadratic `_expand_events_in_df` ([#538](https://github.com/meridianlabs-ai/inspect_scout/issues/538)) ([63b481d](https://github.com/meridianlabs-ai/inspect_scout/commit/63b481d64db14b98fb476b0071827f1d41b3c96d))
+
 ## [0.4.46](https://github.com/meridianlabs-ai/inspect_scout/compare/0.4.45...0.4.46) (2026-08-05)
 
 

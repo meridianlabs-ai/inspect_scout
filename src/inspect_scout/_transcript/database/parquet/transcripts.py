@@ -1077,6 +1077,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 if isinstance(transcript.score, (dict, list))
                 else (str(transcript.score) if transcript.score is not None else None)
             ),
+            "score_explanation": transcript.score_explanation,
             "success": transcript.success,
             "message_count": transcript.message_count,
             "total_time": transcript.total_time,

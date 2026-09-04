@@ -81,6 +81,7 @@ from ._scanjob_config import ScanJobConfig
 from ._scanner.loader import config_for_loader
 from ._scanner.result import Error, Result, ResultReport, ResultValidation, as_resultset
 from ._scanner.scanner import Scanner, config_for_scanner
+from ._scanner.types import ScannerInputNames
 from ._scanner.util import get_input_type_and_ids
 from ._scanspec import ScanSpec, Worklist
 from ._transcript.transcripts import ScannerWork, Transcripts, TranscriptsReader
@@ -1054,7 +1055,6 @@ async def _scan_one(
     init_transcript(inspect_transcript)
 
     results: list[ResultReport] = []
-    validation_result: ResultValidation | None = None
 
     scanner_config = config_for_scanner(job.scanner)
     loader = scanner_config.loader
@@ -1063,6 +1063,12 @@ async def _scan_one(
         result: Result | list[Result] | None = None
         final_result: Result | None = None
         error: Error | None = None
+        # Both reset per iteration and before the `try`: the error path below
+        # reads them, so a raise inside the `try` must not leave them holding
+        # the previous item's validation/ids (this runs in a loop) or unbound.
+        validation_result: ResultValidation | None = None
+        type_and_ids: tuple[ScannerInputNames, list[str]] | None = None
+
         try:
             type_and_ids = get_input_type_and_ids(loader_result)
             if type_and_ids is None:

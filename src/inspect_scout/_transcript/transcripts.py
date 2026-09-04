@@ -10,6 +10,7 @@ from .._query.order_by import OrderBy
 from .._scanspec import ScanTranscripts
 from .._validation.types import ValidationCase, ValidationSet
 from .columns import Column
+from .handle import MaterializedTranscriptHandle, TranscriptHandle
 from .types import Transcript, TranscriptContent, TranscriptInfo
 
 
@@ -48,6 +49,25 @@ class TranscriptsReader(abc.ABC):
             Transcript: Transcript with content.
         """
         ...
+
+    async def open(
+        self, transcript: TranscriptInfo, content: TranscriptContent
+    ) -> TranscriptHandle:
+        """Open a streaming handle to transcript content.
+
+        The default materializes eagerly via `read()`; backends supporting
+        true streaming reads should override. Use the handle within the view's
+        connected lifetime.
+
+        Args:
+            transcript: Transcript to open.
+            content: Content to read.
+        """
+
+        async def load_fn() -> Transcript:
+            return await self.read(transcript, content)
+
+        return MaterializedTranscriptHandle(load_fn, transcript)
 
     @abc.abstractmethod
     async def snapshot(self) -> ScanTranscripts: ...

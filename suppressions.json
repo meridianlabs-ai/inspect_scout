@@ -181,16 +181,25 @@
       "undescribed": 1
     }
   },
+  "src/inspect_scout/_transcript/handle.py": {
+    "type: ignore[import-untyped]": {
+      "count": 1
+    }
+  },
   "src/inspect_scout/_transcript/json/load_filtered.py": {
     "type: ignore": {
-      "count": 3,
-      "undescribed": 3
+      "count": 1,
+      "undescribed": 1
     }
   },
   "src/inspect_scout/_transcript/json/reducer.py": {
-    "type: ignore": {
-      "count": 8,
-      "undescribed": 8
+    "type: ignore[import-untyped]": {
+      "count": 2
+    }
+  },
+  "src/inspect_scout/_transcript/json/stream_parse.py": {
+    "type: ignore[import-untyped]": {
+      "count": 1
     }
   },
   "src/inspect_scout/_transcript/messages.py": {
@@ -625,10 +634,28 @@
       "undescribed": 3
     }
   },
+  "tests/transcript/test_handle.py": {
+    "type: ignore[import-untyped]": {
+      "count": 1
+    },
+    "type: ignore[list-item]": {
+      "count": 1
+    }
+  },
+  "tests/transcript/test_json_text_writer.py": {
+    "type: ignore[import-untyped]": {
+      "count": 1
+    }
+  },
   "tests/transcript/test_splice.py": {
     "type: ignore[arg-type]": {
       "count": 1,
       "undescribed": 1
+    }
+  },
+  "tests/transcript/test_stream_parse.py": {
+    "type: ignore[import-untyped]": {
+      "count": 1
     }
   },
   "tests/util/test_async_zip.py": {

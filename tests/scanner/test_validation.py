@@ -18,6 +18,7 @@ from inspect_ai.model._chat_message import (
 from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import SCANNER_CONFIG, Scanner, scanner
 from inspect_scout._scanner.validate import _is_compatible_with_type
+from inspect_scout._transcript.handle import TranscriptHandle
 from inspect_scout._transcript.types import Transcript
 
 # Valid scanner tests
@@ -620,4 +621,20 @@ def test_is_compatible_with_type_union_semantics(
 
     Equivalently, only when it equals the base union — never for a strict subset.
     """
+    assert _is_compatible_with_type(scanner_type, target) is expected
+
+
+@pytest.mark.parametrize(
+    "scanner_type,target,expected",
+    [
+        pytest.param(
+            Transcript | TranscriptHandle, Transcript, True, id="accepted-union"
+        ),
+        pytest.param(Transcript | int, Transcript, False, id="incompatible-union"),
+    ],
+)
+def test_is_compatible_with_type_transcript_handle_widening(
+    scanner_type: Any, target: Any, expected: bool
+) -> None:
+    """`Transcript | TranscriptHandle` is accepted wherever bare `Transcript` is."""
     assert _is_compatible_with_type(scanner_type, target) is expected

@@ -109,6 +109,58 @@ def test_info_score_with_single_scorer() -> None:
     assert info.success is True  # 0.75 > 0
 
 
+def test_info_carries_the_scorers_explanation() -> None:
+    """The account of a score, not only its value.
+
+    A scorer that runs a test suite puts the suite's output here — which tests
+    were required, which passed, which are missing — and that is often the only
+    thing separating a task the agent failed from one the grading got wrong. A
+    scanner asked whether a score can be trusted cannot answer from the number.
+    """
+    sample = _make_eval_sample(
+        scores={
+            "harbor": Score(
+                value=0.0,
+                explanation="Required tests: 171 Passed tests: 169 RESULT: FAILED",
+            )
+        }
+    )
+    info = transcript_info_from_eval_sample(
+        sample, eval_id="e", log_location=None, model=None
+    )
+
+    assert info.score == 0.0
+    assert info.score_explanation is not None
+    assert "Passed tests: 169" in info.score_explanation
+
+
+def test_info_score_explanation_is_none_when_the_scorer_gave_one_none() -> None:
+    sample = _make_eval_sample(scores={"acc": Score(value=1.0)})
+    info = transcript_info_from_eval_sample(
+        sample, eval_id="e", log_location=None, model=None
+    )
+
+    assert info.score_explanation is None
+
+
+def test_info_score_explanation_comes_from_the_scored_scorer() -> None:
+    # `sample_score` takes the first scorer, so the explanation has to as well
+    # -- a value and an account of it drawn from different scorers would be
+    # worse than no account at all
+    sample = _make_eval_sample(
+        scores={
+            "first": Score(value=0.5, explanation="the one that counted"),
+            "second": Score(value=0.0, explanation="the one that did not"),
+        },
+    )
+    info = transcript_info_from_eval_sample(
+        sample, eval_id="e", log_location=None, model=None
+    )
+
+    assert info.score == 0.5
+    assert info.score_explanation == "the one that counted"
+
+
 def test_info_score_picks_first_with_multiple_scorers() -> None:
     """Scout's `sample_score` returns the *first* score with multiple scorers.
 

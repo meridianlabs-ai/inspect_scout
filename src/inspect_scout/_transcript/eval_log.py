@@ -357,6 +357,10 @@ class EvalLogTranscriptsView(TranscriptsView):
             transcript_model = row_dict.get("model", None)
             transcript_model_options = row_dict.get("generate_config", None)
             transcript_score = row_dict.get("score", None)
+            # absent from an index written before this column existed, which
+            # reads as a transcript whose scorer gave no explanation -- the
+            # same thing every caller already handles
+            transcript_score_explanation = row_dict.get("score_explanation", None)
             transcript_success = row_dict.get("success", None)
             transcript_message_count = row_dict.get("message_count", None)
             transcript_total_time = row_dict.get("total_time", None)
@@ -409,6 +413,7 @@ class EvalLogTranscriptsView(TranscriptsView):
                 model=transcript_model,
                 model_options=transcript_model_options,
                 score=transcript_score,
+                score_explanation=transcript_score_explanation,
                 success=transcript_success,
                 message_count=transcript_message_count,
                 total_time=transcript_total_time,
@@ -784,6 +789,22 @@ def sample_score(sample: EvalSample | EvalSampleSummary) -> Value | None:
         return score.value
 
 
+def sample_score_explanation(sample: EvalSample | EvalSampleSummary) -> str | None:
+    """The headline scorer's explanation, where it recorded one.
+
+    Reads the same score `sample_score` reads — the first — so the value and
+    the account of it can never come from different scorers.
+    """
+    if not sample.scores:
+        return None
+
+    score = next(iter(sample.scores.values()), None)
+    if score is None:
+        return None
+
+    return score.explanation
+
+
 def sample_success(sample: EvalSample | EvalSampleSummary) -> bool | None:
     if not sample.scores:
         return None
@@ -838,6 +859,7 @@ def transcript_info_from_eval_sample(
         task_repeat=eval_sample.epoch,
         model=model,
         score=cast(JsonValue, sample_score(eval_sample)),
+        score_explanation=sample_score_explanation(eval_sample),
         success=sample_success(eval_sample),
         message_count=len(eval_sample.messages),
         total_time=eval_sample.total_time,
@@ -948,6 +970,7 @@ TranscriptColumns: list[Column] = (
         SampleColumn("target", path="target", required=True, value=list_as_str),
         SampleColumn("sample_metadata", path="metadata", default={}),
         SampleColumn("score", path=sample_score),
+        SampleColumn("score_explanation", path=sample_score_explanation),
         SampleColumn("success", path=sample_success),
         SampleColumn("score_*", path="scores", value=score_values),
         SampleColumn("total_tokens", path=sample_total_tokens),

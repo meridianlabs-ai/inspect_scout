@@ -185,6 +185,17 @@ class TranscriptInfo(BaseModel):
     score: JsonValue | None = Field(default=None)
     """Value indicating score on task."""
 
+    score_explanation: str | None = Field(default=None)
+    """Scorer's account of how it reached `score`, where it gave one.
+
+    The value alone says what the verdict was; this says why. For a scorer that
+    runs a test suite it is the suite's own output — which tests were required,
+    which passed, which are missing — and that is frequently the only evidence
+    that distinguishes a task the agent genuinely failed from one where the
+    grading itself misfired. A scanner asked to judge whether a score can be
+    trusted cannot answer from the number.
+    """
+
     success: bool | None = Field(default=None)
     """Boolean reduction of score to succeeded/failed."""
 

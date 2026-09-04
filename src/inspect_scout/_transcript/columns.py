@@ -121,6 +121,11 @@ class Columns:
         return Column("score")
 
     @property
+    def score_explanation(self) -> Column:
+        """Scorer's account of how it reached the headline score."""
+        return Column("score_explanation")
+
+    @property
     def success(self) -> Column:
         """Reduction of 'score' to True/False sucess."""
         return Column("success")

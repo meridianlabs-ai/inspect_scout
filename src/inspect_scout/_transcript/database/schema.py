@@ -117,6 +117,12 @@ TRANSCRIPT_SCHEMA_FIELDS: list[SchemaField] = [
         json_serialized=True,
     ),
     SchemaField(
+        name="score_explanation",
+        pyarrow_type=pa.large_string(),
+        required=False,
+        description="Scorer's account of how it reached the score.",
+    ),
+    SchemaField(
         name="success",
         pyarrow_type=pa.bool_(),
         required=False,

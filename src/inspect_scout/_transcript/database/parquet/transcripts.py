@@ -507,6 +507,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             transcript_model = row_dict.get("model")
             transcript_model_options = row_dict.get("model_options")
             transcript_score = row_dict.get("score")
+            transcript_score_explanation = row_dict.get("score_explanation")
             transcript_success = row_dict.get("success")
             transcript_message_count = row_dict.get("message_count")
             transcript_total_time = row_dict.get("total_time")
@@ -549,6 +550,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 model=transcript_model,
                 model_options=transcript_model_options,
                 score=transcript_score,
+                score_explanation=transcript_score_explanation,
                 success=transcript_success,
                 message_count=transcript_message_count,
                 total_time=transcript_total_time,
@@ -1075,6 +1077,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 if isinstance(transcript.score, (dict, list))
                 else (str(transcript.score) if transcript.score is not None else None)
             ),
+            "score_explanation": transcript.score_explanation,
             "success": transcript.success,
             "message_count": transcript.message_count,
             "total_time": transcript.total_time,

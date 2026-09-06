@@ -193,7 +193,7 @@ class ResultReport(BaseModel):
             columns["event_references"] = to_json_str_compact([])
             columns["scan_error"] = self.error.error
             columns["scan_error_traceback"] = self.error.traceback
-            columns["scan_error_type"] = "refusal"
+            columns["scan_error_type"] = "refusal" if self.error.refusal else None
         else:
             raise ValueError(
                 "A scan result must have either a 'result', 'refusal, or 'error' field."

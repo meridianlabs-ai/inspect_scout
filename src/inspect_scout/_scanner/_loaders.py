@@ -1,11 +1,11 @@
 import inspect
+from functools import partial
 from typing import (
     Any,
     AsyncIterator,
     Callable,
     get_args,
     get_origin,
-    get_type_hints,
 )
 
 from inspect_ai.event import Timeline
@@ -129,20 +129,16 @@ def create_implicit_loader(
     Returns:
         Appropriate loader for the scanner's input type.
     """
-    # Get the first parameter's annotation, resolved -- under
-    # `from __future__ import annotations` (or a literal string annotation)
-    # the raw annotation is a string, so it must be resolved via
-    # get_type_hints before matching. A function's __globals__ is its
-    # defining module, so no extra namespace argument is needed. Fall back to
-    # the raw annotation if resolution raises (e.g. an unresolvable forward
-    # reference).
-    first_param = next(iter(inspect.signature(scanner_fn).parameters.values()))
-    try:
-        input_annotation = get_type_hints(scanner_fn).get(
-            first_param.name, first_param.annotation
-        )
-    except Exception:
-        input_annotation = first_param.annotation
+    # Resolve only the annotation that selects the loader. Resolving the full
+    # signature can fail on an unrelated return annotation.
+    input_annotation = next(
+        iter(inspect.signature(scanner_fn).parameters.values())
+    ).annotation
+    if isinstance(input_annotation, str):
+        annotation_source = inspect.unwrap(scanner_fn)
+        while isinstance(annotation_source, partial):
+            annotation_source = inspect.unwrap(annotation_source.func)
+        input_annotation = eval(input_annotation, annotation_source.__globals__)
     # A `Transcript | TranscriptHandle` union also takes the identity loader:
     # a materialized Transcript flows through it, while a handle bypasses the
     # loader entirely (the pipeline passes it straight to the scanner).

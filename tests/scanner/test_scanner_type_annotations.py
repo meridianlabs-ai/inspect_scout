@@ -5,9 +5,49 @@ from __future__ import annotations
 import inspect
 from typing import Optional, get_type_hints
 
+import pytest
+from inspect_ai.model import ChatMessageAssistant
 from inspect_ai.model._chat_message import ChatMessage
+from inspect_scout import Transcript
 from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import Scanner, scanner
+
+
+@pytest.mark.asyncio
+async def test_scanner_instantiates_with_postponed_transcript_annotation() -> None:
+    @scanner(messages="all")
+    def transcript_scanner() -> Scanner[Transcript]:
+        async def scan(transcript: Transcript) -> Result:
+            return Result(value=len(transcript.messages))
+
+        return scan
+
+    instance = transcript_scanner()
+    transcript = Transcript(
+        transcript_id="postponed",
+        source_type="test",
+        source_id="test",
+        source_uri="test://postponed",
+        messages=[ChatMessageAssistant(content="hello")],
+    )
+    result = await instance(transcript)
+    assert isinstance(result, Result)
+    assert result.value == 1
+
+
+@pytest.mark.asyncio
+async def test_scanner_instantiates_with_postponed_message_list_annotation() -> None:
+    @scanner
+    def message_scanner() -> Scanner[list[ChatMessageAssistant]]:
+        async def scan(messages: list[ChatMessageAssistant]) -> Result:
+            return Result(value=len(messages))
+
+        return scan
+
+    instance: Scanner[list[ChatMessageAssistant]] = message_scanner()
+    result = await instance([ChatMessageAssistant(content="hello")])
+    assert isinstance(result, Result)
+    assert result.value == 1
 
 
 def test_scanner_preserves_type_annotations_with_future_annotations() -> None:

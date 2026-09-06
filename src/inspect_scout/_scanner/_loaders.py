@@ -114,7 +114,7 @@ def create_implicit_loader(
     """
     # Get the first parameter's annotation
     input_annotation = next(
-        iter(inspect.signature(scanner_fn).parameters.values())
+        iter(inspect.signature(scanner_fn, eval_str=True).parameters.values())
     ).annotation
     if input_annotation is inspect.Parameter.empty or input_annotation == Transcript:
         return _IdentityLoader(content)

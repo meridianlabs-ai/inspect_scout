@@ -496,9 +496,12 @@ async def _scan_async(
     async def run(tg: TaskGroup) -> None:
         try:
             nonlocal result
-            result = await _scan_async_inner(
-                scan=scan, recorder=recorder, tg=tg, fail_on_error=fail_on_error
-            )
+            # the scope must outlive the interrupted-path sync inside
+            # `_scan_async_inner`, so it wraps the whole call
+            with recorder.run_scope():
+                result = await _scan_async_inner(
+                    scan=scan, recorder=recorder, tg=tg, fail_on_error=fail_on_error
+                )
         finally:
             tg.cancel_scope.cancel()
 

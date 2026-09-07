@@ -27,7 +27,6 @@ from inspect_ai.scorer import ValueToFloat
 from inspect_ai.tool import (
     Tool,
     ToolDef,
-    ToolFunction,
     ToolInfo,
     ToolParams,
     ToolSource,
@@ -92,7 +91,7 @@ async def structured_generate(
             model,
             input=messages,
             tools=executable_tools,
-            tool_choice=ToolFunction(answer_tooldef.name),
+            tool_choice="auto",
             config=(config or GenerateConfig()).merge(
                 GenerateConfig(parallel_tool_calls=False)
             ),

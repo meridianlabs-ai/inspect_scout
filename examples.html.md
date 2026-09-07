@@ -142,7 +142,7 @@ def refusal_keywords() -> Scanner[Transcript]:
     return scan
 ```
 
-Note that we create [Reference](./reference/scanner.html.md#reference) objects to enable linking from message references in the results viewer (the grep scanner does the same).
+Note that we create [Reference](https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#reference) objects to enable linking from message references in the results viewer (the grep scanner does the same).
 
 ## Eval Awareness
 
@@ -344,4 +344,4 @@ A few things to note here:
 
 2.  We use the `CommandNotFound` Pydantic model for type safety then convert it to a `dict()` with `.model_dump()` when yielding the result.
 
-3.  We provide an `explanation` and create an explicit [Reference](./reference/scanner.html.md#reference) to the assistant message as part of our result.
+3.  We provide an `explanation` and create an explicit [Reference](https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#reference) to the assistant message as part of our result.

@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.38">
+<meta name="generator" content="quarto-1.9.36">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -77,7 +77,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="site_libs/quarto-html/anchor.min.js"></script>
 <link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="site_libs/bootstrap/bootstrap-60b6846f58d02926bc6ca5ecd6f15c48.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
@@ -744,7 +744,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>The <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#message_numbering">message_numbering()</a></span> function returns a <code>(messages_as_str, extract_refs)</code> pair:</p>
 <ul>
 <li><p><span class="element-type-name ref-interlink"><a href="./reference/scanner.html#messages_as_str">messages_as_str()</a></span> converts a list of messages into a numbered string representation, using auto-incrementing labels (<code>[M1]</code>, <code>[M2]</code>, etc.). If called multiple times within the same numbering scope, numbering continues where it left off (e.g.&nbsp;the second call starts at <code>[M6]</code> if the first call rendered five messages).</p></li>
-<li><p><code>extract_refs()</code> resolves citations like <code>[M3]</code> in model output back to message IDs, producing <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#reference">Reference</a></span> objects suitable for <code>Result.references</code>.</p></li>
+<li><p><code>extract_refs()</code> resolves citations like <code>[M3]</code> in model output back to message IDs, producing <span class="element-type-name ref-interlink"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#reference">Reference</a></span> objects suitable for <code>Result.references</code>.</p></li>
 </ul>
 <p>You can optionally pass a <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#messagespreprocessor">MessagesPreprocessor</a></span> to <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#message_numbering">message_numbering()</a></span> to control which messages are included. Available options include <code>exclude_system</code>, <code>exclude_reasoning</code>, and <code>exclude_tool_usage</code>.</p>
 <p>To override the default role prefix (<code>USER:</code>, <code>ASSISTANT:</code>, etc.) in each rendered message, set <code>ChatMessage.metadata["role_label"]</code> to a non-empty string — the renderer will use it as the prefix verbatim. See <a href="./scanner_tools.html#custom-role-labels">Custom Role Labels</a> for details.</p>

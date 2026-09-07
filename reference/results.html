@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.38">
+<meta name="generator" content="quarto-1.9.36">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -70,7 +70,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
 <link href="../reference/results.qmd#scan_list" rel="next">
-<link href="../reference/aio.qmd#scan_results_arrow_async" rel="prev">
+<link href="../reference/aio.qmd#scan_results_batches_async" rel="prev">
 <link href="../images/scout.svg" rel="icon" type="image/svg+xml">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -78,7 +78,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="../site_libs/bootstrap/bootstrap-60b6846f58d02926bc6ca5ecd6f15c48.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
@@ -333,6 +333,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text">scan_results_arrow_async</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/aio.html#scan_results_batches_async" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_results_batches_async</span></a>
+  </div>
+</li>
       </ul>
   </li>
           <li class="sidebar-item sidebar-item-section">
@@ -394,8 +400,26 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/results.html#scan_results_batches" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">scan_results_batches</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/results.html#heavy_columns" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">HEAVY_COLUMNS</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/results.html#validation_set" class="sidebar-item-text sidebar-link">
  <span class="menu-text">validation_set</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/results.html#validation_predicate" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">validation_predicate</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -455,12 +479,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <div class="sidebar-item-container"> 
   <a href="../reference/scanner.html#result" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Result</span></a>
-  </div>
-</li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/scanner.html#reference" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Reference</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -773,6 +791,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text">claude_code</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/sources.html#atif" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">atif</span></a>
+  </div>
+</li>
       </ul>
   </li>
           <li class="sidebar-item sidebar-item-section">
@@ -1005,10 +1029,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#scanresultsdf" id="toc-scanresultsdf" class="nav-link" data-scroll-target="#scanresultsdf">ScanResultsDF</a></li>
   <li><a href="#scan_results_arrow" id="toc-scan_results_arrow" class="nav-link" data-scroll-target="#scan_results_arrow">scan_results_arrow</a></li>
   <li><a href="#scanresultsarrow" id="toc-scanresultsarrow" class="nav-link" data-scroll-target="#scanresultsarrow">ScanResultsArrow</a></li>
+  <li><a href="#scan_results_batches" id="toc-scan_results_batches" class="nav-link" data-scroll-target="#scan_results_batches">scan_results_batches</a></li>
+  <li><a href="#heavy_columns" id="toc-heavy_columns" class="nav-link" data-scroll-target="#heavy_columns">HEAVY_COLUMNS</a></li>
   </ul></li>
   <li><a href="#validation" id="toc-validation" class="nav-link" data-scroll-target="#validation">Validation</a>
   <ul class="collapse">
   <li><a href="#validation_set" id="toc-validation_set" class="nav-link" data-scroll-target="#validation_set">validation_set</a></li>
+  <li><a href="#validation_predicate" id="toc-validation_predicate" class="nav-link" data-scroll-target="#validation_predicate">validation_predicate</a></li>
   <li><a href="#validationset" id="toc-validationset" class="nav-link" data-scroll-target="#validationset">ValidationSet</a></li>
   <li><a href="#validationcase" id="toc-validationcase" class="nav-link" data-scroll-target="#validationcase">ValidationCase</a></li>
   <li><a href="#predicatetype" id="toc-predicatetype" class="nav-link" data-scroll-target="#predicatetype">PredicateType</a></li>
@@ -1051,7 +1078,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scan_list">scan_list</h3>
 <p>List completed and pending scans.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_scanlist.py#L7">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_scanlist.py#L7">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> scan_list(scans_location: <span class="bu">str</span>) <span class="op">-&gt;</span> <span class="bu">list</span>[Status]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
@@ -1065,7 +1092,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scan_status">scan_status</h3>
 <p>Status of scan.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_scanresults.py#L20">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_scanresults.py#L23">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> scan_status(scan_location: <span class="bu">str</span>) <span class="op">-&gt;</span> Status</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
@@ -1079,7 +1106,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="status">Status</h3>
 <p>Status of scan job.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_recorder/recorder.py#L21">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_recorder/recorder.py#L42">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Status</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1113,7 +1140,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="summary">Summary</h3>
 <p>Summary of scan results.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_recorder/summary.py#L68">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_recorder/summary.py#L68">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Summary(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
@@ -1134,14 +1161,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scan_results_df">scan_results_df</h3>
 <p>Scan results as Pandas data frames.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_scanresults.py#L72">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_scanresults.py#L75">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> scan_results_df(</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    scan_location: <span class="bu">str</span>,</span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
 <span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    scanner: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
 <span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    rows: Literal[<span class="st">"results"</span>, <span class="st">"transcripts"</span>] <span class="op">=</span> <span class="st">"results"</span>,</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    exclude_columns: <span class="bu">list</span>[<span class="bu">str</span>] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    exclude_columns: Sequence[<span class="bu">str</span>] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> ScanResultsDF</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">scan_location</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
@@ -1156,9 +1183,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Row granularity. Specify “results” to yield a row for each scanner result (potentially multiple per transcript); Specify “transcript” to yield a row for each transcript (in which case multiple results will be packed into the <code>value</code> field as a JSON list of <span class="element-type-name ref-interlink"><a href="../reference/scanner.html#result">Result</a></span>).</p>
 </dd>
-<dt><code class="ref-definition">exclude_columns</code> <span class="element-type">list[<span class="element-type-name">str</span>] | <span class="element-type-name">None</span></span></dt>
+<dt><code class="ref-definition">exclude_columns</code> <span class="element-type"><span class="element-type-name">Sequence</span>[<span class="element-type-name">str</span>] | <span class="element-type-name">None</span></span></dt>
 <dd>
-<p>List of column names to exclude when reading parquet files. Useful for reducing memory usage by skipping large unused columns.</p>
+<p>Column names to exclude when reading parquet files. Defaults to <code>None</code>, which excludes the heavy columns (<code>input</code>, <code>input_data</code>, and <code>scan_events</code>, available as <span class="element-type-name ref-interlink"><a href="../reference/results.html#heavy_columns">HEAVY_COLUMNS</a></span>) that dominate file size and memory usage. Pass <code>[]</code> to include all columns, or an explicit sequence to exclude exactly those columns. Use <span class="element-type-name ref-interlink"><a href="../reference/results.html#scan_results_arrow">scan_results_arrow()</a></span> field accessors for per-row access to heavy columns.</p>
 </dd>
 </dl>
 </section>
@@ -1167,7 +1194,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Scan results as pandas data frames.</p>
 <p>The <code>scanners</code> mapping provides lazy access to DataFrames - each DataFrame is only materialized when its key is accessed. This allows efficient access to specific scanner results without loading all data upfront.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_recorder/recorder.py#L88">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_recorder/recorder.py#L132">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span></span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ScanResultsDF(Status)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1205,7 +1232,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scan_results_arrow">scan_results_arrow</h3>
 <p>Scan results as Arrow.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_scanresults.py#L45">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_scanresults.py#L48">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> scan_results_arrow(</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    scan_location: <span class="bu">str</span>,</span>
@@ -1221,7 +1248,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="scanresultsarrow">ScanResultsArrow</h3>
 <p>Scan results as Arrow.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_recorder/recorder.py#L41">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_recorder/recorder.py#L62">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="at">@dataclass</span></span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ScanResultsArrow(Status)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1261,15 +1288,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Acquire a reader for the specified scanner.</p>
 <p>The return reader is a context manager that should be acquired before reading.</p>
+<p><code>exclude_columns=None</code> (the default) excludes the heavy columns (<code>input</code>, <code>input_data</code>, and <code>scan_events</code>, available as <span class="element-type-name ref-interlink"><a href="../reference/results.html#heavy_columns">HEAVY_COLUMNS</a></span>); pass <code>[]</code> to include all columns, or an explicit sequence to exclude exactly those columns.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_recorder/recorder.py#L60">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_recorder/recorder.py#L81">Source</a>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="at">@abc.abstractmethod</span></span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> reader(</span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    <span class="va">self</span>,</span>
 <span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    scanner: <span class="bu">str</span>,</span>
 <span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    streaming_batch_size: <span class="bu">int</span> <span class="op">=</span> <span class="dv">1024</span>,</span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    exclude_columns: <span class="bu">list</span>[<span class="bu">str</span>] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    exclude_columns: Sequence[<span class="bu">str</span>] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
 <span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> pa.RecordBatchReader</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">scanner</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
@@ -1280,7 +1308,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 
 </dd>
-<dt><code class="ref-definition">exclude_columns</code> <span class="element-type">list[<span class="element-type-name">str</span>] | <span class="element-type-name">None</span></span></dt>
+<dt><code class="ref-definition">exclude_columns</code> <span class="element-type"><span class="element-type-name">Sequence</span>[<span class="element-type-name">str</span>] | <span class="element-type-name">None</span></span></dt>
 <dd>
 
 </dd>
@@ -1289,6 +1317,54 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </dl>
 </section>
 </section>
+<section id="scan_results_batches" class="level3">
+<h3 class="anchored" data-anchor-id="scan_results_batches">scan_results_batches</h3>
+<p>Stream a scanner’s results as pandas DataFrame batches.</p>
+<p>Concatenating all batches yields the same rows as <code>scan_results_df(scan_location, scanner=scanner, rows=rows)</code>, but memory remains bounded by <code>batch_size</code> rather than scaling with the size of the scanner’s results. This holds for local paths and for cloud locations PyArrow can read natively (<code>s3://</code>, <code>gs://</code>, <code>abfs://</code>), which are read with HTTP range requests. Remote protocols PyArrow has no native filesystem for (e.g.&nbsp;<code>az://</code>) are the exception: the parquet file is downloaded in full before batching, so memory scales with file size.</p>
+<p>Note that batches are produced with synchronous parquet I/O. To consume from async code, drive the iterator from a worker thread or use <span class="element-type-name ref-interlink"><a href="../reference/aio.html#scan_results_batches_async">scan_results_batches_async()</a></span>.</p>
+<div class="source-link">
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_scanresults.py#L162">Source</a>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> scan_results_batches(</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    scan_location: <span class="bu">str</span>,</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    scanner: <span class="bu">str</span>,</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    batch_size: <span class="bu">int</span> <span class="op">=</span> <span class="dv">1024</span>,</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    exclude_columns: Sequence[<span class="bu">str</span>] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>    rows: Literal[<span class="st">"results"</span>, <span class="st">"transcripts"</span>] <span class="op">=</span> <span class="st">"results"</span>,</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> Iterator[pd.DataFrame]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<dl>
+<dt><code class="ref-definition">scan_location</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
+<dd>
+<p>Location of scan (e.g.&nbsp;directory or s3 bucket).</p>
+</dd>
+<dt><code class="ref-definition">scanner</code> <span class="element-type"><span class="element-type-name">str</span></span></dt>
+<dd>
+<p>Scanner name.</p>
+</dd>
+<dt><code class="ref-definition">batch_size</code> <span class="element-type"><span class="element-type-name">int</span></span></dt>
+<dd>
+<p>Maximum number of parquet rows read per batch (note that resultset expansion can yield more than <code>batch_size</code> rows per batch).</p>
+</dd>
+<dt><code class="ref-definition">exclude_columns</code> <span class="element-type"><span class="element-type-name">Sequence</span>[<span class="element-type-name">str</span>] | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>Column names to exclude when reading parquet files. Defaults to <code>None</code>, which excludes the heavy columns (<code>input</code>, <code>input_data</code>, and <code>scan_events</code>, available as <span class="element-type-name ref-interlink"><a href="../reference/results.html#heavy_columns">HEAVY_COLUMNS</a></span>) that dominate file size and memory usage. Pass <code>[]</code> to include all columns, or an explicit sequence to exclude exactly those columns. Use <span class="element-type-name ref-interlink"><a href="../reference/results.html#scan_results_arrow">scan_results_arrow()</a></span> field accessors for per-row access to heavy columns.</p>
+</dd>
+<dt><code class="ref-definition">rows</code> <span class="element-type"><span class="element-type-name">Literal</span>['results', 'transcripts']</span></dt>
+<dd>
+<p>Row granularity. Specify “results” to yield a row for each scanner result (potentially multiple per transcript); Specify “transcript” to yield a row for each transcript (in which case multiple results will be packed into the <code>value</code> field as a JSON list of <span class="element-type-name ref-interlink"><a href="../reference/scanner.html#result">Result</a></span>).</p>
+</dd>
+</dl>
+</section>
+<section id="heavy_columns" class="level3">
+<h3 class="anchored" data-anchor-id="heavy_columns">HEAVY_COLUMNS</h3>
+<p>Large JSON columns excluded by default when reading scan results.</p>
+<p>These columns (full serialized scanner input, deduplicated message/call pools, and scanner execution events) dominate parquet file size and memory usage, and the common case (analysis over values/scores/metadata) never needs them. Pass <code>exclude_columns=[]</code> to include all columns.</p>
+<div class="source-link">
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_recorder/recorder.py#L22">Source</a>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>HEAVY_COLUMNS: <span class="bu">tuple</span>[<span class="bu">str</span>, ...] <span class="op">=</span> (<span class="st">"input"</span>, <span class="st">"input_data"</span>, <span class="st">"scan_events"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
 </section>
 <section id="validation" class="level2">
 <h2 class="anchored" data-anchor-id="validation">Validation</h2>
@@ -1296,13 +1372,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="validation_set">validation_set</h3>
 <p>Create a validation set by reading cases from a file or data frame.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_validation/validation.py#L15">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_validation/validation.py#L15">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> validation_set(</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    cases: <span class="bu">str</span> <span class="op">|</span> Path <span class="op">|</span> pd.DataFrame,</span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    predicate: ValidationPredicate <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="st">"eq"</span>,</span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    split: <span class="bu">str</span> <span class="op">|</span> <span class="bu">list</span>[<span class="bu">str</span>] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> ValidationSet</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> validation_set(</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    cases: <span class="bu">str</span> <span class="op">|</span> Path <span class="op">|</span> pd.DataFrame,</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    predicate: ValidationPredicate <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="st">"eq"</span>,</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    split: <span class="bu">str</span> <span class="op">|</span> <span class="bu">list</span>[<span class="bu">str</span>] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> ValidationSet</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">cases</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">Path</span> | pd.DataFrame</span></dt>
 <dd>
@@ -1318,13 +1394,39 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </dd>
 </dl>
 </section>
+<section id="validation_predicate" class="level3">
+<h3 class="anchored" data-anchor-id="validation_predicate">validation_predicate</h3>
+<p>Register a portable custom validation predicate.</p>
+<p>Registered predicates are persisted by name and Inspect registry-compatible creation parameters rather than by serializing their Python implementation.</p>
+<div class="source-link">
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_validation/registry.py#L42">Source</a>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> validation_predicate(</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    factory: PredicateFactory[P] <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>,</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>    name: <span class="bu">str</span> <span class="op">|</span> <span class="va">None</span> <span class="op">=</span> <span class="va">None</span>,</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> (</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>    RegisteredPredicateFactory[P]</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">|</span> Callable[[PredicateFactory[P]], RegisteredPredicateFactory[P]]</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<dl>
+<dt><code class="ref-definition">factory</code> <span class="element-type"><span class="element-type-name">PredicateFactory</span>[<span class="element-type-name">P</span>] | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>Function that creates an async validation predicate.</p>
+</dd>
+<dt><code class="ref-definition">name</code> <span class="element-type"><span class="element-type-name">str</span> | <span class="element-type-name">None</span></span></dt>
+<dd>
+<p>Optional registered name (defaults to the factory name).</p>
+</dd>
+</dl>
+</section>
 <section id="validationset" class="level3">
 <h3 class="anchored" data-anchor-id="validationset">ValidationSet</h3>
 <p>Validation set for a scanner.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_validation/types.py#L70">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_validation/types.py#L76">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ValidationSet(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ValidationSet(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
 <h4 class="anchored" data-anchor-id="">Attributes</h4>
 <dl>
@@ -1350,9 +1452,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>A <span class="element-type-name ref-interlink"><a href="../reference/results.html#validationcase">ValidationCase</a></span> specifies the ground truth for a scan of particular id (e.g.&nbsp;transcript id, message id, etc.</p>
 <p>Use <code>target</code> for single-value or dict validation. Use <code>labels</code> for validating resultsets with label-specific expectations.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_validation/types.py#L10">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_validation/types.py#L16">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ValidationCase(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ValidationCase(BaseModel)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section class="level4">
 <h4 class="anchored" data-anchor-id="">Attributes</h4>
 <dl>
@@ -1396,11 +1498,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <dd>
 <p>Coerce label values to boolean for backwards compatibility.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_validation/types.py#L52">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_validation/types.py#L58">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="at">@field_validator</span>(<span class="st">"labels"</span>, mode<span class="op">=</span><span class="st">"before"</span>)</span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="at">@classmethod</span></span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> coerce_labels_to_bool(cls, v: Any) <span class="op">-&gt;</span> <span class="bu">dict</span>[<span class="bu">str</span>, <span class="bu">bool</span>] <span class="op">|</span> <span class="va">None</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="at">@field_validator</span>(<span class="st">"labels"</span>, mode<span class="op">=</span><span class="st">"before"</span>)</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="at">@classmethod</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> coerce_labels_to_bool(cls, v: Any) <span class="op">-&gt;</span> <span class="bu">dict</span>[<span class="bu">str</span>, <span class="bu">bool</span>] <span class="op">|</span> <span class="va">None</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <dl>
 <dt><code class="ref-definition">v</code> <span class="element-type"><span class="element-type-name">Any</span></span></dt>
 <dd>
@@ -1415,39 +1517,39 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="predicatetype">PredicateType</h3>
 <p>String name of a built-in validation predicate.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_validation/predicates.py#L15">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_validation/predicates.py#L16">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>PredicateType: TypeAlias <span class="op">=</span> Literal[</span>
-<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"gt"</span>,</span>
-<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"gte"</span>,</span>
-<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"lt"</span>,</span>
-<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"lte"</span>,</span>
-<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">"eq"</span>,</span>
-<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">"ne"</span>,</span>
-<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">"contains"</span>,</span>
-<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>    <span class="st">"startswith"</span>,</span>
-<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">"endswith"</span>,</span>
-<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>    <span class="st">"icontains"</span>,</span>
-<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>    <span class="st">"iequals"</span>,</span>
-<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb17"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>PredicateType: TypeAlias <span class="op">=</span> Literal[</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">"gt"</span>,</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">"gte"</span>,</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"lt"</span>,</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">"lte"</span>,</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">"eq"</span>,</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">"ne"</span>,</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">"contains"</span>,</span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>    <span class="st">"startswith"</span>,</span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">"endswith"</span>,</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>    <span class="st">"icontains"</span>,</span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>    <span class="st">"iequals"</span>,</span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="predicatefn" class="level3">
 <h3 class="anchored" data-anchor-id="predicatefn">PredicateFn</h3>
 <p>Function that implements a validation predicate.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_validation/predicates.py#L9">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_validation/predicates.py#L10">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>PredicateFn: TypeAlias <span class="op">=</span> Callable[</span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>    [Result, JsonValue], Awaitable[<span class="bu">bool</span> <span class="op">|</span> <span class="bu">dict</span>[<span class="bu">str</span>, <span class="bu">bool</span>]]</span>
-<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb18"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>PredicateFn: TypeAlias <span class="op">=</span> Callable[</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>    [Result, JsonValue], Awaitable[<span class="bu">bool</span> <span class="op">|</span> <span class="bu">dict</span>[<span class="bu">str</span>, <span class="bu">bool</span>]]</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="validationpredicate" class="level3">
 <h3 class="anchored" data-anchor-id="validationpredicate">ValidationPredicate</h3>
 <p>Predicate used to compare scanner result with target value.</p>
 <div class="source-link">
-<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_validation/predicates.py#L31">Source</a>
+<a href="https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_validation/predicates.py#L32">Source</a>
 </div>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>ValidationPredicate: TypeAlias <span class="op">=</span> PredicateType <span class="op">|</span> PredicateFn</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode python doc-declaration code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>ValidationPredicate: TypeAlias <span class="op">=</span> PredicateType <span class="op">|</span> PredicateFn</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
 </section>
@@ -1968,8 +2070,8 @@ document.addEventListener("DOMContentLoaded", function () {
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/aio.html#scan_results_arrow_async" class="pagination-link" aria-label="scan_results_arrow_async">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">scan_results_arrow_async</span>
+      <a href="../reference/aio.html#scan_results_batches_async" class="pagination-link" aria-label="scan_results_batches_async">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">scan_results_batches_async</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">

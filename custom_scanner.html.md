@@ -190,7 +190,7 @@ The [message_numbering()](./reference/scanner.html.md#message_numbering) functio
 
 - [messages_as_str()](./reference/scanner.html.md#messages_as_str) converts a list of messages into a numbered string representation, using auto-incrementing labels (`[M1]`, `[M2]`, etc.). If called multiple times within the same numbering scope, numbering continues where it left off (e.g. the second call starts at `[M6]` if the first call rendered five messages).
 
-- `extract_refs()` resolves citations like `[M3]` in model output back to message IDs, producing [Reference](./reference/scanner.html.md#reference) objects suitable for `Result.references`.
+- `extract_refs()` resolves citations like `[M3]` in model output back to message IDs, producing [Reference](https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#reference) objects suitable for `Result.references`.
 
 You can optionally pass a [MessagesPreprocessor](./reference/scanner.html.md#messagespreprocessor) to [message_numbering()](./reference/scanner.html.md#message_numbering) to control which messages are included. Available options include `exclude_system`, `exclude_reasoning`, and `exclude_tool_usage`.
 

@@ -7,7 +7,7 @@ Pass a FILE which is either a Python script that contains @scanner or @scanjob d
 #### Usage
 
 ``` text
-scout scan [OPTIONS] COMMAND [ARGS]...
+scout scan [OPTIONS] [COMMAND] [ARGS]...
 ```
 
 #### Subcommands

@@ -419,7 +419,9 @@ Note that by default the results data frame will include an individual row for e
 
 #### Available Fields
 
-The data frame includes the following fields (note that some fields included embedded JSON data, these are all noted below):
+The data frame includes the following fields (note that some fields include embedded JSON data, these are all noted below).
+
+Note that the heavy JSON columns (`input` and `scan_events`) are excluded by default as they dominate file size and memory usage—pass `exclude_columns=[]` to include all columns, or an explicit list to exclude exactly those columns (the default exclusions are available as the [HEAVY_COLUMNS](./reference/results.html.md#heavy_columns) constant, e.g. `exclude_columns=[*HEAVY_COLUMNS, "metadata"]`).
 
 [TABLE]
 
@@ -496,6 +498,18 @@ If you don’t require immediate results then batch processing can be an excelle
 - The optimal processing flow for batch mode is to send *all of your transcripts* in a single batch group so that they all complete together. Therefore, when running in batch mode `--max-transcripts` is automatically set to a very high value (10,000). You may need to lower this if holding that many transcripts in memory is problematic.
 
 See the Inspect AI documentation on [Batch Mode](https://inspect.aisi.org.uk/models-batch.html) for additional details on batching as well as notes on provider specific behavior and configuration.
+
+### Monitoring In-Progress Results
+
+By default, results are only written to the scan location when the scan completes (or is interrupted). For long-running scans it can be useful to look at partial results while the scan is still in flight—for example, to sanity check that a scanner is behaving as expected before committing to a multi-hour run.
+
+Use the `--results-buffer` option (or the `results_buffer` scan/scan job/project option) to additionally sync in-progress results to the scan location every N recorded results:
+
+``` bash
+scout scan cybench_scan.py --results-buffer 100
+```
+
+You can then point [scan_results_df()](./reference/results.html.md#scan_results_df) (or Scout View) at the scan location to analyze what’s been produced so far. Writes are atomic, so readers always observe a consistent snapshot. Syncs run in the background so they don’t slow down scanning, but they do add I/O overhead—choose N to balance freshness against cost.
 
 ### Error Handling
 

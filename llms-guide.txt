@@ -10,7 +10,7 @@
 Welcome to Inspect Scout, a tool for in-depth analysis of AI agent transcripts. With Scout, you can easily:
 
 1.  Detect issues like misconfigured environments, refusals, and evaluation awareness using LLM-based or pattern-based scanners.
-2.  Analyze transcripts from Inspect, Arize Phoenix, LangSmith, Logfire, MLFLow, W&B Weave, Claude Code, or custom sources via the capture and import APIs.
+2.  Analyze transcripts from Inspect, Arize Phoenix, LangSmith, Logfire, MLFLow, W&B Weave, Claude Code, Harbor, or custom sources via the capture and import APIs.
 3.  Develop scanners interactively, exploring transcripts and scan results visually in Scout View.
 4.  Validate scanner accuracy against human-labeled examples.
 5.  Handle complex scanning requirements like multi-agent transcripts, compaction, and context-window chunking.
@@ -1202,7 +1202,9 @@ Note that by default the results data frame will include an individual row for e
 
 #### Available Fields
 
-The data frame includes the following fields (note that some fields included embedded JSON data, these are all noted below):
+The data frame includes the following fields (note that some fields include embedded JSON data, these are all noted below).
+
+Note that the heavy JSON columns (`input` and `scan_events`) are excluded by default as they dominate file size and memory usage—pass `exclude_columns=[]` to include all columns, or an explicit list to exclude exactly those columns (the default exclusions are available as the [HEAVY_COLUMNS](./reference/results.html.md#heavy_columns) constant, e.g. `exclude_columns=[*HEAVY_COLUMNS, "metadata"]`).
 
 [TABLE]
 
@@ -1279,6 +1281,18 @@ If you don’t require immediate results then batch processing can be an excelle
 - The optimal processing flow for batch mode is to send *all of your transcripts* in a single batch group so that they all complete together. Therefore, when running in batch mode `--max-transcripts` is automatically set to a very high value (10,000). You may need to lower this if holding that many transcripts in memory is problematic.
 
 See the Inspect AI documentation on [Batch Mode](https://inspect.aisi.org.uk/models-batch.html) for additional details on batching as well as notes on provider specific behavior and configuration.
+
+### Monitoring In-Progress Results
+
+By default, results are only written to the scan location when the scan completes (or is interrupted). For long-running scans it can be useful to look at partial results while the scan is still in flight—for example, to sanity check that a scanner is behaving as expected before committing to a multi-hour run.
+
+Use the `--results-buffer` option (or the `results_buffer` scan/scan job/project option) to additionally sync in-progress results to the scan location every N recorded results:
+
+``` bash
+scout scan cybench_scan.py --results-buffer 100
+```
+
+You can then point [scan_results_df()](./reference/results.html.md#scan_results_df) (or Scout View) at the scan location to analyze what’s been produced so far. Writes are atomic, so readers always observe a consistent snapshot. Syncs run in the background so they don’t slow down scanning, but they do add I/O overhead—choose N to balance freshness against cost.
 
 ### Error Handling
 
@@ -1581,7 +1595,9 @@ Note that by default the results data frame will include an individual row for e
 
 #### Available Fields
 
-The data frame includes the following fields (note that some fields included embedded JSON data, these are all noted below):
+The data frame includes the following fields (note that some fields include embedded JSON data, these are all noted below).
+
+Note that the heavy JSON columns (`input` and `scan_events`) are excluded by default as they dominate file size and memory usage—pass `exclude_columns=[]` to include all columns, or an explicit list to exclude exactly those columns (the default exclusions are available as the [HEAVY_COLUMNS](./reference/results.html.md#heavy_columns) constant, e.g. `exclude_columns=[*HEAVY_COLUMNS, "metadata"]`).
 
 [TABLE]
 
@@ -1847,6 +1863,71 @@ SiEXpECj7U9nNAvM3H7JqB,10,
 # Default is "gte", but second case uses "lt"
 validation_set(cases="validation.csv", predicate="gte")
 ```
+
+### Custom Predicates
+
+Use `@validation_predicate` when a custom predicate must be recorded and recreated for scan resume:
+
+``` python
+from pydantic import JsonValue
+
+from inspect_scout import (
+    Result,
+    ValidationPredicate,
+    validation_predicate,
+    validation_set,
+)
+
+
+@validation_predicate
+def within_range(distance: float = 10) -> ValidationPredicate:
+    async def check(result: Result, target: JsonValue) -> bool:
+        if not isinstance(result.value, (int, float)):
+            return False
+        if not isinstance(target, (int, float)):
+            return False
+        return abs(result.value - target) <= distance
+
+    return check
+
+
+validation = validation_set(
+    "validation.csv",
+    predicate=within_range(distance=5),
+)
+```
+
+Scout records the registered predicate’s name and Inspect registry-compatible creation parameters, not its Python implementation. Use the same parameter conventions as other Inspect extensions: ordinary serializable values and registered Inspect objects or models are portable, while arbitrary Python objects are not. Non-finite floating-point values are rejected rather than silently changed in the scan artifact. The predicate’s module or package must be available when the scan is resumed.
+
+If the predicate is defined in a local source file rather than an installed package, Scout records the file path and loads that file when the scan is resumed (the same way it loads the source file of a scanner defined outside a package). Listing or viewing a scan never loads predicate code.
+
+An unregistered async callable can still be used for the current scan:
+
+``` python
+async def normalized_equal(result: Result, target: JsonValue) -> bool:
+    return str(result.value).strip().lower() == str(target).strip().lower()
+
+
+validation = validation_set(
+    "validation.csv",
+    predicate=normalized_equal,
+)
+```
+
+Unregistered callables are not stored in the portable scan specification. Resume from Python by supplying the trusted callable again:
+
+``` python
+from inspect_scout import scan_resume
+
+scan_resume(
+    scan_location,
+    predicate_overrides={
+        "my_scanner": normalized_equal,
+    },
+)
+```
+
+Completed scans remain viewable without loading predicate code. A scan with an unregistered or legacy custom predicate cannot be resumed by location alone (including with `scout scan resume`), and Scout never substitutes a missing predicate with equality.
 
 ## Advanced
 
@@ -2267,7 +2348,7 @@ Scanners produce results which ultimately carry a specific `value`. There are tw
     class ToolErrors(BaseModel):
         tool_errors: int = Field(alias="value", description="The number of tool errors encountered.")
 
-        causes: str = Field(description="What were the most common causes of tool errors.") 
+        causes: str = Field(description="What were the most common causes of tool errors.")
     ```
 
 ### Labels and Explanations
@@ -2943,7 +3024,7 @@ The [message_numbering()](./reference/scanner.html.md#message_numbering) functio
 
 - [messages_as_str()](./reference/scanner.html.md#messages_as_str) converts a list of messages into a numbered string representation, using auto-incrementing labels (`[M1]`, `[M2]`, etc.). If called multiple times within the same numbering scope, numbering continues where it left off (e.g. the second call starts at `[M6]` if the first call rendered five messages).
 
-- `extract_refs()` resolves citations like `[M3]` in model output back to message IDs, producing [Reference](./reference/scanner.html.md#reference) objects suitable for `Result.references`.
+- `extract_refs()` resolves citations like `[M3]` in model output back to message IDs, producing [Reference](https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#reference) objects suitable for `Result.references`.
 
 You can optionally pass a [MessagesPreprocessor](./reference/scanner.html.md#messagespreprocessor) to [message_numbering()](./reference/scanner.html.md#message_numbering) to control which messages are included. Available options include `exclude_system`, `exclude_reasoning`, and `exclude_tool_usage`.
 
@@ -3303,7 +3384,7 @@ messages_as_str, extract_refs = message_numbering()
 The returned functions work together:
 
 - `messages_as_str(messages)` — Renders a list of [ChatMessage](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#chatmessage) objects into a numbered string (e.g., `[M1] USER: ...`). The counter auto-increments across calls, so a second call continues from where the first left off.
-- `extract_refs(text)` — Resolves `[M1]`, `[M2]`, etc. citations in model output back to [Reference](./reference/scanner.html.md#reference) objects pointing to the original messages.
+- `extract_refs(text)` — Resolves `[M1]`, `[M2]`, etc. citations in model output back to [Reference](https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#reference) objects pointing to the original messages.
 
 ### Preprocessing
 
@@ -3424,6 +3505,24 @@ result = await generate_answer(
 | `extract_refs` | Function to extract `[M1]`-style references from the explanation. Only used when `parse=True`. |
 | `value_to_float` | Optional function to convert the parsed value to a float. Only used when `parse=True`. |
 
+In addition to the serialized `value`, the returned [Result](./reference/scanner.html.md#result) carries the typed parsed answer in its `parsed` field. For [AnswerStructured](./reference/scanner.html.md#answerstructured) this is the validated instance of your Pydantic type, with the result typed accordingly:
+
+``` python
+from pydantic import BaseModel, Field
+from inspect_scout import AnswerStructured, generate_answer
+
+class Detection(BaseModel):
+    behavior: str = Field(description="Behavior observed.")
+    confidence: float = Field(description="Confidence from 0 to 1.")
+
+# Result[Detection]
+result = await generate_answer(prompt, answer=AnswerStructured(Detection))
+if result.parsed is not None:
+    print(result.parsed.confidence)
+```
+
+Note that `parsed` is `None` when the response could not be parsed. It is also dropped whenever the [Result](./reference/scanner.html.md#result) is serialized, so it does not appear in stored results.
+
 ## Answer Parsing
 
 The [parse_answer()](./reference/scanner.html.md#parse_answer) function provides pure parsing without making an LLM call. Use this when you generate model output through your own code (e.g., via `get_model().generate()`) but want to use the standard answer extraction logic:
@@ -3450,6 +3549,8 @@ result = parse_answer(
 | `answer` | Answer specification (same types as [generate_answer()](./reference/scanner.html.md#generate_answer)). |
 | `extract_refs` | Function to extract `[M1]`-style references from the explanation text. |
 | `value_to_float` | Optional function to convert the parsed value to a float. |
+
+As with [generate_answer()](./reference/scanner.html.md#generate_answer), the returned [Result](./reference/scanner.html.md#result) carries the typed parsed answer in its `parsed` field (though for [AnswerStructured](./reference/scanner.html.md#answerstructured) answers, [parse_answer()](./reference/scanner.html.md#parse_answer) raises `ValidationError` on non-conforming output rather than returning `parsed=None`).
 
 ## Answer Types
 
@@ -3967,6 +4068,7 @@ Further, there are many standard fields (e.g. `task`, `agent`, `model`, `score`
 | `model` | string | Optional. Main model used by agent. |
 | `model_options` | string (JSON) | Optional. Generation options for main model. |
 | `score` | string (JSON) | Optional. Value indicating score on task. |
+| `score_explanation` | string | Optional. Scorer’s account of how it reached the score. |
 | `success` | bool | Optional. Boolean reduction of `score` to succeeded/failed. |
 | `message_count` | int64 | Optional. Total messages in conversation. |
 | `total_time` | float64 | Optional. Time (in seconds) required to execute task. |
@@ -4329,11 +4431,13 @@ You can populate a transcript database in a variety of ways depending on where y
 
 3.  [Claude Code](#claude-code): Read transcript data from local Claude Code sessions.
 
-4.  [Transcript API](#transcript-api): Python API for creating and inserting transcripts.
+4.  [Harbor](#harbor): Read transcript data from Harbor agent trajectory (ATIF) files.
 
-5.  [Arrow Import](#arrow-import): Efficient direct insertion using `RecordBatchReader`.
+5.  [Transcript API](#transcript-api): Python API for creating and inserting transcripts.
 
-6.  [Parquet Data Lake](#parquet-data-lake): Use an existing data lake not created using Inspect Scout.
+6.  [Arrow Import](#arrow-import): Efficient direct insertion using `RecordBatchReader`.
+
+7.  [Parquet Data Lake](#parquet-data-lake): Use an existing data lake not created using Inspect Scout.
 
 We’ll cover each of these in turn below. Before proceeding though you should be sure to familiarize yourself with the [Database Schema](./db_schema.html.md) and make a plan for how you want to map your data into it.
 
@@ -4580,6 +4684,66 @@ Claude Code transcripts are mapped to the database schema as follows:
 | `task_set`    | Project directory path              |
 | `task_id`     | Session slug (conversation summary) |
 | `agent`       | `"claude-code"`                     |
+
+## Harbor
+
+[Harbor](https://harborframework.com/) is an agent evaluation framework whose installed agents emit [ATIF (Agent Trajectory Interchange Format)](https://github.com/harbor-framework/harbor/blob/main/rfcs/0001-trajectory-format.md) `trajectory.json` files. Scout can import these trajectories, filtering by session ID and/or time range.
+
+To import ATIF trajectories, first install the `harbor` package (requires Python \>= 3.12):
+
+``` bash
+pip install "harbor>=0.6.0"
+```
+
+Then, use the [atif()](./reference/sources.html.md#atif) source to import trajectories. For example:
+
+``` python
+from inspect_scout import transcripts_db
+from inspect_scout.sources import atif
+
+async with transcripts_db("s3://my-transcript-db/") as db:
+    await db.insert(atif(path="path/to/harbor-runs"))
+```
+
+You can narrow the import by specifying a session ID, time range, or limit:
+
+``` python
+# Import a specific trajectory by session ID
+await db.insert(atif(
+    path="path/to/harbor-runs",
+    session_id="abc123-def456",
+))
+
+# Import trajectories from a time range
+from datetime import datetime
+await db.insert(atif(
+    path="path/to/harbor-runs",
+    from_time=datetime(2026, 1, 1),
+    to_time=datetime(2026, 6, 30),
+))
+
+# Limit the number of transcripts
+await db.insert(atif(
+    path="path/to/harbor-runs",
+    limit=100,
+))
+```
+
+Note that `from_time`/`to_time` filter on each file’s modification time (`st_mtime`), not the trajectory’s run time — mtime is reset by `cp`, `git checkout`, rsync, etc., so it can diverge from when the run actually occurred.
+
+Note that subagent trajectories are inlined into their parent as spans, so a parent and its referenced subagent files should be imported together in one pass (the default when pointing `path` at a directory). Importing them across separate passes — e.g. incremental time-windowed imports — can store a subagent’s events twice, once standalone and once inlined.
+
+The [atif()](./reference/sources.html.md#atif) source reads trajectories produced by Harbor’s own runner (e.g. `harbor run --agent claude_code`). When Harbor tasks are instead run via Inspect AI through `inspect_harbor`, the output is an Inspect eval log — see [Inspect Logs](#inspect-logs).
+
+ATIF trajectories are mapped to the database schema as follows:
+
+| Field | Value |
+|----|----|
+| `source_type` | `"atif"` |
+| `transcript_id` | Trajectory `trajectory_id`, else `session_id` (or run id) + file stem |
+| `source_id` | Trajectory `session_id` (or `trajectory_id`) |
+| `agent` | Trajectory `agent.name` |
+| `model` | Trajectory `agent.model_name` |
 
 ## Transcript API
 

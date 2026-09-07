@@ -21,6 +21,7 @@ Further, there are many standard fields (e.g. `task`, `agent`, `model`, `score`
 | `model` | string | Optional. Main model used by agent. |
 | `model_options` | string (JSON) | Optional. Generation options for main model. |
 | `score` | string (JSON) | Optional. Value indicating score on task. |
+| `score_explanation` | string | Optional. Scorer’s account of how it reached the score. |
 | `success` | bool | Optional. Boolean reduction of `score` to succeeded/failed. |
 | `message_count` | int64 | Optional. Total messages in conversation. |
 | `total_time` | float64 | Optional. Time (in seconds) required to execute task. |

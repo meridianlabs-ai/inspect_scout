@@ -6,7 +6,7 @@
 
 List completed and pending scans.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_scanlist.py#L7)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_scanlist.py#L7)
 
 ``` python
 def scan_list(scans_location: str) -> list[Status]
@@ -19,7 +19,7 @@ Location of scans to list.
 
 Status of scan.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_scanresults.py#L20)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_scanresults.py#L23)
 
 ``` python
 def scan_status(scan_location: str) -> Status
@@ -32,7 +32,7 @@ Location to get status for (e.g. directory or s3 bucket)
 
 Status of scan job.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_recorder/recorder.py#L21)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_recorder/recorder.py#L42)
 
 ``` python
 @dataclass
@@ -60,7 +60,7 @@ Errors during last scan attempt.
 
 Summary of scan results.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_recorder/summary.py#L68)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_recorder/summary.py#L68)
 
 ``` python
 class Summary(BaseModel)
@@ -78,7 +78,7 @@ Summary for each scanner.
 
 Scan results as Pandas data frames.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_scanresults.py#L72)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_scanresults.py#L75)
 
 ``` python
 def scan_results_df(
@@ -86,7 +86,7 @@ def scan_results_df(
     *,
     scanner: str | None = None,
     rows: Literal["results", "transcripts"] = "results",
-    exclude_columns: list[str] | None = None,
+    exclude_columns: Sequence[str] | None = None,
 ) -> ScanResultsDF
 ```
 
@@ -99,8 +99,8 @@ Scanner name (defaults to all scanners).
 `rows` Literal\['results', 'transcripts'\]  
 Row granularity. Specify “results” to yield a row for each scanner result (potentially multiple per transcript); Specify “transcript” to yield a row for each transcript (in which case multiple results will be packed into the `value` field as a JSON list of [Result](../reference/scanner.html.md#result)).
 
-`exclude_columns` list\[str\] \| None  
-List of column names to exclude when reading parquet files. Useful for reducing memory usage by skipping large unused columns.
+`exclude_columns` Sequence\[str\] \| None  
+Column names to exclude when reading parquet files. Defaults to `None`, which excludes the heavy columns (`input`, `input_data`, and `scan_events`, available as [HEAVY_COLUMNS](../reference/results.html.md#heavy_columns)) that dominate file size and memory usage. Pass `[]` to include all columns, or an explicit sequence to exclude exactly those columns. Use [scan_results_arrow()](../reference/results.html.md#scan_results_arrow) field accessors for per-row access to heavy columns.
 
 ### ScanResultsDF
 
@@ -108,7 +108,7 @@ Scan results as pandas data frames.
 
 The `scanners` mapping provides lazy access to DataFrames - each DataFrame is only materialized when its key is accessed. This allows efficient access to specific scanner results without loading all data upfront.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_recorder/recorder.py#L88)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_recorder/recorder.py#L132)
 
 ``` python
 @dataclass
@@ -139,7 +139,7 @@ Mapping of scanner name to pandas data frame (lazily loaded).
 
 Scan results as Arrow.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_scanresults.py#L45)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_scanresults.py#L48)
 
 ``` python
 def scan_results_arrow(
@@ -154,7 +154,7 @@ Location of scan (e.g. directory or s3 bucket).
 
 Scan results as Arrow.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_recorder/recorder.py#L41)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_recorder/recorder.py#L62)
 
 ``` python
 @dataclass
@@ -188,7 +188,9 @@ Acquire a reader for the specified scanner.
 
 The return reader is a context manager that should be acquired before reading.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_recorder/recorder.py#L60)
+`exclude_columns=None` (the default) excludes the heavy columns (`input`, `input_data`, and `scan_events`, available as [HEAVY_COLUMNS](../reference/results.html.md#heavy_columns)); pass `[]` to include all columns, or an explicit sequence to exclude exactly those columns.
+
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_recorder/recorder.py#L81)
 
 ``` python
 @abc.abstractmethod
@@ -196,7 +198,7 @@ def reader(
     self,
     scanner: str,
     streaming_batch_size: int = 1024,
-    exclude_columns: list[str] | None = None,
+    exclude_columns: Sequence[str] | None = None,
 ) -> pa.RecordBatchReader
 ```
 
@@ -204,7 +206,55 @@ def reader(
 
 `streaming_batch_size` int  
 
-`exclude_columns` list\[str\] \| None  
+`exclude_columns` Sequence\[str\] \| None  
+
+### scan_results_batches
+
+Stream a scanner’s results as pandas DataFrame batches.
+
+Concatenating all batches yields the same rows as `scan_results_df(scan_location, scanner=scanner, rows=rows)`, but memory remains bounded by `batch_size` rather than scaling with the size of the scanner’s results. This holds for local paths and for cloud locations PyArrow can read natively (`s3://`, `gs://`, `abfs://`), which are read with HTTP range requests. Remote protocols PyArrow has no native filesystem for (e.g. `az://`) are the exception: the parquet file is downloaded in full before batching, so memory scales with file size.
+
+Note that batches are produced with synchronous parquet I/O. To consume from async code, drive the iterator from a worker thread or use [scan_results_batches_async()](../reference/aio.html.md#scan_results_batches_async).
+
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_scanresults.py#L162)
+
+``` python
+def scan_results_batches(
+    scan_location: str,
+    scanner: str,
+    *,
+    batch_size: int = 1024,
+    exclude_columns: Sequence[str] | None = None,
+    rows: Literal["results", "transcripts"] = "results",
+) -> Iterator[pd.DataFrame]
+```
+
+`scan_location` str  
+Location of scan (e.g. directory or s3 bucket).
+
+`scanner` str  
+Scanner name.
+
+`batch_size` int  
+Maximum number of parquet rows read per batch (note that resultset expansion can yield more than `batch_size` rows per batch).
+
+`exclude_columns` Sequence\[str\] \| None  
+Column names to exclude when reading parquet files. Defaults to `None`, which excludes the heavy columns (`input`, `input_data`, and `scan_events`, available as [HEAVY_COLUMNS](../reference/results.html.md#heavy_columns)) that dominate file size and memory usage. Pass `[]` to include all columns, or an explicit sequence to exclude exactly those columns. Use [scan_results_arrow()](../reference/results.html.md#scan_results_arrow) field accessors for per-row access to heavy columns.
+
+`rows` Literal\['results', 'transcripts'\]  
+Row granularity. Specify “results” to yield a row for each scanner result (potentially multiple per transcript); Specify “transcript” to yield a row for each transcript (in which case multiple results will be packed into the `value` field as a JSON list of [Result](../reference/scanner.html.md#result)).
+
+### HEAVY_COLUMNS
+
+Large JSON columns excluded by default when reading scan results.
+
+These columns (full serialized scanner input, deduplicated message/call pools, and scanner execution events) dominate parquet file size and memory usage, and the common case (analysis over values/scores/metadata) never needs them. Pass `exclude_columns=[]` to include all columns.
+
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_recorder/recorder.py#L22)
+
+``` python
+HEAVY_COLUMNS: tuple[str, ...] = ("input", "input_data", "scan_events")
+```
 
 ## Validation
 
@@ -212,7 +262,7 @@ def reader(
 
 Create a validation set by reading cases from a file or data frame.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_validation/validation.py#L15)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_validation/validation.py#L15)
 
 ``` python
 def validation_set(
@@ -231,11 +281,36 @@ Predicate for comparing scanner results to validation targets (defaults to equal
 `split` str \| list\[str\] \| None  
 Optional split name(s) to filter cases by. Only cases with matching split values will be included. Can be a single split name or a list of split names. Cases without a split field are excluded when filtering.
 
+### validation_predicate
+
+Register a portable custom validation predicate.
+
+Registered predicates are persisted by name and Inspect registry-compatible creation parameters rather than by serializing their Python implementation.
+
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_validation/registry.py#L42)
+
+``` python
+def validation_predicate(
+    factory: PredicateFactory[P] | None = None,
+    *,
+    name: str | None = None,
+) -> (
+    RegisteredPredicateFactory[P]
+    | Callable[[PredicateFactory[P]], RegisteredPredicateFactory[P]]
+)
+```
+
+`factory` PredicateFactory\[P\] \| None  
+Function that creates an async validation predicate.
+
+`name` str \| None  
+Optional registered name (defaults to the factory name).
+
 ### ValidationSet
 
 Validation set for a scanner.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_validation/types.py#L70)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_validation/types.py#L76)
 
 ``` python
 class ValidationSet(BaseModel)
@@ -262,7 +337,7 @@ A [ValidationCase](../reference/results.html.md#validationcase) specifies the gr
 
 Use `target` for single-value or dict validation. Use `labels` for validating resultsets with label-specific expectations.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_validation/types.py#L10)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_validation/types.py#L16)
 
 ``` python
 class ValidationCase(BaseModel)
@@ -302,7 +377,7 @@ Optional epoch/repeat number from the source eval log (informational only).
 coerce_labels_to_bool  
 Coerce label values to boolean for backwards compatibility.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_validation/types.py#L52)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_validation/types.py#L58)
 
 ``` python
 @field_validator("labels", mode="before")
@@ -316,7 +391,7 @@ def coerce_labels_to_bool(cls, v: Any) -> dict[str, bool] | None
 
 String name of a built-in validation predicate.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_validation/predicates.py#L15)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_validation/predicates.py#L16)
 
 ``` python
 PredicateType: TypeAlias = Literal[
@@ -338,7 +413,7 @@ PredicateType: TypeAlias = Literal[
 
 Function that implements a validation predicate.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_validation/predicates.py#L9)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_validation/predicates.py#L10)
 
 ``` python
 PredicateFn: TypeAlias = Callable[
@@ -350,7 +425,7 @@ PredicateFn: TypeAlias = Callable[
 
 Predicate used to compare scanner result with target value.
 
-[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/f45b340242befb233e8c82b9a596b4a800148548/src/inspect_scout/_validation/predicates.py#L31)
+[Source](https://github.com/meridianlabs-ai/inspect_scout/blob/bef39729ae3a66084571cac3523e942d3feae561/src/inspect_scout/_validation/predicates.py#L32)
 
 ``` python
 ValidationPredicate: TypeAlias = PredicateType | PredicateFn

@@ -85,7 +85,7 @@ messages_as_str, extract_refs = message_numbering()
 The returned functions work together:
 
 - `messages_as_str(messages)` — Renders a list of [ChatMessage](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#chatmessage) objects into a numbered string (e.g., `[M1] USER: ...`). The counter auto-increments across calls, so a second call continues from where the first left off.
-- `extract_refs(text)` — Resolves `[M1]`, `[M2]`, etc. citations in model output back to [Reference](./reference/scanner.html.md#reference) objects pointing to the original messages.
+- `extract_refs(text)` — Resolves `[M1]`, `[M2]`, etc. citations in model output back to [Reference](https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#reference) objects pointing to the original messages.
 
 ### Preprocessing
 
@@ -206,6 +206,24 @@ result = await generate_answer(
 | `extract_refs` | Function to extract `[M1]`-style references from the explanation. Only used when `parse=True`. |
 | `value_to_float` | Optional function to convert the parsed value to a float. Only used when `parse=True`. |
 
+In addition to the serialized `value`, the returned [Result](./reference/scanner.html.md#result) carries the typed parsed answer in its `parsed` field. For [AnswerStructured](./reference/scanner.html.md#answerstructured) this is the validated instance of your Pydantic type, with the result typed accordingly:
+
+``` python
+from pydantic import BaseModel, Field
+from inspect_scout import AnswerStructured, generate_answer
+
+class Detection(BaseModel):
+    behavior: str = Field(description="Behavior observed.")
+    confidence: float = Field(description="Confidence from 0 to 1.")
+
+# Result[Detection]
+result = await generate_answer(prompt, answer=AnswerStructured(Detection))
+if result.parsed is not None:
+    print(result.parsed.confidence)
+```
+
+Note that `parsed` is `None` when the response could not be parsed. It is also dropped whenever the [Result](./reference/scanner.html.md#result) is serialized, so it does not appear in stored results.
+
 ## Answer Parsing
 
 The [parse_answer()](./reference/scanner.html.md#parse_answer) function provides pure parsing without making an LLM call. Use this when you generate model output through your own code (e.g., via `get_model().generate()`) but want to use the standard answer extraction logic:
@@ -232,6 +250,8 @@ result = parse_answer(
 | `answer` | Answer specification (same types as [generate_answer()](./reference/scanner.html.md#generate_answer)). |
 | `extract_refs` | Function to extract `[M1]`-style references from the explanation text. |
 | `value_to_float` | Optional function to convert the parsed value to a float. |
+
+As with [generate_answer()](./reference/scanner.html.md#generate_answer), the returned [Result](./reference/scanner.html.md#result) carries the typed parsed answer in its `parsed` field (though for [AnswerStructured](./reference/scanner.html.md#answerstructured) answers, [parse_answer()](./reference/scanner.html.md#parse_answer) raises `ValidationError` on non-conforming output rather than returning `parsed=None`).
 
 ## Answer Types
 

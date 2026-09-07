@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.38">
+<meta name="generator" content="quarto-1.9.36">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -77,7 +77,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="site_libs/quarto-html/anchor.min.js"></script>
 <link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="site_libs/bootstrap/bootstrap-60b6846f58d02926bc6ca5ecd6f15c48.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
@@ -448,6 +448,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#scout-jobs" id="toc-scout-jobs" class="nav-link" data-scroll-target="#scout-jobs">Scout Jobs</a></li>
   <li><a href="#parallelism" id="toc-parallelism" class="nav-link" data-scroll-target="#parallelism">Parallelism</a></li>
   <li><a href="#batch-mode" id="toc-batch-mode" class="nav-link" data-scroll-target="#batch-mode">Batch Mode</a></li>
+  <li><a href="#monitoring-in-progress-results" id="toc-monitoring-in-progress-results" class="nav-link" data-scroll-target="#monitoring-in-progress-results">Monitoring In-Progress Results</a></li>
   <li><a href="#error-handling" id="toc-error-handling" class="nav-link" data-scroll-target="#error-handling">Error Handling</a></li>
   <li><a href="#online-scanning" id="toc-online-scanning" class="nav-link" data-scroll-target="#online-scanning">Online Scanning</a></li>
   </ul></li>
@@ -909,7 +910,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="available-fields" class="level4">
 <h4 class="anchored" data-anchor-id="available-fields">Available Fields</h4>
-<p>The data frame includes the following fields (note that some fields included embedded JSON data, these are all noted below):</p>
+<p>The data frame includes the following fields (note that some fields include embedded JSON data, these are all noted below).</p>
+<p>Note that the heavy JSON columns (<code>input</code> and <code>scan_events</code>) are excluded by default as they dominate file size and memory usage—pass <code>exclude_columns=[]</code> to include all columns, or an explicit list to exclude exactly those columns (the default exclusions are available as the <span class="element-type-name ref-interlink"><a href="./reference/results.html#heavy_columns">HEAVY_COLUMNS</a></span> constant, e.g.&nbsp;<code>exclude_columns=[*HEAVY_COLUMNS, "metadata"]</code>).</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 20%">
@@ -1097,7 +1099,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td><code>input</code></td>
 <td>ScannerInput<br><small>JSON</small></td>
-<td>Scanner input value.</td>
+<td>Scanner input value (excluded by default).</td>
 </tr>
 <tr class="even">
 <td><code>uuid</code></td>
@@ -1182,7 +1184,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="even">
 <td><code>scan_events</code></td>
 <td>list[Event]<br><small>JSON</small></td>
-<td>Scan events (e.g.&nbsp;model event, log event, etc.)</td>
+<td>Scan events (e.g.&nbsp;model event, log event, etc.) (excluded by default)</td>
 </tr>
 <tr class="odd">
 <td><code>scan_total_tokens</code></td>
@@ -1281,29 +1283,36 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul>
 <p>See the Inspect AI documentation on <a href="https://inspect.aisi.org.uk/models-batch.html">Batch Mode</a> for additional details on batching as well as notes on provider specific behavior and configuration.</p>
 </section>
+<section id="monitoring-in-progress-results" class="level3">
+<h3 class="anchored" data-anchor-id="monitoring-in-progress-results">Monitoring In-Progress Results</h3>
+<p>By default, results are only written to the scan location when the scan completes (or is interrupted). For long-running scans it can be useful to look at partial results while the scan is still in flight—for example, to sanity check that a scanner is behaving as expected before committing to a multi-hour run.</p>
+<p>Use the <code>--results-buffer</code> option (or the <code>results_buffer</code> scan/scan job/project option) to additionally sync in-progress results to the scan location every N recorded results:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan cybench_scan.py <span class="at">--results-buffer</span> 100</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>You can then point <span class="element-type-name ref-interlink"><a href="./reference/results.html#scan_results_df">scan_results_df()</a></span> (or Scout View) at the scan location to analyze what’s been produced so far. Writes are atomic, so readers always observe a consistent snapshot. Syncs run in the background so they don’t slow down scanning, but they do add I/O overhead—choose N to balance freshness against cost.</p>
+</section>
 <section id="error-handling" class="level3">
 <h3 class="anchored" data-anchor-id="error-handling">Error Handling</h3>
 <p>By default, if errors occur during a scan they are caught and reported and the overall scan operation is not aborted. In that case the scan is not yet marked “complete”. You can then choose to retry the failed scans with <code>scan resume</code> or complete the scan (ignoring errors) with <code>scan complete</code>:</p>
 <p><a href="images/scan-resume.png" class="lightbox" data-gallery="quarto-lightbox-gallery-16"><img src="images/scan-resume.png" class="img-fluid"></a></p>
 <p>Generally you should use Scout View to review errors in more details to determine if they are fundamental problems (e.g.&nbsp;bugs in your code) or transient infrastructure errors that it might be acceptable to exclude from scan results.</p>
 <p>If you prefer to fail immediately when an error occurs rather than capturing errors in results, use the <code>--fail-on-error</code> flag:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py <span class="at">-T</span> ./logs <span class="at">--fail-on-error</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="ex">scout</span> scan scanner.py <span class="at">-T</span> ./logs <span class="at">--fail-on-error</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>With this flag, any exception will cause the entire scan to terminate immediately. This can be valuable when developing a scanner.</p>
 </section>
 <section id="online-scanning" class="level3">
 <h3 class="anchored" data-anchor-id="online-scanning">Online Scanning</h3>
 <p>Once you have developed a scanner that you find produces good results across a variety of transcripts, you may want run it “online” as part of evaluations. You can do this by using your <span class="element-type-name ref-interlink"><a href="./reference/scanner.html#scanner">Scanner</a></span> directly as an Inspect <span class="element-type-name ref-interlink"><a href="https://inspect.aisi.org.uk/reference/inspect_ai.scorer.html#scorer">Scorer</a></span>.</p>
 <p>For example, if we wanted to run the reward hacking scanner from above as a scorer we could do this:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> reward_hacking</span>
-<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a><span class="at">@task</span></span>
-<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> mytask():</span>
-<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> Task(</span>
-<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>        ...,</span>
-<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>        scorer <span class="op">=</span> [match(), reward_hacking()]</span>
-<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> .scanners <span class="im">import</span> reward_hacking</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="at">@task</span></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> mytask():</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> Task(</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>        ...,</span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>        scorer <span class="op">=</span> [match(), reward_hacking()]</span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>We can also use it with the <code>inspect score</code> command to add scores to existing logs:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="ex">inspect</span> score <span class="at">--scorer</span> scanners.py@reward_hacking logfile.eval</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="ex">inspect</span> score <span class="at">--scorer</span> scanners.py@reward_hacking logfile.eval</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 </section>
 <section id="section" class="level2">

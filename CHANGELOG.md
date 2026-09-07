@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.1...0.5.2) (2026-09-07)
+
+
+### Bug Fixes
+
+* viewer lib npm publish fails typecheck on missing score_explanation column ([#625](https://github.com/meridianlabs-ai/inspect_scout/issues/625)) ([a3123a6](https://github.com/meridianlabs-ai/inspect_scout/commit/a3123a698857d01e335cc0b4a529957a5e6a7c30))
+
 ## [0.5.1](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.0...0.5.1) (2026-09-07)
 
 

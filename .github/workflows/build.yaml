@@ -323,6 +323,14 @@ jobs:
         working-directory: src/inspect_scout/_view/ts-mono
         run: pnpm install --frozen-lockfile
 
+      # Same gate the npm publish workflow runs (lint, typecheck, format). The
+      # build below is plain `vite build` and does not typecheck, so without
+      # this a gitlink bump to a non-compiling ts-mono commit passes CI here
+      # and only fails at release time.
+      - name: Check
+        working-directory: src/inspect_scout/_view/ts-mono
+        run: pnpm check
+
       - name: Build
         working-directory: src/inspect_scout/_view/ts-mono
         run: pnpm build

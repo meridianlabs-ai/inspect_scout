@@ -4,6 +4,7 @@ import json
 import os
 import tempfile
 from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from logging import getLogger
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Literal, NamedTuple, Sequence, cast
@@ -125,9 +126,11 @@ class FileRecorder(ScanRecorder):
 
         # fresh start: clear any stale buffer state from a prior scan that
         # used the same scan_location (the buffer dir is deterministic per
-        # scan_location, so unrelated remnants would otherwise carry over)
-        cleanup_buffer_dir(RecorderBuffer.buffer_dir(self._scan_dir.as_posix()))
-        _clear_prior_parquet_cache(self._scan_dir.as_posix())
+        # scan_location, so unrelated remnants would otherwise carry over).
+        # wiping the buffer also invalidates any cached prior parquet
+        buffer_dir = RecorderBuffer.buffer_dir(self._scan_dir.as_posix())
+        cleanup_buffer_dir(buffer_dir)
+        _drop_cached_priors(buffer_dir)
 
         self._scan_buffer = RecorderBuffer(
             self._scan_dir.as_posix(),
@@ -156,10 +159,6 @@ class FileRecorder(ScanRecorder):
         self._scan_fs = filesystem(self._scan_dir.as_posix())
         self._scan_spec = await _read_scan_spec(self._scan_dir)
 
-        # a new run starts here: any prior parquet cached by an earlier
-        # run against this location is no longer trustworthy
-        _clear_prior_parquet_cache(scan_location)
-
         self._seed_buffer_summary_from_scan_dir()
         # clear errors of transcripts that are about to be retried
         buffer_dir = RecorderBuffer.buffer_dir(self._scan_dir.as_posix())
@@ -185,10 +184,6 @@ class FileRecorder(ScanRecorder):
         self._scan_dir = UPath(scan_location)
         self._scan_fs = filesystem(self._scan_dir.as_posix())
         self._scan_spec = await _read_scan_spec(self._scan_dir)
-
-        # a new run starts here: any prior parquet cached by an earlier
-        # run against this location is no longer trustworthy
-        _clear_prior_parquet_cache(scan_location)
 
         self._seed_buffer_summary_from_scan_dir()
         self._seed_buffer_errors_from_scan_dir()
@@ -266,6 +261,20 @@ class FileRecorder(ScanRecorder):
     async def summary(self) -> Summary:
         return self._scan_buffer.scan_summary().model_copy(deep=True)
 
+    @override
+    @contextmanager
+    def run_scope(self) -> Iterator[None]:
+        """Reuse downloaded remote priors across syncs (see `_prior_parquet_cache`)."""
+        buffer_dir = RecorderBuffer.buffer_dir(self.scan_dir.as_posix())
+        key = _prior_parquet_cache_key(buffer_dir)
+        _drop_cached_priors(buffer_dir)
+        _prior_parquet_cache[key] = {}
+        try:
+            yield
+        finally:
+            _drop_cached_priors(buffer_dir)
+            _prior_parquet_cache.pop(key, None)
+
     @property
     def scan_dir(self) -> UPath:
         if self._scan_dir is None:
@@ -306,8 +315,8 @@ class FileRecorder(ScanRecorder):
         # this may run mid-scan (see the `results_buffer` scan option) with
         # scanning still in flight, so it must stay off the event loop as
         # much as possible: compaction runs in a worker thread, remote
-        # priors are downloaded at most once per run, and remote writes go
-        # through the async filesystem.
+        # priors are downloaded at most once per run (inside `run_scope`),
+        # and remote writes go through the async filesystem.
         #
         # remote object stores expose new objects atomically (an object only
         # becomes visible once fully uploaded), so we PUT directly to the
@@ -344,15 +353,16 @@ class FileRecorder(ScanRecorder):
                     # remove leftovers: the remote-upload temp file, or a
                     # partially-written local `.tmp` after a failure (after
                     # a successful local rename the path no longer exists)
-                    UPath(compact_file).unlink(missing_ok=True)
+                    _unlink_quietly(compact_file)
 
             # sync summary and errors
             await _sync_status_files(fs, scan_dir, scan_buffer_dir, scan_spec, complete)
 
-        # cleanup scan buffer if we are complete
+        # cleanup scan buffer if we are complete (wiping the buffer also
+        # invalidates any cached prior parquet)
         if complete:
             cleanup_buffer_dir(scan_buffer_dir)
-            _clear_prior_parquet_cache(scan_location)
+            _drop_cached_priors(scan_buffer_dir)
 
         return Status(
             complete=complete,
@@ -748,28 +758,52 @@ class FileRecorder(ScanRecorder):
 
 
 # local copies of previously-compacted scanner parquets, downloaded from
-# remote scan dirs at most once per scan run. keyed by buffer dir (which is
-# deterministic per scan_location), mapping scanner -> local temp path (or
-# None when the scan dir had no prior parquet when first checked). the cache
-# stays valid for the whole run because this process is the only writer of
-# the compacted outputs and everything it adds to them comes from the buffer
-# (which `scanner_table` treats as authoritative per transcript_id), so the
-# pre-run parquet remains the correct merge input for every subsequent sync.
-# without it, each periodic sync (see the `results_buffer` scan option)
-# would re-download the ever-growing compacted output it wrote itself.
-# cleared when a run starts (`init`/`resume`/`attach`) and when a sync
-# completes the scan.
+# remote scan dirs so `scanner_table` can merge them with the buffer. keyed
+# by buffer dir, mapping scanner -> local temp path (None: no prior existed).
+#
+# entries exist only inside `FileRecorder.run_scope()`, which the scan driver
+# holds for a whole run: the buffer (authoritative per transcript_id) keeps
+# every row a run adds, so the pre-run parquet stays the correct merge input
+# for all of the run's syncs and is downloaded once instead of once per
+# periodic sync (see the `results_buffer` scan option). the scope removes the
+# downloads on exit. wiping the buffer dir (`init`, `sync(complete=True)`)
+# breaks that invariant, so it drops the downloads too. outside a scope a
+# sync removes its download before returning.
 _prior_parquet_cache: dict[str, dict[str, str | None]] = {}
 
 
-def _clear_prior_parquet_cache(scan_location: str) -> None:
-    cache = _prior_parquet_cache.pop(
-        RecorderBuffer.buffer_dir(scan_location).as_posix(), None
-    )
+def _prior_parquet_cache_key(scan_buffer_dir: UPath) -> str:
+    return scan_buffer_dir.as_posix()
+
+
+def _drop_cached_priors(scan_buffer_dir: UPath) -> None:
+    """Remove any cached prior downloads (an open scope stays open)."""
+    cache = _prior_parquet_cache.get(_prior_parquet_cache_key(scan_buffer_dir))
     if cache:
         for local_path in cache.values():
             if local_path is not None:
-                Path(local_path).unlink(missing_ok=True)
+                _unlink_quietly(local_path)
+        cache.clear()
+
+
+def _unlink_quietly(path: str) -> None:
+    """Remove a local temp file; failure is logged rather than raised."""
+    try:
+        Path(path).unlink(missing_ok=True)
+    except OSError as ex:
+        logger.warning(f"Unable to remove temporary file '{path}': {ex}")
+
+
+async def _download_prior(fs: AsyncFilesystem, prior: UPath) -> str:
+    """Download `prior` to a local temp file (removed again if that fails)."""
+    tmp_fd, local_prior = tempfile.mkstemp(suffix=".parquet")
+    os.close(tmp_fd)
+    try:
+        await fs.get_file(prior.as_posix(), local_prior)
+    except BaseException:
+        _unlink_quietly(local_prior)
+        raise
+    return local_prior
 
 
 async def _compact_with_prior(
@@ -787,30 +821,41 @@ async def _compact_with_prior(
 
     `scanner_table` requires uniform local paths and does blocking CPU +
     local file work, so remote priors are downloaded through the async
-    filesystem (at most once per run — see `_prior_parquet_cache`) and the
-    compaction itself runs in a worker thread. This keeps the event loop
-    responsive when syncs run mid-scan.
+    filesystem (reused across syncs only inside `FileRecorder.run_scope()`,
+    see `_prior_parquet_cache`) and the compaction itself runs in a worker
+    thread. This keeps the event loop responsive when syncs run mid-scan.
     """
+    owned_prior: str | None = None
     if prior.protocol in ("", "file"):
         extra = [prior] if prior.exists() else None
     else:
-        cache = _prior_parquet_cache.setdefault(scan_buffer_dir.as_posix(), {})
-        if scanner in cache:
-            local_prior = cache[scanner]
-        elif await fs.exists(prior.as_posix()):
-            tmp_fd, local_prior = tempfile.mkstemp(suffix=".parquet")
-            os.close(tmp_fd)
-            await fs.get_file(prior.as_posix(), local_prior)
-            cache[scanner] = local_prior
+        key = _prior_parquet_cache_key(scan_buffer_dir)
+        # `{}` is a live (empty) scope entry, so test for None, not truthiness
+        run_cache = _prior_parquet_cache.get(key)
+        if run_cache is not None and scanner in run_cache:
+            local_prior = run_cache[scanner]
         else:
-            local_prior = None
-            cache[scanner] = None
+            local_prior = (
+                await _download_prior(fs, prior)
+                if await fs.exists(prior.as_posix())
+                else None
+            )
+            # the scope may have closed while we awaited
+            run_cache = _prior_parquet_cache.get(key)
+            if run_cache is not None:
+                run_cache[scanner] = local_prior
+            else:
+                owned_prior = local_prior
         extra = [UPath(local_prior)] if local_prior is not None else None
-    return await anyio.to_thread.run_sync(
-        functools.partial(
-            scanner_table, scan_buffer_dir, scanner, output_file, extra_inputs=extra
+    try:
+        return await anyio.to_thread.run_sync(
+            functools.partial(
+                scanner_table, scan_buffer_dir, scanner, output_file, extra_inputs=extra
+            )
         )
-    )
+    finally:
+        if owned_prior is not None:
+            _unlink_quietly(owned_prior)
 
 
 def _scanner_parquet_file(scan_dir: UPath, scanner: str) -> str:

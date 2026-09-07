@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.1](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.0...0.5.1) (2026-09-07)
+
+
+### Features
+
+* use tool_choice="auto" for answer tool ([4cd6522](https://github.com/meridianlabs-ai/inspect_scout/commit/4cd652234729c3b3f4e0638922b7caf3015c1821))
+
+
+### Bug Fixes
+
+* temp parquet files leak when a scan sync does not complete the scan ([#624](https://github.com/meridianlabs-ai/inspect_scout/issues/624)) ([5375cdc](https://github.com/meridianlabs-ai/inspect_scout/commit/5375cdcfa40482331d83d1d625b01c2b75faf8c2))
+
 ## [0.5.0](https://github.com/meridianlabs-ai/inspect_scout/compare/0.4.46...0.5.0) (2026-09-04)
 
 

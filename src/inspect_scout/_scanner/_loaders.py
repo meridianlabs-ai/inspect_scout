@@ -1,4 +1,5 @@
 import inspect
+from functools import partial
 from typing import (
     Any,
     AsyncIterator,
@@ -112,10 +113,16 @@ def create_implicit_loader(
     Returns:
         Appropriate loader for the scanner's input type.
     """
-    # Get the first parameter's annotation
+    # Resolve only the annotation that selects the loader. Resolving the full
+    # signature can fail on an unrelated return annotation.
     input_annotation = next(
-        iter(inspect.signature(scanner_fn, eval_str=True).parameters.values())
+        iter(inspect.signature(scanner_fn).parameters.values())
     ).annotation
+    if isinstance(input_annotation, str):
+        annotation_source = inspect.unwrap(scanner_fn)
+        while isinstance(annotation_source, partial):
+            annotation_source = inspect.unwrap(annotation_source.func)
+        input_annotation = eval(input_annotation, annotation_source.__globals__)
     if input_annotation is inspect.Parameter.empty or input_annotation == Transcript:
         return _IdentityLoader(content)
 

@@ -5,6 +5,7 @@ import pickle
 import sys
 import threading
 import traceback
+from collections.abc import Iterator
 from typing import Any
 
 import pytest
@@ -107,7 +108,7 @@ def test_formatter_fallback_retains_original_failure(
     def broken_formatter(*args: Any, **kwargs: Any) -> list[str]:
         raise ValueError("formatter failed")
 
-    monkeypatch.setattr(traceback, "format_exception", broken_formatter)
+    monkeypatch.setattr(traceback.TracebackException, "format", broken_formatter)
     if broken_frames:
         monkeypatch.setattr(traceback, "format_tb", broken_formatter)
     try:
@@ -148,6 +149,23 @@ def test_exception_message_is_detached_from_a_string_subclass() -> None:
 
     payload = worker_error(1, SubclassMessageError())
     assert pickle.loads(pickle.dumps(payload)).message == "subclass message"
+
+
+def test_bad_exception_notes_keep_worker_frames() -> None:
+    class BrokenNotes(list[str]):
+        def __iter__(self) -> Iterator[str]:
+            raise ValueError("broken notes iteration")
+
+    class NotesError(Exception):
+        __notes__ = BrokenNotes(["fixture note"])
+
+    try:
+        raise NotesError("original failure")
+    except NotesError as ex:
+        payload = pickle.loads(pickle.dumps(worker_error(1, ex)))
+    assert ", in test_bad_exception_notes_keep_worker_frames\n" in payload.traceback
+    assert "original failure" in payload.traceback
+    assert "Formatting stacktrace failed" not in payload.traceback
 
 
 def test_formatting_does_not_swallow_cancellation() -> None:

@@ -32,10 +32,12 @@ def worker_error(worker_id: int, exception: Exception) -> WorkerError:
     remote_traceback = None
     if type_metadata_available:
         try:
+            # Instrumentation can make format_exception return an error message
+            # instead of raising, preventing our worker-frame fallback.
             remote_traceback = "".join(
-                traceback.format_exception(
-                    type(exception), exception, exception.__traceback__
-                )
+                traceback.TracebackException(
+                    type(exception), exception, exception.__traceback__, compact=True
+                ).format()
             )
         except Exception:
             pass

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import multiprocessing
+from collections.abc import Callable
 from multiprocessing.connection import Connection
 from multiprocessing.queues import Queue
 from multiprocessing.synchronize import Event
@@ -23,10 +24,23 @@ class ReconstructionError(Exception):
         self.detail = detail
 
 
-def _flush_items(queue: Queue[object], phase: int) -> None:
+def _fail_reconstruction() -> None:
+    raise ValueError("fixture decode failure")
+
+
+class ValueErrorOnLoad:
+    def __reduce__(self) -> tuple[Callable[[], None], tuple[()]]:
+        return _fail_reconstruction, ()
+
+
+def _flush_items(queue: Queue[object], phase: int, value_error: bool = False) -> None:
     if phase == 6:
         queue.put(None)
-    queue.put(ReconstructionError("worker failure", detail="required keyword"))
+    queue.put(
+        ValueErrorOnLoad()
+        if value_error
+        else ReconstructionError("worker failure", detail="required keyword")
+    )
     queue.close()
     queue.join_thread()
 
@@ -39,14 +53,20 @@ def _wait_for_termination(ready: Event) -> None:
 @pytest.mark.asyncio
 @pytest.mark.parametrize("phase", [2, 6])
 @pytest.mark.parametrize("queue_name", ["parse_job_queue", "upstream_queue"])
+@pytest.mark.parametrize("error_type", [TypeError, ValueError])
 async def test_undecodable_item_finishes_shutdown(
-    phase: int, queue_name: str, caplog: pytest.LogCaptureFixture
+    phase: int,
+    queue_name: str,
+    error_type: type[Exception],
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     spawn = multiprocessing.get_context("spawn")
     parse_queue: Queue[object] = spawn.Queue()
     upstream_queue: Queue[object] = spawn.Queue()
     queue = parse_queue if queue_name == "parse_job_queue" else upstream_queue
-    child = spawn.Process(target=_flush_items, args=(queue, phase))
+    child = spawn.Process(
+        target=_flush_items, args=(queue, phase, error_type is ValueError)
+    )
     ctx = cast(
         IPCContext,
         SimpleNamespace(
@@ -63,8 +83,11 @@ async def test_undecodable_item_finishes_shutdown(
             failure = await shutdown_subprocesses(
                 [child], ctx, lambda *_: None, ShutdownSentinel()
             )
-        assert isinstance(failure, TypeError)
-        assert "detail" in str(failure)
+        assert isinstance(failure, error_type)
+        expected_message = (
+            "detail" if error_type is TypeError else "fixture decode failure"
+        )
+        assert expected_message in str(failure)
         assert queue_name in caplog.text
         for closed_queue in (parse_queue, upstream_queue):
             with pytest.raises(ValueError, match="closed"):
@@ -143,6 +166,52 @@ async def test_broken_pipe_is_reported_and_other_queue_is_closed(
         assert isinstance(failure, OSError)
         assert "parse_job_queue" in caplog.text
         assert "closed" in caplog.text
+        for queue in (parse_queue, upstream_queue):
+            with pytest.raises(ValueError, match="closed"):
+                queue.get_nowait()
+    finally:
+        for queue in (parse_queue, upstream_queue):
+            queue.close()
+            queue.cancel_join_thread()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("phase", [2, 6])
+async def test_closed_queue_is_reported_after_teardown(
+    phase: int,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    spawn = multiprocessing.get_context("spawn")
+    parse_queue: Queue[object] = spawn.Queue()
+    upstream_queue: Queue[object] = spawn.Queue()
+    original_get = parse_queue.get_nowait
+    calls = 0
+
+    def close_before_read() -> object:
+        nonlocal calls
+        calls += 1
+        if calls == (1 if phase == 2 else 2):
+            parse_queue.close()
+        return original_get()
+
+    monkeypatch.setattr(parse_queue, "get_nowait", close_before_read)
+    ctx = cast(
+        IPCContext,
+        SimpleNamespace(
+            shutdown_condition=Condition(),
+            parse_job_queue=parse_queue,
+            upstream_queue=upstream_queue,
+        ),
+    )
+    try:
+        with caplog.at_level(logging.WARNING):
+            failure = await shutdown_subprocesses(
+                [], ctx, lambda *_: None, ShutdownSentinel()
+            )
+        assert isinstance(failure, ValueError)
+        assert "closed" in str(failure)
+        assert "parse_job_queue" in caplog.text
         for queue in (parse_queue, upstream_queue):
             with pytest.raises(ValueError, match="closed"):
                 queue.get_nowait()

@@ -23,6 +23,7 @@ def _run_scan(
     max_processes: int,
     api: str = "async",
     mode: str = "normal",
+    diagnostics: bool = False,
 ) -> dict[str, Any]:
     command = [
         sys.executable,
@@ -44,7 +45,7 @@ def _run_scan(
     repository = Path(__file__).resolve().parents[2]
     env = dict(
         os.environ,
-        SCOUT_DIAGNOSTICS="false",
+        SCOUT_DIAGNOSTICS=str(diagnostics).lower(),
         SCOUT_DISPLAY="plain",
         PYTHONPATH=str(repository / "src"),
     )
@@ -255,6 +256,37 @@ def test_malformed_worker_type_still_reaches_parent(tmp_path: Path) -> None:
         "_raise_provider_error",
     ):
         assert detail in report["parent_display"]
+
+
+@pytest.mark.parametrize("diagnostics", [False, True])
+@pytest.mark.parametrize("provider", ["broken_diagnostic", "broken_notes"])
+def test_broken_error_formatting_reaches_parent(
+    tmp_path: Path, diagnostics: bool, provider: str
+) -> None:
+    report = _run_scan(
+        tmp_path,
+        provider=provider,
+        fail_on_error=True,
+        max_processes=2,
+        diagnostics=diagnostics,
+    )
+    assert not report["complete"]
+    assert not report["persisted_complete"]
+    diagnostic = " ".join(report["parent_display"].replace("│", " ").split())
+    assert "req_scout_broken_diagnostics" in diagnostic
+    remote_traceback = diagnostic.partition("Remote traceback:")[2]
+    assert "in _raise_provider_error" in remote_traceback
+    assert "Formatting stacktrace failed" not in remote_traceback
+    if provider == "broken_diagnostic":
+        assert "BrokenDiagnosticError" in diagnostic
+        assert "<exception message unavailable>" in diagnostic
+        assert "HTTP status:" not in diagnostic
+    else:
+        assert "BrokenNotesError" in diagnostic
+        assert "worker notes failure fixture" in diagnostic
+        assert "HTTP status: 529" in diagnostic
+    output = (tmp_path / "child-stdout.log").read_text()
+    assert ("Work task error:" in output) == diagnostics
 
 
 @pytest.mark.parametrize("mode", ["parent_group", "parent_context"])

@@ -29,7 +29,7 @@ Two functions serve as the **containment boundary** for job exceptions:
 1. **`_parse_function`**: Executes parse jobs (transcript reading and scanner job creation)
 2. **`_scan_function`**: Executes scan jobs (running scanner functions on inputs)
 
-**Design Principle:** Ordinary job exceptions are transformed into `Error` objects within `ResultReport` structures by default. Explicit `fail_on_error=True` and `PrerequisiteError` bypass this containment and interrupt the scan. Cancellation is also allowed to propagate. These exceptions to containment are deliberate; infrastructure failures must not become successful job results.
+**Design Principle:** Ordinary job exceptions become `Error` objects within `ResultReport` by default. `fail_on_error=True`, `PrerequisiteError`, and cancellation bypass this containment and interrupt the scan.
 
 This ensures:
 - The scan can continue processing other work items
@@ -66,7 +66,7 @@ The scan recorder persists these Error results, making failures visible in scan 
 
 Infrastructure exceptions must propagate to the top level to terminate the scan with a clear error. However, in a multi-process architecture, this propagation requires careful coordination.
 
-**Design Principle:** Fatal work-task exceptions use the upstream queue to report to the parent. The worker also re-raises locally; its stderr or process exit is not the parent's diagnostic transport. Failures before the worker reaches this work-task boundary retain their existing behavior.
+**Design Principle:** Fatal work-task exceptions are reported to the parent through the upstream queue. Workers also re-raise locally; the parent does not use that re-raise to receive the diagnostic.
 
 ## Multi-Process Exception Flow
 
@@ -79,11 +79,9 @@ When a worker's work task encounters an infrastructure exception, a prerequisite
 3. **Re-raise**: The original exception propagates locally; the shutdown monitor is cancelled in `finally`
 4. **Completion**: `WorkerComplete` is sent only on clean completion, never to reinterpret a fatal error as success
 
-Exception class metadata is guarded too: malformed modules are omitted, and an unreadable type name receives an explicit unavailable marker. In that case, formatting uses the available worker frames and normalized message without consulting the broken class metadata again.
+`WorkerError` contains plain diagnostic strings and an integer worker ID. Optional status/request ID come from the caught exception's own exact built-in `int`/`str` attributes. Exception objects, responses, and traceback locals stay in the worker; exception text itself is not redacted or size-limited.
 
-The error payload contains only deliberate scalar fields. It excludes response/request objects, bodies, headers, traceback locals, and exception object graphs. Existing exception text may contain sensitive information; this is not a general redaction guarantee. Other upstream message types retain their existing structures.
-
-Chains and exception groups are preserved as formatted traceback text when they reach this boundary. Optional metadata comes only from the caught exception's own plain `int`/`str` attributes; it is not borrowed from an arbitrary cause or group member. Broken optional getters or formatters do not replace the original diagnostic. The existing single-process strategy still controls which exception reaches the worker boundary.
+`TracebackException` formats available chains/groups. If formatting or class metadata fails, the fallback keeps the caught exception's available frames and normalized type/message. The shared single-process strategy selects the exception before this boundary and can already have discarded siblings.
 
 ### Parent Exception Handling
 
@@ -97,8 +95,6 @@ When the parent's collector receives an infrastructure exception from the queue:
 
 This ensures orderly teardown even when one worker encounters an infrastructure failure.
 
-The parent unwraps only single-member task groups, preserving multi-member groups and avoiding incidental exception context. A failed active collector read remains fatal. The public scan path normally records an incomplete status and displays the fatal error; callers should not depend on catching the original provider class across a process boundary. Single-process handling and default job-error recording remain unchanged.
+The parent unwraps only single-member task groups and suppresses incidental context. Multi-member groups remain grouped. The public scan path records incomplete status and displays the error. Python 3.10 uses the existing `exceptiongroup` formatter for backported groups; later versions use Rich.
 
-Python 3.10 uses the existing `exceptiongroup` backport to render task-group failures as text: Rich does not expand those backported groups. This preserves all nested diagnostics at the final display boundary without changing exception propagation. Python 3.11 and later retain Rich's native group rendering.
-
-Both shutdown drains log unexpected read failures through a module logger, stop reading the affected queue, and continue bounded termination and queue closure. A consumed item's decoding failure does not prove that its pipe is healthy. Shutdown returns its first read error after teardown; the parent raises it only after otherwise normal completion. An existing primary error, cancellation, or swallowed `KeyboardInterrupt` takes precedence. Other unexpected cleanup exceptions are also secondary when a primary failure or interrupt exists. This does not add supervision for arbitrary process crashes or a timeout around an OS pipe read that never returns.
+Collector read failures remain fatal. During shutdown, read failures are logged and the affected queue is no longer read, while termination and closure continue. The first read error is raised after teardown only when the scan otherwise completed normally; a primary failure or interruption takes precedence. This includes `ValueError` from a closed queue: the exception type alone does not distinguish closure from failed reconstruction. See [shutdown](mp.md#errors-during-collection-and-shutdown).

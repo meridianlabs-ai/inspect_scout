@@ -43,7 +43,33 @@ if sys.version_info < (3, 11):
     from exceptiongroup import ExceptionGroup
 
 
+class BrokenDiagnosticError(Exception):
+    request_id = "req_scout_broken_diagnostics"
+
+    def __str__(self) -> str:
+        raise ValueError("broken string conversion")
+
+    @property
+    def status_code(self) -> int:
+        raise ValueError("broken status getter")
+
+
 def _raise_provider_error(provider: str) -> None:
+    if provider == "broken_diagnostic":
+        raise BrokenDiagnosticError("worker failure fixture")
+    if provider == "broken_notes":
+        from collections.abc import Iterator
+
+        class BrokenNotes(list[str]):
+            def __iter__(self) -> Iterator[str]:
+                raise ValueError("broken notes iteration")
+
+        class BrokenNotesError(Exception):
+            __notes__ = BrokenNotes(["fixture note"])
+            status_code = 529
+            request_id = "req_scout_broken_diagnostics"
+
+        raise BrokenNotesError("worker notes failure fixture")
     if provider == "malformed_type":
 
         class BrokenModule:
@@ -349,7 +375,15 @@ if __name__ == "__main__":
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument(
         "--provider",
-        choices=("anthropic", "openai", "generic", "prerequisite", "malformed_type"),
+        choices=(
+            "anthropic",
+            "openai",
+            "generic",
+            "prerequisite",
+            "malformed_type",
+            "broken_diagnostic",
+            "broken_notes",
+        ),
         required=True,
     )
     parser.add_argument("--fail-on-error", action="store_true")

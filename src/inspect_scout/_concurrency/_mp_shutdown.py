@@ -23,8 +23,8 @@ async def shutdown_subprocesses(
 ) -> Exception | None:
     """Unified shutdown sequence for both clean exit and Ctrl-C.
 
-    This function is idempotent and can be called multiple times safely. Performs
-    phased shutdown: signal → drain-while-waiting → terminate → kill → inject sentinel → drain remaining → close.
+    Performs phased shutdown:
+    signal → drain-while-waiting → terminate → kill → inject sentinel → drain remaining → close.
 
     During Ctrl-C, the collector stops reading from queues, causing worker feeder threads
     to block on full pipes. Phase 2 actively drains queues while waiting for workers to

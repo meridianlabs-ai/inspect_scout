@@ -90,8 +90,6 @@ SIGINT delivered only to parent (workers have `SIGINT=SIG_IGN`). Parent's task g
 
 ### Errors during collection and shutdown
 
-`WorkerError` becomes a parent-owned `WorkerProcessError` retaining the worker's type, message, traceback, and available status/request ID. The active collector fails on an unreadable queue; it cannot treat a lost message as successful work. See [exception handling](exception_handling.md) for the job-error and fail-fast boundary.
+The collector raises `WorkerProcessError` from a `WorkerError` diagnostic. A queue-read failure also remains fatal. See [exception handling](exception_handling.md) for containment and error selection.
 
-Both drain phases stop reading an affected queue after an unexpected read failure, log that failure independently of diagnostic mode, and continue to termination and closure. This also handles an exception raised while reconstructing an already-consumed queue item. Such consumption does not prove pipe health, so shutdown does not retry indiscriminately. The other queue may still be drained, and the final drain retains its item bound.
-
-Shutdown returns its first read failure after teardown. The parent raises it only if its task group completed normally; otherwise the primary error, cancellation, or swallowed Ctrl-C remains authoritative. Unexpected non-read cleanup errors follow the same precedence. Existing grace/termination deadlines remain; this does not make a partially written pipe read interruptible or add general worker supervision.
+Both shutdown drains log read failures, stop the affected queue, and finish termination and closure. The first read error is raised only after otherwise normal completion; primary failures and interruptions take precedence. Closed-queue `ValueError` is included because reconstruction can raise the same exception. Existing item limits and deadlines remain; they do not bound an OS pipe read that never returns. `cancel_join_thread()` permits exit without waiting for buffered delivery; it does not ensure delivery.

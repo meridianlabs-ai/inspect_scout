@@ -67,7 +67,7 @@ jobs:
     # blocks the edit path. Acceptable for a cheap gate (no regex in workflow
     # expressions); the action remains the authoritative check on what fires.
     if: |
-      github.actor != 'i-am-marvin' && (
+      github.actor != 'i-am-marvin' && !endsWith(github.actor, '[bot]') && (
         ( github.event.action == 'edited'
           && ( contains(github.event.comment.body, '@claude')
             || contains(github.event.comment.body, '@i-am-marvin') )
@@ -100,6 +100,9 @@ jobs:
     # secrets.MARVIN_TOKEN and design/auto-agent.md).
     secrets:
       MARVIN_TOKEN: ${{ secrets.MARVIN_TOKEN }}
+      # codex engine (design/codex-engine.md in the agents repo):
+      # consumed only on items labeled engine:codex; optional.
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     permissions:
       contents: write
       pull-requests: write
@@ -144,22 +147,54 @@ jobs:
     # otherwise open a duplicate PR). Same machine-account guard too: @auto is
     # the loop-prone trigger, so keep the machine account from kicking it off
     # (nothing in the designed loop relies on marvin posting @auto).
+    # Machine-account EXCEPTION — the auto-LABEL path: automation (e.g. a
+    # triage pipeline) may add the `auto` label as the machine account, and a
+    # label event's actor is whoever added it. The hoisted marvin guard ate
+    # that trigger (observed: inspect_ai#236). Labeling is safe to exempt:
+    # the gate reads the label NAME (no quoted-token hazard), labeling needs
+    # triage access, and the reusable workflow's trigger check verifies the
+    # labeler has write access before running. Comment/body paths keep the
+    # full guard.
+    # author_association filter (OWNER/MEMBER/COLLABORATOR) on the text
+    # paths: a COST filter, not the gate. On a public repo anyone can comment
+    # `@auto` on a PR; without this every such comment spun a runner. It is
+    # not authoritative — CONTRIBUTOR is anyone with a merged commit, and
+    # whether org members show as MEMBER depends on org settings — so the
+    # reusable workflow's trigger check (a fail-closed permission lookup on
+    # the actor, before any write) remains the authority. A collaborator
+    # whose association is reported looser than expected is dropped here
+    # silently; the trig check would refuse them anyway. The issue-body
+    # branch is scoped to `issues` events like the `claude` job's: an
+    # issue_comment payload also carries issue.body/author_association, so
+    # without the scope a member-authored issue mentioning @auto would let
+    # every comment from anyone spin a runner (refused by trig, but paid for).
     if: |
-      github.actor != 'i-am-marvin' && (
+      ( github.event_name == 'issues' && github.event.action == 'labeled'
+        && github.event.label.name == 'auto'
+        && !endsWith(github.actor, '[bot]') ) ||
+      ( github.actor != 'i-am-marvin' && !endsWith(github.actor, '[bot]') && (
         ( github.event.action == 'edited'
+          && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
           && contains(github.event.comment.body, '@auto')
           && !contains(github.event.changes.body.from, '@auto') ) ||
         ( github.event.action != 'edited' && (
-            contains(github.event.comment.body, '@auto') ||
-            contains(github.event.review.body, '@auto') ||
-            contains(github.event.issue.body, '@auto') ||
-            contains(github.event.issue.title, '@auto') ||
+            ( contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+              && contains(github.event.comment.body, '@auto') ) ||
+            ( contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association)
+              && contains(github.event.review.body, '@auto') ) ||
+            ( github.event_name == 'issues'
+              && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)
+              && ( contains(github.event.issue.body, '@auto')
+                || contains(github.event.issue.title, '@auto') ) ) ||
             github.event.label.name == 'auto'
         ) )
-      )
+      ) )
     uses: meridianlabs-ai/agents/.github/workflows/claude.yml@main
     secrets:
       MARVIN_TOKEN: ${{ secrets.MARVIN_TOKEN }}
+      # codex engine (design/codex-engine.md in the agents repo):
+      # consumed only on items labeled engine:codex; optional.
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     permissions:
       contents: write
       pull-requests: write

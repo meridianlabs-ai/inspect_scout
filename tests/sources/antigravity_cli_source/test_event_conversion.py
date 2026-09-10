@@ -14,7 +14,7 @@ from inspect_ai.model import (
     ContentText,
     ModelUsage,
 )
-from inspect_scout.sources._antigravity.events import (
+from inspect_scout.sources._antigravity_cli.events import (
     Step,
     StepToolCall,
     ToolCallPairer,
@@ -28,7 +28,7 @@ from inspect_scout.sources._antigravity.events import (
     to_compaction_event,
     to_model_event,
 )
-from inspect_scout.sources._antigravity.transcripts import (
+from inspect_scout.sources._antigravity_cli.transcripts import (
     _MAX_SUBAGENT_DEPTH,
     _convert_steps,
     _create_subagent_span_events,
@@ -79,7 +79,7 @@ class TestModelEventConversion:
         assert result.output.usage.input_tokens == 100
         assert result.timestamp.isoformat() == "2026-08-21T11:23:15+00:00"
         assert result.completed == result.timestamp
-        assert result.output.metadata == {"antigravity_synthesized": True}
+        assert result.output.metadata == {"antigravity_cli_synthesized": True}
 
     def test_without_usage(self) -> None:
         """Usage is optional — absent generation metadata → usage None."""
@@ -123,7 +123,7 @@ class TestCompactionEventConversion:
             created_at="2026-08-22T09:30:00Z",
         )
         event = to_compaction_event(step)
-        assert event.source == "antigravity"
+        assert event.source == "antigravity_cli"
         assert event.type == "summary"  # default, matching claude_code/atif
         assert event.metadata == {"checkpoint_index": 1}
 
@@ -365,7 +365,7 @@ class TestConvertSteps:
         )
         [tool_message] = [m for m in messages if isinstance(m, ChatMessageTool)]
         assert tool_message.function == "run_command"
-        assert tool_message.tool_call_id == "antigravity_1_0"
+        assert tool_message.tool_call_id == "antigravity_cli_1_0"
 
     def test_abandoned_spawn_does_not_claim_later_role(self) -> None:
         """A spawn with no result is abandoned when the next planner turn begins."""

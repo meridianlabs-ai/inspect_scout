@@ -1,4 +1,4 @@
-"""Integration tests for the antigravity() source over fixture conversations."""
+"""Integration tests for the antigravity_cli() source over fixture conversations."""
 
 from __future__ import annotations
 
@@ -24,9 +24,9 @@ from inspect_ai.model import (
     ChatMessageUser,
 )
 from inspect_scout._transcript.messages import span_messages
-from inspect_scout.sources import antigravity
+from inspect_scout.sources import antigravity_cli
 
-from tests.sources.antigravity_source.helpers import (
+from tests.sources.antigravity_cli_source.helpers import (
     generation_blob,
     write_generation_db,
 )
@@ -67,7 +67,7 @@ def _copy_fixtures(fixtures_dir: Path, tmp_path: Path) -> Path:
 @pytest.mark.asyncio
 async def test_top_level_excludes_subagent(fixtures_dir: Path) -> None:
     """Sub-agent conversations are not yielded at the top level."""
-    transcripts = [t async for t in antigravity(path=fixtures_dir)]
+    transcripts = [t async for t in antigravity_cli(path=fixtures_dir)]
     ids = {t.transcript_id for t in transcripts}
     assert ids == TOP_LEVEL_IDS
 
@@ -76,7 +76,7 @@ async def test_top_level_excludes_subagent(fixtures_dir: Path) -> None:
 async def test_simple_conversation(fixtures_dir: Path) -> None:
     """The simple fixture round-trips: message order, model fallback, metadata."""
     transcripts = [
-        t async for t in antigravity(path=fixtures_dir, conversation_id=SIMPLE_ID)
+        t async for t in antigravity_cli(path=fixtures_dir, conversation_id=SIMPLE_ID)
     ]
     assert len(transcripts) == 1
     transcript = transcripts[0]
@@ -101,7 +101,7 @@ async def test_simple_conversation(fixtures_dir: Path) -> None:
     assert transcript.model == "Gemini 3.7 Flash (High)"
     assert transcript.metadata["title"] == "hello-session"
     assert transcript.total_tokens is None
-    assert transcript.source_type == "antigravity"
+    assert transcript.source_type == "antigravity_cli"
     assert transcript.date == "2026-08-21T11:23:13Z"
 
     # fixture steps carry real timestamps, so total_time derives from the
@@ -114,7 +114,8 @@ async def test_simple_conversation(fixtures_dir: Path) -> None:
 async def test_compaction_and_resume_seam(fixtures_dir: Path) -> None:
     """A mid-conversation checkpoint → CompactionEvent; the resume seam survives."""
     transcripts = [
-        t async for t in antigravity(path=fixtures_dir, conversation_id=COMPACTION_ID)
+        t
+        async for t in antigravity_cli(path=fixtures_dir, conversation_id=COMPACTION_ID)
     ]
     assert len(transcripts) == 1
     transcript = transcripts[0]
@@ -151,7 +152,8 @@ async def test_compaction_and_resume_seam(fixtures_dir: Path) -> None:
 async def test_compaction_model_context_all(fixtures_dir: Path) -> None:
     """compaction="all" grafts the pre-checkpoint region onto the post-checkpoint one."""
     transcripts = [
-        t async for t in antigravity(path=fixtures_dir, conversation_id=COMPACTION_ID)
+        t
+        async for t in antigravity_cli(path=fixtures_dir, conversation_id=COMPACTION_ID)
     ]
     assert len(transcripts) == 1
 
@@ -176,7 +178,8 @@ async def test_compaction_model_context_all(fixtures_dir: Path) -> None:
 async def test_compaction_model_context_last(fixtures_dir: Path) -> None:
     """compaction="last" returns the checkpoint summary onward, no pre-checkpoint turns."""
     transcripts = [
-        t async for t in antigravity(path=fixtures_dir, conversation_id=COMPACTION_ID)
+        t
+        async for t in antigravity_cli(path=fixtures_dir, conversation_id=COMPACTION_ID)
     ]
     assert len(transcripts) == 1
 
@@ -191,7 +194,7 @@ async def test_compaction_model_context_last(fixtures_dir: Path) -> None:
 async def test_subagent_inlined_as_agent_span(fixtures_dir: Path) -> None:
     """A spawned sub-agent inlines into its parent as a named agent span."""
     transcripts = [
-        t async for t in antigravity(path=fixtures_dir, conversation_id=PARENT_ID)
+        t async for t in antigravity_cli(path=fixtures_dir, conversation_id=PARENT_ID)
     ]
     assert len(transcripts) == 1
     transcript = transcripts[0]
@@ -231,7 +234,7 @@ async def test_subagent_inlined_as_agent_span(fixtures_dir: Path) -> None:
 async def test_typed_tool_results(fixtures_dir: Path) -> None:
     """Typed result steps pair with their calls and trigger sub-agent inlining."""
     transcripts = [
-        t async for t in antigravity(path=fixtures_dir, conversation_id=TYPED_ID)
+        t async for t in antigravity_cli(path=fixtures_dir, conversation_id=TYPED_ID)
     ]
     assert len(transcripts) == 1
     transcript = transcripts[0]
@@ -283,7 +286,7 @@ async def test_spawn_cycle_is_skipped(
     # each names the other, so neither is top-level: target the parent
     with caplog.at_level(logging.WARNING):
         transcripts = [
-            t async for t in antigravity(path=root, conversation_id=parent_id)
+            t async for t in antigravity_cli(path=root, conversation_id=parent_id)
         ]
 
     assert [t.transcript_id for t in transcripts] == [parent_id]
@@ -296,7 +299,7 @@ async def test_spawn_cycle_is_skipped(
 async def test_conversation_id_can_target_subagent(fixtures_dir: Path) -> None:
     """Passing a child's conversation_id imports it standalone."""
     transcripts = [
-        t async for t in antigravity(path=fixtures_dir, conversation_id=CHILD_ID)
+        t async for t in antigravity_cli(path=fixtures_dir, conversation_id=CHILD_ID)
     ]
     assert len(transcripts) == 1
     assert transcripts[0].transcript_id == CHILD_ID
@@ -305,7 +308,7 @@ async def test_conversation_id_can_target_subagent(fixtures_dir: Path) -> None:
 @pytest.mark.asyncio
 async def test_limit_truncates_yield(fixtures_dir: Path) -> None:
     """`limit` stops yielding after N transcripts."""
-    transcripts = [t async for t in antigravity(path=fixtures_dir, limit=1)]
+    transcripts = [t async for t in antigravity_cli(path=fixtures_dir, limit=1)]
     assert len(transcripts) == 1
 
 
@@ -328,7 +331,7 @@ async def test_from_time_filters_by_mtime(fixtures_dir: Path, tmp_path: Path) ->
     _backdate(root, SIMPLE_ID)
 
     from_time = datetime.now() - timedelta(minutes=30)
-    transcripts = [t async for t in antigravity(path=root, from_time=from_time)]
+    transcripts = [t async for t in antigravity_cli(path=root, from_time=from_time)]
 
     ids = {t.transcript_id for t in transcripts}
     assert ids == TOP_LEVEL_IDS - {SIMPLE_ID}
@@ -352,7 +355,7 @@ async def test_time_window_does_not_split_subagents(
     _backdate(root, backdated_id)
 
     from_time = datetime.now() - timedelta(minutes=30)
-    transcripts = [t async for t in antigravity(path=root, from_time=from_time)]
+    transcripts = [t async for t in antigravity_cli(path=root, from_time=from_time)]
 
     assert {t.transcript_id for t in transcripts} == expected_ids
     parent = next((t for t in transcripts if t.transcript_id == PARENT_ID), None)
@@ -364,7 +367,7 @@ async def test_time_window_does_not_split_subagents(
 @pytest.mark.asyncio
 async def test_nonexistent_path_yields_nothing(tmp_path: Path) -> None:
     """A path that doesn't exist yields zero transcripts (logged, not raised)."""
-    transcripts = [t async for t in antigravity(path=tmp_path / "missing")]
+    transcripts = [t async for t in antigravity_cli(path=tmp_path / "missing")]
     assert transcripts == []
 
 
@@ -376,7 +379,7 @@ async def test_nonexistent_conversation_id_warns(
     with caplog.at_level(logging.WARNING):
         transcripts = [
             t
-            async for t in antigravity(
+            async for t in antigravity_cli(
                 path=fixtures_dir,
                 conversation_id="99999999-0000-0000-0000-000000000009",
             )
@@ -394,7 +397,7 @@ async def test_undecodable_transcript_is_skipped(
     _transcript_path(root, SIMPLE_ID).write_bytes(b"\xff\xfe not utf-8\n")
 
     with caplog.at_level(logging.WARNING):
-        transcripts = [t async for t in antigravity(path=root)]
+        transcripts = [t async for t in antigravity_cli(path=root)]
 
     assert {t.transcript_id for t in transcripts} == TOP_LEVEL_IDS - {SIMPLE_ID}
     assert any("Skipping unreadable file" in r.message for r in caplog.records)
@@ -409,7 +412,7 @@ async def test_undecodable_annotation_omits_title(
     (root / "annotations" / f"{SIMPLE_ID}.pbtxt").write_bytes(b"\xff\xfe not utf-8\n")
 
     with caplog.at_level(logging.WARNING):
-        transcripts = [t async for t in antigravity(path=root)]
+        transcripts = [t async for t in antigravity_cli(path=root)]
 
     assert {t.transcript_id for t in transcripts} == TOP_LEVEL_IDS
     simple = next(t for t in transcripts if t.transcript_id == SIMPLE_ID)
@@ -427,7 +430,7 @@ async def test_unreadable_conversation_dir_is_skipped(
     conv_dir = root / "brain" / SIMPLE_ID
     conv_dir.chmod(0o000)
     try:
-        transcripts = [t async for t in antigravity(path=root)]
+        transcripts = [t async for t in antigravity_cli(path=root)]
     finally:
         conv_dir.chmod(0o755)
 
@@ -445,7 +448,7 @@ async def test_unreadable_brain_dir_yields_nothing(
     brain.chmod(0o000)
     try:
         with caplog.at_level(logging.WARNING):
-            transcripts = [t async for t in antigravity(path=root)]
+            transcripts = [t async for t in antigravity_cli(path=root)]
     finally:
         brain.chmod(0o755)
 
@@ -474,7 +477,9 @@ def _root_with_generation_db(fixtures_dir: Path, tmp_path: Path) -> Path:
 async def test_model_extraction(fixtures_dir: Path, tmp_path: Path) -> None:
     """Wire model id from generation metadata wins over the settings chrome."""
     root = _root_with_generation_db(fixtures_dir, tmp_path)
-    transcripts = [t async for t in antigravity(path=root, conversation_id=SIMPLE_ID)]
+    transcripts = [
+        t async for t in antigravity_cli(path=root, conversation_id=SIMPLE_ID)
+    ]
     assert len(transcripts) == 1
     assert transcripts[0].model == "gemini-test"
 
@@ -483,7 +488,9 @@ async def test_model_extraction(fixtures_dir: Path, tmp_path: Path) -> None:
 async def test_token_counting(fixtures_dir: Path, tmp_path: Path) -> None:
     """`total_tokens` sums the decoded per-generation usage."""
     root = _root_with_generation_db(fixtures_dir, tmp_path)
-    transcripts = [t async for t in antigravity(path=root, conversation_id=SIMPLE_ID)]
+    transcripts = [
+        t async for t in antigravity_cli(path=root, conversation_id=SIMPLE_ID)
+    ]
     assert len(transcripts) == 1
     transcript = transcripts[0]
 

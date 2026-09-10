@@ -181,7 +181,7 @@ def step_tool_calls(step: Step) -> list[ToolCall]:
         return []
     return [
         ToolCall(
-            id=f"antigravity_{step.step_index}_{i}",
+            id=f"antigravity_cli_{step.step_index}_{i}",
             function=tc.name or "unknown",
             arguments=tc.args,
         )
@@ -209,7 +209,7 @@ def to_model_event(
         model=model,
         choices=[ChatCompletionChoice(message=assistant_message)],
         usage=usage,
-        metadata={"antigravity_synthesized": True},
+        metadata={"antigravity_cli_synthesized": True},
     )
     return ModelEvent(
         model=model,
@@ -235,7 +235,7 @@ def to_compaction_event(step: Step) -> CompactionEvent:
     the message stream instead, matching claude_code.
     """
     return CompactionEvent(
-        source="antigravity",
+        source="antigravity_cli",
         metadata={"checkpoint_index": checkpoint_index(step)},
         timestamp=parse_timestamp(step.created_at) or utcnow(),
     )
@@ -277,7 +277,9 @@ def step_to_messages(
         call = pairer.pop()
         return [
             ChatMessageTool(
-                tool_call_id=call.id if call else f"antigravity_{step.step_index}_0",
+                tool_call_id=call.id
+                if call
+                else f"antigravity_cli_{step.step_index}_0",
                 function=call.function if call else "unknown",
                 content=step.content or "",
             )

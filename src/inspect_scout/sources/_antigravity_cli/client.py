@@ -32,7 +32,7 @@ from inspect_ai.model import ModelUsage
 
 logger = getLogger(__name__)
 
-ANTIGRAVITY_SOURCE_TYPE = "antigravity"
+ANTIGRAVITY_CLI_SOURCE_TYPE = "antigravity_cli"
 
 DEFAULT_ANTIGRAVITY_DIR = Path("~/.gemini/antigravity-cli")
 

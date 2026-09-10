@@ -284,31 +284,31 @@ Claude Code transcripts are mapped to the database schema as follows:
 
 [Antigravity CLI](https://antigravity.google/docs/cli/overview/) (`agy`) is Google's agentic coding tool. Scout can import transcripts directly from Antigravity's conversation files, which are normally stored at `~/.gemini/antigravity-cli`.
 
-Use the `antigravity()` transcript source to import conversations:
+Use the `antigravity_cli()` transcript source to import conversations:
 
 ```python
 from inspect_scout import transcripts_db
-from inspect_scout.sources import antigravity
+from inspect_scout.sources import antigravity_cli
 
 async with transcripts_db("s3://my-transcript-db/") as db:
-    await db.insert(antigravity())
+    await db.insert(antigravity_cli())
 ```
 
 By default, all conversations in the data directory are imported. You can point `path` at a copied data directory, a `brain` directory, or a single conversation directory, and narrow the import by conversation ID, time range, or limit:
 
 ```python
 # Import a specific conversation by ID
-await db.insert(antigravity(conversation_id="abc123-def456"))
+await db.insert(antigravity_cli(conversation_id="abc123-def456"))
 
 # Import conversations from a time range
 from datetime import datetime
-await db.insert(antigravity(
+await db.insert(antigravity_cli(
     from_time=datetime(2026, 8, 1),
     to_time=datetime(2026, 9, 1),
 ))
 
 # Limit the number of transcripts
-await db.insert(antigravity(limit=100))
+await db.insert(antigravity_cli(limit=100))
 ```
 
 Note that `from_time`/`to_time` filter on each transcript's file modification time (`st_mtime`), not the conversation's run time — mtime is reset by `cp`, `git checkout`, rsync, etc., so it can diverge from when the conversation actually occurred.
@@ -321,8 +321,8 @@ Antigravity conversations are mapped to the database schema as follows:
 
 | Field | Value |
 |-------|-------|
-| `source_type` | `"antigravity"` |
-| `agent` | `"antigravity"` |
+| `source_type` | `"antigravity_cli"` |
+| `agent` | `"antigravity-cli"` |
 | `model` | Wire model id (e.g. `claude-sonnet-4-6`), falling back to the display name from session settings |
 | `total_tokens` | Sum of per-generation usage (best-effort) |
 | `metadata.title` | Conversation title (set via `/rename`) |

@@ -8,13 +8,13 @@ conversations instead, drop the `path` argument (defaults to
 import asyncio
 
 from inspect_scout import transcripts_db
-from inspect_scout.sources import antigravity
+from inspect_scout.sources import antigravity_cli
 
 
 async def main() -> None:
-    async with transcripts_db("examples/sources/antigravity/transcripts") as db:
+    async with transcripts_db("examples/sources/antigravity_cli/transcripts") as db:
         await db.insert(
-            antigravity(path="tests/sources/antigravity_source/fixtures/root")
+            antigravity_cli(path="tests/sources/antigravity_cli_source/fixtures/root")
         )
 
 

@@ -38,7 +38,7 @@ from inspect_ai.model import (
 
 from .._util import apply_working_start, parse_timestamp, utcnow
 from .client import (
-    ANTIGRAVITY_SOURCE_TYPE,
+    ANTIGRAVITY_CLI_SOURCE_TYPE,
     ConversationRecord,
     GenerationInfo,
     discover_conversations,
@@ -70,7 +70,7 @@ _SPAWN_RESULT_MARKER = "Created the following subagents:"
 _CONVERSATION_ID_RE = re.compile(r'"conversationId"\s*:\s*"([0-9a-fA-F-]{36})"')
 
 
-async def antigravity(
+async def antigravity_cli(
     path: str | PathLike[str] | None = None,
     conversation_id: str | None = None,
     from_time: datetime | None = None,
@@ -264,11 +264,11 @@ def _create_transcript(
 
     return Transcript(
         transcript_id=record.conversation_id,
-        source_type=ANTIGRAVITY_SOURCE_TYPE,
+        source_type=ANTIGRAVITY_CLI_SOURCE_TYPE,
         source_id=record.conversation_id,
         source_uri=str(record.transcript_path),
         date=info.first_timestamp,
-        agent="antigravity",
+        agent="antigravity-cli",
         model=model,
         message_count=len(messages),
         total_time=total_time if total_time and total_time > 0 else None,

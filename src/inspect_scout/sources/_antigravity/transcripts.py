@@ -304,7 +304,12 @@ def _convert_steps(
     an ancestor is skipped rather than nested into a cycle; ``depth`` bounds
     legitimate nesting.
     """
+    # `messages` is the complete transcript history; `context` is what the
+    # model currently sees, which a compaction replaces with the checkpoint
+    # summary. ModelEvent.input takes `context` so span_messages() can
+    # reconstruct each compaction region without repeating earlier ones.
     messages: list[ChatMessage] = []
+    context: list[ChatMessage] = []
     events: list[Event] = []
     info = _ConversionInfo()
     pairer = ToolCallPairer()
@@ -330,8 +335,11 @@ def _convert_steps(
             elif index > 0:
                 info.compaction_count += 1
                 events.append(to_compaction_event(step))
+                context = []
                 if step.content:
-                    messages.append(ChatMessageSystem(content=step.content))
+                    summary = ChatMessageSystem(content=step.content)
+                    messages.append(summary)
+                    context.append(summary)
             continue
 
         if step.type == "USER_INPUT" and step.content:
@@ -357,7 +365,7 @@ def _convert_steps(
                 events.append(
                     to_model_event(
                         step,
-                        prior_messages=messages,
+                        prior_messages=context,
                         assistant_message=assistant,
                         model=(generation.model if generation else None)
                         or info.settings_model
@@ -365,10 +373,15 @@ def _convert_steps(
                         usage=generation.usage if generation else None,
                     )
                 )
+            # Results follow their planner step directly, so anything still
+            # pending from an earlier turn never got one.
+            pairer.abandon()
+            pending_roles.clear()
             pairer.push(tool_calls)
             pending_roles.extend(_extract_subagent_role_names(step))
 
         messages.extend(new_messages)
+        context.extend(new_messages)
 
         # Inline spawned sub-agents as agent spans at the spawn result.
         spawn_result = _spawn_result_content(step)

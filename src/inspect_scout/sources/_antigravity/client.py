@@ -181,7 +181,8 @@ def read_title(data_root: Path, conversation_id: str) -> str | None:
         if not annotation.is_file():
             return None
         text = annotation.read_text(encoding="utf-8")
-    except OSError as e:
+    except (OSError, ValueError) as e:
+        # ValueError covers UnicodeDecodeError from non-UTF-8 bytes
         logger.warning("Failed to read %s: %s", annotation, e)
         return None
     match = _TITLE_RE.search(text)

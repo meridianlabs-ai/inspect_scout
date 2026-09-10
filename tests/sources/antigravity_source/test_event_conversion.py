@@ -16,6 +16,7 @@ from inspect_ai.model import (
 )
 from inspect_scout.sources._antigravity.events import (
     Step,
+    StepToolCall,
     ToolCallPairer,
     checkpoint_index,
     is_tool_result_step,
@@ -337,6 +338,65 @@ class TestCreateSubagentSpanEvents:
 
 class TestConvertSteps:
     """Tests for _convert_steps()."""
+
+    def test_abandoned_call_does_not_claim_later_result(self) -> None:
+        """A call with no result is abandoned when the next planner turn begins."""
+        steps = [
+            Step(
+                step_index=0,
+                source="MODEL",
+                type="PLANNER_RESPONSE",
+                tool_calls=[
+                    StepToolCall(name="view_file", args={"AbsolutePath": "/x"})
+                ],
+            ),
+            Step(
+                step_index=1,
+                source="MODEL",
+                type="PLANNER_RESPONSE",
+                tool_calls=[
+                    StepToolCall(name="run_command", args={"CommandLine": "ls"})
+                ],
+            ),
+            Step(step_index=2, source="MODEL", type="GENERIC", content="src/"),
+        ]
+        messages, _, _ = _convert_steps(
+            steps, [], records_by_id={}, roles={}, depth=0, inlining=frozenset()
+        )
+        [tool_message] = [m for m in messages if isinstance(m, ChatMessageTool)]
+        assert tool_message.function == "run_command"
+        assert tool_message.tool_call_id == "antigravity_1_0"
+
+    def test_abandoned_spawn_does_not_claim_later_role(self) -> None:
+        """A spawn with no result is abandoned when the next planner turn begins."""
+        steps = [
+            Step(
+                step_index=0,
+                source="MODEL",
+                type="PLANNER_RESPONSE",
+                tool_calls=[
+                    StepToolCall(
+                        name="invoke_subagent", args={"Subagents": [{"Role": "first"}]}
+                    )
+                ],
+            ),
+            Step(
+                step_index=1,
+                source="MODEL",
+                type="PLANNER_RESPONSE",
+                tool_calls=[
+                    StepToolCall(
+                        name="invoke_subagent", args={"Subagents": [{"Role": "second"}]}
+                    )
+                ],
+            ),
+            Step(step_index=2, source="MODEL", type="GENERIC", content=SPAWN_RESULT),
+        ]
+        roles: dict[str, str] = {}
+        _convert_steps(
+            steps, [], records_by_id={}, roles=roles, depth=0, inlining=frozenset()
+        )
+        assert roles == {"dddddddd-0000-0000-0000-000000000004": "second"}
 
     def test_unmarked_checkpoint_warns(self, caplog: pytest.LogCaptureFixture) -> None:
         """A CHECKPOINT without a {{ CHECKPOINT N }} marker is dropped with a warning."""

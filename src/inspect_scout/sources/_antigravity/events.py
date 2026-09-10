@@ -157,8 +157,9 @@ class ToolCallPairer:
 
     The JSONL carries no call ids, and results follow their planner step in
     order (parallel calls produce consecutive result steps), so pairing is
-    positional/FIFO. Calls that never receive a result (interrupted turns,
-    orphaned background tasks) simply remain unclaimed.
+    positional/FIFO. A call still pending when the next planner step arrives
+    never got a result (interrupted turn, failed tool) and is abandoned there,
+    so it can't claim a later turn's result.
     """
 
     def __init__(self) -> None:
@@ -169,6 +170,9 @@ class ToolCallPairer:
 
     def pop(self) -> ToolCall | None:
         return self._pending.popleft() if self._pending else None
+
+    def abandon(self) -> None:
+        self._pending.clear()
 
 
 def step_tool_calls(step: Step) -> list[ToolCall]:

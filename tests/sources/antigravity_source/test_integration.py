@@ -23,6 +23,7 @@ from inspect_ai.model import (
     ChatMessageTool,
     ChatMessageUser,
 )
+from inspect_scout._transcript.messages import span_messages
 from inspect_scout.sources import antigravity
 
 from tests.sources.antigravity_source.helpers import (
@@ -144,6 +145,46 @@ async def test_compaction_and_resume_seam(fixtures_dir: Path) -> None:
         isinstance(m, ChatMessageSystem) and "stream was interrupted" in m.text
         for m in transcript.messages
     )
+
+
+@pytest.mark.asyncio
+async def test_compaction_model_context_all(fixtures_dir: Path) -> None:
+    """compaction="all" grafts the pre-checkpoint region onto the post-checkpoint one."""
+    transcripts = [
+        t async for t in antigravity(path=fixtures_dir, conversation_id=COMPACTION_ID)
+    ]
+    assert len(transcripts) == 1
+
+    result = span_messages(transcripts[0].events, compaction="all")
+
+    # each turn appears exactly once: pre-checkpoint user/assistant, then the
+    # checkpoint summary and the post-checkpoint turns
+    assert [m.role for m in result] == [
+        "user",
+        "assistant",
+        "system",
+        "user",
+        "system",
+        "assistant",
+    ]
+    assert result[1].text == "Working on it."
+    assert "Previous Session Summary" in result[2].text
+    assert result[-1].text == "Fixed."
+
+
+@pytest.mark.asyncio
+async def test_compaction_model_context_last(fixtures_dir: Path) -> None:
+    """compaction="last" returns the checkpoint summary onward, no pre-checkpoint turns."""
+    transcripts = [
+        t async for t in antigravity(path=fixtures_dir, conversation_id=COMPACTION_ID)
+    ]
+    assert len(transcripts) == 1
+
+    result = span_messages(transcripts[0].events, compaction="last")
+
+    assert [m.role for m in result] == ["system", "user", "system", "assistant"]
+    assert "Previous Session Summary" in result[0].text
+    assert result[-1].text == "Fixed."
 
 
 @pytest.mark.asyncio
@@ -357,6 +398,23 @@ async def test_undecodable_transcript_is_skipped(
 
     assert {t.transcript_id for t in transcripts} == TOP_LEVEL_IDS - {SIMPLE_ID}
     assert any("Skipping unreadable file" in r.message for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_undecodable_annotation_omits_title(
+    fixtures_dir: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Non-UTF-8 bytes in an annotation file drop that title, not the import."""
+    root = _copy_fixtures(fixtures_dir, tmp_path)
+    (root / "annotations" / f"{SIMPLE_ID}.pbtxt").write_bytes(b"\xff\xfe not utf-8\n")
+
+    with caplog.at_level(logging.WARNING):
+        transcripts = [t async for t in antigravity(path=root)]
+
+    assert {t.transcript_id for t in transcripts} == TOP_LEVEL_IDS
+    simple = next(t for t in transcripts if t.transcript_id == SIMPLE_ID)
+    assert "title" not in simple.metadata
+    assert any("Failed to read" in r.message for r in caplog.records)
 
 
 @pytest.mark.skipif(os.geteuid() == 0, reason="root bypasses directory permissions")

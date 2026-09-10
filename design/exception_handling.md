@@ -79,6 +79,8 @@ When a worker's work task encounters an infrastructure exception, a prerequisite
 3. **Re-raise**: The original exception propagates locally; the shutdown monitor is cancelled in `finally`
 4. **Completion**: `WorkerComplete` is sent only on clean completion, never to reinterpret a fatal error as success
 
+Exception class metadata is guarded too: malformed modules are omitted, and an unreadable type name receives an explicit unavailable marker. In that case, formatting uses the available worker frames and normalized message without consulting the broken class metadata again.
+
 The error payload contains only deliberate scalar fields. It excludes response/request objects, bodies, headers, traceback locals, and exception object graphs. Existing exception text may contain sensitive information; this is not a general redaction guarantee. Other upstream message types retain their existing structures.
 
 Chains and exception groups are preserved as formatted traceback text when they reach this boundary. Optional metadata comes only from the caught exception's own plain `int`/`str` attributes; it is not borrowed from an arbitrary cause or group member. Broken optional getters or formatters do not replace the original diagnostic. The existing single-process strategy still controls which exception reaches the worker boundary.

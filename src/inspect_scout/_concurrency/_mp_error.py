@@ -7,19 +7,39 @@ from ._mp_common import WorkerError
 
 def worker_error(worker_id: int, exception: Exception) -> WorkerError:
     """Capture text and root-exception metadata without retaining live objects."""
-    type_name = f"{type(exception).__module__}.{type(exception).__qualname__}"
+    # Class metadata can be malformed or supplied by a custom metaclass.
+    type_metadata_available = True
+    try:
+        name = type(exception).__qualname__
+        type_metadata_available = type(name) is str
+        type_name = str.__str__(name)
+    except Exception:
+        type_name = "<exception type unavailable>"
+        type_metadata_available = False
+    try:
+        module = type(exception).__module__
+        type_metadata_available = type_metadata_available and type(module) is str
+        module = str.__str__(module)
+    except Exception:
+        type_metadata_available = False
+    else:
+        type_name = f"{module}.{type_name}"
     try:
         message = str.__str__(str(exception))
     except Exception:
         message = "<exception message unavailable>"
 
-    try:
-        remote_traceback = "".join(
-            traceback.format_exception(
-                type(exception), exception, exception.__traceback__
+    remote_traceback = None
+    if type_metadata_available:
+        try:
+            remote_traceback = "".join(
+                traceback.format_exception(
+                    type(exception), exception, exception.__traceback__
+                )
             )
-        )
-    except Exception:
+        except Exception:
+            pass
+    if remote_traceback is None:
         # A broken exception formatter must not discard the original stack.
         try:
             frames = "".join(traceback.format_tb(exception.__traceback__))

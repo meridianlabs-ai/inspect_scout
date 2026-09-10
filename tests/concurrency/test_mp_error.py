@@ -157,3 +157,69 @@ def test_formatting_does_not_swallow_cancellation() -> None:
 
     with pytest.raises(asyncio.CancelledError):
         worker_error(1, InterruptedError())
+
+
+@pytest.mark.parametrize("broken_attribute", ["__module__", "__qualname__"])
+def test_broken_type_metadata_does_not_replace_failure(broken_attribute: str) -> None:
+    class BrokenType(type):
+        def __getattribute__(cls, name: str) -> Any:
+            if name == broken_attribute:
+                raise ValueError("broken type metadata")
+            return super().__getattribute__(name)
+
+    class LocalError(Exception, metaclass=BrokenType):
+        pass
+
+    error = LocalError("original worker failure")
+    try:
+        raise error
+    except LocalError:
+        pass
+    payload = pickle.loads(pickle.dumps(worker_error(1, error)))
+    assert payload.message == "original worker failure"
+    assert "test_broken_type_metadata" in payload.traceback
+    assert "original worker failure" in str(WorkerProcessError(payload))
+
+
+def test_type_module_is_not_formatted_as_an_arbitrary_object() -> None:
+    class BrokenModule:
+        def __str__(self) -> str:
+            raise ValueError("broken module formatting")
+
+    class LocalError(Exception):
+        pass
+
+    type.__setattr__(LocalError, "__module__", BrokenModule())
+    payload = pickle.loads(pickle.dumps(worker_error(1, LocalError("original"))))
+    assert "LocalError" in payload.type_name
+    assert payload.message == "original"
+
+
+@pytest.mark.parametrize("attribute", ["__module__", "__qualname__"])
+def test_type_metadata_subclass_keeps_available_frames(attribute: str) -> None:
+    class BrokenString(str):
+        def __str__(self) -> str:
+            raise ValueError("broken metadata string")
+
+        def __eq__(self, other: object) -> bool:
+            raise ValueError("broken metadata comparison")
+
+        def __hash__(self) -> int:
+            return str.__hash__(self)
+
+        def __reduce__(self) -> str:
+            raise TypeError("must not send metadata object")
+
+    class LocalError(Exception):
+        pass
+
+    type.__setattr__(LocalError, attribute, BrokenString("fixture_type"))
+    error = LocalError("original worker failure")
+    try:
+        raise error
+    except LocalError:
+        pass
+    payload = pickle.loads(pickle.dumps(worker_error(1, error)))
+    assert "fixture_type" in payload.type_name
+    assert "test_type_metadata_subclass" in payload.traceback
+    assert "original worker failure" in payload.traceback

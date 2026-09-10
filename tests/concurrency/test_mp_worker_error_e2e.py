@@ -241,3 +241,42 @@ def test_collector_read_failure_remains_fatal(tmp_path: Path) -> None:
     assert "OSError" in report["parent_display"]
     assert "collector read failure fixture" in report["parent_display"]
     assert "no running event loop" not in report["parent_display"]
+
+
+def test_malformed_worker_type_still_reaches_parent(tmp_path: Path) -> None:
+    report = _run_scan(
+        tmp_path, provider="malformed_type", fail_on_error=True, max_processes=2
+    )
+    assert not report["complete"]
+    assert not report["persisted_complete"]
+    for detail in (
+        "LocalError",
+        "malformed type worker failure fixture",
+        "_raise_provider_error",
+    ):
+        assert detail in report["parent_display"]
+
+
+@pytest.mark.parametrize("mode", ["parent_group", "parent_context"])
+def test_parent_error_group_preserves_failures_without_incidental_context(
+    tmp_path: Path, mode: str
+) -> None:
+    report = _run_scan(
+        tmp_path,
+        provider="generic",
+        fail_on_error=True,
+        max_processes=2,
+        mode=mode,
+        api="sync",
+    )
+    assert not report["complete"]
+    assert not report["persisted_complete"]
+    diagnostic = report["parent_display"]
+    if mode == "parent_group":
+        assert "first parent failure fixture" in diagnostic
+        assert "second parent failure fixture" in diagnostic
+    else:
+        assert "actual parent failure fixture" in diagnostic
+        assert "incidental parent context fixture" not in diagnostic
+        assert "actual parent failure fixture" in report["strategy_traceback"]
+        assert "incidental parent context fixture" not in report["strategy_traceback"]

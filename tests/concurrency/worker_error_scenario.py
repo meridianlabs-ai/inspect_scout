@@ -10,6 +10,8 @@ import json
 import multiprocessing
 import os
 import signal
+import sys
+import traceback
 from collections.abc import AsyncIterator
 from contextlib import ExitStack, asynccontextmanager, redirect_stdout
 from multiprocessing.queues import Queue
@@ -28,6 +30,7 @@ from inspect_scout import Result, Scanner, scan, scanner, transcripts_db
 from inspect_scout._concurrency import multi_process
 from inspect_scout._concurrency._mp_semaphore import MPConcurrencySemaphore
 from inspect_scout._concurrency._mp_shutdown import shutdown_subprocesses
+from inspect_scout._concurrency.common import ConcurrencyStrategy
 from inspect_scout._recorder.recorder import Status
 from inspect_scout._scanresults import scan_results_df
 from inspect_scout._transcript.factory import transcripts_from
@@ -36,8 +39,22 @@ from inspect_scout.aio import scan_async
 
 from tests.helpers import temp_active_scans_store
 
+if sys.version_info < (3, 11):
+    from exceptiongroup import ExceptionGroup
+
 
 def _raise_provider_error(provider: str) -> None:
+    if provider == "malformed_type":
+
+        class BrokenModule:
+            def __str__(self) -> str:
+                raise ValueError("broken module formatting")
+
+        class LocalError(Exception):
+            pass
+
+        type.__setattr__(LocalError, "__module__", BrokenModule())
+        raise LocalError("malformed type worker failure fixture")
     if provider == "generic":
         raise ValueError("generic worker failure fixture")
     if provider == "prerequisite":
@@ -84,6 +101,8 @@ def _error_scanner(provider: str, attempts: Path, mode: str) -> Scanner[Transcri
                 "cleanup",
                 "keyboard_cleanup",
                 "collector",
+                "parent_group",
+                "parent_context",
             ):
                 _raise_provider_error(provider)
             return Result(value="ok")
@@ -133,6 +152,7 @@ def run_scenario(
     original_sigint = signal.getsignal(signal.SIGINT)
     completed_status: Status | None = None
     native_interrupt = False
+    strategy_traceback: str | None = None
 
     async def run_async() -> Status:
         async def capture_scan() -> Status:
@@ -198,6 +218,54 @@ def run_scenario(
 
             stack.enter_context(
                 patch.object(multi_process, "create_task_group", interrupted_group)
+            )
+
+        if mode in ("parent_group", "parent_context"):
+
+            @asynccontextmanager
+            async def failing_parent_group() -> AsyncIterator[TaskGroup]:
+                async with anyio.create_task_group() as group:
+                    yield group
+                if mode == "parent_group":
+                    raise ExceptionGroup(
+                        "parent task failures",
+                        [
+                            ValueError("first parent failure fixture"),
+                            RuntimeError("second parent failure fixture"),
+                        ],
+                    )
+                try:
+                    raise RuntimeError("incidental parent context fixture")
+                except RuntimeError as incidental:
+                    raise ExceptionGroup(
+                        "parent task wrapper",
+                        [ValueError("actual parent failure fixture")],
+                    ) from incidental
+
+            stack.enter_context(
+                patch.object(multi_process, "create_task_group", failing_parent_group)
+            )
+
+        if mode == "parent_context":
+
+            def observed_strategy(*args: Any, **kwargs: Any) -> ConcurrencyStrategy:
+                strategy = multi_process.multi_process_strategy(*args, **kwargs)
+
+                async def observe(**work: Any) -> None:
+                    nonlocal strategy_traceback
+                    try:
+                        await strategy(**work)
+                    except Exception as ex:
+                        # Outer scan groups/renderers may hide context independently.
+                        strategy_traceback = "".join(
+                            traceback.format_exception(type(ex), ex, ex.__traceback__)
+                        )
+                        raise
+
+                return observe
+
+            stack.enter_context(
+                patch("inspect_scout._scan.multi_process_strategy", observed_strategy)
             )
 
         if mode == "collector":
@@ -269,6 +337,7 @@ def run_scenario(
         "sigint_restored": signal.getsignal(signal.SIGINT) == original_sigint,
         "strategy_active": multi_process._active,
         "parent_display": parent_output.getvalue(),
+        "strategy_traceback": strategy_traceback,
     }
     (root / "report.json").write_text(json.dumps(report, indent=2) + "\n")
     if native_interrupt:
@@ -280,7 +349,7 @@ if __name__ == "__main__":
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument(
         "--provider",
-        choices=("anthropic", "openai", "generic", "prerequisite"),
+        choices=("anthropic", "openai", "generic", "prerequisite", "malformed_type"),
         required=True,
     )
     parser.add_argument("--fail-on-error", action="store_true")

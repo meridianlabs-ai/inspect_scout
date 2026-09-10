@@ -22,6 +22,7 @@ def _run_scan(
     fail_on_error: bool,
     max_processes: int,
     api: str = "async",
+    mode: str = "normal",
 ) -> dict[str, Any]:
     command = [
         sys.executable,
@@ -35,13 +36,21 @@ def _run_scan(
         str(max_processes),
         "--api",
         api,
+        "--mode",
+        mode,
     ]
     if fail_on_error:
         command.append("--fail-on-error")
-    env = dict(os.environ, SCOUT_DIAGNOSTICS="false", SCOUT_DISPLAY="plain")
+    repository = Path(__file__).resolve().parents[2]
+    env = dict(
+        os.environ,
+        SCOUT_DIAGNOSTICS="false",
+        SCOUT_DISPLAY="plain",
+        PYTHONPATH=str(repository / "src"),
+    )
     with subprocess.Popen(
         command,
-        cwd=Path(__file__).resolve().parents[2],
+        cwd=repository,
         env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -61,8 +70,20 @@ def _run_scan(
 
     (tmp_path / "child-stdout.log").write_text(stdout)
     (tmp_path / "child-stderr.log").write_text(stderr)
-    assert process.returncode == 0, f"{stdout}\n{stderr}"
+    expected_exit = 130 if mode == "interrupt" and sys.version_info < (3, 11) else 0
+    assert process.returncode == expected_exit, f"{stdout}\n{stderr}"
     report = cast(dict[str, Any], json.loads((tmp_path / "report.json").read_text()))
+    assert report["native_interrupt"] == (expected_exit == 130)
+    assert (
+        Path(report["scout_source"]).resolve()
+        == repository / "src/inspect_scout/__init__.py"
+    )
+    assert report["registry_restored"]
+    assert report["sigint_restored"]
+    assert not report["strategy_active"]
+    assert not report["worker_pids_still_alive"]
+    if mode == "collector":
+        return report
     failing = next(
         item for item in report["attempts"] if item["transcript_id"] == "failing"
     )
@@ -129,3 +150,94 @@ def test_single_process_provider_error_keeps_diagnostic(
     assert "scout worker failure fixture" in report["parent_display"]
     assert "_raise_provider_error" in report["parent_display"]
     assert "missing 2 required keyword-only arguments" not in report["parent_display"]
+
+
+@pytest.mark.parametrize(
+    "provider,fail_on_error,type_name",
+    [("generic", True, "ValueError"), ("prerequisite", False, "PrerequisiteError")],
+)
+def test_non_provider_fatal_errors_keep_existing_semantics(
+    tmp_path: Path,
+    provider: str,
+    fail_on_error: bool,
+    type_name: str,
+) -> None:
+    report = _run_scan(
+        tmp_path, provider=provider, fail_on_error=fail_on_error, max_processes=2
+    )
+    assert not report["complete"]
+    assert not report["persisted_complete"]
+    assert not report["errors"]
+    assert type_name in report["parent_display"]
+    assert f"{provider} worker failure fixture" in report["parent_display"]
+    assert "_raise_provider_error" in report["parent_display"]
+
+
+@pytest.mark.parametrize("mode", ["multiple", "pressure"])
+def test_simultaneous_worker_failures_finish_with_useful_diagnostic(
+    tmp_path: Path,
+    mode: str,
+) -> None:
+    report = _run_scan(
+        tmp_path, provider="generic", fail_on_error=True, max_processes=2, mode=mode
+    )
+    assert not report["complete"]
+    assert not report["persisted_complete"]
+    assert len({item["pid"] for item in report["attempts"]}) == 2
+    assert "simultaneous worker failure" in report["parent_display"]
+    assert "scan_transcript" in report["parent_display"]
+
+
+@pytest.mark.parametrize("mode", ["cancel", "interrupt"])
+def test_interruption_keeps_precedence_over_cleanup_failure(
+    tmp_path: Path,
+    mode: str,
+) -> None:
+    report = _run_scan(
+        tmp_path, provider="generic", fail_on_error=True, max_processes=2, mode=mode
+    )
+    assert not report["complete"]
+    assert not report["persisted_complete"]
+    assert "Aborted!" in report["parent_display"]
+    assert "cleanup failure fixture" not in report["parent_display"]
+
+
+@pytest.mark.parametrize("mode", ["cleanup", "primary_cleanup", "keyboard_cleanup"])
+def test_shutdown_error_precedence(tmp_path: Path, mode: str) -> None:
+    report = _run_scan(
+        tmp_path,
+        provider="anthropic",
+        fail_on_error=True,
+        max_processes=2,
+        mode=mode,
+        api="sync",
+    )
+    diagnostic = report["parent_display"]
+    if mode == "cleanup":
+        assert not report["complete"]
+        assert "cleanup failure fixture" in diagnostic
+    elif mode == "primary_cleanup":
+        assert not report["complete"]
+        assert "anthropic.APIStatusError" in diagnostic
+        assert "scout worker failure fixture" in diagnostic
+        assert "cleanup failure fixture" not in diagnostic
+    else:
+        # The strategy's existing KeyboardInterrupt handler returns normally.
+        assert "cleanup failure fixture" not in diagnostic
+        assert report["values"] == ["ok", "ok"]
+
+
+def test_collector_read_failure_remains_fatal(tmp_path: Path) -> None:
+    report = _run_scan(
+        tmp_path,
+        provider="generic",
+        fail_on_error=True,
+        max_processes=2,
+        mode="collector",
+        api="sync",
+    )
+    assert not report["complete"]
+    assert not report["persisted_complete"]
+    assert "OSError" in report["parent_display"]
+    assert "collector read failure fixture" in report["parent_display"]
+    assert "no running event loop" not in report["parent_display"]

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Sequence
+from logging import getLogger
 from multiprocessing.context import SpawnProcess
 from multiprocessing.queues import Queue
 from queue import Empty, Full
@@ -11,13 +12,15 @@ import anyio
 
 from . import _mp_common
 
+logger = getLogger(__name__)
+
 
 async def shutdown_subprocesses(
     processes: Sequence[SpawnProcess],
     ctx: _mp_common.IPCContext,
     print_diagnostics: Callable[[str, object], None],
     shutdown_sentinel: _mp_common.ShutdownSentinel,
-) -> None:
+) -> Exception | None:
     """Unified shutdown sequence for both clean exit and Ctrl-C.
 
     This function is idempotent and can be called multiple times safely. Performs
@@ -32,7 +35,34 @@ async def shutdown_subprocesses(
         ctx: IPC context with queues and shutdown condition
         print_diagnostics: Function to print diagnostic messages
         shutdown_sentinel: Sentinel value to inject into upstream queue to wake collector
+
+    Returns:
+        The first queue-read failure, after teardown. The caller raises it only
+        when no primary failure, interrupt, or cancellation is in progress.
     """
+    failed_queues: set[str] = set()
+    first_error: Exception | None = None
+
+    def drain_one(queue: Queue[Any], name: str) -> bool:
+        nonlocal first_error
+        if name in failed_queues:
+            return False
+        try:
+            queue.get_nowait()
+            return True
+        except Empty:
+            return False
+        except Exception as ex:
+            # A consumed item's decode failure does not prove pipe health.
+            # Stop reading this queue, but still terminate and close workers.
+            failed_queues.add(name)
+            if first_error is None:
+                first_error = ex
+            logger.warning(
+                "Failed to drain %s during worker shutdown", name, exc_info=True
+            )
+            return False
+
     # PHASE 1: Signal workers to stop (non-blocking)
     print_diagnostics("SubprocessShutdown", "Phase 1: Signaling workers")
     with ctx.shutdown_condition:
@@ -52,17 +82,11 @@ async def shutdown_subprocesses(
 
     while time.time() < deadline:
         # Drain both queues to unblock worker feeder threads
-        try:
-            ctx.parse_job_queue.get_nowait()
+        if drain_one(ctx.parse_job_queue, "parse_job_queue"):
             drained_parse += 1
-        except Empty:
-            pass
 
-        try:
-            ctx.upstream_queue.get_nowait()
+        if drain_one(ctx.upstream_queue, "upstream_queue"):
             drained_upstream += 1
-        except Empty:
-            pass
 
         # Check if all workers have exited
         if all(not p.is_alive() for p in processes):
@@ -147,18 +171,12 @@ async def shutdown_subprocesses(
     def drain_queue(queue: Queue[Any], name: str) -> int:
         """Drain a queue and return count of items removed."""
         count = 0
-        while True:
-            try:
-                queue.get_nowait()
-                count += 1
-                if count > 1000:  # Safety limit
-                    print_diagnostics(
-                        "SubprocessShutdown", f"WARNING: {name} had >1000 items"
-                    )
-                    break
-            except (Empty, ValueError):
-                # Empty: queue is empty (expected termination condition)
-                # ValueError: queue is closed (Python 3.8+, can happen in shutdown race)
+        while drain_one(queue, name):
+            count += 1
+            if count >= 1000:  # Safety limit
+                print_diagnostics(
+                    "SubprocessShutdown", f"WARNING: {name} had >=1000 items"
+                )
                 break
         return count
 
@@ -209,3 +227,4 @@ async def shutdown_subprocesses(
     print_diagnostics(
         "SubprocessShutdown", "Complete - subprocesses should be completely gone"
     )
+    return first_error

@@ -27,7 +27,7 @@ A dataclass containing immutable configuration (parse/scan functions, task count
 ### 2. Multiprocessing Queues
 Two bounded queues handle data flow:
 - **parse_job_queue** (Main → Workers): Lightweight ParseJob metadata with `None` sentinels for completion
-- **upstream_queue** (Workers → Main): Multiplexed stream of results, metrics, semaphore requests, and control messages (using strongly-typed dataclasses: `ResultItem`, `MetricsItem`, `SemaphoreRequest`, `WorkerComplete`, `ShutdownSentinel`, `Exception`). Main uses pattern matching to discriminate message types.
+- **upstream_queue** (Workers → Main): Multiplexed stream of results, metrics, logging, semaphore requests, and control messages (`ResultItem`, `MetricsItem`, `LoggingItem`, `SemaphoreRequest`, `WorkerReady`, `WorkerComplete`, `ShutdownSentinel`, `WorkerError`). Main uses pattern matching to discriminate message types. Fatal worker errors use detached scalar diagnostics instead of pickling exception objects; other messages retain their existing structures.
 
 Queue operations use `anyio.to_thread.run_sync()` for blocking `.get()` calls to avoid blocking the event loop.
 
@@ -87,3 +87,11 @@ SIGINT delivered only to parent (workers have `SIGINT=SIG_IGN`). Parent's task g
 6. **Cleanup**: Close queues, wait for feeder threads, cancel join threads
 
 **Key design:** Workers ignore SIGINT to avoid races. Parent coordinates shutdown via condition variable + drain-while-waiting to unblock feeder threads. Most queue items are drained during Phase 2 while workers exit, preventing feeder thread deadlock. Shutdown sentinel injection prevents collector deadlock if workers are forcibly terminated.
+
+### Errors during collection and shutdown
+
+`WorkerError` becomes a parent-owned `WorkerProcessError` retaining the worker's type, message, traceback, and available status/request ID. The active collector fails on an unreadable queue; it cannot treat a lost message as successful work. See [exception handling](exception_handling.md) for the job-error and fail-fast boundary.
+
+Both drain phases stop reading an affected queue after an unexpected read failure, log that failure independently of diagnostic mode, and continue to termination and closure. This also handles an exception raised while reconstructing an already-consumed queue item. Such consumption does not prove pipe health, so shutdown does not retry indiscriminately. The other queue may still be drained, and the final drain retains its item bound.
+
+Shutdown returns its first read failure after teardown. The parent raises it only if its task group completed normally; otherwise the primary error, cancellation, or swallowed Ctrl-C remains authoritative. Unexpected non-read cleanup errors follow the same precedence. Existing grace/termination deadlines remain; this does not make a partially written pipe read interruptible or add general worker supervision.

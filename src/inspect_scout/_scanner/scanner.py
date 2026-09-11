@@ -143,6 +143,7 @@ def scanner(
     messages: Literal["all"],
     events: list[EventType],
     loader: Loader[Transcript] | None = ...,
+    metadata: bool | None = ...,
     name: str | None = ...,
     version: int = 0,
     supports_streaming: bool | None = ...,
@@ -156,6 +157,7 @@ def scanner(
     messages: list[MessageType],
     events: Literal["all"],
     loader: Loader[Transcript] | None = ...,
+    metadata: bool | None = ...,
     name: str | None = ...,
     version: int = 0,
     supports_streaming: bool | None = ...,
@@ -169,6 +171,7 @@ def scanner(
     messages: list[MessageType],
     events: list[EventType],
     loader: Loader[Transcript] | None = ...,
+    metadata: bool | None = ...,
     name: str | None = ...,
     version: int = 0,
     supports_streaming: bool | None = ...,
@@ -182,6 +185,7 @@ def scanner(
     messages: Literal["all"],
     events: Literal["all"],
     loader: Loader[Transcript] | None = ...,
+    metadata: bool | None = ...,
     name: str | None = ...,
     version: int = 0,
     supports_streaming: bool | None = ...,
@@ -198,6 +202,7 @@ def scanner(
     messages: list[MessageType],
     events: None = ...,
     loader: Loader[list[ChatMessage]] | None = ...,
+    metadata: bool | None = ...,
     name: str | None = ...,
     version: int = 0,
     supports_streaming: bool | None = ...,
@@ -211,6 +216,7 @@ def scanner(
     events: list[EventType],
     messages: None = ...,
     loader: Loader[list[Event]] | None = ...,
+    metadata: bool | None = ...,
     name: str | None = ...,
     version: int = 0,
     supports_streaming: bool | None = ...,
@@ -227,6 +233,7 @@ def scanner(
     messages: Literal["all"],
     events: None = ...,
     loader: Loader[ChatMessage] | None = ...,
+    metadata: bool | None = ...,
     name: str | None = ...,
     version: int = 0,
     supports_streaming: bool | None = ...,
@@ -240,6 +247,7 @@ def scanner(
     events: Literal["all"],
     messages: None = ...,
     loader: Loader[Event] | None = ...,
+    metadata: bool | None = ...,
     name: str | None = ...,
     version: int = 0,
     supports_streaming: bool | None = ...,
@@ -256,6 +264,7 @@ def scanner(
     loader: Loader[Transcript] | None = ...,
     messages: list[MessageType] | Literal["all"] | None = ...,
     events: list[EventType] | Literal["all"] | None = ...,
+    metadata: bool | None = ...,
     name: str | None = ...,
     version: int = 0,
     supports_streaming: bool | None = ...,
@@ -278,6 +287,7 @@ def scanner(
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
     timeline: Literal[True] | list[EventType] | Literal["all"] | None = None,
+    metadata: bool | None = None,
     name: str | None = None,
     version: int = 0,
     supports_streaming: bool | None = ...,
@@ -294,6 +304,7 @@ def scanner(
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
     timeline: Literal[True] | list[EventType] | Literal["all"] | None = None,
+    metadata: bool | None = None,
     name: str | None = None,
     version: int = 0,
     supports_streaming: bool | None = None,
@@ -316,6 +327,10 @@ def scanner(
        messages: Message types to scan.
        events: Event types to scan.
        timeline: Event types to include in timelines.
+       metadata: Whether to read the sample's metadata, target and scores from
+           the log body (default). Pass False if the scanner never reads
+           `transcript.metadata["sample_metadata"]`, `["target"]` or
+           `["scores"]`; the log's summary values are kept instead.
        name: Scanner name (defaults to function name).
        version: Scanner version (defaults to 0).
        supports_streaming: Whether the scanner can read its input through a
@@ -383,6 +398,7 @@ def scanner(
             inferred_messages = messages
             inferred_events = events
             inferred_timeline = timeline
+            inferred_metadata = metadata
 
             # Only infer if no loader and no explicit filters
             if (
@@ -431,6 +447,8 @@ def scanner(
                     inferred_events = override.events
                 if override.timeline is not None:
                     inferred_timeline = override.timeline
+                if override.metadata is not None:
+                    inferred_metadata = override.metadata
 
             # Validate scanner signature matches filters
             # Only validate if we have filters (not just a custom loader)
@@ -455,6 +473,8 @@ def scanner(
                 scanner_config.content.events = inferred_events
             if inferred_timeline is not None:
                 scanner_config.content.timeline = inferred_timeline
+            if inferred_metadata is not None:
+                scanner_config.content.metadata = inferred_metadata
             if loader is not None:
                 # TODO: how are we ensuring that the writer of a custom loader sets
                 # the proper content filter? We could do it for them, but I'm not

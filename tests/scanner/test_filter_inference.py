@@ -327,3 +327,33 @@ def test_decorator_without_parentheses_fails_for_base_type() -> None:
             return scan
 
         base_scanner()
+
+
+def test_metadata_kwarg_lands_on_config_without_disabling_inference() -> None:
+    """metadata=False is recorded, and a typed scanner still infers its message filter."""
+
+    @scanner(metadata=False)
+    def user_scanner() -> Scanner[ChatMessageUser]:
+        async def scan(message: ChatMessageUser) -> Result:
+            return Result(value={"text": message.text})
+
+        return scan
+
+    instance: Any = user_scanner()
+    content = registry_info(instance).metadata[SCANNER_CONFIG].content
+    assert content.messages == ["user"]
+    assert content.metadata is False
+
+
+def test_metadata_defaults_to_unset() -> None:
+    """Scanners that say nothing about metadata keep reading it."""
+
+    @scanner(messages="all")
+    def all_scanner() -> Scanner[Transcript]:
+        async def scan(transcript: Transcript) -> Result:
+            return Result(value=len(transcript.messages))
+
+        return scan
+
+    instance: Any = all_scanner()
+    assert registry_info(instance).metadata[SCANNER_CONFIG].content.metadata is None

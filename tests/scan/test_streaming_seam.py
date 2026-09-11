@@ -107,11 +107,14 @@ async def test_scan_one_stream_error_contained() -> None:
 
 
 def _scanner_with(
-    messages: Any = None, events: Any = None, timeline: Any = None
+    messages: Any = None,
+    events: Any = None,
+    timeline: Any = None,
+    metadata: Any = None,
 ) -> Scanner[Any]:
     """Build a handle-accepting scanner with the given content filters."""
 
-    @scanner(messages=messages, events=events, timeline=timeline)
+    @scanner(messages=messages, events=events, timeline=timeline, metadata=metadata)
     def factory() -> Scanner[Transcript]:
         async def scan(transcript: Transcript) -> Result:
             return Result(value="ok")
@@ -147,6 +150,11 @@ def _scanner_with(
             [{"messages": "all", "timeline": "all"}, {"messages": "all"}],
             False,
             id="timeline_one",
+        ),
+        pytest.param(
+            [{"messages": "all", "metadata": False}, {"messages": "all"}],
+            True,
+            id="metadata_disagreement_does_not_force_materialization",
         ),
     ],
 )

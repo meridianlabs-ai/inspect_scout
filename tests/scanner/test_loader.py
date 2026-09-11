@@ -124,6 +124,26 @@ def test_loader_with_both_filters() -> None:
     assert config.content.events == ["model"]
 
 
+def test_loader_metadata_kwarg() -> None:
+    """metadata=False is recorded on the loader's content alongside its filters."""
+
+    @loader(messages="all", metadata=False)
+    def test_loader() -> Loader[ChatMessageUser]:
+        async def load(
+            transcript: Transcript,
+        ) -> AsyncIterator[ChatMessageUser]:
+            for msg in transcript.messages:
+                if isinstance(msg, ChatMessageUser):
+                    yield msg
+
+        return load
+
+    instance: Any = test_loader()
+    content = registry_info(instance).metadata[LOADER_CONFIG].content
+    assert content.messages == "all"
+    assert content.metadata is False
+
+
 # Loader integration tests
 
 

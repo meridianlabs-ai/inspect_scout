@@ -20,7 +20,7 @@ from inspect_ai.model import (
 from inspect_ai.tool import ToolChoice, ToolInfo
 from inspect_scout import llm_scanner
 from inspect_scout._scanner.result import Result
-from inspect_scout._scanner.scanner import SCANNER_SUPPORTS_STREAMING_ATTR, Scanner
+from inspect_scout._scanner.scanner import Scanner, streaming_support_of
 from inspect_scout._transcript.handle import MaterializedTranscriptHandle
 from inspect_scout._transcript.types import (
     Transcript,
@@ -199,10 +199,10 @@ def _dynamic_template_variables(_t: Transcript) -> dict[str, Any]:
     ],
 )
 def test_streaming_attr_gating(kwargs: dict[str, Any], expected: bool) -> None:
-    """SCANNER_SUPPORTS_STREAMING_ATTR is set only for streaming-safe configs."""
+    """The streaming vouch matches whether the config is streaming-safe."""
     call_kwargs: dict[str, Any] = {"question": "static?", "answer": "boolean"} | kwargs
     scan_fn = llm_scanner(**call_kwargs)
-    assert getattr(scan_fn, SCANNER_SUPPORTS_STREAMING_ATTR, False) is expected
+    assert streaming_support_of(scan_fn) is expected
 
 
 @pytest.mark.anyio

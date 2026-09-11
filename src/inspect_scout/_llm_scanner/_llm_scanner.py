@@ -22,8 +22,8 @@ from .._scanner.result import Result
 from .._scanner.scanner import (
     SCANNER_CONTENT_ATTR,
     SCANNER_NAME_ATTR,
-    SCANNER_SUPPORTS_STREAMING_ATTR,
     Scanner,
+    mark_streaming_support,
     scanner,
 )
 from .._transcript.handle import (
@@ -511,8 +511,9 @@ def llm_scanner(
     if content is not None:
         setattr(scan, SCANNER_CONTENT_ATTR, content)
 
-    if not full_transcript_needed:
-        setattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, True)
+    # Vouch either way: a callable template or a timeline request needs the
+    # whole transcript, and "unsafe" must be a recorded verdict, not silence.
+    mark_streaming_support(scan, not full_transcript_needed)
 
     return scan
 

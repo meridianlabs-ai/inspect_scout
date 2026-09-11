@@ -1,4 +1,5 @@
 import inspect
+import weakref
 from dataclasses import dataclass, field
 from functools import wraps
 from pathlib import Path
@@ -63,7 +64,28 @@ SCANNER_VERSION = "scanner_version"
 SCANNER_FILE_ATTR = "___scanner_file___"
 SCANNER_NAME_ATTR = "___scanner_name___"
 SCANNER_CONTENT_ATTR = "___scanner_content___"
-SCANNER_SUPPORTS_STREAMING_ATTR = "___scanner_supports_streaming___"
+# Scan functions whose author has vouched for (True) or against (False)
+# receiving a streaming `TranscriptHandle`. Keyed by identity rather than
+# stored on the function: `functools.wraps` copies `__dict__`, so an attribute
+# would leak onto a wrapper that adds its own transcript access.
+_STREAMING_SUPPORT: "weakref.WeakKeyDictionary[Callable[..., Any], bool]" = (
+    weakref.WeakKeyDictionary()
+)
+
+
+def mark_streaming_support(fn: Callable[..., Any], supported: bool) -> None:
+    """Record whether `fn` can be handed a streaming `TranscriptHandle`.
+
+    Called by the code that constructs a scan function -- `llm_scanner` does so
+    per instance, since its safety depends on the arguments it was built with.
+    """
+    _STREAMING_SUPPORT[fn] = supported
+
+
+def streaming_support_of(fn: Callable[..., Any]) -> bool | None:
+    """The recorded verdict for `fn`, or None if nobody has vouched either way."""
+    return _STREAMING_SUPPORT.get(fn)
+
 
 # core types
 # Use bounded TypeVar (contravariant for scanner input)
@@ -422,10 +444,9 @@ def scanner(
                     scanner_fn, scanner_config.content
                 )
 
-            if hasattr(scanner_fn, SCANNER_SUPPORTS_STREAMING_ATTR):
-                scanner_config.supports_streaming = bool(
-                    getattr(scanner_fn, SCANNER_SUPPORTS_STREAMING_ATTR)
-                )
+            vouched = streaming_support_of(scanner_fn)
+            if vouched is not None:
+                scanner_config.supports_streaming = vouched
 
             registry_tag(
                 factory_fn,
@@ -490,7 +511,7 @@ def scanner_supports_streaming(scanner: Scanner[Any]) -> bool:
     try:
         return config_for_scanner(scanner).supports_streaming
     except (ValueError, KeyError):
-        return bool(getattr(scanner, SCANNER_SUPPORTS_STREAMING_ATTR, False))
+        return streaming_support_of(scanner) or False
 
 
 def scanners_from_file(file: str, scanner_args: dict[str, Any]) -> list[Scanner[Any]]:

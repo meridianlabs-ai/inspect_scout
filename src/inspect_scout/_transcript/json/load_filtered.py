@@ -323,20 +323,25 @@ async def _parse_and_filter(
         else []
     )
 
+    pending_fields = {"target", "scores", "metadata"}
+    if messages_filter is not None:
+        pending_fields.add("messages")
+
     last_prefix = ""
     current_section = _SECTION_OTHER
 
     async for prefix, event, value in ijson.parse_async(sample_json, use_float=True):
+        if prefix == "" and event == "map_key":
+            pending_fields.discard(value)
+
         # Early exit: skip events/attachments when they aren't needed.
-        # JSON field order is: ...target, messages, output, scores, metadata,
-        # store, events, attachments, events_data — so by the time we see
-        # "events" start_array, metadata and scores have already been parsed.
-        # Exiting before events_data is safe: it only matters when events do.
+        # Earlier top-level fields are complete when the events array starts.
         if (
             events_coro is None
             and prefix == "events"
             and event == "start_array"
             and not state.attachment_refs
+            and not pending_fields
         ):
             if on_early_exit is not None:
                 on_early_exit()
@@ -442,7 +447,7 @@ async def _parse_and_filter(
                 target_coro.send((prefix, event, value))
             except StopIteration:
                 target_coro = None
-        elif current_section == _SECTION_TIMELINES:
+        elif current_section == _SECTION_TIMELINES and events_coro:
             timelines_coro.send((prefix, event, value))
         elif current_section == _SECTION_SCORES:
             scores_coro.send((prefix, event, value))

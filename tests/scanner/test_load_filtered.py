@@ -7,6 +7,7 @@ import json
 import math
 from collections import Counter
 from collections.abc import AsyncIterable, AsyncIterator
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import pytest
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
 
 from inspect_ai._util.async_zip import AsyncZipReader
 from inspect_ai._util.asyncfiles import AsyncFilesystem
-from inspect_ai.event import ToolEvent
+from inspect_ai.event import InfoEvent, Timeline, TimelineEvent, TimelineSpan, ToolEvent
 from inspect_ai.event._model import ModelEvent
 from inspect_scout import Transcript, TranscriptInfo
 from inspect_scout._transcript.json.load_filtered import load_filtered_transcript
@@ -633,6 +634,246 @@ async def test_early_exit_when_no_events_no_attachment_refs(
     assert len(result.messages) == 2
     assert not result.events
     assert result.metadata["scores"] == {"accuracy": {"value": "C", "answer": "C"}}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "field_order",
+    [
+        pytest.param(
+            ("target", "messages", "scores", "metadata", "events"), id="normal"
+        ),
+        pytest.param(
+            ("target", "events", "metadata", "scores", "messages"), id="recovered"
+        ),
+        pytest.param(
+            ("target", "scores", "metadata", "events", "messages"), id="messages-late"
+        ),
+        pytest.param(
+            ("messages", "scores", "metadata", "events", "target"), id="target-late"
+        ),
+        pytest.param(
+            ("target", "messages", "metadata", "events", "scores"), id="scores-late"
+        ),
+        pytest.param(
+            ("target", "messages", "scores", "events", "metadata"), id="metadata-late"
+        ),
+        pytest.param(
+            ("events", "target", "messages", "scores", "metadata"), id="events-first"
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "message_filter,expected_messages",
+    [
+        pytest.param("all", ["Hello", "Hi"], id="all-messages"),
+        pytest.param(["assistant"], ["Hi"], id="assistant-only"),
+    ],
+)
+async def test_field_order_preserves_content(
+    field_order: tuple[str, ...],
+    message_filter: MessageFilter,
+    expected_messages: list[str],
+) -> None:
+    fields: dict[str, Any] = {
+        "target": "full target",
+        "messages": [
+            {"role": "user", "content": "Hello"},
+            {"role": "assistant", "content": "Hi"},
+        ],
+        "scores": {"accuracy": {"value": "C"}},
+        "metadata": {"marker": "full metadata"},
+        "events": [],
+    }
+    sample: dict[str, Any] = {
+        "store": {
+            "target": "nested target",
+            "messages": [],
+            "scores": {},
+            "metadata": {},
+        }
+    }
+    sample.update({key: fields[key] for key in field_order})
+    sample["attachments"] = {}
+    result = await load_filtered_transcript(
+        create_json_stream(sample),
+        TranscriptInfo(
+            transcript_id="field-order",
+            metadata={
+                "existing": "kept",
+                "target": "thinned target",
+                "scores": {"stale": True},
+                "sample_metadata": {"thinned": True},
+            },
+        ),
+        message_filter,
+        None,
+    )
+    assert [message.text for message in result.messages] == expected_messages
+    assert result.events == []
+    assert result.metadata == {
+        "existing": "kept",
+        "target": fields["target"],
+        "scores": fields["scores"],
+        "sample_metadata": fields["metadata"],
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "overrides,omitted_field,expected_metadata,should_exit",
+    [
+        pytest.param({}, None, {"target": ""}, True, id="empty-fields"),
+        pytest.param(
+            {"target": []}, None, {"target": []}, True, id="empty-target-list"
+        ),
+        pytest.param(
+            {"target": None, "messages": None, "scores": None, "metadata": None},
+            None,
+            {},
+            True,
+            id="null-fields",
+        ),
+        pytest.param({}, "messages", {"target": ""}, False, id="missing-messages"),
+        pytest.param({}, "target", {}, False, id="missing-target"),
+        pytest.param({}, "scores", {"target": ""}, False, id="missing-scores"),
+        pytest.param({}, "metadata", {"target": ""}, False, id="missing-metadata"),
+    ],
+)
+async def test_early_exit_requires_field_presence(
+    overrides: dict[str, Any],
+    omitted_field: str | None,
+    expected_metadata: dict[str, Any],
+    should_exit: bool,
+    call_tracker: CallTracker,
+) -> None:
+    sample: dict[str, Any] = {
+        "target": "",
+        "messages": [],
+        "scores": {},
+        "metadata": {},
+    }
+    sample.update(overrides)
+    if omitted_field is not None:
+        del sample[omitted_field]
+    sample["events"] = []
+    base_metadata: dict[str, Any] = {
+        "existing": "kept",
+        "target": "base target",
+        "scores": {"base_score": True},
+        "sample_metadata": {"base_metadata": True},
+    }
+    result = await load_filtered_transcript(
+        create_json_stream(sample),
+        TranscriptInfo(transcript_id="field-presence", metadata=base_metadata),
+        "all",
+        None,
+        on_early_exit=call_tracker,
+    )
+    assert result.messages == []
+    assert result.events == []
+    assert result.metadata == base_metadata | expected_metadata
+    assert call_tracker.called is should_exit
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "message_filter,position,should_exit",
+    [
+        pytest.param(None, "before", True, id="excluded-before"),
+        pytest.param(None, "after", True, id="excluded-after"),
+        pytest.param([], "before", True, id="empty-filter-before"),
+        pytest.param([], "after", False, id="empty-filter-after"),
+        pytest.param(["tool"], "before", True, id="no-match-before"),
+        pytest.param(["tool"], "after", False, id="no-match-after"),
+    ],
+)
+async def test_early_exit_with_no_retained_messages(
+    message_filter: MessageFilter,
+    position: Literal["before", "after"],
+    should_exit: bool,
+    call_tracker: CallTracker,
+) -> None:
+    sample: dict[str, Any] = {"target": "", "scores": {}, "metadata": {}}
+    messages = [{"role": "user", "content": "Not selected"}]
+    if position == "before":
+        sample["messages"] = messages
+    sample["events"] = []
+    if position == "after":
+        sample["messages"] = messages
+    result = await load_filtered_transcript(
+        create_json_stream(sample),
+        TranscriptInfo(transcript_id="no-retained-messages"),
+        message_filter,
+        None,
+        on_early_exit=call_tracker,
+    )
+    assert result.messages == []
+    assert result.events == []
+    assert result.metadata == {"target": ""}
+    assert call_tracker.called is should_exit
+
+
+@pytest.mark.asyncio
+async def test_messages_after_events_resolve_attachments() -> None:
+    attachment_id = "a" * 32
+    result = await load_filtered_transcript(
+        create_json_stream(
+            {
+                "target": "",
+                "scores": {},
+                "metadata": {},
+                "events": [],
+                "messages": [
+                    {"role": "user", "content": f"attachment://{attachment_id}"}
+                ],
+                "attachments": {attachment_id: "Resolved content"},
+            }
+        ),
+        TranscriptInfo(transcript_id="reordered-attachment"),
+        "all",
+        None,
+    )
+    assert [message.text for message in result.messages] == ["Resolved content"]
+    assert result.events == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("events_filter", [None, "all"])
+async def test_timelines_without_scores_and_filtered_events(
+    events_filter: EventFilter,
+) -> None:
+    timestamp = datetime(2026, 9, 11, tzinfo=timezone.utc)
+    event = InfoEvent(data="example", uuid="example-event", timestamp=timestamp)
+    timeline = Timeline(
+        name="Custom",
+        description="",
+        root=TimelineSpan(
+            id="root",
+            name="root",
+            content=[TimelineEvent(event=event)],
+        ),
+    )
+    sample: dict[str, Any] = {
+        "target": "",
+        "messages": [{"role": "user", "content": "Hello"}],
+        "metadata": {},
+        "events": [event.model_dump(mode="json")],
+        "timelines": [timeline.model_dump(mode="json")],
+    }
+    result = await load_filtered_transcript(
+        create_json_stream(sample),
+        TranscriptInfo(transcript_id="timeline-repro"),
+        "all",
+        events_filter,
+    )
+    assert [message.text for message in result.messages] == ["Hello"]
+    if events_filter is None:
+        assert result.events == []
+        assert result.timelines == []
+    else:
+        assert result.events == [event]
+        assert result.timelines == [timeline]
 
 
 @pytest.mark.asyncio

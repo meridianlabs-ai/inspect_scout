@@ -1134,6 +1134,43 @@ async def test_file_uri_discovery(test_location: Path) -> None:
         await db_uri.disconnect()
 
 
+@pytest.mark.asyncio
+async def test_relative_location_read_only(
+    test_location: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that a read-only database opened via a relative location can read content.
+
+    Regression test: DuckDB's read-only path allowlist is seeded with absolute
+    paths from file discovery, so content reads must not construct relative
+    parquet paths (e.g. './transcripts/file.parquet') or DuckDB rejects them.
+    """
+    # Create and populate database using absolute path
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+    transcripts = [
+        create_sample_transcript(id=f"rel-{i}", metadata={"index": i}) for i in range(3)
+    ]
+    await db.insert(transcripts)
+    await db.disconnect()
+
+    # Reopen read-only via a relative location
+    monkeypatch.chdir(test_location.parent)
+    db_rel = ParquetTranscriptsDB(f"./{test_location.name}", read_only=True)
+    await db_rel.connect()
+
+    try:
+        transcript_ids = await db_rel.transcript_ids(Query())
+        assert len(transcript_ids) == 3
+        [info, *_] = [item async for item in db_rel.select(Query(limit=1))]
+        transcript = await db_rel.read(
+            info,
+            TranscriptContent(messages="all", events="all"),
+        )
+        assert transcript.messages
+    finally:
+        await db_rel.disconnect()
+
+
 # RecordBatchReader Tests
 def create_record_batch_reader(
     transcript_ids: list[str],

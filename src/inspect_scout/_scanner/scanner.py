@@ -330,7 +330,9 @@ def scanner(
        metadata: Whether to read the sample's metadata, target and scores from
            the log body (default). Pass False if the scanner never reads
            `transcript.metadata["sample_metadata"]`, `["target"]` or
-           `["scores"]`; the log's summary values are kept instead.
+           `["scores"]`; the log's summary values are kept instead. With a
+           custom `loader=`, pass `metadata=` to `@loader` instead -- the
+           scanner reads the loader's content.
        name: Scanner name (defaults to function name).
        version: Scanner version (defaults to 0).
        supports_streaming: Whether the scanner can read its input through a

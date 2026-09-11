@@ -42,7 +42,9 @@ class TranscriptHandle(Protocol):
         Available without reading the transcript, so the metadata is whatever
         the source listed: ``SpooledTranscriptHandle`` splices unthinned
         ``sample_metadata``/``target``/``scores`` from the spool only in
-        ``load()``, so those fields can differ from the loaded transcript's.
+        ``load()`` (unless the read declined metadata, in which case
+        ``load()`` keeps the index values), so those fields can differ from
+        the loaded transcript's.
         """
         ...
 

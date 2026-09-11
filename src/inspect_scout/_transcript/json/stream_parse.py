@@ -208,6 +208,8 @@ async def stream_parse_to_spool(
     messages_filter: MessageFilter,
     events_filter: EventFilter,
     spool_dir: Path,
+    *,
+    metadata: bool = True,
 ) -> StreamParseResult:
     """Parse sample JSON in a single ijson pass, spooling to disk.
 
@@ -224,6 +226,10 @@ async def stream_parse_to_spool(
         events_filter: Filter for event types (None=exclude all, "all"=include
             all, list=include matching).
         spool_dir: Directory in which to create spool files.
+        metadata: Whether to spool the sample's metadata and capture its target
+            and scores. When False the metadata spool stays empty (so
+            ``has_metadata`` is False), ``target`` is None and ``scores`` is
+            empty; consumers keep the index's summary values.
 
     Returns:
         StreamParseResult with spools populated; ``target`` and ``scores``
@@ -294,9 +300,13 @@ async def stream_parse_to_spool(
     attachments_coro = _spool_attachments_coroutine(
         blobs, None if events_config else message_refs
     )
-    metadata_coro = spooling_metadata_coroutine(metadata_spool.write)
-    target_coro: CoroutineGen | None = target_coroutine(state)
-    scores_coro = scores_coroutine(state)
+    # `metadata=False` never fills these; an empty spool makes `has_metadata`
+    # False, and handle.load() / pooled_passthrough already fall through on it.
+    metadata_coro = (
+        spooling_metadata_coroutine(metadata_spool.write) if metadata else None
+    )
+    target_coro: CoroutineGen | None = target_coroutine(state) if metadata else None
+    scores_coro: CoroutineGen | None = scores_coroutine(state) if metadata else None
     # One sink per pool, shared by both on-disk shapes: they carry the same
     # pool, so a second sink would restart the positional counter and overwrite
     # the first shape's entries. Only built when events are collected -- pool
@@ -426,14 +436,14 @@ async def stream_parse_to_spool(
                     events_coro.send((prefix, event, value))
                 elif current_section == _SECTION_ATTACHMENTS:
                     attachments_coro.send((prefix, event, value))
-                elif current_section == _SECTION_METADATA:
+                elif current_section == _SECTION_METADATA and metadata_coro:
                     metadata_coro.send((prefix, event, value))
                 elif current_section == _SECTION_TARGET and target_coro is not None:
                     try:
                         target_coro.send((prefix, event, value))
                     except StopIteration:
                         target_coro = None
-                elif current_section == _SECTION_SCORES:
+                elif current_section == _SECTION_SCORES and scores_coro:
                     scores_coro.send((prefix, event, value))
                 elif current_section == _SECTION_MESSAGE_POOL and message_pool_coros:
                     for coro in message_pool_coros:

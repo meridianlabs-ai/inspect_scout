@@ -269,3 +269,32 @@ async def test_attachments_are_filtered_to_message_refs_when_events_not_collecte
         assert with_events.blobs.has(unreferenced)
     finally:
         with_events.close()
+
+
+@pytest.mark.asyncio
+async def test_declined_metadata_spools_nothing_but_keeps_four_spools(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """metadata=False leaves the metadata spool empty and captures no target/scores."""
+    opened: list[IO[bytes]] = []
+    real_open = spool_mod._open_spool_file
+
+    def spy_open(dir: Path, suffix: str) -> IO[bytes]:
+        spool_file = real_open(dir, suffix)
+        opened.append(spool_file)
+        return spool_file
+
+    monkeypatch.setattr(spool_mod, "_open_spool_file", spy_open)
+
+    result = await stream_parse_to_spool(
+        _stream(SAMPLE), "all", "all", tmp_path, metadata=False
+    )
+    try:
+        assert not result.has_metadata
+        assert result.metadata() == {}
+        assert result.target is None
+        assert result.scores == {}
+        # Still created, so close() and the four-spool invariant hold.
+        assert len(opened) == 4
+    finally:
+        result.close()

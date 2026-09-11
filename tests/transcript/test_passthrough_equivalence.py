@@ -94,13 +94,19 @@ def _resolve_attachments(value: Any, attachments: dict[str, str]) -> Any:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("metadata", [True, False], ids=["merged", "declined"])
 async def test_passthrough_expands_to_the_materialized_transcript(
-    tmp_path: Path,
+    tmp_path: Path, metadata: bool
 ) -> None:
     data = _sample_bytes()
-    info = TranscriptInfo(transcript_id="t1")
+    info = TranscriptInfo(
+        transcript_id="t1",
+        metadata={"sample_metadata": {"note": "summary"}, "target": "summary-target"},
+    )
 
-    result = await stream_parse_to_spool(io.BytesIO(data), "all", "all", tmp_path)
+    result = await stream_parse_to_spool(
+        io.BytesIO(data), "all", "all", tmp_path, metadata=metadata
+    )
     try:
         input_json, input_data_json = pooled_passthrough(info, result)
     finally:
@@ -108,7 +114,7 @@ async def test_passthrough_expands_to_the_materialized_transcript(
 
     # Independently produce the materialized transcript for comparison.
     parsed_result = await stream_parse_to_spool(
-        io.BytesIO(data), "all", "all", tmp_path
+        io.BytesIO(data), "all", "all", tmp_path, metadata=metadata
     )
 
     async def parse() -> Any:
@@ -143,3 +149,13 @@ async def test_passthrough_expands_to_the_materialized_transcript(
     ] == [m.model_dump(mode="json") for m in materialized.messages]
 
     assert envelope["metadata"] == materialized.metadata
+
+    if metadata:
+        assert envelope["metadata"]["sample_metadata"]["note"] == "sample metadata"
+        assert envelope["metadata"]["target"] == "the-target"
+        assert "accuracy" in envelope["metadata"]["scores"]
+    else:
+        assert envelope["metadata"] == {
+            "sample_metadata": {"note": "summary"},
+            "target": "summary-target",
+        }

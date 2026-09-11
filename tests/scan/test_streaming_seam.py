@@ -24,7 +24,7 @@ from inspect_scout._transcript.json.stream_parse import (
     StreamParseResult,
     stream_parse_to_spool,
 )
-from inspect_scout._transcript.types import Transcript, TranscriptInfo
+from inspect_scout._transcript.types import Transcript, TranscriptContent, TranscriptInfo
 from inspect_scout._transcript.util import union_transcript_contents
 
 
@@ -153,6 +153,23 @@ def test_streaming_eligible(filters: list[dict[str, Any]], expected: bool) -> No
         [_content_for_scanner(s) for s in scanners]
     )
     assert _streaming_eligible(scanners, union_content) is expected
+
+
+@pytest.mark.parametrize(
+    ("values", "expected"),
+    [
+        pytest.param([False, False], False, id="all_declined"),
+        pytest.param([False, None], None, id="one_unset"),
+        pytest.param([True, False], None, id="one_explicit_true"),
+        pytest.param([None], None, id="single_unset"),
+    ],
+)
+def test_union_metadata_declines_only_when_every_scanner_declines(
+    values: list[bool | None], expected: bool | None
+) -> None:
+    """A read skips the body's metadata only if no scanner in the scan wants it."""
+    contents = [TranscriptContent(messages="all", metadata=v) for v in values]
+    assert union_transcript_contents(contents).metadata is expected
 
 
 @pytest.mark.asyncio

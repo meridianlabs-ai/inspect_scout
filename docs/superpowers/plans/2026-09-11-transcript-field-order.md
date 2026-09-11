@@ -8,6 +8,33 @@
 
 **Tech Stack:** Python, ijson, pytest, pytest-asyncio, Ruff, mypy.
 
+## Execution record
+
+Completed on 2026-09-11. The parser and regression tests are committed as
+`9331b6711`. The local PR draft is `.dev/transcript-field-order-pr.md`; PR
+creation remains pending the user's go-ahead.
+
+- Regression evidence: the original reader failed 19 new cases and passed 9.
+  The timeline regression separately failed with excluded events and passed
+  with requested events before its correction. Final implicated tests:
+  **64 passed, 1 skipped**.
+- Full suite: **3,364 passed, 107 skipped** with `TERM=xterm-256color`.
+  The default `TERM=dumb` caused two unchanged display tests to fail; an
+  isolated comparison reproduced both failures and passed all five display
+  tests with the normal terminal setting. No display code was changed.
+- Ruff lint and formatting, mypy (467 files), the suppression ledger, and
+  `git diff --check` passed. The submodule gitlink is unchanged.
+- Affected archive: **31,596 messages, 0 events**, versus zero messages on the
+  base reader; 46.25 seconds and 490.4 MiB peak RSS in a fresh process.
+  The portable reproduction also demonstrates restored messages, target,
+  scores, and sample metadata.
+- Review: GPT-6 Astra performed three fresh-context passes (spec compliance,
+  code quality, and final whole-change review) and two follow-up passes in
+  reused contexts, using a different model from author GPT-5.6 Luna. One
+  important timeline-hydration regression was found and fixed; no findings
+  were dismissed. The final review found no remaining issues and independently
+  confirmed the portable reproduction against base and current source.
+
 ---
 
 ## Context and file map
@@ -37,7 +64,7 @@ is needed. Preserve the submodule gitlink.
 - Modify: `tests/scanner/test_load_filtered.py`, next to the existing early-exit tests
 - Modify: `src/inspect_scout/_transcript/json/load_filtered.py`, inside `_parse_and_filter`
 
-- [ ] **Step 1: Add a table-driven regression for all four fields.**
+- [x] **Step 1: Add a table-driven regression for all four fields.**
 
 Use the existing imports and `create_json_stream` helper. The ignored `store`
 contains nested decoys for every protected name; these must not count as
@@ -136,7 +163,7 @@ async def test_field_order_preserves_content(
     }
 ```
 
-- [ ] **Step 2: Cover empty, null, and omitted fields.**
+- [x] **Step 2: Cover empty, null, and omitted fields.**
 
 Use the existing callback only to verify the documented early-exit behavior;
 the content assertions verify that the reader preserves its existing defaults.
@@ -202,7 +229,7 @@ async def test_early_exit_requires_field_presence(
     assert call_tracker.called is should_exit
 ```
 
-- [ ] **Step 3: Cover message exclusion and filters that retain no messages.**
+- [x] **Step 3: Cover message exclusion and filters that retain no messages.**
 
 `None` excludes the messages field from the required set. Empty or nonmatching
 role filters still require that field to be encountered, regardless of how
@@ -250,7 +277,7 @@ async def test_early_exit_with_no_retained_messages(
     assert call_tracker.called is should_exit
 ```
 
-- [ ] **Step 4: Cover attachment resolution after reordered events.**
+- [x] **Step 4: Cover attachment resolution after reordered events.**
 
 ```python
 @pytest.mark.asyncio
@@ -278,7 +305,7 @@ async def test_messages_after_events_resolve_attachments() -> None:
     assert result.events == []
 ```
 
-- [ ] **Step 5: Run the new tests against the unchanged reader.**
+- [x] **Step 5: Run the new tests against the unchanged reader.**
 
 ```bash
 .venv/bin/python -m pytest tests/scanner/test_load_filtered.py -n 0 -q -k 'field_order_preserves_content or early_exit_requires_field_presence or early_exit_with_no_retained_messages or messages_after_events_resolve_attachments'
@@ -290,7 +317,7 @@ Normal ordering and several boundary cases pass. Record these failures before
 editing production code; collection or environment errors do not prove the
 regression.
 
-- [ ] **Step 6: Add the minimal guard in `_parse_and_filter`.**
+- [x] **Step 6: Add the minimal guard in `_parse_and_filter`.**
 
 Replace the block starting at `last_prefix = ""` through the current early-exit
 `break` with this code. Leave prefix classification and reducer dispatch below
@@ -325,7 +352,25 @@ The set contains at most four names. Updating it on top-level map keys avoids
 per-token allocations and ignores nested names. Removing a field at its key is
 safe because the exit is tested only when the later `events` value begins.
 
-- [ ] **Step 7: Format the two changed Python files and run implicated tests.**
+Also guard timeline dispatch when events are excluded:
+
+```python
+        elif current_section == _SECTION_TIMELINES and events_coro is not None:
+            timelines_coro.send((prefix, event, value))
+```
+
+The code-quality review demonstrated that an unscored sample with a stored
+timeline after `events` otherwise raises a validation error after this change:
+timeline UUIDs cannot resolve against excluded events. Add a deterministic
+regression using real `InfoEvent`, `TimelineEvent`, `TimelineSpan`, and
+`Timeline` objects, with a fixed event timestamp and UUID. Parameterize the
+event filter as `None` and `"all"`; messages must load in both cases, with an
+empty timeline for `None` and the original hydrated timeline for `"all"`.
+Capture its failing case before this dispatch correction. Public readers
+already request all events when timelines are requested, so this guard needs
+no reducer, fallback, or public API change.
+
+- [x] **Step 7: Format the two changed Python files and run implicated tests.**
 
 ```bash
 .venv/bin/ruff format src/inspect_scout/_transcript/json/load_filtered.py tests/scanner/test_load_filtered.py
@@ -342,7 +387,7 @@ together for the verified commit in Task 2.
 **Files:** Read the two modified Python files and the approved design. No new
 tracked files are required.
 
-- [ ] **Step 1: Review the diff against the design.**
+- [x] **Step 1: Review the diff against the design.**
 
 Use `superpowers:requesting-code-review` for a focused review of
 `git diff origin/main`, with particular attention to nested keys, optional
@@ -354,7 +399,7 @@ and findings for the PR disclosure. Resolve findings within this defect's
 scope; report unrelated findings without fixing them. Review must not trigger
 PR creation.
 
-- [ ] **Step 2: Re-read the affected archive through the public reader.**
+- [x] **Step 2: Re-read the affected archive through the public reader.**
 
 The locally available artifact is the same one used for the baseline
 reproduction. Keep it local; do not add the archive to Git.
@@ -402,7 +447,7 @@ this defect and the original investigation already measured its large pool
 expansion. If the scratch artifact has disappeared, disclose that validation
 limit and retain the self-contained reproduction below.
 
-- [ ] **Step 3: Run all required static checks.**
+- [x] **Step 3: Run all required static checks.**
 
 ```bash
 .venv/bin/ruff check
@@ -416,7 +461,7 @@ Expected: every command exits successfully. Fix errors rather than adding
 suppressions. Investigate failures before attributing them to the branch;
 report verified unrelated baseline failures separately.
 
-- [ ] **Step 4: Run the full default test suite once the reviewed code is final.**
+- [x] **Step 4: Run the full default test suite once the reviewed code is final.**
 
 ```bash
 .venv/bin/python -m pytest
@@ -427,7 +472,7 @@ Use the repository's xdist configuration. If host concurrency is impractical,
 `-n 4` runs the same full suite with fewer workers. Repeat broader checks only
 if subsequent changes or failures justify it.
 
-- [ ] **Step 5: Inspect scope and commit the verified fix.**
+- [x] **Step 5: Inspect scope and commit the verified fix.**
 
 ```bash
 git diff --stat origin/main
@@ -446,7 +491,7 @@ the parser and tests; the design and plan are separate documentation changes.
 **Files:** Create `.dev/transcript-field-order-pr.md` locally after the checks
 and review have completed.
 
-- [ ] **Step 1: Run and preserve this portable minimal reproduction.**
+- [x] **Step 1: Run and preserve this portable minimal reproduction.**
 
 ```bash
 .venv/bin/python - <<'PY'
@@ -485,7 +530,7 @@ Expected after the fix: one message, with `target`, `scores`, and
 metadata for this input. Include the input and before/after result in the
 draft so reviewers can reproduce the bug without private data.
 
-- [ ] **Step 2: Draft the PR locally using `writing-pull-requests`.**
+- [x] **Step 2: Draft the PR locally using `writing-pull-requests`.**
 
 Proposed title: `fix: preserve transcript content across JSON field order`.
 
@@ -503,7 +548,7 @@ Add the repository-required `### Agent review` section using the review record
 from Task 2. Name each finding and its disposition; explicitly disclose if no
 review ran. Do not claim future checks or reviews as completed.
 
-- [ ] **Step 3: Present the verified result for PR readiness.**
+- [x] **Step 3: Present the verified result for PR readiness.**
 
 Report the branch, change, validation results, review findings, and link to the
 local PR draft. **Stop before `gh pr create`; PR creation remains pending the

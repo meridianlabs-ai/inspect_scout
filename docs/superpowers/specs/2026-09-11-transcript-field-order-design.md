@@ -74,6 +74,12 @@ pools are traversed without being materialized by their reducers. Track fields
 only at top-level key boundaries and avoid allocations in the common per-token
 path.
 
+Only collect stored timelines when events are requested. Both public readers
+request all events when a timeline is requested. A messages-only read that
+continues past `events` must not hydrate stored timeline UUID references
+against the excluded events; doing so would introduce validation failures for
+otherwise readable samples, including unscored samples that omit `scores`.
+
 ## Boundaries and tradeoffs
 
 This change addresses premature termination, not arbitrary field-order
@@ -103,6 +109,9 @@ Extend `tests/scanner/test_load_filtered.py` through
 - Nested keys with protected names; they must not permit premature exit.
 - Messages after `events` with an attachment reference and its subsequent
   attachment; verify the resolved message content.
+- An unscored sample with a serialized custom timeline after `events`;
+  messages-only loading succeeds, and requesting events still hydrates the
+  timeline. Construct real timeline and event objects for this regression.
 - The normal ordering; retain the early-exit behavior covered by the existing
   callback tests, including the existing attachment guard coverage.
 

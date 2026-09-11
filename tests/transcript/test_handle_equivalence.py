@@ -206,26 +206,21 @@ async def test_attachment_refs_only_inside_pool_entries_resolve(
 
 
 @pytest.mark.asyncio
-async def test_streamed_hydrates_nested_tool_events_materialized_does_not(
+async def test_nested_tool_events_are_hydrated_on_both_paths(
     tmp_path: Path,
 ) -> None:
-    """Pins a known streamed/materialized divergence on nested `ToolEvent.events`.
+    """Nested `ToolEvent.events` are validated into `Event`s on both read paths.
 
     `ToolEvent.events` is typed `list[Any]` (a legacy field for tool-spawned
-    agents; see `inspect_ai.event._tool.ToolEvent`), so `Transcript.model_validate`
-    on the materialized path (`load_filtered.py`) never coerces its entries --
-    they stay raw dicts. The streamed replay path validates the ones that are
-    events via `_hydrate_nested_tool_events` (`stream_parse.py`), because
-    consumers that walk nested events expect real `Event` instances. This
-    asserts the actual (differing) behaviour of each path rather than
-    equality, so a future change that silently widens or closes the gap is
-    caught either way. See the PR description for why this is accepted rather
-    than fixed here: hydrating is the behaviour a real consumer needs, so the
-    materialized path -- not the streamed one -- is the one that's arguably
-    incomplete.
+    agents), so `Transcript.model_validate` alone leaves its entries as raw
+    dicts. Consumers that walk nested events expect real `Event` instances --
+    `stream_timeline_messages` raised on a materialized handle of such a
+    transcript -- so both `load_filtered.py` and the spooled replay run the same
+    hydration, and a legacy transcript reads identically either way.
     """
     nested_model_event = {
         "event": "model",
+        "uuid": "e2",
         "span_id": "s2",
         "timestamp": "2022-01-01T00:00:01+00:00",
         "working_start": 1,
@@ -275,14 +270,10 @@ async def test_streamed_hydrates_nested_tool_events_materialized_does_not(
     streamed_tool_event = streamed.events[0]
     assert isinstance(materialized_tool_event, ToolEvent)
     assert isinstance(streamed_tool_event, ToolEvent)
-
-    # Materialized: nested events stay raw dicts (list[Any] isn't coerced).
-    assert materialized_tool_event.events == [nested_model_event]
-    assert not isinstance(materialized_tool_event.events[0], ModelEvent)
-
-    # Streamed: `_hydrate_nested_tool_events` validates them into real Events.
-    assert isinstance(streamed_tool_event.events[0], ModelEvent)
-    assert streamed_tool_event.events[0].model == "m"
+    for tool_event in (materialized_tool_event, streamed_tool_event):
+        assert isinstance(tool_event.events[0], ModelEvent)
+        assert tool_event.events[0].model == "m"
+    assert materialized_tool_event.events[0] == streamed_tool_event.events[0]
 
 
 @pytest.fixture(scope="module")

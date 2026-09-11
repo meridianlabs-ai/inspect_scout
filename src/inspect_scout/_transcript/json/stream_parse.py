@@ -23,9 +23,10 @@ import ijson  # type: ignore[import-untyped]  # no published stubs
 from inspect_ai._util.async_bytes_reader import adapt_to_reader
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
-from pydantic import TypeAdapter, ValidationError
+from pydantic import TypeAdapter
 
 from ..types import EventFilter, MessageFilter
+from .hydrate import hydrate_nested_tool_events
 from .pool import slice_positions
 from .reducer import (
     ATTACHMENT_PREFIX,
@@ -541,51 +542,11 @@ def replay_messages(result: StreamParseResult) -> Iterator[ChatMessage]:
         )
 
 
-def _hydrate_nested_tool_events(item: dict[str, Any], blobs: BlobSpool) -> None:
-    """Recursively resolve and validate a `ToolEvent` item's nested `events`.
-
-    `ToolEvent.events` is typed `list[Any]` (a legacy field for tool-spawned
-    agents), so `TypeAdapter(Event)` leaves its entries as raw dicts.
-    Consumers that walk nested events expect real `Event` instances, so each
-    nested dict is resolved and validated the same way top-level events are
-    (recursively, in place).
-
-    Anything that does not validate is passed through unchanged, matching the
-    materialized path, which leaves the whole list alone. The field is legacy
-    and loosely shaped: a non-dict entry, or a dict from a future/unknown
-    event type, must not take down the surrounding `events()` stream -- and a
-    dict that is not an event at all must not be coerced into an invented one
-    (`TypeAdapter(Event)` happily turns `{"hello": "world"}` into a
-    `BranchEvent`).
-
-    Known limitation: the materialized read path never runs this hydration,
-    so for legacy tool-spawned-agent transcripts the streaming path surfaces
-    nested `ModelEvent`s while the materialized path does not -- scan results
-    can differ between the two paths on such transcripts.
-    """
-    nested = item.get("events")
-    if not nested:
-        return
-    hydrated: list[Any] = []
-    for nested_item in nested:
-        if not isinstance(nested_item, dict):
-            hydrated.append(nested_item)
-            continue
-        resolved = resolve_item_dict(nested_item, blobs)
-        _hydrate_nested_tool_events(resolved, blobs)
-        if "event" not in resolved:
-            hydrated.append(resolved)  # not an event: validating would invent one
-            continue
-        try:
-            hydrated.append(_EVENT_ADAPTER.validate_python(resolved))
-        except ValidationError:
-            hydrated.append(resolved)  # unknown or future event type
-    item["events"] = hydrated
-
-
 def replay_events(result: StreamParseResult) -> Iterator[Event]:
     """Replay spooled events, resolving attachments/pools and validating each."""
     for item in result.events.items():
         resolved = resolve_item_dict(item, result.blobs)
-        _hydrate_nested_tool_events(resolved, result.blobs)
+        hydrate_nested_tool_events(
+            resolved, lambda d: resolve_item_dict(d, result.blobs)
+        )
         yield _EVENT_ADAPTER.validate_python(resolved)

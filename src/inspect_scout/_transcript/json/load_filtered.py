@@ -17,6 +17,7 @@ from ..types import (
     TranscriptInfo,
 )
 from ..util import filter_transcript
+from .hydrate import hydrate_nested_tool_events
 from .pool import resolve_pools
 from .reducer import (
     ATTACHMENT_PREFIX,
@@ -520,10 +521,13 @@ def _resolve_attachments(
         resolved_dict = _resolve_dict_attachments(message_dict, resolve_string)
         resolved_messages.append(resolved_dict)
 
-    # Resolve references in events (already raw dicts, no need to model_dump)
+    # Resolve references in events (already raw dicts, no need to model_dump).
+    # `_resolve_dict_attachments` walks nested dicts too, so by the time a
+    # nested event is hydrated its refs are already resolved: identity resolve.
     resolved_events = []
     for event_dict in transcript.events:
         resolved_dict = _resolve_dict_attachments(event_dict, resolve_string)
+        hydrate_nested_tool_events(resolved_dict, lambda d: d)
         resolved_events.append(resolved_dict)
 
     # Create new transcript with resolved data

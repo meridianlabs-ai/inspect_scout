@@ -254,3 +254,47 @@ def test_recorded_input_resolves_attachments_like_materialized(
                 f"streamed/materialized diverge beyond score_explanation: {differing}"
             )
     assert streamed == control
+
+
+def test_unreadable_record_input_is_an_error_row(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """If the transcript can't be read back for the record, the row must say so.
+
+    The scan itself succeeded, so its value is kept; but recording an info-only
+    placeholder under `error=None` would present a transcript nobody could read
+    as a clean result (design/exception_handling.md: job failures are Error rows).
+    """
+    created, _ = _spy_spooled_handles(monkeypatch)
+
+    def boom(info: object, parsed: object) -> object:
+        raise OSError("spool vanished")
+
+    monkeypatch.setattr("inspect_scout._scan.pooled_passthrough", boom)
+    monkeypatch.setattr("inspect_scout._util.constants.SPOOL_THRESHOLD_BYTES", 0)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        status = scan(
+            scanners=[attachment_scanner_factory()],
+            transcripts=transcripts_from(str(_ATTACHMENT_LOG)),
+            scans=tmpdir,
+            limit=1,
+            max_processes=1,
+            model="mockllm/model",
+            model_args={"custom_outputs": _mock_responses(40)},
+            display="none",
+        )
+        # A recorded row-level Error always flips `complete` to False in this
+        # codebase (see tests/llm_scanner/test_retry_refusals.py); the row's
+        # kept value below is the thing under test, not this summary flag.
+        assert not status.complete
+        assert status.location is not None
+        results = scan_results_df(
+            status.location, scanner="attachment_scanner", exclude_columns=()
+        )
+        # `results.scanners[...]` loads the parquet lazily, so it must be
+        # accessed while `tmpdir` (its backing location) still exists.
+        assert created, "not streaming"
+        df = results.scanners["attachment_scanner"]
+        assert len(df) == 1
+        assert "spool vanished" in str(df["scan_error"].iloc[0])
+        assert df["value"].notna().all(), "the scan's own result must be kept"

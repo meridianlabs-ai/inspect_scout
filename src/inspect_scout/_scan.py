@@ -1087,42 +1087,22 @@ def _info_placeholder_transcript(info: TranscriptInfo) -> Transcript:
     )
 
 
-async def _transcript_for_record(
-    handle: TranscriptHandle, *, fail_on_error: bool = False
-) -> ReportInput:
+async def _transcript_for_record(handle: TranscriptHandle) -> ReportInput:
     """Produce the record value for `handle`.
 
     A spooled handle emits its column strings straight from the spool. Any
-    other handle materializes. Falls back to an info-only placeholder if the
-    content can't be read: a result (or error) that was already produced
-    should still be recorded. `fail_on_error` opts out of that containment so
-    a defect here surfaces instead of emptying every transcript in the scan.
+    other handle materializes. Raises if the content can't be read; the caller
+    decides whether that becomes an Error row or brings down the scan.
     """
-    try:
-        if isinstance(handle, SpooledTranscriptHandle):
-            parsed = await handle.parsed_result()
-            if parsed is not None:
-                columns = pooled_passthrough(handle.info, parsed)
-                return SerializedTranscript(
-                    input_json=columns.input_json,
-                    input_data_json=columns.input_data_json,
-                )
-        return await handle.load()
-
-    # errors that should bring down the scan (matching the scan-call sites)
-    except PrerequisiteError:
-        raise
-
-    except Exception:  # pylint: disable=W0718
-        if fail_on_error:
-            raise
-        logger.warning(
-            "Unable to materialize transcript %s for the result record; "
-            "recording metadata only.",
-            handle.info.transcript_id,
-            exc_info=True,
-        )
-        return _info_placeholder_transcript(handle.info)
+    if isinstance(handle, SpooledTranscriptHandle):
+        parsed = await handle.parsed_result()
+        if parsed is not None:
+            columns = pooled_passthrough(handle.info, parsed)
+            return SerializedTranscript(
+                input_json=columns.input_json,
+                input_data_json=columns.input_data_json,
+            )
+    return await handle.load()
 
 
 async def _scan_one(
@@ -1318,9 +1298,26 @@ async def _scan_one(
             # in full at write time. Doing it here -- after the scan, success
             # or error -- keeps it out of memory for the scan itself.
             if handle_input is not None:
-                report_input = await _transcript_for_record(
-                    handle_input, fail_on_error=fail_on_error
-                )
+                try:
+                    report_input = await _transcript_for_record(handle_input)
+                except PrerequisiteError:
+                    raise
+                except Exception as ex:  # pylint: disable=W0718
+                    if fail_on_error:
+                        raise
+                    # The scan ran, but its transcript can't be read back for
+                    # the record. Keep whatever the scan produced and surface
+                    # the read failure as this row's error -- never a clean
+                    # result over an info-only placeholder.
+                    report_input = _info_placeholder_transcript(handle_input.info)
+                    if error is None:
+                        error = Error(
+                            transcript_id=job.transcript_info.transcript_id,
+                            scanner=job.scanner_name,
+                            error=f"Unable to read transcript for the result record: {ex}",
+                            traceback=traceback.format_exc(),
+                            refusal=False,
+                        )
 
             # always append a result (success or error) if we have type_and_ids
             if type_and_ids is not None:

@@ -239,6 +239,14 @@ class ResultReport(BaseModel):
                 "A scan result must have either a 'result', 'refusal, or 'error' field."
             )
 
+        # a result can carry its own error too (e.g. the record's transcript
+        # couldn't be read back) -- the scan_error columns above default to
+        # None in the result branch, so surface the error over that default.
+        if self.result is not None and self.error is not None:
+            columns["scan_error"] = self.error.error
+            columns["scan_error_traceback"] = self.error.traceback
+            columns["scan_error_type"] = "refusal" if self.error.refusal else None
+
         # report validation
         if self.validation is not None:
             columns["validation_target"] = to_json_str_compact(self.validation.target)

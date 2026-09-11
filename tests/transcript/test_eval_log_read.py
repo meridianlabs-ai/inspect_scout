@@ -8,6 +8,7 @@ from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
 from inspect_scout._transcript.types import (
     Transcript,
     TranscriptContent,
+    TranscriptInfo,
     TranscriptTooLargeError,
 )
 
@@ -80,14 +81,20 @@ async def test_read_json_log_respects_max_bytes(json_log: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_read_preserves_score_explanation() -> None:
-    """`RawTranscript` mirrors the info field by field; a read must not drop one."""
+async def test_read_preserves_every_info_field() -> None:
+    """`RawTranscript` mirrors the info field by field; a read must not drop one.
+
+    `metadata` is excluded: read() merges the sample's unthinned values into it.
+    """
     content = TranscriptContent(messages="all", events="all")
+    fields = [name for name in TranscriptInfo.model_fields if name != "metadata"]
 
     async with EvalLogTranscriptsView(str(EVAL_LOG)) as view:
         async for info in view.select():
             assert info.score_explanation
             transcript = await view.read(info, content)
-            assert transcript.score_explanation == info.score_explanation
+            assert {name: getattr(transcript, name) for name in fields} == {
+                name: getattr(info, name) for name in fields
+            }
             return
     raise AssertionError("No transcripts found")

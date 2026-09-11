@@ -18,7 +18,7 @@ two messages, a target string, nonempty scores and metadata, an empty events
 array, and an empty attachments object. Serialize the same values in these
 orders and call `load_filtered_transcript(..., messages="all", events=None)`:
 
-| Top-level key order | Current result |
+| Top-level key order | Base reader result |
 | --- | --- |
 | target, messages, scores, metadata, events, attachments | Two messages and all three metadata fields |
 | target, events, metadata, scores, messages, attachments | Zero messages; only target survives |
@@ -101,12 +101,10 @@ depends on the content retained by the existing reader.
 Extend `tests/scanner/test_load_filtered.py` through
 `load_filtered_transcript`, using table-driven cases and real JSON streams:
 
-- The recovered ordering and cases placing each protected field after
-  `events`; assert message contents and all expected metadata values.
-- Empty fields, empty messages, filters matching no messages, and
-  `messages=None`; distinguish field presence from nonempty output.
-- Omitted fields; preserve defaults and any later fields without an error.
-- Nested keys with protected names; they must not permit premature exit.
+- One case placing each protected field after `events`; assert message
+  contents and full metadata overriding thinned index values. Include nested
+  keys with protected names in each case to check that they do not permit
+  premature exit.
 - Messages after `events` with an attachment reference and its subsequent
   attachment; verify the resolved message content.
 - An unscored sample with a serialized custom timeline after `events`;
@@ -114,6 +112,10 @@ Extend `tests/scanner/test_load_filtered.py` through
   timeline. Construct real timeline and event objects for this regression.
 - The normal ordering; retain the early-exit behavior covered by the existing
   callback tests, including the existing attachment guard coverage.
+
+Existing message-filter tests cover role selection. Keep the branch's new
+cases focused on returned content and demonstrated regressions, rather than
+adding combinations that only distinguish early-exit callback timing.
 
 Demonstrate that new regression cases fail on the base reader before applying
 the fix. Run the implicated reader tests during development. Before preparing

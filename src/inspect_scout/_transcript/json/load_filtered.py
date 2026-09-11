@@ -334,7 +334,6 @@ async def _parse_and_filter(
         if prefix == "" and event == "map_key":
             pending_fields.discard(value)
 
-        # Early exit: skip events/attachments when they aren't needed.
         # Earlier top-level fields are complete when the events array starts.
         if (
             events_coro is None

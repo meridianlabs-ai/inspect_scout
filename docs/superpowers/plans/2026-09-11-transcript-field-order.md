@@ -10,13 +10,14 @@
 
 ## Execution record
 
-Completed on 2026-09-11. The parser and regression tests are committed as
-`9331b6711`. The local PR draft is `.dev/transcript-field-order-pr.md`; PR
-creation remains pending the user's go-ahead.
+Implementation completed on 2026-09-11. The parser and regression tests are
+committed as `9331b6711`. The local PR draft is
+`.dev/transcript-field-order-pr.md`; PR creation remains pending the user's
+go-ahead.
 
 - Regression evidence: the original reader failed 19 new cases and passed 9.
   The timeline regression separately failed with excluded events and passed
-  with requested events before its correction. Final implicated tests:
+  with requested events before its correction. Initial implicated tests:
   **64 passed, 1 skipped**.
 - Full suite: **3,364 passed, 107 skipped** with `TERM=xterm-256color`.
   The default `TERM=dumb` caused two unchanged display tests to fail; an
@@ -34,6 +35,33 @@ creation remains pending the user's go-ahead.
   important timeline-hydration regression was found and fixed; no findings
   were dismissed. The final review found no remaining issues and independently
   confirmed the portable reproduction against base and current source.
+
+### Cleanup
+
+The subsequent user-requested cleanup reduces new cases from 30 to seven:
+four independently late fields, late attachment resolution, and stored
+timelines with events excluded or included. Removed the repeated ordering/filter
+matrix and two callback-focused functions. Existing tests remain unchanged.
+The all-null fixture was rejected by the installed `EvalSample` producer;
+the real omitted-scores timeline regression remains covered.
+
+The Python test-to-production changed-line ratio is **16.2:1 before cleanup**
+(243/15) and **6.9:1 after cleanup** (110/16), excluding these documents. The
+local `.dev/transcript-field-order-cleanup.md` records every deleted and kept
+case and its justification. The steps below retain the original implementation
+sequence; this section records the final test set.
+
+Final checks: **41 passed, 1 skipped** in the implicated modules; **3,341
+passed, 107 skipped** in the full suite with `TERM=xterm-256color`. Ruff lint
+and formatting, mypy (467 files), the suppression ledger, and whitespace
+checks passed.
+
+One additional fresh-context GPT-6 Astra cleanup review found no issues.
+AST comparisons confirmed unchanged production logic and all 26 pre-existing
+test/helper functions. All seven retained cases passed; the four late-field
+cases and attachment case failed against `origin/main`, and removing only the
+timeline guard reproduced the excluded-events validation failure. PR creation
+remains pending the user's go-ahead.
 
 ---
 

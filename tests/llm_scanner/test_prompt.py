@@ -14,6 +14,7 @@ def _create_transcript(
     messages: list[ChatMessage] | None = None,
     model: str | None = None,
     score: JsonValue = None,
+    score_explanation: str | None = None,
     metadata: dict[str, JsonValue] | None = None,
 ) -> Transcript:
     return Transcript(
@@ -23,6 +24,7 @@ def _create_transcript(
         source_uri="test://uri",
         model=model,
         score=score,
+        score_explanation=score_explanation,
         messages=messages or [],
         metadata=metadata or {},
     )
@@ -54,6 +56,12 @@ def _create_transcript(
             {},
             ["Score: N/A"],
             id="score-absent",
+        ),
+        pytest.param(
+            "Why: {{ score_explanation }}",
+            {"score": "C", "score_explanation": "graded C because the tests failed"},
+            ["Why: graded C because the tests failed"],
+            id="score-explanation",
         ),
         pytest.param(
             "Mean: {{ metadata.scores.mean }}, Fluency: {{ metadata.scores.fluency }}",

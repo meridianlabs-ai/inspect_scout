@@ -46,6 +46,7 @@ Note that the heavy JSON columns (`input` and `scan_events`) are excluded by def
 | `transcript_model` | str | Main model used by agent. |
 | `transcript_model_options` | JsonValue<br/><small>JSON</small> | Generation options for main model. |
 | `transcript_score` | JsonValue<br/><small>JSON</small> | Value indicating score on task. |
+| `transcript_score_explanation` | str | Scorer's account of how it reached `score`, where it gave one. |
 | `transcript_success` | bool |  Boolean reduction of `score` to succeeded/failed. |
 | `transcript_message_count` | number | Total messages in conversation | 
 | `transcript_total_time` | number | Time required to execute task (seconds) |

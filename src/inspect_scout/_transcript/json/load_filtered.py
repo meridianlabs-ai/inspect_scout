@@ -127,6 +127,7 @@ async def load_filtered_transcript(
     messages: MessageFilter,
     events: EventFilter,
     *,
+    metadata: bool = True,
     on_early_exit: Callable[[], None] | None = None,
 ) -> Transcript:
     """Transform and filter JSON sample data into a Transcript.
@@ -142,25 +143,36 @@ async def load_filtered_transcript(
             list=include matching)
         events: Filter for event types (None=exclude all, "all"=include all,
             list=include matching)
+        metadata: Whether to read the sample's metadata, target and scores from
+            the body. When False those sections are never built and the summary
+            values already on ``t`` are kept.
         on_early_exit: Test-only callback invoked immediately before the
             early-exit break
 
     Returns:
         Transcript with filtered messages/events and resolved attachments.
-        Metadata includes sample_metadata, target, and scores. Stored timelines
-        are returned only when ``events`` is not ``None``: they resolve against
-        the loaded events, so excluding events yields no timelines. ``input`` is
-        not unthinned: resolving its refs requires the attachments section,
-        which follows events and would defeat the early-exit optimization.
+        Unless ``metadata=False``, metadata includes sample_metadata, target,
+        and scores from the body. Stored timelines are returned only when
+        ``events`` is not ``None``: they resolve against the loaded events, so
+        excluding events yields no timelines. ``input`` is not unthinned:
+        resolving its refs requires the attachments section, which follows
+        events and would defeat the early-exit optimization.
     """
     try:
         async with adapt_to_reader(sample_bytes) as reader:
             transcript, attachment_refs = await _parse_and_filter(
-                reader, t, messages, events, on_early_exit=on_early_exit
+                reader,
+                t,
+                messages,
+                events,
+                metadata=metadata,
+                on_early_exit=on_early_exit,
             )
         return _resolve_attachments(transcript, attachment_refs)
     except ijson.JSONError:
-        return await _load_with_json5_fallback(sample_bytes, t, messages, events)
+        return await _load_with_json5_fallback(
+            sample_bytes, t, messages, events, metadata=metadata
+        )
 
 
 async def _load_with_json5_fallback(
@@ -168,6 +180,8 @@ async def _load_with_json5_fallback(
     t: TranscriptInfo,
     messages: MessageFilter,
     events: EventFilter,
+    *,
+    metadata: bool = True,
 ) -> Transcript:
     """Fallback parser using json5 for JSON5 features (NaN, Inf, etc.)."""
     if hasattr(sample_bytes, "__aiter__"):
@@ -202,7 +216,9 @@ async def _load_with_json5_fallback(
                 total_tokens=t.total_tokens,
                 error=t.error,
                 limit=t.limit,
-                metadata=_merge_unthinned_from_dict(t.metadata, data),
+                metadata=_merge_unthinned_from_dict(t.metadata, data)
+                if metadata
+                else t.metadata,
                 messages=data.get("messages", []),
                 events=data.get("events", []),
                 timelines=data.get("timelines"),
@@ -262,6 +278,7 @@ async def _parse_and_filter(
     messages_filter: MessageFilter,
     events_filter: EventFilter,
     *,
+    metadata: bool = True,
     on_early_exit: Callable[[], None] | None = None,
 ) -> tuple[RawTranscript, dict[str, str]]:
     """Single-pass stream parse, filter, and collect attachment references.
@@ -297,9 +314,12 @@ async def _parse_and_filter(
     events_coro = event_item_coroutine(state, events_config) if events_config else None
     timelines_coro = timeline_item_coroutine(state)
     attachments_coro = attachments_coroutine(state, events_coro is not None)
-    metadata_coro = metadata_coroutine(state)
-    target_coro: CoroutineGen | None = target_coroutine(state)
-    scores_coro = scores_coroutine(state)
+    # `metadata=False` never builds these three sections, so `_merge_unthinned`
+    # finds nothing to overlay and returns `t.metadata` itself -- the index's
+    # LazyJSONDict, uncopied.
+    metadata_coro = metadata_coroutine(state) if metadata else None
+    target_coro: CoroutineGen | None = target_coroutine(state) if metadata else None
+    scores_coro: CoroutineGen | None = scores_coroutine(state) if metadata else None
     # One coroutine per pool prefix (see reducer.py for the two shapes);
     # both target the same state field, so only the matching one activates.
     message_pool_coros = (
@@ -440,7 +460,7 @@ async def _parse_and_filter(
             events_coro.send((prefix, event, value))
         elif current_section == _SECTION_ATTACHMENTS:
             attachments_coro.send((prefix, event, value))
-        elif current_section == _SECTION_METADATA:
+        elif current_section == _SECTION_METADATA and metadata_coro:
             metadata_coro.send((prefix, event, value))
         elif current_section == _SECTION_TARGET and target_coro is not None:
             try:
@@ -449,7 +469,7 @@ async def _parse_and_filter(
                 target_coro = None
         elif current_section == _SECTION_TIMELINES and events_coro:
             timelines_coro.send((prefix, event, value))
-        elif current_section == _SECTION_SCORES:
+        elif current_section == _SECTION_SCORES and scores_coro:
             scores_coro.send((prefix, event, value))
         elif current_section == _SECTION_MESSAGE_POOL and message_pool_coros:
             for coro in message_pool_coros:

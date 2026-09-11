@@ -26,6 +26,7 @@ from inspect_scout._transcript.json.load_filtered import (
     load_filtered_transcript,
 )
 from inspect_scout._transcript.types import EventFilter, MessageFilter
+from inspect_scout._transcript.util import LazyJSONDict
 
 
 def create_json_stream(data: dict[str, Any]) -> io.BytesIO:
@@ -1468,3 +1469,75 @@ async def test_pool_resolution_events_data_json5_fallback() -> None:
     assert isinstance(model_event, ModelEvent)
     assert len(model_event.input) == 1
     assert model_event.input[0].content == "from pool"
+
+
+def _info_with_index_metadata() -> TranscriptInfo:
+    """A TranscriptInfo carrying the index's LazyJSONDict, attached as eval_log does.
+
+    `sample_metadata` is a JSON *string* here, as the index stores it; the
+    declined path must hand it back parsed, not raw.
+    """
+    info = TranscriptInfo(
+        transcript_id="test",
+        source_type="test",
+        source_id="42",
+        source_uri="/test.json",
+        metadata={},
+    )
+    object.__setattr__(
+        info,
+        "metadata",
+        LazyJSONDict(
+            {
+                "sample_metadata": '{"thin": "summary"}',
+                "target": "a, b",
+                "score_accuracy": "C",
+            },
+            json_keys=["sample_metadata"],
+        ),
+    )
+    return info
+
+
+_UNTHINNED_BODY: dict[str, Any] = {
+    "id": "test",
+    "target": ["a", "b"],
+    "messages": [{"role": "user", "content": "Hello"}],
+    "output": {},
+    "scores": {"accuracy": {"value": "C", "answer": "C"}},
+    "metadata": {"full_key": "full_value", "nested": {"a": 1}},
+    "events": [],
+    "attachments": {},
+}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("nan_in_body", [False, True], ids=["ijson", "json5-fallback"])
+@pytest.mark.parametrize("metadata", [True, False], ids=["merged", "declined"])
+async def test_metadata_flag_controls_unthinning(
+    metadata: bool, nan_in_body: bool
+) -> None:
+    """metadata=False keeps the index summary for all three unthinned keys, on both paths."""
+    body = json.dumps(_UNTHINNED_BODY)
+    if nan_in_body:
+        # ijson rejects NaN, so this routes through the json5 fallback.
+        body = body.replace('"output": {}', '"output": {"x": NaN}')
+    info = _info_with_index_metadata()
+
+    result = await load_filtered_transcript(
+        io.BytesIO(body.encode()), info, "all", None, metadata=metadata
+    )
+
+    if metadata:
+        assert result.metadata["sample_metadata"] == {
+            "full_key": "full_value",
+            "nested": {"a": 1},
+        }
+        assert result.metadata["target"] == ["a", "b"]
+        assert result.metadata["scores"] == {"accuracy": {"value": "C", "answer": "C"}}
+    else:
+        # Nothing was overlaid, so nothing was copied: the LazyJSONDict survived.
+        assert result.metadata is info.metadata
+        assert result.metadata["sample_metadata"] == {"thin": "summary"}
+        assert result.metadata["target"] == "a, b"
+        assert "scores" not in result.metadata

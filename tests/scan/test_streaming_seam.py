@@ -15,7 +15,7 @@ from inspect_scout._scan import (
     _streaming_eligible,
 )
 from inspect_scout._scanner.result import Result, SerializedTranscript
-from inspect_scout._scanner.scanner import SCANNER_SUPPORTS_STREAMING_ATTR, Scanner
+from inspect_scout._scanner.scanner import Scanner, mark_streaming_support
 from inspect_scout._transcript.handle import (
     MaterializedTranscriptHandle,
     SpooledTranscriptHandle,
@@ -35,7 +35,7 @@ def _handle_scanner(received: list[Any] | None = None) -> Scanner[Transcript]:
             received.append(transcript)
         return Result(value="ok")
 
-    setattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, True)
+    mark_streaming_support(scan, True)
     return scan
 
 
@@ -112,7 +112,7 @@ def _scanner_with(
         async def scan(transcript: Transcript) -> Result:
             return Result(value="ok")
 
-        setattr(scan, SCANNER_SUPPORTS_STREAMING_ATTR, True)
+        mark_streaming_support(scan, True)
         return scan
 
     return cast(Scanner[Any], factory())

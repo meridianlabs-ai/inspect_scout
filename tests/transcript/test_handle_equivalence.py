@@ -343,20 +343,15 @@ async def test_streamed_equals_materialized_with_a_generated_pool(
 async def test_materialized_preserves_timelines_spooled_drops_them(
     tmp_path: Path,
 ) -> None:
-    """Pins a known streamed/materialized divergence on `Transcript.timelines`.
+    """Stored timelines are kept by `load_filtered_transcript` and skipped by the spool.
 
     `stream_parse_to_spool` skips the sample's `timelines` section entirely --
-    `StreamParseResult` has no field for it -- so anything materialized from a
-    spooled handle reports `timelines == []`. `load_filtered.py` resolves and
-    keeps them.
-
-    This is asserted rather than fixed because spooling the section is a
-    feature change, not a carve. It is pinned in both directions so the gap
-    cannot widen or close silently: `EvalLogTranscriptsView.open` routes on
-    the *requested* `content.timeline`, never on whether the sample *stores*
-    timelines, so a consumer that reads `.timelines` off a transcript
-    recovered from a spooled handle sees an empty list with no signal that
-    anything was dropped. Closing the gap should turn this test red.
+    `StreamParseResult` has no field for it -- so a spooled handle always reports
+    `timelines == []`, while the filtered read resolves and keeps them. This is
+    not user-visible: `EvalLogTranscriptsView.open` gives a materialized handle a
+    loader that drops unrequested timelines too (see
+    `test_open_materialized_handle_drops_unrequested_timelines`), so both handle
+    kinds return only the timelines they were opened for.
     """
     event_uuid = "11111111-1111-1111-1111-111111111111"
     sample = {
@@ -412,3 +407,77 @@ async def test_materialized_preserves_timelines_spooled_drops_them(
     assert [tl.name for tl in materialized.timelines] == ["default"]
     assert materialized.timelines[0].root.id == "main"
     assert streamed.timelines == []
+
+
+@pytest.mark.asyncio
+async def test_open_materialized_handle_drops_unrequested_timelines(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A materialized handle honours the handle contract: content is what it was opened for.
+
+    `read()` returns stored timelines whether or not they were requested. A handle
+    opened without `timeline` must not, or the recorded `input` for one scan depends
+    on which side of `SPOOL_THRESHOLD_BYTES` the sample falls (the spooled path never
+    has timelines). Uses the JSON-log branch of `open()`, which returns before any
+    zip access, so no fixture file is needed.
+    """
+    event_uuid = "11111111-1111-1111-1111-111111111111"
+    sample = {
+        "id": "s1",
+        "messages": [{"id": "m1", "role": "user", "content": "hello"}],
+        "events": [
+            {
+                "event": "model",
+                "uuid": event_uuid,
+                "span_id": "s1",
+                "timestamp": "2022-01-01T00:00:00+00:00",
+                "working_start": 0,
+                "model": "m",
+                "input": [],
+                "output": {"model": "m", "choices": []},
+                "tools": [],
+                "tool_choice": "auto",
+                "config": {},
+            }
+        ],
+        "timelines": [
+            {
+                "name": "default",
+                "description": "the stored timeline",
+                "root": {
+                    "type": "span",
+                    "id": "main",
+                    "name": "main",
+                    "span_type": "agent",
+                    "content": [{"type": "event", "event": event_uuid}],
+                },
+            }
+        ],
+    }
+    log_path = tmp_path / "log.json"
+    info = TranscriptInfo(transcript_id="t1", source_uri=str(log_path))
+    stored = await load_filtered_transcript(
+        io.BytesIO(json.dumps(sample).encode()), info, "all", "all"
+    )
+    assert [tl.name for tl in stored.timelines] == ["default"]  # precondition
+
+    async def fake_read(
+        self: EvalLogTranscriptsView,
+        t: TranscriptInfo,
+        content: TranscriptContent,
+        max_bytes: int | None = None,
+    ) -> Transcript:
+        return stored
+
+    monkeypatch.setattr(EvalLogTranscriptsView, "read", fake_read)
+    view = EvalLogTranscriptsView(str(log_path))
+    handle = await view.open(info, TranscriptContent(messages="all", events="all"))
+    try:
+        assert isinstance(handle, MaterializedTranscriptHandle)
+        loaded = await handle.load()
+    finally:
+        await handle.aclose()
+
+    assert loaded.timelines == []
+    assert loaded.events == stored.events
+    assert loaded.messages == stored.messages

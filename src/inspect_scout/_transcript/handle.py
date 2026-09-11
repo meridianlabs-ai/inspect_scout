@@ -234,10 +234,8 @@ class SpooledTranscriptHandle:
             messages=messages,
             events=events,
             # Always empty: the spooling parse skips the sample's `timelines`
-            # section, so there is nothing to restore here even when the
-            # sample had one. See `stream_parse_to_spool` and
-            # test_handle_equivalence.py::
-            # test_materialized_preserves_timelines_spooled_drops_them.
+            # section, and a handle opened without `timeline` returns none on
+            # the materialized path either (see `EvalLogTranscriptsView.open`).
             timelines=[],
         )
 

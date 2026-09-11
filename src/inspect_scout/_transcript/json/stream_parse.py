@@ -393,13 +393,9 @@ async def stream_parse_to_spool(
                         # *requests* a timeline never reaches this parse --
                         # `EvalLogTranscriptsView.open` routes
                         # `content.timeline is not None` to the materialized
-                        # path. That is a constraint on callers, not a fact
-                        # about them: the guard looks only at the requested
-                        # content, never at whether the sample stores
-                        # timelines, so anything reading a spooled transcript's
-                        # `.timelines` sees [] regardless. Pinned by
-                        # test_handle_equivalence.py::
-                        # test_materialized_preserves_timelines_spooled_drops_them.
+                        # path, and a materialized handle drops unrequested
+                        # stored timelines, so both handle kinds agree:
+                        # `load()` returns only the timelines requested.
                         current_section = (
                             _SECTION_TARGET
                             if prefix[1] == _TARGET_CHAR1

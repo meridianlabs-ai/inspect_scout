@@ -581,9 +581,21 @@ class EvalLogTranscriptsView(TranscriptsView):
         """
         if not t.source_uri:
             raise ValueError("source_uri must be set")
+
+        async def load() -> Transcript:
+            # `read()` returns whatever the sample stores. The handle contract
+            # is "content is whatever the handle was opened for", and the
+            # spooled path never carries timelines, so an unrequested stored
+            # timeline is dropped here -- otherwise the same scan records
+            # different `input` on either side of the spool threshold.
+            transcript = await self.read(t, content)
+            if content.timeline is None and transcript.timelines:
+                transcript = transcript.model_copy(update={"timelines": []})
+            return transcript
+
         if recorder_type_for_location(t.source_uri) is not EvalRecorder:
             # JSON format not yet supported for streaming reads.
-            return MaterializedTranscriptHandle(lambda: self.read(t, content), t)
+            return MaterializedTranscriptHandle(load, t)
 
         zip_reader, entry = await self._get_zip_reader_and_entry(t)
 
@@ -594,7 +606,7 @@ class EvalLogTranscriptsView(TranscriptsView):
             entry.uncompressed_size <= constants_mod.SPOOL_THRESHOLD_BYTES
             or content.timeline is not None
         ):
-            return MaterializedTranscriptHandle(lambda: self.read(t, content), t)
+            return MaterializedTranscriptHandle(load, t)
 
         # A subdirectory of the files cache, not the cache root: on Windows
         # the spool files stay listed until their fds close, and the cache's

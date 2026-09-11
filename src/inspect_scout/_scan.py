@@ -1310,6 +1310,12 @@ async def _scan_one(
                     # the read failure as this row's error -- never a clean
                     # result over an info-only placeholder.
                     report_input = _info_placeholder_transcript(handle_input.info)
+                    logger.warning(
+                        "Unable to read transcript %s for the result record; "
+                        "recording metadata only.",
+                        job.transcript_info.transcript_id,
+                        exc_info=True,
+                    )
                     if error is None:
                         error = Error(
                             transcript_id=job.transcript_info.transcript_id,

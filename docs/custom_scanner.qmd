@@ -319,7 +319,7 @@ def assistant_refusals() -> Scanner[list[ChatMessage]]:
 
 ## Streaming Large Transcripts {#streaming}
 
-By default a scanner receives a fully materialized `Transcript`. For eval-log samples larger than 64 MiB, `scan()` can instead hand a scanner a `TranscriptHandle`, which replays messages and events one at a time from an on-disk spool, so peak memory no longer scales with the largest sample in the log.
+By default a scanner receives a fully materialized `Transcript`. A scanner that declares streaming support receives a `TranscriptHandle` for every eligible job (a sub-threshold, JSON-format or database-backed transcript arrives as a materialized handle that loads on first use). For `.eval`-format samples larger than 64 MiB the handle is *spooled*: it replays messages and events one at a time from an on-disk spool, so peak memory no longer scales with the largest sample.
 
 Streaming is opt-in and off by default, because a scanner written against `Transcript` misbehaves silently on a handle: `handle.messages` is an async method, not a list, so `if not transcript.messages:` is never true. A scanner that reads its input only through the handle's iterators declares that on the decorator, and annotates its parameter to accept either shape:
 
@@ -343,11 +343,17 @@ def long_answers() -> Scanner[Transcript]:
 
 Rules worth knowing:
 
-- A scan streams a transcript only when **every** scanner sharing it in the job is permitted to; one scanner without the declaration keeps the whole job on the materialized path.
-- `llm_scanner()` decides for itself per instance -- it streams unless `question` or `template_variables` is a callable or a timeline is requested -- so wrapping it as shown in [LLM Scanner](llm_scanner.qmd) needs no declaration.
-- A scanner that requests a `timeline` always receives a materialized transcript.
-- Declaring `supports_streaming=True` on a scan function whose parameter is annotated plain `Transcript` raises a `TypeError` when the scanner is constructed.
-- `supports_streaming=False` forbids streaming for that scanner even when the function it returns would otherwise permit it.
+-   A scan streams a transcript only when **every** scanner sharing it in the job is permitted to; one scanner without the declaration keeps the whole job on the materialized path.
+
+-   `llm_scanner()` decides for itself per instance --- it streams unless `question` or `template_variables` is a callable or a timeline is requested --- so wrapping it as shown in [LLM Scanner](llm_scanner.qmd) needs no declaration.
+
+-   A scanner that requests a `timeline` always receives a materialized transcript.
+
+-   Declaring `supports_streaming=True` on a scan function whose parameter is annotated plain `Transcript` raises a `TypeError` when the scanner is constructed.
+
+-   String annotations (`from __future__ import annotations`) are resolved against the scan function's own module, so the shape above works there too.
+
+-   `supports_streaming=False` forbids streaming for that scanner even when the function it returns would otherwise permit it.
 
 ## Packaging {#packaging}
 

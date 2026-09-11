@@ -196,8 +196,9 @@ def _materialized_read_drops_score_explanation() -> bool:
     """True until load_filtered.py carries `TranscriptInfo.score_explanation`.
 
     That fix is made against `main` in a separate PR rather than in this series,
-    so two PRs do not edit the same lines. Once it lands and the series is rebased
-    this returns False and the xfail below switches itself off.
+    so two PRs do not edit the same lines. While it is true, the test below
+    tolerates exactly that one key; once it lands and the series is rebased this
+    returns False and the tolerance switches itself off.
     """
     from dataclasses import fields
 
@@ -206,17 +207,6 @@ def _materialized_read_drops_score_explanation() -> bool:
     return "score_explanation" not in {f.name for f in fields(RawTranscript)}
 
 
-@pytest.mark.xfail(
-    condition=_materialized_read_drops_score_explanation(),
-    reason=(
-        "main added TranscriptInfo.score_explanation and the materialized read path "
-        "drops it, while the spooled record path carries it; fixed against main in a "
-        "separate PR. strict: an unexpected pass means the fix has arrived -- delete "
-        "this mark."
-    ),
-    strict=True,
-    raises=AssertionError,
-)
 def test_recorded_input_resolves_attachments_like_materialized(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -242,17 +232,12 @@ def test_recorded_input_resolves_attachments_like_materialized(
     assert "attachment://" not in streamed_input
     streamed = json.loads(streamed_input)
     control = json.loads(control_input)
-    if streamed != control:
-        # While the xfail condition holds, the only permitted difference is the
-        # score_explanation key the materialized path drops. Anything else must
-        # fail for real even inside the xfail window: pytest.fail() raises
-        # Failed, not AssertionError, so the mark does not swallow it.
-        differing = set(streamed) ^ set(control)
-        without = {k: v for k, v in streamed.items() if k != "score_explanation"}
-        if differing != {"score_explanation"} or without != control:
-            pytest.fail(
-                f"streamed/materialized diverge beyond score_explanation: {differing}"
-            )
+    if _materialized_read_drops_score_explanation():
+        # Known gap, fixed against main in its own PR: the materialized read
+        # drops score_explanation. Tolerate exactly that key; anything else
+        # must still fail.
+        assert set(streamed) ^ set(control) == {"score_explanation"}
+        streamed.pop("score_explanation")
     assert streamed == control
 
 

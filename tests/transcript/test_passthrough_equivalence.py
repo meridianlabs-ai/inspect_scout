@@ -14,6 +14,7 @@ from inspect_scout._transcript.handle import SpooledTranscriptHandle
 from inspect_scout._transcript.json.passthrough import pooled_passthrough
 from inspect_scout._transcript.json.stream_parse import stream_parse_to_spool
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
+from inspect_scout._transcript.util import LazyJSONDict
 from pydantic import TypeAdapter
 
 _CHAT_MESSAGE_ADAPTER: TypeAdapter[ChatMessage] = TypeAdapter(ChatMessage)
@@ -99,9 +100,18 @@ async def test_passthrough_expands_to_the_materialized_transcript(
     tmp_path: Path, metadata: bool
 ) -> None:
     data = _sample_bytes()
-    info = TranscriptInfo(
-        transcript_id="t1",
-        metadata={"sample_metadata": {"note": "summary"}, "target": "summary-target"},
+    info = TranscriptInfo(transcript_id="t1", metadata={})
+    # Mirrors how eval_log.py attaches the index row's metadata: a
+    # `LazyJSONDict` whose JSON-column values are unparsed strings. Bypasses
+    # pydantic validation, which would copy `metadata` to a plain dict and
+    # hide the bug this test exists to catch (Finding 1).
+    object.__setattr__(
+        info,
+        "metadata",
+        LazyJSONDict(
+            {"sample_metadata": '{"note": "summary"}', "target": "summary-target"},
+            json_keys=["sample_metadata"],
+        ),
     )
 
     result = await stream_parse_to_spool(
@@ -148,7 +158,12 @@ async def test_passthrough_expands_to_the_materialized_transcript(
         for m in resolved_messages
     ] == [m.model_dump(mode="json") for m in materialized.messages]
 
-    assert envelope["metadata"] == materialized.metadata
+    materialized_metadata = (
+        json.loads(materialized.metadata.to_json_string())
+        if isinstance(materialized.metadata, LazyJSONDict)
+        else materialized.metadata
+    )
+    assert envelope["metadata"] == materialized_metadata
 
     if metadata:
         assert envelope["metadata"]["sample_metadata"]["note"] == "sample metadata"
@@ -159,3 +174,7 @@ async def test_passthrough_expands_to_the_materialized_transcript(
             "sample_metadata": {"note": "summary"},
             "target": "summary-target",
         }
+        # The index row's lazy values must come through as objects, not the
+        # raw JSON strings `LazyJSONDict` stores until something parses them.
+        assert envelope["metadata"]["sample_metadata"] == {"note": "summary"}
+        assert envelope["metadata"]["target"] == "summary-target"

@@ -234,8 +234,9 @@ class SpooledTranscriptHandle:
             messages=messages,
             events=events,
             # Always empty: the spooling parse skips the sample's `timelines`
-            # section, and a handle opened without `timeline` returns none on
-            # the materialized path either (see `EvalLogTranscriptsView.open`).
+            # section. The fallback branch above returns instead, and its
+            # transcript comes from `EvalLogTranscriptsView.open`'s `load`,
+            # which drops unrequested timelines itself.
             timelines=[],
         )
 

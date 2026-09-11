@@ -8,6 +8,7 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+import ijson
 import pytest
 from inspect_ai.event import ModelEvent, ToolEvent
 from inspect_ai.log import read_eval_log, write_eval_log
@@ -37,6 +38,43 @@ CONTENTS = [
     TranscriptContent(messages="all", events="all"),
     TranscriptContent(messages=None, events=["model"]),
 ]
+
+
+def _timeline_sample() -> dict[str, Any]:
+    """A sample with one stored timeline referencing its single event."""
+    event_uuid = "11111111-1111-1111-1111-111111111111"
+    return {
+        "id": "s1",
+        "messages": [{"id": "m1", "role": "user", "content": "hello"}],
+        "events": [
+            {
+                "event": "model",
+                "uuid": event_uuid,
+                "span_id": "s1",
+                "timestamp": "2022-01-01T00:00:00+00:00",
+                "working_start": 0,
+                "model": "m",
+                "input": [],
+                "output": {"model": "m", "choices": []},
+                "tools": [],
+                "tool_choice": "auto",
+                "config": {},
+            }
+        ],
+        "timelines": [
+            {
+                "name": "default",
+                "description": "the stored timeline",
+                "root": {
+                    "type": "span",
+                    "id": "main",
+                    "name": "main",
+                    "span_type": "agent",
+                    "content": [{"type": "event", "event": event_uuid}],
+                },
+            }
+        ],
+    }
 
 
 async def _assert_streamed_equals_materialized(
@@ -344,39 +382,7 @@ async def test_materialized_preserves_timelines_spooled_drops_them(
     `test_open_materialized_handle_drops_unrequested_timelines`), so both handle
     kinds return only the timelines they were opened for.
     """
-    event_uuid = "11111111-1111-1111-1111-111111111111"
-    sample = {
-        "id": "s1",
-        "messages": [{"id": "m1", "role": "user", "content": "hello"}],
-        "events": [
-            {
-                "event": "model",
-                "uuid": event_uuid,
-                "span_id": "s1",
-                "timestamp": "2022-01-01T00:00:00+00:00",
-                "working_start": 0,
-                "model": "m",
-                "input": [],
-                "output": {"model": "m", "choices": []},
-                "tools": [],
-                "tool_choice": "auto",
-                "config": {},
-            }
-        ],
-        "timelines": [
-            {
-                "name": "default",
-                "description": "the stored timeline",
-                "root": {
-                    "type": "span",
-                    "id": "main",
-                    "name": "main",
-                    "span_type": "agent",
-                    "content": [{"type": "event", "event": event_uuid}],
-                },
-            }
-        ],
-    }
+    sample = _timeline_sample()
     data = json.dumps(sample).encode()
     info = TranscriptInfo(transcript_id="t1")
 
@@ -412,39 +418,7 @@ async def test_open_materialized_handle_drops_unrequested_timelines(
     has timelines). Uses the JSON-log branch of `open()`, which returns before any
     zip access, so no fixture file is needed.
     """
-    event_uuid = "11111111-1111-1111-1111-111111111111"
-    sample = {
-        "id": "s1",
-        "messages": [{"id": "m1", "role": "user", "content": "hello"}],
-        "events": [
-            {
-                "event": "model",
-                "uuid": event_uuid,
-                "span_id": "s1",
-                "timestamp": "2022-01-01T00:00:00+00:00",
-                "working_start": 0,
-                "model": "m",
-                "input": [],
-                "output": {"model": "m", "choices": []},
-                "tools": [],
-                "tool_choice": "auto",
-                "config": {},
-            }
-        ],
-        "timelines": [
-            {
-                "name": "default",
-                "description": "the stored timeline",
-                "root": {
-                    "type": "span",
-                    "id": "main",
-                    "name": "main",
-                    "span_type": "agent",
-                    "content": [{"type": "event", "event": event_uuid}],
-                },
-            }
-        ],
-    }
+    sample = _timeline_sample()
     log_path = tmp_path / "log.json"
     info = TranscriptInfo(transcript_id="t1", source_uri=str(log_path))
     stored = await load_filtered_transcript(
@@ -472,3 +446,56 @@ async def test_open_materialized_handle_drops_unrequested_timelines(
     assert loaded.timelines == []
     assert loaded.events == stored.events
     assert loaded.messages == stored.messages
+
+
+@pytest.mark.asyncio
+async def test_open_spooled_fallback_drops_unrequested_timelines(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The spooled handle's JSON-error fallback honours the handle contract too.
+
+    A NaN/Inf sample makes `stream_parse_to_spool` raise, and the handle falls back
+    to `read()` -- which returns stored timelines whether or not they were requested.
+    The fallback must drop them as well, or the divergence this contract exists to
+    close reappears for exactly the samples that trip the fallback.
+    """
+    monkeypatch.setattr(constants_mod, "SPOOL_THRESHOLD_BYTES", 0)
+
+    view = EvalLogTranscriptsView(str(LOGS[0]))
+    await view.connect()
+    try:
+        infos = [i async for i in view.select()]
+        assert infos
+        info = infos[0]
+        stored = await load_filtered_transcript(
+            io.BytesIO(json.dumps(_timeline_sample()).encode()), info, "all", "all"
+        )
+        assert [tl.name for tl in stored.timelines] == ["default"]  # precondition
+
+        def fail_parse(*args: object, **kwargs: object) -> StreamParseResult:
+            raise ijson.JSONError("forced")
+
+        async def fake_read(
+            self: EvalLogTranscriptsView,
+            t: TranscriptInfo,
+            content: TranscriptContent,
+            max_bytes: int | None = None,
+        ) -> Transcript:
+            return stored
+
+        monkeypatch.setattr(
+            "inspect_scout._transcript.eval_log.stream_parse_to_spool", fail_parse
+        )
+        monkeypatch.setattr(EvalLogTranscriptsView, "read", fake_read)
+
+        handle = await view.open(info, TranscriptContent(messages="all", events="all"))
+        try:
+            assert isinstance(handle, SpooledTranscriptHandle)
+            loaded = await handle.load()
+        finally:
+            await handle.aclose()
+    finally:
+        await view.disconnect()
+
+    assert loaded.timelines == []
+    assert loaded.events == stored.events

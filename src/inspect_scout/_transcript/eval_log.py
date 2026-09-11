@@ -625,10 +625,7 @@ class EvalLogTranscriptsView(TranscriptsView):
                     json_iterable, content.messages, content.events, spool_dir
                 )
 
-        async def load_fallback() -> Transcript:
-            return await self.read(t, content)
-
-        return SpooledTranscriptHandle(t, parse, load_fallback)
+        return SpooledTranscriptHandle(t, parse, load)
 
     @override
     async def read_messages_events(

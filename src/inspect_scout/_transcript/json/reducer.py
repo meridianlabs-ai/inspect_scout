@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Generator, Literal, ParamSpec, Protocol
@@ -14,9 +13,6 @@ from ijson.utils import (  # type: ignore[import-untyped]  # no published stubs
 # Public constants / prefixes
 ATTACHMENT_PREFIX = "attachment://"
 ATTACHMENT_PREFIX_LEN = len(ATTACHMENT_PREFIX)
-ATTACHMENT_REF_BYTES = re.compile(rb"attachment://([a-f0-9]{32})")
-"""Ref pattern over UTF-8 bytes, for scanning serialized JSON without decoding
-it first. Refs are ASCII."""
 # A ref is the prefix plus a 32-char hex id, and nothing else.
 ATTACHMENT_REF_LEN = ATTACHMENT_PREFIX_LEN + 32
 ATTACHMENTS_PREFIX = "attachments."
@@ -453,7 +449,6 @@ __all__ = [
     "ATTACHMENT_PREFIX",
     "ATTACHMENT_PREFIX_LEN",
     "ATTACHMENT_REF_LEN",
-    "ATTACHMENT_REF_BYTES",
     "JsonTextWriter",
     "spooling_metadata_coroutine",
     "ATTACHMENTS_PREFIX",

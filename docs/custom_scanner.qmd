@@ -121,13 +121,14 @@ def assistant_swearing() -> Scanner[Transcript]:
 
 With this filter, only assistant messages (and no events at all) will be loaded from transcripts during scanning.
 
-Note that by default, no filters are active, so if you don't specify values for `messages`, `events`, and/or `timeline` your scanner will not be called!
+Note that by default, no filters are active, so if you don't specify values for `messages`, `events`, and/or `timeline` your scanner will not be called! (`metadata` does not count as a filter here: it controls what is read alongside the content, not whether the scanner runs.)
 
 The available filter parameters are:
 
 -   `messages` --- Filter for message types: `"all"` or a list like `["user", "assistant"]`.
 -   `events` --- Filter for event types: `"all"` or a list like `["model", "tool"]`.
 -   `timeline` --- Enable timeline loading: `True` for all event types, `"all"`, or a list like `["model", "tool"]`.
+-   `metadata` --- Whether to read the sample's full metadata, target and scores from the log body (default `True`). Pass `False` if your scanner never reads `transcript.metadata["sample_metadata"]`, `["target"]` or `["scores"]`; the log's summary values are kept instead, and a log with gigabytes of sample metadata costs nothing extra to scan.
 
 You can also provide a `version` parameter to track scanner versions. When the version is incremented, previously scanned transcripts will be re-scanned with the updated scanner.
 
@@ -161,6 +162,8 @@ This scanner will see only assistant messages:
 @scanner(messages=["assistant"])
 def my_scanner() -> Scanner[Transcript]: ...
 ```
+
+Sample metadata, target and scores are merged into `transcript.metadata` from the log body by default. A scanner that does not read them can decline with `metadata=False`, which leaves the index's summary values in place: metadata thinned to about 1 KB per key, target as a single string, and scores as `score_*` values only. Declining takes effect when every scanner in a scan declines; a scanner that shares a read with one that wants metadata receives it anyway.
 
 ### Presenting Messages
 

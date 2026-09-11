@@ -14,6 +14,7 @@ from typing import (
     Sequence,
     TypeVar,
     cast,
+    get_type_hints,
 )
 
 from inspect_ai._util._async import is_callable_coroutine
@@ -40,13 +41,14 @@ from typing_extensions import overload
 from inspect_scout._util.decorator import fixup_wrapper_annotations, split_spec
 
 from .._concurrency._mp_common import register_plugin_directory
+from .._transcript.handle import is_transcript_handle_type
 from .._transcript.types import (
     EventType,
     MessageType,
     Transcript,
     TranscriptContent,
 )
-from ._loaders import create_implicit_loader
+from ._loaders import _matches_transcript_or_handle, create_implicit_loader
 from .filter import (
     normalize_events_filter,
     normalize_messages_filter,
@@ -143,6 +145,7 @@ def scanner(
     loader: Loader[Transcript] | None = ...,
     name: str | None = ...,
     version: int = 0,
+    supports_streaming: bool | None = ...,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -155,6 +158,7 @@ def scanner(
     loader: Loader[Transcript] | None = ...,
     name: str | None = ...,
     version: int = 0,
+    supports_streaming: bool | None = ...,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -167,6 +171,7 @@ def scanner(
     loader: Loader[Transcript] | None = ...,
     name: str | None = ...,
     version: int = 0,
+    supports_streaming: bool | None = ...,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -179,6 +184,7 @@ def scanner(
     loader: Loader[Transcript] | None = ...,
     name: str | None = ...,
     version: int = 0,
+    supports_streaming: bool | None = ...,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -194,6 +200,7 @@ def scanner(
     loader: Loader[list[ChatMessage]] | None = ...,
     name: str | None = ...,
     version: int = 0,
+    supports_streaming: bool | None = ...,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -206,6 +213,7 @@ def scanner(
     loader: Loader[list[Event]] | None = ...,
     name: str | None = ...,
     version: int = 0,
+    supports_streaming: bool | None = ...,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -221,6 +229,7 @@ def scanner(
     loader: Loader[ChatMessage] | None = ...,
     name: str | None = ...,
     version: int = 0,
+    supports_streaming: bool | None = ...,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -233,6 +242,7 @@ def scanner(
     loader: Loader[Event] | None = ...,
     name: str | None = ...,
     version: int = 0,
+    supports_streaming: bool | None = ...,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -248,6 +258,7 @@ def scanner(
     events: list[EventType] | Literal["all"] | None = ...,
     name: str | None = ...,
     version: int = 0,
+    supports_streaming: bool | None = ...,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -269,6 +280,7 @@ def scanner(
     timeline: Literal[True] | list[EventType] | Literal["all"] | None = None,
     name: str | None = None,
     version: int = 0,
+    supports_streaming: bool | None = ...,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -284,6 +296,7 @@ def scanner(
     timeline: Literal[True] | list[EventType] | Literal["all"] | None = None,
     name: str | None = None,
     version: int = 0,
+    supports_streaming: bool | None = None,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = None,
@@ -305,6 +318,14 @@ def scanner(
        timeline: Event types to include in timelines.
        name: Scanner name (defaults to function name).
        version: Scanner version (defaults to 0).
+       supports_streaming: Whether the scanner can read its input through a
+          streaming `TranscriptHandle` instead of a materialized `Transcript`.
+          Leave unset to defer to the scan function's own verdict (`llm_scanner`
+          records one per instance, so wrapping it needs no declaration). `True`
+          grants permission -- the scan function must accept
+          `Transcript | TranscriptHandle` -- and a verdict against streaming
+          still revokes it; `False` forbids it. A scan streams only when every
+          scanner sharing the transcript is permitted.
        metrics: One or more metrics to calculate over the values
            (only used if scanner is converted to a scorer via `as_scorer()`).
 
@@ -445,8 +466,18 @@ def scanner(
                 )
 
             vouched = streaming_support_of(scanner_fn)
-            if vouched is not None:
-                scanner_config.supports_streaming = vouched
+            if supports_streaming is None:
+                # Undeclared: defer to the scan function's author. Every
+                # documented `return llm_scanner(...)` wrapper streams this way.
+                scanner_config.supports_streaming = bool(vouched)
+            else:
+                # Declared: the declaration grants permission and the author's
+                # verdict can only revoke it. Neither False is ever overridden.
+                if supports_streaming:
+                    _validate_streaming_declaration(scanner_fn, factory_fn.__globals__)
+                scanner_config.supports_streaming = (
+                    supports_streaming and vouched is not False
+                )
 
             registry_tag(
                 factory_fn,
@@ -500,6 +531,40 @@ def scanner_version(scanner: Scanner[Any]) -> int:
 
 def config_for_scanner(scanner: Scanner[Any]) -> ScannerConfig:
     return cast(ScannerConfig, registry_info(scanner).metadata[SCANNER_CONFIG])
+
+
+def _validate_streaming_declaration(
+    scanner_fn: Callable[..., Any], globalns: dict[str, Any]
+) -> None:
+    """`supports_streaming=True` requires a scan function that can accept a handle.
+
+    A `Transcript`-only scan function handed a handle fails silently in the
+    worst case (`transcript.messages` is a bound method there, always truthy),
+    so an untruthful declaration is refused when the factory runs.
+    """
+    params = list(inspect.signature(scanner_fn).parameters)
+    try:
+        hints = get_type_hints(scanner_fn, globalns=globalns)
+    except Exception as ex:
+        raise TypeError(
+            f"@scanner(supports_streaming=True): could not resolve "
+            f"{scanner_fn.__qualname__}'s type hints: {ex}"
+        ) from ex
+    annotation = hints.get(params[0]) if params else None
+    if annotation is None or not (
+        is_transcript_handle_type(annotation)
+        or _matches_transcript_or_handle(annotation)
+    ):
+        description = (
+            "has no type annotation"
+            if annotation is None
+            else f"is annotated {annotation!r}"
+        )
+        raise TypeError(
+            f"@scanner(supports_streaming=True): {scanner_fn.__qualname__}'s first "
+            f"parameter {description}; a streaming scanner must accept "
+            "`Transcript | TranscriptHandle`."
+        )
 
 
 def scanner_supports_streaming(scanner: Scanner[Any]) -> bool:

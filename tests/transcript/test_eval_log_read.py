@@ -81,21 +81,13 @@ async def test_read_json_log_respects_max_bytes(json_log: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_read_preserves_score_explanation() -> None:
-    """A read must carry `score_explanation` through from the info it is given.
-
-    `RawTranscript` mirrors `TranscriptInfo` field by field, so a field added
-    to the model is dropped here until it is added in both places. Sources
-    that do supply the scorer's account of its grade -- a parquet index reads
-    it off the full sample -- then hand callers None.
-    """
-    explanation = "graded C because the answer names the bathtub"
+    """`RawTranscript` mirrors the info field by field; a read must not drop one."""
     content = TranscriptContent(messages="all", events="all")
 
     async with EvalLogTranscriptsView(str(EVAL_LOG)) as view:
         async for info in view.select():
-            transcript = await view.read(
-                info.model_copy(update={"score_explanation": explanation}), content
-            )
-            assert transcript.score_explanation == explanation
+            assert info.score_explanation
+            transcript = await view.read(info, content)
+            assert transcript.score_explanation == info.score_explanation
             return
     raise AssertionError("No transcripts found")

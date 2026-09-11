@@ -59,7 +59,7 @@ def _create_transcript(
         ),
         pytest.param(
             "Why: {{ score_explanation }}",
-            {"score": "C", "score_explanation": "graded C because the tests failed"},
+            {"score_explanation": "graded C because the tests failed"},
             ["Why: graded C because the tests failed"],
             id="score-explanation",
         ),

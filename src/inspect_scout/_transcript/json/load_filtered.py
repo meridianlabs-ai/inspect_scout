@@ -109,6 +109,7 @@ class RawTranscript:
     model: str | None
     model_options: dict[str, Any] | None
     score: JsonValue
+    score_explanation: str | None
     success: bool | None
     message_count: int | None
     total_time: float | None
@@ -209,6 +210,7 @@ async def _load_with_json5_fallback(
                 model=t.model,
                 model_options=t.model_options,
                 score=t.score,
+                score_explanation=t.score_explanation,
                 success=t.success,
                 message_count=t.message_count,
                 total_time=t.total_time,
@@ -493,6 +495,7 @@ async def _parse_and_filter(
             model=t.model,
             model_options=t.model_options,
             score=t.score,
+            score_explanation=t.score_explanation,
             success=t.success,
             message_count=t.message_count,
             total_time=t.total_time,
@@ -565,6 +568,7 @@ def _resolve_attachments(
         "model": transcript.model,
         "model_options": transcript.model_options,
         "score": transcript.score,
+        "score_explanation": transcript.score_explanation,
         "success": transcript.success,
         "message_count": transcript.message_count,
         "total_time": transcript.total_time,

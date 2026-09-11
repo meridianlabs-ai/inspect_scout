@@ -217,3 +217,55 @@ async def test_embedded_attachment_ref_is_not_a_ref(tmp_path: Path) -> None:
         result.close()
     assert messages[0].content == embedded
     assert messages[1].content == "SECRET"
+
+
+@pytest.mark.asyncio
+async def test_attachments_are_filtered_to_message_refs_when_events_not_collected(
+    tmp_path: Path,
+) -> None:
+    """Without events, only attachments referenced from a message are spooled.
+
+    Pool items -- the only thing that can reference an attachment after the
+    `attachments` section has streamed past -- are spooled only when events are
+    collected, so with `events_filter=None` the referenced-ID filter is sound
+    and the blob spool stays bounded. With events, everything is kept.
+    """
+    referenced, unreferenced = "a" * 32, "b" * 32
+    sample = {
+        "id": "s1",
+        "messages": [
+            {"id": "m1", "role": "user", "content": f"attachment://{referenced}"}
+        ],
+        "events": [
+            {
+                "event": "info",
+                "span_id": "s1",
+                "timestamp": "2022-01-01T00:00:00+00:00",
+                "working_start": 0,
+                "source": "x",
+                "data": f"attachment://{unreferenced}",
+            }
+        ],
+        "attachments": {referenced: "message body", unreferenced: "event body"},
+    }
+    data = json.dumps(sample).encode()
+
+    (tmp_path / "m").mkdir()
+    messages_only = await stream_parse_to_spool(
+        io.BytesIO(data), "all", None, tmp_path / "m"
+    )
+    try:
+        assert messages_only.blobs.has(referenced)
+        assert not messages_only.blobs.has(unreferenced)
+    finally:
+        messages_only.close()
+
+    (tmp_path / "e").mkdir()
+    with_events = await stream_parse_to_spool(
+        io.BytesIO(data), "all", "all", tmp_path / "e"
+    )
+    try:
+        assert with_events.blobs.has(referenced)
+        assert with_events.blobs.has(unreferenced)
+    finally:
+        with_events.close()

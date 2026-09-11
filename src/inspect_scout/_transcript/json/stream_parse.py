@@ -6,8 +6,10 @@ items they can reference) to an offset-indexed blob spool. Replay (see
 ``replay_*``) resolves ``attachment://`` refs and pool ranges per item,
 validates via TypeAdapter, and yields -- O(one item) memory.
 
-Every attachment must be spooled: refs inside events_data pool items arrive
-after the attachments section, so they cannot be filtered during the parse.
+When events are collected every attachment is spooled: refs inside
+events_data pool items arrive after the attachments section, so they cannot
+be filtered during the parse. Without events only message-referenced
+attachments are kept, the same rule load_filtered.py applies.
 """
 
 from __future__ import annotations
@@ -61,10 +63,9 @@ from .spool import BlobSpool, ByteSpool, ItemSpool
 # and both classify/dispatch loops (the HOT PATH comment below, and the one in
 # load_filtered.py's `_parse_and_filter`) in sync when either changes.
 #
-# One deliberate asymmetry: load_filtered.py sets `state.events_seen` in its
-# events branch, to decide how much of the attachment table to retain. This
-# path retains all of it unconditionally, so there is nothing to gate -- do
-# not add it here for parity.
+# load_filtered.py decides how much of the attachment table to retain from
+# `state.events_seen`; this path decides it up front from `events_config`
+# (see `_spool_attachments_coroutine`), so there is no `events_seen` here.
 _SECTION_OTHER = 0
 _SECTION_MESSAGES = 1
 _SECTION_EVENTS = 2
@@ -211,10 +212,10 @@ async def stream_parse_to_spool(
     """Parse sample JSON in a single ijson pass, spooling to disk.
 
     Filtered messages/events are appended (as raw, unresolved dicts) to JSONL
-    item spools. ALL attachments are spooled regardless of filters: refs
-    inside pool items are only known during replay, so filtering attachments
-    here would be unsound. Pool items are spooled only when events are
-    collected, since only an event can carry a pool ref.
+    item spools. Pool items are spooled only when events are collected, since only an
+    event can carry a pool ref; in that case every attachment is spooled too,
+    because pool-item refs are only known during replay. Without events, only
+    attachments referenced from a kept message are spooled.
 
     Args:
         sample_bytes: Byte stream of JSON sample data.
@@ -275,15 +276,24 @@ async def stream_parse_to_spool(
         messages_spool, events_spool, blobs, metadata_spool, spool_dir
     )
 
+    # Filled as messages stream (they precede `attachments` in the sample);
+    # the attachments coroutine reads it live, like load_filtered.py's
+    # `state.attachment_refs`.
+    message_refs: set[str] = set()
     messages_coro = (
-        _item_coroutine(messages_spool, set(), messages_config)
+        _item_coroutine(messages_spool, message_refs, messages_config)
         if messages_config
         else None
     )
     events_coro = (
         _item_coroutine(events_spool, set(), events_config) if events_config else None
     )
-    attachments_coro = _spool_attachments_coroutine(blobs)
+    # Same rule as reducer.py's `attachments_coroutine`: pool refs live only
+    # on events, so when events are not collected the referenced-ID filter is
+    # sound and the spool stays bounded.
+    attachments_coro = _spool_attachments_coroutine(
+        blobs, None if events_config else message_refs
+    )
     metadata_coro = spooling_metadata_coroutine(metadata_spool.write)
     target_coro: CoroutineGen | None = target_coroutine(state)
     scores_coro = scores_coroutine(state)
@@ -441,11 +451,14 @@ async def stream_parse_to_spool(
 
 
 @_coroutine
-def _spool_attachments_coroutine(blobs: BlobSpool) -> CoroutineGen:  # pragma: no cover
-    """Spool ALL attachments, without an ``attachment_refs`` membership check.
+def _spool_attachments_coroutine(
+    blobs: BlobSpool, attachment_refs: set[str] | None
+) -> CoroutineGen:  # pragma: no cover
+    """Spool attachments; ``None`` keeps all, a set keeps only those ids.
 
-    Refs inside pool items only become known during replay, after the parse
-    has moved past the attachments section, so every attachment must be kept.
+    With events collected, refs inside pool items only become known during
+    replay, after the parse has moved past the attachments section, so every
+    attachment must be kept (pass ``None``).
     """
     attachments_prefix_len = len(ATTACHMENTS_PREFIX)
     while True:
@@ -460,7 +473,8 @@ def _spool_attachments_coroutine(blobs: BlobSpool) -> CoroutineGen:  # pragma: n
             if end == -1
             else prefix[attachments_prefix_len:end]
         )
-        blobs.put(attachment_id, value)
+        if attachment_refs is None or attachment_id in attachment_refs:
+            blobs.put(attachment_id, value)
 
 
 _CHAT_MESSAGE_ADAPTER: TypeAdapter[ChatMessage] = TypeAdapter(ChatMessage)

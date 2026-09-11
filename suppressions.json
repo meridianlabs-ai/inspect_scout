@@ -181,18 +181,6 @@
       "undescribed": 1
     }
   },
-  "src/inspect_scout/_transcript/json/load_filtered.py": {
-    "type: ignore": {
-      "count": 3,
-      "undescribed": 3
-    }
-  },
-  "src/inspect_scout/_transcript/json/reducer.py": {
-    "type: ignore": {
-      "count": 8,
-      "undescribed": 8
-    }
-  },
   "src/inspect_scout/_transcript/messages.py": {
     "type: ignore[arg-type]": {
       "count": 2,

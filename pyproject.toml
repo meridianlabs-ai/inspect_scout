@@ -198,3 +198,8 @@ explicit_package_bases = true
 [[tool.mypy.overrides]]
 module = ["harbor.*"]
 ignore_missing_imports = true
+
+# ijson ships no stubs or py.typed marker.
+[[tool.mypy.overrides]]
+module = ["ijson", "ijson.*"]
+ignore_missing_imports = true

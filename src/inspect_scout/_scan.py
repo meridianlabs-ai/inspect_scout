@@ -97,6 +97,21 @@ from ._util.log import init_log
 logger = getLogger(__name__)
 
 
+def certainly_single_process(*, limit: int | None, max_processes: int | None) -> bool:
+    """Will this scan certainly run in a single process?
+
+    The scan strategy is not chosen until the transcripts have been enumerated, but
+    three of its four conditions are known as soon as the options are resolved. Only
+    "there is exactly one scan to run" needs the reader.
+
+    This is deliberately one-directional: True means single-process for certain, while
+    False means "possibly multi-process" rather than "definitely multi-process". That
+    is the safe direction for the caller that uses it to decide whether adaptive
+    connections can be left enabled, since adaptive is not supported across processes.
+    """
+    return limit == 1 or max_processes == 1 or os.name == "nt"
+
+
 def scan(
     scanners: Scanners,
     transcripts: Transcripts | None = None,
@@ -321,7 +336,13 @@ async def scan_async(
         if scanjob._generate_config and model_config
         else model_config or scanjob._generate_config or GenerateConfig()
     )
-    if scanjob._generate_config.max_connections is None:
+    if (
+        scanjob._generate_config.max_connections is None
+        and not certainly_single_process(
+            limit=scanjob._limit,
+            max_processes=scanjob._max_processes,
+        )
+    ):
         scanjob._generate_config.max_connections = scanjob._max_transcripts
 
     # initialize runtime context
@@ -662,11 +683,9 @@ async def _scan_async_inner(
                     "yes",
                 )
                 # are we running single process?
-                single_process = (
-                    total_scans == 1
-                    or scan.spec.options.limit == 1
-                    or scan.spec.options.max_processes == 1
-                    or os.name == "nt"
+                single_process = total_scans == 1 or certainly_single_process(
+                    limit=scan.spec.options.limit,
+                    max_processes=scan.spec.options.max_processes,
                 )
 
                 # set strategy accordingly

@@ -376,6 +376,7 @@ async def _resolve_template_kwargs(
         "model": transcript.model,
         "model_options": transcript.model_options,
         "score": transcript.score,
+        "score_explanation": transcript.score_explanation,
         "success": transcript.success,
         "message_count": transcript.message_count,
         "total_time": transcript.total_time,

@@ -11,7 +11,7 @@ import io
 import json
 from typing import Any
 
-import ijson  # type: ignore[import-untyped]  # no published stubs
+import ijson
 import pytest
 from inspect_scout._transcript.json.reducer import JsonTextWriter
 

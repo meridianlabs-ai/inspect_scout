@@ -5,8 +5,8 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Generator, Literal, ParamSpec, Protocol
 
-from ijson import ObjectBuilder  # type: ignore[import-untyped]  # no published stubs
-from ijson.utils import (  # type: ignore[import-untyped]  # no published stubs
+from ijson import ObjectBuilder
+from ijson.utils import (
     coroutine as _ijson_coroutine,
 )
 

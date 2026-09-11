@@ -4,7 +4,7 @@ from collections.abc import AsyncIterable
 from dataclasses import dataclass
 from typing import IO, Any, Callable
 
-import ijson  # type: ignore
+import ijson
 from inspect_ai._util.async_bytes_reader import AsyncBytesReader, adapt_to_reader
 from inspect_ai.event import timeline_load
 from pydantic import JsonValue

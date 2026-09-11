@@ -8,8 +8,9 @@ from pathlib import Path
 from typing import Any
 
 import anyio
-import ijson  # type: ignore[import-untyped]  # no published stubs
+import ijson
 import pytest
+from inspect_ai.model import ChatMessageUser
 from inspect_scout._transcript.handle import SpooledTranscriptHandle
 from inspect_scout._transcript.json.stream_parse import (
     StreamParseResult,
@@ -54,7 +55,7 @@ async def test_spooled_handle_multi_shot(tmp_path: Path) -> None:
 def _fallback_transcript() -> Transcript:
     return Transcript(
         transcript_id="t1",
-        messages=[{"id": "fb1", "role": "user", "content": "fallback"}],  # type: ignore[list-item]  # pydantic validates dicts into ChatMessage
+        messages=[ChatMessageUser(id="fb1", content="fallback")],
         events=[],
         metadata={},
     )

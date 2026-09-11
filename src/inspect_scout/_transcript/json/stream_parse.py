@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, Any, AsyncIterable, Iterator
 
-import ijson  # type: ignore[import-untyped]  # no published stubs
+import ijson
 from inspect_ai._util.async_bytes_reader import adapt_to_reader
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage

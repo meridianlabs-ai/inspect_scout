@@ -17,7 +17,7 @@ from typing import (
 )
 
 import anyio
-import ijson  # type: ignore[import-untyped]  # no published stubs
+import ijson
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 

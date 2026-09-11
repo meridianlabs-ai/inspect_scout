@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import IO, Any, Callable
 
-import ijson  # type: ignore[import-untyped]  # no published stubs
+import ijson
 import pytest
 from inspect_ai.event import ToolEvent
 from inspect_scout._transcript.json import spool as spool_mod

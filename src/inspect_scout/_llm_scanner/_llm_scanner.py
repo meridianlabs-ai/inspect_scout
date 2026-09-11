@@ -112,6 +112,16 @@ async def _scan_segments_bounded(
     return [(span_id, r) for _, span_id, r in sorted(indexed, key=lambda t: t[0])]
 
 
+def _must_materialize(handle: TranscriptHandle, full_transcript_needed: bool) -> bool:
+    """Whether to load() the handle and take the batch path instead of streaming it.
+
+    Streaming a `MaterializedTranscriptHandle` buys nothing -- it loads the whole
+    transcript on first use -- and costs the serialised per-segment token
+    counting of the streaming path, so only a spooled handle is streamed.
+    """
+    return full_transcript_needed or isinstance(handle, MaterializedTranscriptHandle)
+
+
 @overload
 def llm_scanner(
     *,
@@ -328,7 +338,7 @@ def llm_scanner(
             else None
         )
 
-        if handle is not None and full_transcript_needed:
+        if handle is not None and _must_materialize(handle, full_transcript_needed):
             transcript = await handle.load()
             handle = None
 

@@ -6,6 +6,9 @@ in ``test_segment_concurrency.py``.
 
 from __future__ import annotations
 
+import io
+import json
+from pathlib import Path
 from typing import Any, Callable, cast
 
 import pytest
@@ -19,9 +22,18 @@ from inspect_ai.model import (
 )
 from inspect_ai.tool import ToolChoice, ToolInfo
 from inspect_scout import llm_scanner
+from inspect_scout._llm_scanner._llm_scanner import _must_materialize
 from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import Scanner, streaming_support_of
-from inspect_scout._transcript.handle import MaterializedTranscriptHandle
+from inspect_scout._transcript.handle import (
+    MaterializedTranscriptHandle,
+    SpooledTranscriptHandle,
+    TranscriptHandle,
+)
+from inspect_scout._transcript.json.stream_parse import (
+    StreamParseResult,
+    stream_parse_to_spool,
+)
 from inspect_scout._transcript.types import (
     Transcript,
     TranscriptContent,
@@ -44,20 +56,31 @@ def _make_transcript(n_messages: int, *, words: int = 3) -> Transcript:
     return Transcript(transcript_id="t", messages=msgs)
 
 
-def _handle_for(transcript: Transcript) -> MaterializedTranscriptHandle:
-    """Build a MaterializedTranscriptHandle for an arbitrary transcript."""
-
-    async def load_fn() -> Transcript:
-        return transcript
-
+def _spooled_handle_for(
+    transcript: Transcript, spool_dir: Path
+) -> SpooledTranscriptHandle:
+    """A SpooledTranscriptHandle over `transcript`, so the streaming path is exercised."""
+    sample = {
+        "id": transcript.transcript_id,
+        "messages": [m.model_dump(mode="json") for m in transcript.messages],
+        "events": [e.model_dump(mode="json") for e in transcript.events],
+    }
+    data = json.dumps(sample).encode()
     info = TranscriptInfo(
         **transcript.model_dump(exclude={"messages", "events", "timelines"})
     )
-    return MaterializedTranscriptHandle(load_fn, info)
+
+    async def parse() -> StreamParseResult:
+        return await stream_parse_to_spool(io.BytesIO(data), "all", "all", spool_dir)
+
+    async def fallback() -> Transcript:
+        return transcript
+
+    return SpooledTranscriptHandle(info, parse, fallback)
 
 
 async def _scan(
-    scan_fn: Scanner[Transcript], input: Transcript | MaterializedTranscriptHandle
+    scan_fn: Scanner[Transcript], input: Transcript | TranscriptHandle
 ) -> Result:
     # The public scanner type is Scanner[Transcript]; llm_scanner's scan also
     # accepts a TranscriptHandle at runtime (streaming path). The scan returns
@@ -65,6 +88,26 @@ async def _scan(
     out = await scan_fn(cast(Transcript, input))
     assert isinstance(out, Result)
     return out
+
+
+def _spy_on_load(
+    monkeypatch: pytest.MonkeyPatch, cls: type[SpooledTranscriptHandle]
+) -> list[SpooledTranscriptHandle]:
+    """Patch `cls.load` to record each call while still delegating to it.
+
+    Lets a test assert whether a scan materialized a handle instead of
+    streaming it (`assert not calls`) or relied on materialization
+    (`assert calls`).
+    """
+    calls: list[SpooledTranscriptHandle] = []
+    original = cls.load
+
+    async def spy(self: SpooledTranscriptHandle) -> Transcript:
+        calls.append(self)
+        return await original(self)
+
+    monkeypatch.setattr(cls, "load", spy)
+    return calls
 
 
 def _recording_model(recorded: list[str]) -> Model:
@@ -92,13 +135,14 @@ def _yes_model() -> Model:
 
 @pytest.mark.anyio
 @pytest.mark.parametrize(
-    ("make_transcript", "scanner_kwargs", "min_prompts"),
+    ("make_transcript", "scanner_kwargs", "min_prompts", "expect_load"),
     [
         # Multiple segments: 12 padded messages under a small context window.
         pytest.param(
             lambda: _make_transcript(12, words=80),
             {"context_window": 400},
             2,
+            False,
             id="messages-multi-segment",
         ),
         # Events content: the handle path routes to stream_timeline_messages
@@ -108,6 +152,7 @@ def _yes_model() -> Model:
             agentic_transcript,
             {"content": TranscriptContent(events="all")},
             2,
+            False,
             id="events",
         ),
         # A template reading TranscriptInfo fields: the streaming path renders
@@ -124,15 +169,19 @@ def _yes_model() -> Model:
                 )
             },
             1,
+            False,
             id="template-reads-transcript-info",
         ),
-        # events="all" over a transcript that has no events: the materialized
-        # path falls through to the messages segmenter, so the streaming path
-        # must too rather than reducing over zero segments.
+        # events="all" over a transcript that has no events: streaming yields
+        # zero segments, so scan() falls back to handle.load() rather than
+        # reducing over nothing -- a deliberate, pre-existing fallback
+        # distinct from the _must_materialize upfront decision this file
+        # otherwise guards.
         pytest.param(
             lambda: _make_transcript(3),
             {"content": TranscriptContent(events="all")},
             1,
+            True,
             id="events-requested-but-absent",
         ),
     ],
@@ -141,6 +190,9 @@ async def test_handle_scan_equivalent_to_transcript_scan(
     make_transcript: Callable[[], Transcript],
     scanner_kwargs: dict[str, Any],
     min_prompts: int,
+    expect_load: bool,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Handle and Transcript inputs produce identical prompt streams + Result.
 
@@ -162,9 +214,14 @@ async def test_handle_scan_equivalent_to_transcript_scan(
     prompts_transcript = list(recorded)
     recorded.clear()
 
-    result_handle = await _scan(scan_fn, _handle_for(transcript))
+    load_calls = _spy_on_load(monkeypatch, SpooledTranscriptHandle)
+    result_handle = await _scan(scan_fn, _spooled_handle_for(transcript, tmp_path))
     prompts_handle = list(recorded)
 
+    if expect_load:
+        assert load_calls, "expected the empty-segments fallback to load the handle"
+    else:
+        assert not load_calls, "streamed scan materialized the handle"
     assert len(prompts_transcript) >= min_prompts
     assert prompts_handle == prompts_transcript
     assert result_handle.value == result_transcript.value
@@ -206,7 +263,9 @@ def test_streaming_attr_gating(kwargs: dict[str, Any], expected: bool) -> None:
 
 
 @pytest.mark.anyio
-async def test_callable_question_with_handle_materializes() -> None:
+async def test_callable_question_with_handle_materializes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """A callable question given a handle receives a materialized Transcript.
 
     Mirrors the factory-time opt-in gating at runtime: scan() must call
@@ -227,8 +286,10 @@ async def test_callable_question_with_handle_materializes() -> None:
         model=_yes_model(),
     )
 
-    result = await _scan(scan_fn, _handle_for(transcript))
+    load_calls = _spy_on_load(monkeypatch, SpooledTranscriptHandle)
+    result = await _scan(scan_fn, _spooled_handle_for(transcript, tmp_path))
     assert result.answer is not None
+    assert load_calls, "callable question should have materialized the handle"
 
     assert seen, "question callable should have been invoked"
     for t in seen:
@@ -254,3 +315,26 @@ async def test_handle_info_may_be_a_transcript() -> None:
     )
     result = await _scan(scan_fn, MaterializedTranscriptHandle(load_fn, transcript))
     assert result.answer is not None
+
+
+def test_materialized_handle_takes_the_batch_path() -> None:
+    """A MaterializedTranscriptHandle must be load()ed rather than streamed.
+
+    It loads everything on first use, so streaming it saves no memory and
+    only serialises token counting.
+    """
+    info = TranscriptInfo(transcript_id="t")
+
+    async def load_fn() -> Transcript:
+        return Transcript(transcript_id="t", messages=[])
+
+    materialized = MaterializedTranscriptHandle(load_fn, info)
+    assert _must_materialize(materialized, full_transcript_needed=False) is True
+    assert _must_materialize(materialized, full_transcript_needed=True) is True
+
+    async def parse() -> StreamParseResult:
+        raise AssertionError("not called")
+
+    spooled = SpooledTranscriptHandle(info, parse, load_fn)
+    assert _must_materialize(spooled, full_transcript_needed=False) is False
+    assert _must_materialize(spooled, full_transcript_needed=True) is True

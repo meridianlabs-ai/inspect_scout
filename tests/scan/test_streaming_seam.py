@@ -24,7 +24,11 @@ from inspect_scout._transcript.json.stream_parse import (
     StreamParseResult,
     stream_parse_to_spool,
 )
-from inspect_scout._transcript.types import Transcript, TranscriptContent, TranscriptInfo
+from inspect_scout._transcript.types import (
+    Transcript,
+    TranscriptContent,
+    TranscriptInfo,
+)
 from inspect_scout._transcript.util import union_transcript_contents
 
 

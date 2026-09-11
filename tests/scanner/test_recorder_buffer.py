@@ -193,6 +193,37 @@ async def test_scanner_table_casts_mixed_transcript_score_to_string(
     assert table.schema.field("transcript_score").type == pa.string()
 
 
+@pytest.mark.asyncio
+async def test_scanner_table_records_transcript_score_explanation(
+    recorder_buffer: RecorderBuffer,
+    sample_results: list[ResultReport],
+    tmp_path: Path,
+) -> None:
+    scanner_name = "test_scanner"
+    explanation = "graded C because the tests failed"
+    await recorder_buffer.record(
+        TranscriptInfo(
+            transcript_id="explained",
+            source_type="test",
+            source_id="source-1",
+            source_uri="/path/to/source-1.log",
+            score="C",
+            score_explanation=explanation,
+        ),
+        scanner_name,
+        sample_results,
+        None,
+    )
+
+    out_path = tmp_path / "out.parquet"
+    assert scanner_table(recorder_buffer._buffer_dir, scanner_name, str(out_path))
+
+    table = pq.read_table(out_path)
+    assert set(table.column("transcript_score_explanation").to_pylist()) == {
+        explanation
+    }
+
+
 def test_buffer_dir_respects_env_var(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

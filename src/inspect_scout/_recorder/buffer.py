@@ -154,6 +154,9 @@ class RecorderBuffer:
             transcript.model_options, "generate_config", m
         )
         transcript_score = resolve_metadata_var(transcript.score, "score", m)
+        transcript_score_explanation = resolve_metadata_var(
+            transcript.score_explanation, "score_explanation", m
+        )
         transcript_success = resolve_success_value(
             transcript.success, cast(JsonValue | None, transcript_score)
         )
@@ -186,6 +189,7 @@ class RecorderBuffer:
                     "transcript_model": transcript_model,
                     "transcript_model_options": transcript_model_options,
                     "transcript_score": transcript_score,
+                    "transcript_score_explanation": transcript_score_explanation,
                     "transcript_success": transcript_success,
                     "transcript_message_count": transcript_message_count,
                     "transcript_total_time": transcript_total_time,

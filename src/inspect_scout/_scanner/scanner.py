@@ -474,7 +474,7 @@ def scanner(
                 # Declared: the declaration grants permission and the author's
                 # verdict can only revoke it. Neither False is ever overridden.
                 if supports_streaming:
-                    _validate_streaming_declaration(scanner_fn, factory_fn.__globals__)
+                    _validate_streaming_declaration(scanner_fn)
                 scanner_config.supports_streaming = (
                     supports_streaming and vouched is not False
                 )
@@ -533,18 +533,26 @@ def config_for_scanner(scanner: Scanner[Any]) -> ScannerConfig:
     return cast(ScannerConfig, registry_info(scanner).metadata[SCANNER_CONFIG])
 
 
-def _validate_streaming_declaration(
-    scanner_fn: Callable[..., Any], globalns: dict[str, Any]
-) -> None:
+def _validate_streaming_declaration(scanner_fn: Callable[..., Any]) -> None:
     """`supports_streaming=True` requires a scan function that can accept a handle.
 
     A `Transcript`-only scan function handed a handle fails silently in the
     worst case (`transcript.messages` is a bound method there, always truthy),
-    so an untruthful declaration is refused when the factory runs.
+    so the declared first-parameter annotation is verified when the factory
+    runs, and the declaration is refused whenever that annotation cannot be
+    trusted -- it does not resolve, or `functools.wraps` copied it from some
+    other function.
     """
+    if getattr(scanner_fn, "__wrapped__", None) is not None:
+        raise TypeError(
+            f"@scanner(supports_streaming=True): {scanner_fn.__qualname__} carries "
+            "__wrapped__ (functools.wraps copies the wrapped function's "
+            "annotations), so its declaration cannot be verified; drop @wraps or "
+            "pass assigned=() so __annotations__ is not copied."
+        )
     params = list(inspect.signature(scanner_fn).parameters)
     try:
-        hints = get_type_hints(scanner_fn, globalns=globalns)
+        hints = get_type_hints(scanner_fn)
     except Exception as ex:
         raise TypeError(
             f"@scanner(supports_streaming=True): could not resolve "

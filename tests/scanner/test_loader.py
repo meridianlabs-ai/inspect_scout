@@ -109,7 +109,7 @@ def test_loader_requires_filter() -> None:
 def test_loader_with_both_filters() -> None:
     """Loader can have both message and event filters."""
 
-    @loader(messages=["user"], events=["model"])  # type: ignore[arg-type]
+    @loader(messages=["user"], events=["model"], metadata=False)  # type: ignore[arg-type]
     def test_loader() -> Callable[[Transcript], AsyncIterator[Transcript]]:
         async def load(
             transcript: Transcript,
@@ -122,26 +122,7 @@ def test_loader_with_both_filters() -> None:
     config = registry_info(instance).metadata[LOADER_CONFIG]
     assert config.content.messages == ["user"]
     assert config.content.events == ["model"]
-
-
-def test_loader_metadata_kwarg() -> None:
-    """metadata=False is recorded on the loader's content alongside its filters."""
-
-    @loader(messages="all", metadata=False)
-    def test_loader() -> Loader[ChatMessageUser]:
-        async def load(
-            transcript: Transcript,
-        ) -> AsyncIterator[ChatMessageUser]:
-            for msg in transcript.messages:
-                if isinstance(msg, ChatMessageUser):
-                    yield msg
-
-        return load
-
-    instance: Any = test_loader()
-    content = registry_info(instance).metadata[LOADER_CONFIG].content
-    assert content.messages == "all"
-    assert content.metadata is False
+    assert registry_info(instance).metadata[LOADER_CONFIG].content.metadata is False
 
 
 # Loader integration tests

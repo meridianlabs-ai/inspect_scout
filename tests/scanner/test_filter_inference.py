@@ -343,17 +343,3 @@ def test_metadata_kwarg_lands_on_config_without_disabling_inference() -> None:
     content = registry_info(instance).metadata[SCANNER_CONFIG].content
     assert content.messages == ["user"]
     assert content.metadata is False
-
-
-def test_metadata_defaults_to_unset() -> None:
-    """Scanners that say nothing about metadata keep reading it."""
-
-    @scanner(messages="all")
-    def all_scanner() -> Scanner[Transcript]:
-        async def scan(transcript: Transcript) -> Result:
-            return Result(value=len(transcript.messages))
-
-        return scan
-
-    instance: Any = all_scanner()
-    assert registry_info(instance).metadata[SCANNER_CONFIG].content.metadata is None

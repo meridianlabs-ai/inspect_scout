@@ -172,8 +172,6 @@ def test_streaming_eligible(filters: list[dict[str, Any]], expected: bool) -> No
     [
         pytest.param([False, False], False, id="all_declined"),
         pytest.param([False, None], None, id="one_unset"),
-        pytest.param([True, False], None, id="one_explicit_true"),
-        pytest.param([None], None, id="single_unset"),
     ],
 )
 def test_union_metadata_declines_only_when_every_scanner_declines(

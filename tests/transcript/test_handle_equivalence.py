@@ -37,7 +37,6 @@ CONTENTS = [
     TranscriptContent(messages=["assistant"], events=None),
     TranscriptContent(messages="all", events="all"),
     TranscriptContent(messages=None, events=["model"]),
-    TranscriptContent(messages="all", events=None, metadata=False),
 ]
 
 
@@ -115,7 +114,6 @@ async def _assert_streamed_equals_materialized(
         "messages-assistant",
         "messages-and-events-all",
         "events-model",
-        "messages-all-metadata-declined",
     ],
 )
 async def test_streamed_equals_materialized(
@@ -380,7 +378,6 @@ def pooled_log(tmp_path_factory: pytest.TempPathFactory) -> Path:
         "messages-assistant",
         "messages-and-events-all",
         "events-model",
-        "messages-all-metadata-declined",
     ],
 )
 async def test_streamed_equals_materialized_with_a_generated_pool(

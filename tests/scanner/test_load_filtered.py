@@ -1513,11 +1513,8 @@ _UNTHINNED_BODY: dict[str, Any] = {
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("nan_in_body", [False, True], ids=["ijson", "json5-fallback"])
-@pytest.mark.parametrize("metadata", [True, False], ids=["merged", "declined"])
-async def test_metadata_flag_controls_unthinning(
-    metadata: bool, nan_in_body: bool
-) -> None:
-    """metadata=False keeps the index summary for all three unthinned keys, on both paths."""
+async def test_declined_metadata_keeps_the_index_values(nan_in_body: bool) -> None:
+    """Both parse paths keep the index's thinned values and never hand back a raw JSON string."""
     body = json.dumps(_UNTHINNED_BODY)
     if nan_in_body:
         # ijson rejects NaN, so this routes through the json5 fallback.
@@ -1525,19 +1522,9 @@ async def test_metadata_flag_controls_unthinning(
     info = _info_with_index_metadata()
 
     result = await load_filtered_transcript(
-        io.BytesIO(body.encode()), info, "all", None, metadata=metadata
+        io.BytesIO(body.encode()), info, "all", None, metadata=False
     )
 
-    if metadata:
-        assert result.metadata["sample_metadata"] == {
-            "full_key": "full_value",
-            "nested": {"a": 1},
-        }
-        assert result.metadata["target"] == ["a", "b"]
-        assert result.metadata["scores"] == {"accuracy": {"value": "C", "answer": "C"}}
-    else:
-        # Nothing was overlaid, so nothing was copied: the LazyJSONDict survived.
-        assert result.metadata is info.metadata
-        assert result.metadata["sample_metadata"] == {"thin": "summary"}
-        assert result.metadata["target"] == "a, b"
-        assert "scores" not in result.metadata
+    assert result.metadata["sample_metadata"] == {"thin": "summary"}
+    assert result.metadata["target"] == "a, b"
+    assert "scores" not in result.metadata

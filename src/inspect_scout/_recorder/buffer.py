@@ -396,14 +396,19 @@ def scanner_table(
     # build dataset
     dataset: ds.Dataset = ds.dataset(inputs, format="parquet")
 
-    # discover the unified schema up-front. This ensures column order/types are stable.
-    # if there are absolutely no fragments under sdir, accessing .schema may raise.
+    # pyarrow infers the dataset schema from the first fragment only, which drops
+    # any column that only later files carry (a scan resumed across an upgrade).
+    # Union the field names across all inputs instead; first-seen type wins.
+    fields: dict[str, pa.Field[Any]] = {}
     try:
-        schema: pa.Schema = dataset.schema
+        for path in inputs:
+            for field in pq.read_schema(path):
+                fields.setdefault(field.name, field)
     except Exception as e:
         raise RuntimeError(
             f"Unable to discover dataset schema under {sdir}: {e}"
         ) from e
+    schema = pa.schema(fields.values())
 
     # Correct schema to handle type inconsistencies across files:
     # 1. Promote null-type columns to string (unknown type)

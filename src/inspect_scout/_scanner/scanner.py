@@ -547,8 +547,8 @@ def _validate_streaming_declaration(scanner_fn: Callable[..., Any]) -> None:
         raise TypeError(
             f"@scanner(supports_streaming=True): {scanner_fn.__qualname__} carries "
             "__wrapped__ (functools.wraps copies the wrapped function's "
-            "annotations), so its declaration cannot be verified; drop @wraps or "
-            "pass assigned=() so __annotations__ is not copied."
+            "annotations), so its declaration cannot be verified; drop @wraps and "
+            "annotate the wrapper's transcript parameter yourself."
         )
     params = list(inspect.signature(scanner_fn).parameters)
     try:

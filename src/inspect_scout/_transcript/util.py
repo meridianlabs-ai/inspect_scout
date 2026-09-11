@@ -271,9 +271,8 @@ def _union_contents(a: TranscriptContent, b: TranscriptContent) -> TranscriptCon
 
 
 def _union_metadata(a: MetadataFilter, b: MetadataFilter) -> MetadataFilter:
-    # Declined only when every side declined; unset (None) reads, so it wins.
-    # Kept out of `_union_filters`: its TypeVar is constrained to the three
-    # sequence-style filters and it treats True as "timeline all".
+    # None (unset) means read, so it beats False. Not `_union_filters`: its
+    # TypeVar excludes bool, and it reads True as "timeline all".
     return False if a is False and b is False else None
 
 

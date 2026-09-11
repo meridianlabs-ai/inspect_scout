@@ -144,8 +144,7 @@ async def load_filtered_transcript(
         events: Filter for event types (None=exclude all, "all"=include all,
             list=include matching)
         metadata: Whether to read the sample's metadata, target and scores from
-            the body. When False those sections are never built and the summary
-            values already on ``t`` are kept.
+            the body; when False the summary values already on ``t`` are kept.
         on_early_exit: Test-only callback invoked immediately before the
             early-exit break
 
@@ -314,9 +313,8 @@ async def _parse_and_filter(
     events_coro = event_item_coroutine(state, events_config) if events_config else None
     timelines_coro = timeline_item_coroutine(state)
     attachments_coro = attachments_coroutine(state, events_coro is not None)
-    # `metadata=False` never builds these three sections, so `_merge_unthinned`
-    # finds nothing to overlay and returns `t.metadata` itself -- the index's
-    # LazyJSONDict, uncopied.
+    # With `metadata=False` nothing is overlaid, so `_merge_unthinned` hands
+    # back `t.metadata` itself -- the index's LazyJSONDict, uncopied.
     metadata_coro = metadata_coroutine(state) if metadata else None
     target_coro: CoroutineGen | None = target_coroutine(state) if metadata else None
     scores_coro: CoroutineGen | None = scores_coroutine(state) if metadata else None

@@ -141,9 +141,8 @@ def pooled_passthrough(
         merged = _merged_metadata(info, result)
         emit('"metadata":')
         if isinstance(merged, LazyJSONDict):
-            # Nothing was overlaid, so this is the index row itself. Its lazy
-            # values are still JSON text; to_json_string() splices them
-            # verbatim instead of double-encoding them as strings.
+            # The uncopied index row: to_json_string() splices its unparsed JSON
+            # values verbatim, where iterating .items() would double-encode them.
             emit(merged.to_json_string())
         else:
             emit("{")

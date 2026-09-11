@@ -228,8 +228,7 @@ async def stream_parse_to_spool(
         spool_dir: Directory in which to create spool files.
         metadata: Whether to spool the sample's metadata and capture its target
             and scores. When False the metadata spool stays empty (so
-            ``has_metadata`` is False), ``target`` is None and ``scores`` is
-            empty; consumers keep the index's summary values.
+            ``has_metadata`` is False), ``target`` is None and ``scores`` empty.
 
     Returns:
         StreamParseResult with spools populated; ``target`` and ``scores``

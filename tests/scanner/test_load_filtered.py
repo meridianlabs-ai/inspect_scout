@@ -7,6 +7,7 @@ import json
 import math
 from collections import Counter
 from collections.abc import AsyncIterable, AsyncIterator
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import pytest
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
 
 from inspect_ai._util.async_zip import AsyncZipReader
 from inspect_ai._util.asyncfiles import AsyncFilesystem
-from inspect_ai.event import ToolEvent
+from inspect_ai.event import InfoEvent, Timeline, TimelineEvent, TimelineSpan, ToolEvent
 from inspect_ai.event._model import ModelEvent
 from inspect_scout import Transcript, TranscriptInfo
 from inspect_scout._transcript.json.load_filtered import load_filtered_transcript
@@ -633,6 +634,115 @@ async def test_early_exit_when_no_events_no_attachment_refs(
     assert len(result.messages) == 2
     assert not result.events
     assert result.metadata["scores"] == {"accuracy": {"value": "C", "answer": "C"}}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("late_field", ["messages", "target", "scores", "metadata"])
+async def test_field_order_preserves_content(late_field: str) -> None:
+    fields: dict[str, Any] = {
+        "target": "full target",
+        "messages": [
+            {"role": "user", "content": "Hello"},
+            {"role": "assistant", "content": "Hi"},
+        ],
+        "scores": {"accuracy": {"value": "C"}},
+        "metadata": {"marker": "full metadata"},
+        "events": [],
+    }
+    sample: dict[str, Any] = {
+        "store": {
+            "target": "nested target",
+            "messages": [],
+            "scores": {},
+            "metadata": {},
+        }
+    }
+    sample.update(fields)
+    sample[late_field] = sample.pop(late_field)
+    result = await load_filtered_transcript(
+        create_json_stream(sample),
+        TranscriptInfo(
+            transcript_id="field-order",
+            metadata={
+                "existing": "kept",
+                "target": "thinned target",
+                "scores": {"stale": True},
+                "sample_metadata": {"thinned": True},
+            },
+        ),
+        "all",
+        None,
+    )
+    assert [message.text for message in result.messages] == ["Hello", "Hi"]
+    assert result.metadata == {
+        "existing": "kept",
+        "target": fields["target"],
+        "scores": fields["scores"],
+        "sample_metadata": fields["metadata"],
+    }
+
+
+@pytest.mark.asyncio
+async def test_messages_after_events_resolve_attachments() -> None:
+    attachment_id = "a" * 32
+    result = await load_filtered_transcript(
+        create_json_stream(
+            {
+                "target": "",
+                "scores": {},
+                "metadata": {},
+                "events": [],
+                "messages": [
+                    {"role": "user", "content": f"attachment://{attachment_id}"}
+                ],
+                "attachments": {attachment_id: "Resolved content"},
+            }
+        ),
+        TranscriptInfo(transcript_id="reordered-attachment"),
+        "all",
+        None,
+    )
+    assert [message.text for message in result.messages] == ["Resolved content"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("events_filter", [None, "all"])
+async def test_timelines_without_scores_and_filtered_events(
+    events_filter: EventFilter,
+) -> None:
+    timestamp = datetime(2026, 9, 11, tzinfo=timezone.utc)
+    event = InfoEvent(data="example", uuid="example-event", timestamp=timestamp)
+    timeline = Timeline(
+        name="Custom",
+        description="",
+        root=TimelineSpan(
+            id="root",
+            name="root",
+            content=[TimelineEvent(event=event)],
+        ),
+    )
+    # No "scores" key forces the reader past "events" to reach "timelines".
+    # inspect_ai always writes "scores" ({} when unscored); the trigger is synthetic.
+    sample: dict[str, Any] = {
+        "target": "",
+        "messages": [{"role": "user", "content": "Hello"}],
+        "metadata": {},
+        "events": [event.model_dump(mode="json")],
+        "timelines": [timeline.model_dump(mode="json")],
+    }
+    result = await load_filtered_transcript(
+        create_json_stream(sample),
+        TranscriptInfo(transcript_id="timeline-repro"),
+        "all",
+        events_filter,
+    )
+    assert [message.text for message in result.messages] == ["Hello"]
+    if events_filter is None:
+        assert result.events == []
+        assert result.timelines == []
+    else:
+        assert result.events == [event]
+        assert result.timelines == [timeline]
 
 
 @pytest.mark.asyncio

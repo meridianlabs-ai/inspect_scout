@@ -721,6 +721,8 @@ async def test_timelines_without_scores_and_filtered_events(
             content=[TimelineEvent(event=event)],
         ),
     )
+    # No "scores" key forces the reader past "events" to reach "timelines".
+    # inspect_ai always writes "scores" ({} when unscored); the trigger is synthetic.
     sample: dict[str, Any] = {
         "target": "",
         "messages": [{"role": "user", "content": "Hello"}],

@@ -147,6 +147,8 @@ async def load_filtered_transcript(
     Returns:
         Transcript object with filtered messages and events, resolved attachments.
         Metadata includes sample_metadata, target, and scores from the sample JSON.
+        Stored timelines are returned only when ``events`` is not ``None``: they
+        resolve against the loaded events, so excluding events yields no timelines.
         ``input`` is not unthinned: the sample JSON's input can contain attachment
         refs whose resolution requires parsing the attachments section — which follows
         events, defeating the early-exit optimization.

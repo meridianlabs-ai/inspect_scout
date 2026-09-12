@@ -641,6 +641,66 @@ def test_anthropic_sync_stream_manager_no_double_emit() -> None:
     assert "error" not in captures[0]
 
 
+class _SnapshotProbe(_FakeAnthropicMessageStream):
+    def __init__(self, error: Exception, has_snapshot: bool) -> None:
+        super().__init__([], error)
+        self.has_snapshot = has_snapshot
+        self.snapshot_reads = 0
+
+    @property
+    def current_message_snapshot(self) -> object:
+        self.snapshot_reads += 1
+        if not self.has_snapshot:
+            raise AttributeError("current_message_snapshot")
+        return self._snapshot
+
+
+@pytest.mark.parametrize("has_snapshot", [False, True])
+def test_anthropic_snapshot_fallback_reads_once(has_snapshot: bool) -> None:
+    from inspect_scout._observe.providers.anthropic import (
+        AnthropicStreamManagerCaptureContext,
+    )
+
+    captures, emit = _record_emit()
+    error = _anthropic_error()
+    inner = _SnapshotProbe(error, has_snapshot)
+    ctx: AnthropicStreamManagerCaptureContext[object] = (
+        AnthropicStreamManagerCaptureContext(inner, {}, emit)
+    )
+    with pytest.raises(type(error)) as raised:
+        list(ctx)
+    assert raised.value is error
+    assert inner.snapshot_reads == 1
+    assert len(captures) == 1
+    assert captures[0]["error"] is error
+    assert (captures[0]["response"] is not None) == has_snapshot
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("has_snapshot", [False, True])
+async def test_anthropic_async_snapshot_fallback_reads_once(has_snapshot: bool) -> None:
+    from inspect_scout._observe.providers.anthropic import (
+        AnthropicAsyncStreamManagerCaptureContext,
+    )
+
+    captures, emit = _record_emit()
+    error = _anthropic_error()
+    probe = _SnapshotProbe(error, has_snapshot)
+    inner = _FakeAnthropicAsyncMessageStream([], error)
+    inner._sync = probe
+    ctx: AnthropicAsyncStreamManagerCaptureContext[object] = (
+        AnthropicAsyncStreamManagerCaptureContext(inner, {}, emit)
+    )
+    with pytest.raises(type(error)) as raised:
+        async for _ in ctx:
+            pass
+    assert raised.value is error
+    assert probe.snapshot_reads == 1
+    assert len(captures) == 1
+    assert captures[0]["error"] is error
+    assert (captures[0]["response"] is not None) == has_snapshot
+
+
 # --------------------------------------------------------------------------- #
 # build_event propagates the error key onto ModelEvent.error
 # --------------------------------------------------------------------------- #

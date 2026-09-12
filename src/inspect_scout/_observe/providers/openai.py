@@ -1,6 +1,7 @@
 """OpenAI SDK provider for capturing LLM calls."""
 
-from typing import Any, AsyncIterator, Generic, Iterator, Protocol, TypeVar
+from collections.abc import AsyncIterable, Iterable
+from typing import Any, AsyncIterator, Iterator, TypeVar
 
 from inspect_ai.event import Event, ModelEvent
 from inspect_ai.model import StopReason
@@ -12,15 +13,6 @@ from ._wrapt import TypedObjectProxy, wrap_function_wrapper
 from .provider import ObserveEmit
 
 _StreamEventT = TypeVar("_StreamEventT")
-_StreamEventT_co = TypeVar("_StreamEventT_co", covariant=True)
-
-
-class _SyncStream(Protocol[_StreamEventT_co]):
-    def __iter__(self) -> Iterator[_StreamEventT_co]: ...
-
-
-class _AsyncStream(Protocol[_StreamEventT_co]):
-    def __aiter__(self) -> AsyncIterator[_StreamEventT_co]: ...
 
 
 def _stop_reason_from_openai_error(error: Exception) -> StopReason | None:
@@ -527,14 +519,12 @@ class OpenAIChatStreamAccumulator:
         return self.accumulated
 
 
-class OpenAIChatStreamCapture(
-    TypedObjectProxy[_SyncStream[_StreamEventT]], Generic[_StreamEventT]
-):
+class OpenAIChatStreamCapture(TypedObjectProxy[Iterable[_StreamEventT]]):
     """Capture wrapper for OpenAI Chat Completions sync streams."""
 
     def __init__(
         self,
-        stream: _SyncStream[_StreamEventT],
+        stream: Iterable[_StreamEventT],
         request_kwargs: dict[str, Any],
         emit: ObserveEmit,
     ) -> None:
@@ -563,14 +553,12 @@ class OpenAIChatStreamCapture(
             self._self_emit(data)
 
 
-class OpenAIChatAsyncStreamCapture(
-    TypedObjectProxy[_AsyncStream[_StreamEventT]], Generic[_StreamEventT]
-):
+class OpenAIChatAsyncStreamCapture(TypedObjectProxy[AsyncIterable[_StreamEventT]]):
     """Capture wrapper for OpenAI Chat Completions async streams."""
 
     def __init__(
         self,
-        stream: _AsyncStream[_StreamEventT],
+        stream: AsyncIterable[_StreamEventT],
         request_kwargs: dict[str, Any],
         emit: ObserveEmit,
     ) -> None:
@@ -599,14 +587,12 @@ class OpenAIChatAsyncStreamCapture(
             self._self_emit(data)
 
 
-class OpenAIResponsesStreamCapture(
-    TypedObjectProxy[_SyncStream[_StreamEventT]], Generic[_StreamEventT]
-):
+class OpenAIResponsesStreamCapture(TypedObjectProxy[Iterable[_StreamEventT]]):
     """Capture wrapper for OpenAI Responses API sync streams."""
 
     def __init__(
         self,
-        stream: _SyncStream[_StreamEventT],
+        stream: Iterable[_StreamEventT],
         request_kwargs: dict[str, Any],
         emit: ObserveEmit,
     ) -> None:
@@ -644,14 +630,12 @@ class OpenAIResponsesStreamCapture(
                 self._self_emit(data)
 
 
-class OpenAIResponsesAsyncStreamCapture(
-    TypedObjectProxy[_AsyncStream[_StreamEventT]], Generic[_StreamEventT]
-):
+class OpenAIResponsesAsyncStreamCapture(TypedObjectProxy[AsyncIterable[_StreamEventT]]):
     """Capture wrapper for OpenAI Responses API async streams."""
 
     def __init__(
         self,
-        stream: _AsyncStream[_StreamEventT],
+        stream: AsyncIterable[_StreamEventT],
         request_kwargs: dict[str, Any],
         emit: ObserveEmit,
     ) -> None:

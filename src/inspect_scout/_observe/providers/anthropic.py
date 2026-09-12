@@ -7,7 +7,7 @@ from inspect_ai.event import Event, ModelEvent
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.tool._tool_choice import ToolChoice
 from inspect_ai.tool._tool_info import ToolInfo
-from wrapt import ObjectProxy  # type: ignore[import-untyped]
+from wrapt import ObjectProxy
 
 from .provider import ObserveEmit
 
@@ -300,7 +300,7 @@ class AnthropicStreamAccumulator:
                 self.accumulated["usage"]["output_tokens"] = event.usage.output_tokens
 
 
-class AnthropicStreamCapture(ObjectProxy):  # type: ignore[misc]
+class AnthropicStreamCapture(ObjectProxy[Any]):
     """Capture wrapper for Anthropic sync streams (with stream=True)."""
 
     def __init__(
@@ -333,7 +333,7 @@ class AnthropicStreamCapture(ObjectProxy):  # type: ignore[misc]
             self._self_emit(data)
 
 
-class AnthropicAsyncStreamCapture(ObjectProxy):  # type: ignore[misc]
+class AnthropicAsyncStreamCapture(ObjectProxy[Any]):
     """Capture wrapper for Anthropic async streams (with stream=True)."""
 
     def __init__(
@@ -366,7 +366,7 @@ class AnthropicAsyncStreamCapture(ObjectProxy):  # type: ignore[misc]
             self._self_emit(data)
 
 
-class AnthropicStreamManagerCapture(ObjectProxy):  # type: ignore[misc]
+class AnthropicStreamManagerCapture(ObjectProxy[Any]):
     """Capture wrapper for Anthropic MessageStreamManager (sync .stream())."""
 
     def __init__(
@@ -389,7 +389,7 @@ class AnthropicStreamManagerCapture(ObjectProxy):  # type: ignore[misc]
         return self.__wrapped__.__exit__(*args)
 
 
-class AnthropicStreamManagerCaptureContext(ObjectProxy):  # type: ignore[misc]
+class AnthropicStreamManagerCaptureContext(ObjectProxy[Any]):
     """Context returned by AnthropicStreamManagerCapture.__enter__."""
 
     def __init__(
@@ -471,7 +471,7 @@ class AnthropicStreamManagerCaptureContext(ObjectProxy):  # type: ignore[misc]
             pass
 
 
-class AnthropicAsyncStreamManagerCapture(ObjectProxy):  # type: ignore[misc]
+class AnthropicAsyncStreamManagerCapture(ObjectProxy[Any]):
     """Capture wrapper for Anthropic AsyncMessageStreamManager."""
 
     def __init__(
@@ -494,7 +494,7 @@ class AnthropicAsyncStreamManagerCapture(ObjectProxy):  # type: ignore[misc]
         return await self.__wrapped__.__aexit__(*args)
 
 
-class AnthropicAsyncStreamManagerCaptureContext(ObjectProxy):  # type: ignore[misc]
+class AnthropicAsyncStreamManagerCaptureContext(ObjectProxy[Any]):
     """Context returned by AnthropicAsyncStreamManagerCapture.__aenter__."""
 
     def __init__(

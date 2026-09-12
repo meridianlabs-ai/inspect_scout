@@ -89,22 +89,10 @@
     "noqa:F401": {
       "count": 1,
       "undescribed": 1
-    },
-    "type: ignore[import-untyped]": {
-      "count": 1,
-      "undescribed": 1
-    },
-    "type: ignore[misc]": {
-      "count": 6,
-      "undescribed": 6
     }
   },
   "src/inspect_scout/_observe/providers/google.py": {
     "noqa:F401": {
-      "count": 1,
-      "undescribed": 1
-    },
-    "type: ignore[import-untyped]": {
       "count": 1,
       "undescribed": 1
     }
@@ -113,14 +101,6 @@
     "noqa:F401": {
       "count": 1,
       "undescribed": 1
-    },
-    "type: ignore[import-untyped]": {
-      "count": 1,
-      "undescribed": 1
-    },
-    "type: ignore[misc]": {
-      "count": 4,
-      "undescribed": 4
     }
   },
   "src/inspect_scout/_query/column.py": {

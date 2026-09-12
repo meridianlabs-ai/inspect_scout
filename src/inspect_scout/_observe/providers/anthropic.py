@@ -1,7 +1,8 @@
 """Anthropic SDK provider for capturing LLM calls."""
 
 import json
-from typing import Any, AsyncIterator, Iterator, cast
+from types import TracebackType
+from typing import Any, AsyncIterator, Generic, Iterator, Protocol, TypeVar
 
 from inspect_ai.event import Event, ModelEvent
 from inspect_ai.model._generate_config import GenerateConfig
@@ -10,6 +11,63 @@ from inspect_ai.tool._tool_info import ToolInfo
 from wrapt import ObjectProxy
 
 from .provider import ObserveEmit
+
+_StreamEventT = TypeVar("_StreamEventT")
+_StreamEventT_co = TypeVar("_StreamEventT_co", covariant=True)
+
+
+class _SyncStream(Protocol[_StreamEventT_co]):
+    def __iter__(self) -> Iterator[_StreamEventT_co]: ...
+
+
+class _AsyncStream(Protocol[_StreamEventT_co]):
+    def __aiter__(self) -> AsyncIterator[_StreamEventT_co]: ...
+
+
+class _SyncMessageStream(_SyncStream[_StreamEventT_co], Protocol):
+    @property
+    def current_message_snapshot(self) -> object: ...
+
+    @property
+    def text_stream(self) -> Iterator[str]: ...
+
+    def get_final_message(self) -> object: ...
+
+    def get_final_text(self) -> str: ...
+
+
+class _AsyncMessageStream(_AsyncStream[_StreamEventT_co], Protocol):
+    @property
+    def current_message_snapshot(self) -> object: ...
+
+    @property
+    def text_stream(self) -> AsyncIterator[str]: ...
+
+    async def get_final_message(self) -> object: ...
+
+    async def get_final_text(self) -> str: ...
+
+
+class _SyncStreamManager(Protocol[_StreamEventT_co]):
+    def __enter__(self) -> _SyncMessageStream[_StreamEventT_co]: ...
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> bool | None: ...
+
+
+class _AsyncStreamManager(Protocol[_StreamEventT_co]):
+    async def __aenter__(self) -> _AsyncMessageStream[_StreamEventT_co]: ...
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> bool | None: ...
 
 
 class AnthropicProvider:
@@ -300,12 +358,14 @@ class AnthropicStreamAccumulator:
                 self.accumulated["usage"]["output_tokens"] = event.usage.output_tokens
 
 
-class AnthropicStreamCapture(ObjectProxy[Any]):
+class AnthropicStreamCapture(
+    ObjectProxy[_SyncStream[_StreamEventT]], Generic[_StreamEventT]
+):
     """Capture wrapper for Anthropic sync streams (with stream=True)."""
 
     def __init__(
         self,
-        stream: Any,
+        stream: _SyncStream[_StreamEventT],
         request_kwargs: dict[str, Any],
         emit: ObserveEmit,
     ) -> None:
@@ -314,7 +374,7 @@ class AnthropicStreamCapture(ObjectProxy[Any]):
         self._self_emit = emit
         self._self_accumulator = AnthropicStreamAccumulator()
 
-    def __iter__(self) -> Iterator[Any]:
+    def __iter__(self) -> Iterator[_StreamEventT]:
         error: Exception | None = None
         try:
             for event in self.__wrapped__:
@@ -333,12 +393,14 @@ class AnthropicStreamCapture(ObjectProxy[Any]):
             self._self_emit(data)
 
 
-class AnthropicAsyncStreamCapture(ObjectProxy[Any]):
+class AnthropicAsyncStreamCapture(
+    ObjectProxy[_AsyncStream[_StreamEventT]], Generic[_StreamEventT]
+):
     """Capture wrapper for Anthropic async streams (with stream=True)."""
 
     def __init__(
         self,
-        stream: Any,
+        stream: _AsyncStream[_StreamEventT],
         request_kwargs: dict[str, Any],
         emit: ObserveEmit,
     ) -> None:
@@ -347,7 +409,7 @@ class AnthropicAsyncStreamCapture(ObjectProxy[Any]):
         self._self_emit = emit
         self._self_accumulator = AnthropicStreamAccumulator()
 
-    async def __aiter__(self) -> AsyncIterator[Any]:
+    async def __aiter__(self) -> AsyncIterator[_StreamEventT]:
         error: Exception | None = None
         try:
             async for event in self.__wrapped__:
@@ -366,12 +428,14 @@ class AnthropicAsyncStreamCapture(ObjectProxy[Any]):
             self._self_emit(data)
 
 
-class AnthropicStreamManagerCapture(ObjectProxy[Any]):
+class AnthropicStreamManagerCapture(
+    ObjectProxy[_SyncStreamManager[_StreamEventT]], Generic[_StreamEventT]
+):
     """Capture wrapper for Anthropic MessageStreamManager (sync .stream())."""
 
     def __init__(
         self,
-        stream_manager: Any,
+        stream_manager: _SyncStreamManager[_StreamEventT],
         request_kwargs: dict[str, Any],
         emit: ObserveEmit,
     ) -> None:
@@ -379,22 +443,29 @@ class AnthropicStreamManagerCapture(ObjectProxy[Any]):
         self._self_request_kwargs = request_kwargs
         self._self_emit = emit
 
-    def __enter__(self) -> "AnthropicStreamManagerCaptureContext":
+    def __enter__(self) -> "AnthropicStreamManagerCaptureContext[_StreamEventT]":
         stream = self.__wrapped__.__enter__()
         return AnthropicStreamManagerCaptureContext(
             stream, self._self_request_kwargs, self._self_emit
         )
 
-    def __exit__(self, *args: Any) -> Any:
-        return self.__wrapped__.__exit__(*args)
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> bool | None:
+        return self.__wrapped__.__exit__(exc_type, exc_value, traceback)
 
 
-class AnthropicStreamManagerCaptureContext(ObjectProxy[Any]):
+class AnthropicStreamManagerCaptureContext(
+    ObjectProxy[_SyncMessageStream[_StreamEventT]], Generic[_StreamEventT]
+):
     """Context returned by AnthropicStreamManagerCapture.__enter__."""
 
     def __init__(
         self,
-        stream: Any,
+        stream: _SyncMessageStream[_StreamEventT],
         request_kwargs: dict[str, Any],
         emit: ObserveEmit,
     ) -> None:
@@ -403,7 +474,7 @@ class AnthropicStreamManagerCaptureContext(ObjectProxy[Any]):
         self._self_emit = emit
         self._self_emitted: bool = False
 
-    def _emit_if_needed(self, message: Any, error: Exception | None = None) -> None:
+    def _emit_if_needed(self, message: object, error: Exception | None = None) -> None:
         """Emit once with the given message and optional error."""
         if self._self_emitted:
             return
@@ -416,11 +487,11 @@ class AnthropicStreamManagerCaptureContext(ObjectProxy[Any]):
             data["error"] = error
         self._self_emit(data)
 
-    def _snapshot(self) -> Any:
+    def _snapshot(self) -> object:
         """Return the SDK's partial message snapshot, if exposed."""
-        return getattr(self.__wrapped__, "current_message_snapshot", None)
+        return self.__wrapped__.current_message_snapshot
 
-    def __iter__(self) -> Iterator[Any]:
+    def __iter__(self) -> Iterator[_StreamEventT]:
         error: Exception | None = None
         try:
             for event in self.__wrapped__:
@@ -431,7 +502,7 @@ class AnthropicStreamManagerCaptureContext(ObjectProxy[Any]):
         finally:
             if error is not None:
                 self._emit_if_needed(self._snapshot(), error)
-            elif hasattr(self.__wrapped__, "get_final_message"):
+            else:
                 self._emit_if_needed(self.__wrapped__.get_final_message())
 
     @property
@@ -447,10 +518,10 @@ class AnthropicStreamManagerCaptureContext(ObjectProxy[Any]):
         finally:
             if error is not None:
                 self._emit_if_needed(self._snapshot(), error)
-            elif hasattr(self.__wrapped__, "get_final_message"):
+            else:
                 self._emit_if_needed(self.__wrapped__.get_final_message())
 
-    def get_final_message(self) -> Any:
+    def get_final_message(self) -> object:
         """Get final message and ensure emission."""
         try:
             message = self.__wrapped__.get_final_message()
@@ -463,7 +534,7 @@ class AnthropicStreamManagerCaptureContext(ObjectProxy[Any]):
     def get_final_text(self) -> str:
         """Get final text and ensure emission."""
         self.get_final_message()  # Ensure emission happens
-        return cast(str, self.__wrapped__.get_final_text())
+        return self.__wrapped__.get_final_text()
 
     def until_done(self) -> None:
         """Consume stream to completion."""
@@ -471,12 +542,14 @@ class AnthropicStreamManagerCaptureContext(ObjectProxy[Any]):
             pass
 
 
-class AnthropicAsyncStreamManagerCapture(ObjectProxy[Any]):
+class AnthropicAsyncStreamManagerCapture(
+    ObjectProxy[_AsyncStreamManager[_StreamEventT]], Generic[_StreamEventT]
+):
     """Capture wrapper for Anthropic AsyncMessageStreamManager."""
 
     def __init__(
         self,
-        stream_manager: Any,
+        stream_manager: _AsyncStreamManager[_StreamEventT],
         request_kwargs: dict[str, Any],
         emit: ObserveEmit,
     ) -> None:
@@ -484,22 +557,31 @@ class AnthropicAsyncStreamManagerCapture(ObjectProxy[Any]):
         self._self_request_kwargs = request_kwargs
         self._self_emit = emit
 
-    async def __aenter__(self) -> "AnthropicAsyncStreamManagerCaptureContext":
+    async def __aenter__(
+        self,
+    ) -> "AnthropicAsyncStreamManagerCaptureContext[_StreamEventT]":
         stream = await self.__wrapped__.__aenter__()
         return AnthropicAsyncStreamManagerCaptureContext(
             stream, self._self_request_kwargs, self._self_emit
         )
 
-    async def __aexit__(self, *args: Any) -> Any:
-        return await self.__wrapped__.__aexit__(*args)
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> bool | None:
+        return await self.__wrapped__.__aexit__(exc_type, exc_value, traceback)
 
 
-class AnthropicAsyncStreamManagerCaptureContext(ObjectProxy[Any]):
+class AnthropicAsyncStreamManagerCaptureContext(
+    ObjectProxy[_AsyncMessageStream[_StreamEventT]], Generic[_StreamEventT]
+):
     """Context returned by AnthropicAsyncStreamManagerCapture.__aenter__."""
 
     def __init__(
         self,
-        stream: Any,
+        stream: _AsyncMessageStream[_StreamEventT],
         request_kwargs: dict[str, Any],
         emit: ObserveEmit,
     ) -> None:
@@ -508,7 +590,7 @@ class AnthropicAsyncStreamManagerCaptureContext(ObjectProxy[Any]):
         self._self_emit = emit
         self._self_emitted: bool = False
 
-    def _emit_if_needed(self, message: Any, error: Exception | None = None) -> None:
+    def _emit_if_needed(self, message: object, error: Exception | None = None) -> None:
         """Emit once with the given message and optional error."""
         if self._self_emitted:
             return
@@ -521,11 +603,11 @@ class AnthropicAsyncStreamManagerCaptureContext(ObjectProxy[Any]):
             data["error"] = error
         self._self_emit(data)
 
-    def _snapshot(self) -> Any:
+    def _snapshot(self) -> object:
         """Return the SDK's partial message snapshot, if exposed."""
-        return getattr(self.__wrapped__, "current_message_snapshot", None)
+        return self.__wrapped__.current_message_snapshot
 
-    async def __aiter__(self) -> AsyncIterator[Any]:
+    async def __aiter__(self) -> AsyncIterator[_StreamEventT]:
         error: Exception | None = None
         try:
             async for event in self.__wrapped__:
@@ -536,7 +618,7 @@ class AnthropicAsyncStreamManagerCaptureContext(ObjectProxy[Any]):
         finally:
             if error is not None:
                 self._emit_if_needed(self._snapshot(), error)
-            elif hasattr(self.__wrapped__, "get_final_message"):
+            else:
                 self._emit_if_needed(await self.__wrapped__.get_final_message())
 
     @property
@@ -555,12 +637,12 @@ class AnthropicAsyncStreamManagerCaptureContext(ObjectProxy[Any]):
             finally:
                 if error is not None:
                     parent._emit_if_needed(parent._snapshot(), error)
-                elif hasattr(parent.__wrapped__, "get_final_message"):
+                else:
                     parent._emit_if_needed(await parent.__wrapped__.get_final_message())
 
         return _text_stream()
 
-    async def get_final_message(self) -> Any:
+    async def get_final_message(self) -> object:
         """Get final message and ensure emission."""
         try:
             message = await self.__wrapped__.get_final_message()
@@ -573,7 +655,7 @@ class AnthropicAsyncStreamManagerCaptureContext(ObjectProxy[Any]):
     async def get_final_text(self) -> str:
         """Get final text and ensure emission."""
         await self.get_final_message()  # Ensure emission happens
-        return cast(str, await self.__wrapped__.get_final_text())
+        return await self.__wrapped__.get_final_text()
 
     async def until_done(self) -> None:
         """Consume stream to completion."""

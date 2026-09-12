@@ -502,6 +502,13 @@ class _FakeAnthropicMessageStream:
             pass
         return self._snapshot
 
+    def get_final_text(self) -> str:
+        return "".join(
+            block.text
+            for block in self.get_final_message().content
+            if block.type == "text"
+        )
+
     def _apply(self, ev: Any) -> None:
         from anthropic.types import TextBlock
 
@@ -546,6 +553,9 @@ class _FakeAnthropicAsyncMessageStream:
             pass
         return self._sync.current_message_snapshot
 
+    async def get_final_text(self) -> str:
+        return self._sync.get_final_text()
+
 
 def _anthropic_manager_partial_text(data: dict[str, Any]) -> str:
     msg = data["response"]
@@ -562,7 +572,9 @@ def test_anthropic_sync_stream_manager_emits_partial_on_error(via: str) -> None:
     captures, emit = _record_emit()
     error = _anthropic_error()
     inner = _FakeAnthropicMessageStream(_anthropic_text_chunks(), error)
-    ctx = AnthropicStreamManagerCaptureContext(inner, {"model": "claude-test"}, emit)
+    ctx: AnthropicStreamManagerCaptureContext[object] = (
+        AnthropicStreamManagerCaptureContext(inner, {"model": "claude-test"}, emit)
+    )
 
     with pytest.raises(type(error)):
         if via == "iter":
@@ -590,8 +602,8 @@ async def test_anthropic_async_stream_manager_emits_partial_on_error(via: str) -
     captures, emit = _record_emit()
     error = _anthropic_error()
     inner = _FakeAnthropicAsyncMessageStream(_anthropic_text_chunks(), error)
-    ctx = AnthropicAsyncStreamManagerCaptureContext(
-        inner, {"model": "claude-test"}, emit
+    ctx: AnthropicAsyncStreamManagerCaptureContext[object] = (
+        AnthropicAsyncStreamManagerCaptureContext(inner, {"model": "claude-test"}, emit)
     )
 
     with pytest.raises(type(error)):
@@ -617,7 +629,9 @@ def test_anthropic_sync_stream_manager_no_double_emit() -> None:
 
     captures, emit = _record_emit()
     inner = _FakeAnthropicMessageStream(_anthropic_text_chunks(), error=None)
-    ctx = AnthropicStreamManagerCaptureContext(inner, {"model": "claude-test"}, emit)
+    ctx: AnthropicStreamManagerCaptureContext[object] = (
+        AnthropicStreamManagerCaptureContext(inner, {"model": "claude-test"}, emit)
+    )
 
     for _ in ctx:
         pass

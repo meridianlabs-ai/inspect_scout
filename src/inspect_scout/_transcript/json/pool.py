@@ -12,6 +12,18 @@ from typing import Any
 from .reducer import ParseState
 
 
+def slice_positions(start: int, end: int, pool_len: int) -> range:
+    """Positions that ``pool[start:end]`` selects from a pool of ``pool_len``.
+
+    Spool-backed callers index by position rather than holding the list, so
+    they must enumerate. A bare ``range(start, end)`` is not slicing: it
+    addresses the wrong entries for a negative bound and walks the full span
+    for a huge one.
+    """
+    start_index, stop_index, _ = slice(start, end).indices(pool_len)
+    return range(start_index, stop_index)
+
+
 def _expand_refs_raw(refs: list[list[int]], pool: list[Any]) -> list[Any]:
     """Expand range-encoded refs against a pool.
 

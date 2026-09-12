@@ -33,6 +33,15 @@ class LazyJSONDict(dict[str, Any]):
     Note: Iteration methods like .items() and .values() return raw values
     without triggering parsing. Only direct key access triggers parsing.
 
+    Serialize with ``to_json_string()``, which splices unparsed values in
+    verbatim -- correct, and cheaper than a parse/serialize round-trip.
+    Warning: a *generic* serializer cannot do this. ``json.dumps`` and pydantic
+    walk the mapping, so an unaccessed key comes out as its raw JSON *string*
+    rather than the object it encodes -- silently, with no error. Only
+    substitute one into a value that a generic serializer will re-serialize if
+    every JSON key is read first; otherwise parse incrementally instead (see
+    ``StreamParseResult.metadata``).
+
     Examples:
         Automatic JSON detection:
         >>> data = LazyJSONDict({"config": '{"key": "value"}', "name": "test"})

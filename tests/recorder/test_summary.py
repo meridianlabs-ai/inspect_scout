@@ -8,7 +8,12 @@ from inspect_scout._recorder.validation import (
     ValidationResults,
     compute_validation_metrics,
 )
-from inspect_scout._scanner.result import Result, ResultReport, as_resultset
+from inspect_scout._scanner.result import (
+    Result,
+    ResultReport,
+    ResultValidation,
+    as_resultset,
+)
 from inspect_scout._transcript.types import Transcript
 from inspect_scout._validation.validate import is_positive_value
 
@@ -352,3 +357,153 @@ class TestValidationResults:
         assert len(results.entries) == 2
         assert results.metrics is None
         assert results.metrics_by_key is None
+
+
+class TestSummaryValidationDedup:
+    """_report replaces validation entries whose case id was already reported.
+
+    A resumed scan retries transcripts that errored, re-reporting results that
+    already validated before the interruption (the summary is seeded from the
+    scan dir on resume). Without replacement the duplicate entries double-count
+    those cases in the confusion-matrix metrics.
+    """
+
+    def _make_validated_report(self, input_ids: list[str], valid: bool) -> ResultReport:
+        """Helper: create a ResultReport validated against target=True."""
+        return ResultReport(
+            input_type="transcript",
+            input_ids=input_ids,
+            input=Transcript(transcript_id="t1"),
+            result=Result(value=valid),
+            validation=ResultValidation(target=True, valid=valid),
+            error=None,
+            events=[],
+            model_usage={},
+        )
+
+    def test_retry_replaces_entry_for_same_case(self) -> None:
+        summary = Summary(scanners=["scanner"])
+        summary._report(
+            None,  # type: ignore[arg-type]
+            "scanner",
+            [self._make_validated_report(["m1"], valid=True)],
+            None,
+        )
+        # retry of the same case with a different verdict
+        summary._report(
+            None,  # type: ignore[arg-type]
+            "scanner",
+            [self._make_validated_report(["m1"], valid=False)],
+            None,
+        )
+        validation = summary.scanners["scanner"].validation
+        assert validation is not None
+        assert len(validation.entries) == 1
+        assert validation.entries[0].valid is False  # last write wins
+        assert validation.metrics is not None
+        assert validation.metrics.total == 1
+        assert validation.metrics.tp == 0
+        assert validation.metrics.fn == 1
+
+    def test_distinct_cases_accumulate(self) -> None:
+        summary = Summary(scanners=["scanner"])
+        summary._report(
+            None,  # type: ignore[arg-type]
+            "scanner",
+            [self._make_validated_report(["m1"], valid=True)],
+            None,
+        )
+        summary._report(
+            None,  # type: ignore[arg-type]
+            "scanner",
+            [self._make_validated_report(["m2"], valid=True)],
+            None,
+        )
+        validation = summary.scanners["scanner"].validation
+        assert validation is not None
+        assert len(validation.entries) == 2
+        assert validation.metrics is not None
+        assert validation.metrics.total == 2
+
+    def test_list_ids_replace_by_tuple_identity(self) -> None:
+        summary = Summary(scanners=["scanner"])
+        for _ in range(2):
+            summary._report(
+                None,  # type: ignore[arg-type]
+                "scanner",
+                [self._make_validated_report(["m1", "m2"], valid=True)],
+                None,
+            )
+        validation = summary.scanners["scanner"].validation
+        assert validation is not None
+        assert len(validation.entries) == 1
+        assert validation.metrics is not None
+        assert validation.metrics.total == 1
+
+    def test_retry_supersedes_seeded_duplicates(self) -> None:
+        """A retry supersedes all prior entries for its case ids.
+
+        On resume the summary is seeded from persisted JSON, which may
+        already hold duplicates recorded before deduplication existed.
+        """
+        seeded = Summary.model_validate(
+            {
+                "complete": False,
+                "scanners": {
+                    "scanner": {
+                        "scans": 1,
+                        "validation": {
+                            "entries": [
+                                {"id": "m1", "target": True, "valid": True},
+                                {"id": "m1", "target": True, "valid": True},
+                            ]
+                        },
+                    }
+                },
+            }
+        )
+        seeded._report(
+            None,  # type: ignore[arg-type]
+            "scanner",
+            [self._make_validated_report(["m1"], valid=True)],
+            None,
+        )
+        validation = seeded.scanners["scanner"].validation
+        assert validation is not None
+        assert len(validation.entries) == 1
+        assert validation.metrics is not None
+        assert validation.metrics.total == 1
+
+    def test_same_case_within_one_report_is_kept(self) -> None:
+        """Same-id entries within a single report coexist.
+
+        Only prior reports are superseded, mirroring the parquet layer's
+        per-transcript file replacement.
+        """
+        summary = Summary(scanners=["scanner"])
+        summary._report(
+            None,  # type: ignore[arg-type]
+            "scanner",
+            [
+                self._make_validated_report(["m1"], valid=True),
+                self._make_validated_report(["m1"], valid=False),
+            ],
+            None,
+        )
+        validation = summary.scanners["scanner"].validation
+        assert validation is not None
+        assert len(validation.entries) == 2
+
+    def test_entries_without_identity_are_kept(self) -> None:
+        """Entries with no input ids (id == '') have no case identity."""
+        summary = Summary(scanners=["scanner"])
+        for _ in range(2):
+            summary._report(
+                None,  # type: ignore[arg-type]
+                "scanner",
+                [self._make_validated_report([], valid=True)],
+                None,
+            )
+        validation = summary.scanners["scanner"].validation
+        assert validation is not None
+        assert len(validation.entries) == 2

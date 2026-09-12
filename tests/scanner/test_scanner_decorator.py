@@ -1,13 +1,21 @@
 """Tests for the scanner decorator functionality."""
 
+import functools
 from collections.abc import AsyncIterator, Callable
 from typing import Any
 
 import pytest
 from inspect_ai._util.registry import registry_info
 from inspect_ai.model._chat_message import ChatMessage
+from inspect_scout import llm_scanner
 from inspect_scout._scanner.result import Result
-from inspect_scout._scanner.scanner import SCANNER_CONFIG, Scanner, scanner
+from inspect_scout._scanner.scanner import (
+    SCANNER_CONFIG,
+    Scanner,
+    scanner,
+    scanner_supports_streaming,
+)
+from inspect_scout._transcript.types import Transcript
 
 # Scanner decorator tests
 
@@ -290,3 +298,49 @@ def test_multiple_scanners_different_names() -> None:
 
     assert registry_info(instance1).name == "scanner_one"
     assert registry_info(instance2).name == "scanner_two"
+
+
+def test_streaming_vouch_does_not_leak_through_functools_wraps() -> None:
+    """A wrapper that adds its own transcript access must not inherit the inner vouch.
+
+    `functools.wraps` copies `__dict__`. If the vouch lived there, this wrapper
+    would receive a handle and `not transcript.messages` -- a bound method on a
+    handle -- would be a silent wrong answer.
+    """
+
+    @scanner(messages="all")
+    def wrapping() -> Scanner[Transcript]:
+        inner = llm_scanner(question="q?", answer="boolean")
+
+        @functools.wraps(inner)
+        async def scan(transcript: Transcript) -> Result | list[Result]:
+            if not transcript.messages:
+                return Result(value=False)
+            return await inner(transcript)
+
+        return scan
+
+    assert scanner_supports_streaming(wrapping()) is False
+
+
+def test_direct_llm_scanner_wrapper_streams() -> None:
+    """Returning llm_scanner's own scan passes its vouch through: nothing else reads the transcript."""
+
+    @scanner(messages="all")
+    def direct() -> Scanner[Transcript]:
+        return llm_scanner(question="q?", answer="boolean")
+
+    assert scanner_supports_streaming(direct()) is True
+
+
+def test_callable_question_is_vouched_against() -> None:
+    """A callable question needs the whole transcript, so llm_scanner vouches against streaming."""
+
+    async def question(t: Transcript) -> str:
+        return "q?"
+
+    @scanner(messages="all")
+    def dynamic() -> Scanner[Transcript]:
+        return llm_scanner(question=question, answer="boolean")
+
+    assert scanner_supports_streaming(dynamic()) is False

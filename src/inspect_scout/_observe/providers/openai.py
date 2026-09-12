@@ -1,15 +1,18 @@
 """OpenAI SDK provider for capturing LLM calls."""
 
-from typing import Any, AsyncIterator, Iterator
+from collections.abc import AsyncIterable, Iterable
+from typing import Any, AsyncIterator, Iterator, TypeVar
 
 from inspect_ai.event import Event, ModelEvent
 from inspect_ai.model import StopReason
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.tool._tool_choice import ToolChoice
 from inspect_ai.tool._tool_info import ToolInfo
-from wrapt import ObjectProxy  # type: ignore[import-untyped]
 
+from ._wrapt import TypedObjectProxy, wrap_function_wrapper
 from .provider import ObserveEmit
+
+_StreamEventT = TypeVar("_StreamEventT")
 
 
 def _stop_reason_from_openai_error(error: Exception) -> StopReason | None:
@@ -73,8 +76,6 @@ class OpenAIProvider:
                 "The 'openai' package is required to use provider='openai'. "
                 "Install it with: pip install openai"
             ) from None
-
-        from wrapt import wrap_function_wrapper
 
         def _is_stream_type(response: Any, module: str, class_name: str) -> bool:
             """Check if response is an instance of a stream class.
@@ -518,12 +519,12 @@ class OpenAIChatStreamAccumulator:
         return self.accumulated
 
 
-class OpenAIChatStreamCapture(ObjectProxy):  # type: ignore[misc]
+class OpenAIChatStreamCapture(TypedObjectProxy[Iterable[_StreamEventT]]):
     """Capture wrapper for OpenAI Chat Completions sync streams."""
 
     def __init__(
         self,
-        stream: Any,
+        stream: Iterable[_StreamEventT],
         request_kwargs: dict[str, Any],
         emit: ObserveEmit,
     ) -> None:
@@ -532,7 +533,7 @@ class OpenAIChatStreamCapture(ObjectProxy):  # type: ignore[misc]
         self._self_emit = emit
         self._self_accumulator = OpenAIChatStreamAccumulator()
 
-    def __iter__(self) -> Iterator[Any]:
+    def __iter__(self) -> Iterator[_StreamEventT]:
         error: Exception | None = None
         try:
             for chunk in self.__wrapped__:
@@ -552,12 +553,12 @@ class OpenAIChatStreamCapture(ObjectProxy):  # type: ignore[misc]
             self._self_emit(data)
 
 
-class OpenAIChatAsyncStreamCapture(ObjectProxy):  # type: ignore[misc]
+class OpenAIChatAsyncStreamCapture(TypedObjectProxy[AsyncIterable[_StreamEventT]]):
     """Capture wrapper for OpenAI Chat Completions async streams."""
 
     def __init__(
         self,
-        stream: Any,
+        stream: AsyncIterable[_StreamEventT],
         request_kwargs: dict[str, Any],
         emit: ObserveEmit,
     ) -> None:
@@ -566,7 +567,7 @@ class OpenAIChatAsyncStreamCapture(ObjectProxy):  # type: ignore[misc]
         self._self_emit = emit
         self._self_accumulator = OpenAIChatStreamAccumulator()
 
-    async def __aiter__(self) -> AsyncIterator[Any]:
+    async def __aiter__(self) -> AsyncIterator[_StreamEventT]:
         error: Exception | None = None
         try:
             async for chunk in self.__wrapped__:
@@ -586,12 +587,12 @@ class OpenAIChatAsyncStreamCapture(ObjectProxy):  # type: ignore[misc]
             self._self_emit(data)
 
 
-class OpenAIResponsesStreamCapture(ObjectProxy):  # type: ignore[misc]
+class OpenAIResponsesStreamCapture(TypedObjectProxy[Iterable[_StreamEventT]]):
     """Capture wrapper for OpenAI Responses API sync streams."""
 
     def __init__(
         self,
-        stream: Any,
+        stream: Iterable[_StreamEventT],
         request_kwargs: dict[str, Any],
         emit: ObserveEmit,
     ) -> None:
@@ -600,7 +601,7 @@ class OpenAIResponsesStreamCapture(ObjectProxy):  # type: ignore[misc]
         self._self_emit = emit
         self._self_response_snapshot: Any = None
 
-    def __iter__(self) -> Iterator[Any]:
+    def __iter__(self) -> Iterator[_StreamEventT]:
         error: Exception | None = None
         try:
             for event in self.__wrapped__:
@@ -629,12 +630,12 @@ class OpenAIResponsesStreamCapture(ObjectProxy):  # type: ignore[misc]
                 self._self_emit(data)
 
 
-class OpenAIResponsesAsyncStreamCapture(ObjectProxy):  # type: ignore[misc]
+class OpenAIResponsesAsyncStreamCapture(TypedObjectProxy[AsyncIterable[_StreamEventT]]):
     """Capture wrapper for OpenAI Responses API async streams."""
 
     def __init__(
         self,
-        stream: Any,
+        stream: AsyncIterable[_StreamEventT],
         request_kwargs: dict[str, Any],
         emit: ObserveEmit,
     ) -> None:
@@ -643,7 +644,7 @@ class OpenAIResponsesAsyncStreamCapture(ObjectProxy):  # type: ignore[misc]
         self._self_emit = emit
         self._self_response_snapshot: Any = None
 
-    async def __aiter__(self) -> AsyncIterator[Any]:
+    async def __aiter__(self) -> AsyncIterator[_StreamEventT]:
         error: Exception | None = None
         try:
             async for event in self.__wrapped__:

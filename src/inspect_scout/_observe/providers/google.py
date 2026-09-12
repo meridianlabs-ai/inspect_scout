@@ -18,6 +18,7 @@ from inspect_ai.tool._tools._web_search._web_search import (
     web_search,
 )
 
+from ._wrapt import wrap_function_wrapper
 from .provider import ObserveEmit
 
 
@@ -37,8 +38,6 @@ class GoogleProvider:
                 "The 'google-genai' package is required to use provider='google'. "
                 "Install it with: pip install google-genai"
             ) from None
-
-        from wrapt import wrap_function_wrapper  # type: ignore[import-untyped]
 
         # Check if response is a stream (generator)
         def is_sync_stream(response: Any) -> bool:

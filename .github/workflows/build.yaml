@@ -119,6 +119,62 @@ jobs:
         if: ${{ !cancelled() }}
         run: uv cache prune --ci
 
+  wrapt-compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.14"]
+        dependencies: [released, main]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          version: "0.9.4"
+      - name: Install the supported dependency graph
+        env:
+          DEPENDENCIES: ${{ matrix.dependencies }}
+        run: |
+          uv venv --python "$(which python)"
+          if [ "$DEPENDENCIES" = released ]; then
+            # Keep the release pin aligned with Scout's inspect-ai dependency floor.
+            uv pip install '.[dev]' 'inspect-ai==0.3.263' 'wrapt==1.17.3'
+          else
+            uv pip install '.[dev]' 'inspect-ai @ git+https://github.com/UKGovernmentBEIS/inspect_ai.git' 'wrapt>=2,<3'
+          fi
+          uv pip check
+          .venv/bin/python - <<'PY'
+          import os
+          from importlib.metadata import version
+
+          inspect_version = version("inspect-ai")
+          wrapt_version = version("wrapt")
+          print(f"inspect-ai={inspect_version}, wrapt={wrapt_version}")
+          if os.environ["DEPENDENCIES"] == "released":
+              assert inspect_version == "0.3.263"
+              assert wrapt_version == "1.17.3"
+          else:
+              assert wrapt_version.split(".")[0] == "2"
+          PY
+      - name: Check provider and SDK type contracts
+        run: .venv/bin/mypy src/inspect_scout/_observe/providers tests/observe/test_wrapt_compatibility.py tests/observe/test_observe_stream_errors.py
+      - name: Test with the C extension
+        env:
+          WRAPT_DISABLE_EXTENSIONS: ""
+        run: |
+          .venv/bin/python -c 'from wrapt import ObjectProxy; from wrapt._wrappers import ObjectProxy as CProxy; assert issubclass(ObjectProxy, CProxy)'
+          .venv/bin/pytest -n 0 tests/observe/test_wrapt_compatibility.py tests/observe/test_observe_stream_errors.py
+      - name: Test the pure-Python implementation
+        env:
+          WRAPT_DISABLE_EXTENSIONS: "true"
+        run: |
+          .venv/bin/python -c 'from wrapt import ObjectProxy; from wrapt.wrappers import ObjectProxy as PythonProxy; assert issubclass(ObjectProxy, PythonProxy)'
+          .venv/bin/pytest -n 0 tests/observe/test_wrapt_compatibility.py tests/observe/test_observe_stream_errors.py
+
   py-build:
     runs-on: ubuntu-latest
     timeout-minutes: 15

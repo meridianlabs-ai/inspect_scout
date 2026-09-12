@@ -1,4 +1,5 @@
 import inspect
+import weakref
 from dataclasses import dataclass, field
 from functools import wraps
 from pathlib import Path
@@ -13,6 +14,7 @@ from typing import (
     Sequence,
     TypeVar,
     cast,
+    get_type_hints,
 )
 
 from inspect_ai._util._async import is_callable_coroutine
@@ -39,13 +41,14 @@ from typing_extensions import overload
 from inspect_scout._util.decorator import fixup_wrapper_annotations, split_spec
 
 from .._concurrency._mp_common import register_plugin_directory
+from .._transcript.handle import is_transcript_handle_type
 from .._transcript.types import (
     EventType,
     MessageType,
     Transcript,
     TranscriptContent,
 )
-from ._loaders import create_implicit_loader
+from ._loaders import _matches_transcript_or_handle, create_implicit_loader
 from .filter import (
     normalize_events_filter,
     normalize_messages_filter,
@@ -63,6 +66,28 @@ SCANNER_VERSION = "scanner_version"
 SCANNER_FILE_ATTR = "___scanner_file___"
 SCANNER_NAME_ATTR = "___scanner_name___"
 SCANNER_CONTENT_ATTR = "___scanner_content___"
+# Scan functions whose author has vouched for (True) or against (False)
+# receiving a streaming `TranscriptHandle`. Keyed by identity rather than
+# stored on the function: `functools.wraps` copies `__dict__`, so an attribute
+# would leak onto a wrapper that adds its own transcript access.
+_STREAMING_SUPPORT: "weakref.WeakKeyDictionary[Callable[..., Any], bool]" = (
+    weakref.WeakKeyDictionary()
+)
+
+
+def mark_streaming_support(fn: Callable[..., Any], supported: bool) -> None:
+    """Record whether `fn` can be handed a streaming `TranscriptHandle`.
+
+    Called by the code that constructs a scan function -- `llm_scanner` does so
+    per instance, since its safety depends on the arguments it was built with.
+    """
+    _STREAMING_SUPPORT[fn] = supported
+
+
+def streaming_support_of(fn: Callable[..., Any]) -> bool | None:
+    """The recorded verdict for `fn`, or None if nobody has vouched either way."""
+    return _STREAMING_SUPPORT.get(fn)
+
 
 # core types
 # Use bounded TypeVar (contravariant for scanner input)
@@ -97,6 +122,14 @@ class ScannerConfig:
     content: TranscriptContent = field(default_factory=TranscriptContent)
     # TODO: I want to make loader non-optional, but this obviously isn't right
     loader: Loader[ScannerInput] = field(default=cast(Loader[ScannerInput], None))
+    supports_streaming: bool = False
+    """Whether the scanner can operate on a streaming `TranscriptHandle`
+    without a materialized `Transcript`.
+
+    Set per-instance (rather than as a class-level capability) because
+    streaming-safety depends on runtime config - e.g. callable question
+    templates require full transcripts.
+    """
 
 
 ScannerFactory = Callable[P, Scanner[T]]
@@ -110,8 +143,10 @@ def scanner(
     messages: Literal["all"],
     events: list[EventType],
     loader: Loader[Transcript] | None = ...,
+    metadata: bool | None = ...,
     name: str | None = ...,
     version: int = 0,
+    supports_streaming: bool | None = ...,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -122,8 +157,10 @@ def scanner(
     messages: list[MessageType],
     events: Literal["all"],
     loader: Loader[Transcript] | None = ...,
+    metadata: bool | None = ...,
     name: str | None = ...,
     version: int = 0,
+    supports_streaming: bool | None = ...,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -134,8 +171,10 @@ def scanner(
     messages: list[MessageType],
     events: list[EventType],
     loader: Loader[Transcript] | None = ...,
+    metadata: bool | None = ...,
     name: str | None = ...,
     version: int = 0,
+    supports_streaming: bool | None = ...,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -146,8 +185,10 @@ def scanner(
     messages: Literal["all"],
     events: Literal["all"],
     loader: Loader[Transcript] | None = ...,
+    metadata: bool | None = ...,
     name: str | None = ...,
     version: int = 0,
+    supports_streaming: bool | None = ...,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -161,8 +202,10 @@ def scanner(
     messages: list[MessageType],
     events: None = ...,
     loader: Loader[list[ChatMessage]] | None = ...,
+    metadata: bool | None = ...,
     name: str | None = ...,
     version: int = 0,
+    supports_streaming: bool | None = ...,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -173,8 +216,10 @@ def scanner(
     events: list[EventType],
     messages: None = ...,
     loader: Loader[list[Event]] | None = ...,
+    metadata: bool | None = ...,
     name: str | None = ...,
     version: int = 0,
+    supports_streaming: bool | None = ...,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -188,8 +233,10 @@ def scanner(
     messages: Literal["all"],
     events: None = ...,
     loader: Loader[ChatMessage] | None = ...,
+    metadata: bool | None = ...,
     name: str | None = ...,
     version: int = 0,
+    supports_streaming: bool | None = ...,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -200,8 +247,10 @@ def scanner(
     events: Literal["all"],
     messages: None = ...,
     loader: Loader[Event] | None = ...,
+    metadata: bool | None = ...,
     name: str | None = ...,
     version: int = 0,
+    supports_streaming: bool | None = ...,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -215,8 +264,10 @@ def scanner(
     loader: Loader[Transcript] | None = ...,
     messages: list[MessageType] | Literal["all"] | None = ...,
     events: list[EventType] | Literal["all"] | None = ...,
+    metadata: bool | None = ...,
     name: str | None = ...,
     version: int = 0,
+    supports_streaming: bool | None = ...,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -236,8 +287,10 @@ def scanner(
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
     timeline: Literal[True] | list[EventType] | Literal["all"] | None = None,
+    metadata: bool | None = None,
     name: str | None = None,
     version: int = 0,
+    supports_streaming: bool | None = ...,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = ...,
@@ -251,8 +304,10 @@ def scanner(
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
     timeline: Literal[True] | list[EventType] | Literal["all"] | None = None,
+    metadata: bool | None = None,
     name: str | None = None,
     version: int = 0,
+    supports_streaming: bool | None = None,
     metrics: Sequence[Metric | Mapping[str, Sequence[Metric]]]
     | Mapping[str, Sequence[Metric]]
     | None = None,
@@ -272,8 +327,21 @@ def scanner(
        messages: Message types to scan.
        events: Event types to scan.
        timeline: Event types to include in timelines.
+       metadata: Whether to read the sample's metadata, target and scores from
+           the log body (default). Pass False if the scanner never reads
+           `transcript.metadata["sample_metadata"]`, `["target"]` or
+           `["scores"]`; the summary values are kept instead. Ignored with a
+           custom `loader=` -- set `metadata=` on the `@loader` instead.
        name: Scanner name (defaults to function name).
        version: Scanner version (defaults to 0).
+       supports_streaming: Whether the scanner can read its input through a
+          streaming `TranscriptHandle` instead of a materialized `Transcript`.
+          Leave unset to defer to the scan function's own verdict (`llm_scanner`
+          records one per instance, so wrapping it needs no declaration). `True`
+          grants permission -- the scan function must accept
+          `Transcript | TranscriptHandle` -- and a verdict against streaming
+          still revokes it; `False` forbids it. A scan streams only when every
+          scanner sharing the transcript is permitted.
        metrics: One or more metrics to calculate over the values
            (only used if scanner is converted to a scorer via `as_scorer()`).
 
@@ -331,6 +399,7 @@ def scanner(
             inferred_messages = messages
             inferred_events = events
             inferred_timeline = timeline
+            inferred_metadata = metadata
 
             # Only infer if no loader and no explicit filters
             if (
@@ -379,6 +448,8 @@ def scanner(
                     inferred_events = override.events
                 if override.timeline is not None:
                     inferred_timeline = override.timeline
+                if override.metadata is not None:
+                    inferred_metadata = override.metadata
 
             # Validate scanner signature matches filters
             # Only validate if we have filters (not just a custom loader)
@@ -403,6 +474,8 @@ def scanner(
                 scanner_config.content.events = inferred_events
             if inferred_timeline is not None:
                 scanner_config.content.timeline = inferred_timeline
+            if inferred_metadata is not None:
+                scanner_config.content.metadata = inferred_metadata
             if loader is not None:
                 # TODO: how are we ensuring that the writer of a custom loader sets
                 # the proper content filter? We could do it for them, but I'm not
@@ -411,6 +484,20 @@ def scanner(
             else:
                 scanner_config.loader = create_implicit_loader(
                     scanner_fn, scanner_config.content
+                )
+
+            vouched = streaming_support_of(scanner_fn)
+            if supports_streaming is None:
+                # Undeclared: defer to the scan function's author. Every
+                # documented `return llm_scanner(...)` wrapper streams this way.
+                scanner_config.supports_streaming = bool(vouched)
+            else:
+                # Declared: the declaration grants permission and the author's
+                # verdict can only revoke it. Neither False is ever overridden.
+                if supports_streaming:
+                    _validate_streaming_declaration(scanner_fn)
+                scanner_config.supports_streaming = (
+                    supports_streaming and vouched is not False
                 )
 
             registry_tag(
@@ -465,6 +552,61 @@ def scanner_version(scanner: Scanner[Any]) -> int:
 
 def config_for_scanner(scanner: Scanner[Any]) -> ScannerConfig:
     return cast(ScannerConfig, registry_info(scanner).metadata[SCANNER_CONFIG])
+
+
+def _validate_streaming_declaration(scanner_fn: Callable[..., Any]) -> None:
+    """`supports_streaming=True` requires a scan function that can accept a handle.
+
+    A `Transcript`-only scan function handed a handle fails silently in the
+    worst case (`transcript.messages` is a bound method there, always truthy),
+    so the declared first-parameter annotation is verified when the factory
+    runs, and the declaration is refused whenever that annotation cannot be
+    trusted -- it does not resolve, or `functools.wraps` copied it from some
+    other function.
+    """
+    if getattr(scanner_fn, "__wrapped__", None) is not None:
+        raise TypeError(
+            f"@scanner(supports_streaming=True): {scanner_fn.__qualname__} carries "
+            "__wrapped__ (functools.wraps copies the wrapped function's "
+            "annotations), so its declaration cannot be verified; drop @wraps and "
+            "annotate the wrapper's transcript parameter yourself."
+        )
+    params = list(inspect.signature(scanner_fn).parameters)
+    try:
+        hints = get_type_hints(scanner_fn)
+    except Exception as ex:
+        raise TypeError(
+            f"@scanner(supports_streaming=True): could not resolve "
+            f"{scanner_fn.__qualname__}'s type hints: {ex}"
+        ) from ex
+    annotation = hints.get(params[0]) if params else None
+    if annotation is None or not (
+        is_transcript_handle_type(annotation)
+        or _matches_transcript_or_handle(annotation)
+    ):
+        description = (
+            "has no type annotation"
+            if annotation is None
+            else f"is annotated {annotation!r}"
+        )
+        raise TypeError(
+            f"@scanner(supports_streaming=True): {scanner_fn.__qualname__}'s first "
+            f"parameter {description}; a streaming scanner must accept "
+            "`Transcript | TranscriptHandle`."
+        )
+
+
+def scanner_supports_streaming(scanner: Scanner[Any]) -> bool:
+    """Whether a scanner can operate on a streaming `TranscriptHandle`.
+
+    Prefers the registered `ScannerConfig`, falling back to the identity-keyed
+    vouch registry (`streaming_support_of`) for direct-call cases with no
+    registered config.
+    """
+    try:
+        return config_for_scanner(scanner).supports_streaming
+    except (ValueError, KeyError):
+        return streaming_support_of(scanner) or False
 
 
 def scanners_from_file(file: str, scanner_args: dict[str, Any]) -> list[Scanner[Any]]:

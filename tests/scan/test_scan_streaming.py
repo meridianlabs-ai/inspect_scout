@@ -1,0 +1,285 @@
+"""End-to-end scan through the streaming (spooled handle) seam.
+
+Forces every eval-log transcript through ``SpooledTranscriptHandle`` by
+monkeypatching the streaming byte threshold to 0, runs a real ``scan()`` with
+handle-capable ``llm_scanner`` scanners, and asserts both that results are
+recorded correctly and that the streaming path was actually taken -- each
+shared spooled handle is created and closed exactly once per transcript by
+the real ``on_complete`` counter in ``_scan.py``.
+"""
+
+from __future__ import annotations
+
+import json
+import tempfile
+from collections.abc import Awaitable, Callable
+from pathlib import Path
+
+import pytest
+from inspect_ai.model import ModelOutput
+from inspect_scout import Scanner, llm_scanner, scan, scanner
+from inspect_scout._scanresults import scan_results_df
+from inspect_scout._transcript import handle as handle_mod
+from inspect_scout._transcript.factory import transcripts_from
+from inspect_scout._transcript.json.stream_parse import StreamParseResult
+from inspect_scout._transcript.types import (
+    Transcript,
+    TranscriptContent,
+    TranscriptInfo,
+)
+
+LOGS_DIR = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
+
+
+def _spy_spooled_handles(
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[list[handle_mod.SpooledTranscriptHandle], dict[int, int]]:
+    """Spy on SpooledTranscriptHandle create/close.
+
+    Returns (created, close_counts), the latter keyed by ``id(handle)``.
+    """
+    created: list[handle_mod.SpooledTranscriptHandle] = []
+    close_counts: dict[int, int] = {}
+
+    real_init = handle_mod.SpooledTranscriptHandle.__init__
+    real_aclose = handle_mod.SpooledTranscriptHandle.aclose
+
+    def spy_init(
+        self: handle_mod.SpooledTranscriptHandle,
+        info: TranscriptInfo,
+        parse: Callable[[], Awaitable[StreamParseResult]],
+        load_fallback: Callable[[], Awaitable[Transcript]],
+    ) -> None:
+        real_init(self, info, parse, load_fallback)
+        created.append(self)
+        close_counts[id(self)] = 0
+
+    async def spy_aclose(self: handle_mod.SpooledTranscriptHandle) -> None:
+        close_counts[id(self)] = close_counts.get(id(self), 0) + 1
+        await real_aclose(self)
+
+    monkeypatch.setattr(handle_mod.SpooledTranscriptHandle, "__init__", spy_init)
+    monkeypatch.setattr(handle_mod.SpooledTranscriptHandle, "aclose", spy_aclose)
+    return created, close_counts
+
+
+@scanner(name="streaming_lead_scanner", messages="all")
+def streaming_lead_scanner_factory() -> Scanner[Transcript]:
+    """Handle-capable llm_scanner (static question) -- runs as the lead job."""
+    return llm_scanner(question="Is this conversation helpful?", answer="boolean")
+
+
+@scanner(name="streaming_follower_scanner", messages="all")
+def streaming_follower_scanner_factory() -> Scanner[Transcript]:
+    """Handle-capable llm_scanner (static question) -- runs as a follower job.
+
+    Identical ``messages="all"`` content filter to the lead so streaming
+    eligibility holds and both share one union-filtered handle.
+    """
+    return llm_scanner(question="Is this conversation coherent?", answer="boolean")
+
+
+def test_scan_e2e_through_streaming_seam(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A real scan over eval logs must stream and produce correct results.
+
+    Two handle-capable scanners with identical filters share one spooled
+    handle per transcript, which must close exactly once.
+    """
+    scanner_names = ["streaming_lead_scanner", "streaming_follower_scanner"]
+    limit = 2
+    factories = {
+        "streaming_lead_scanner": streaming_lead_scanner_factory,
+        "streaming_follower_scanner": streaming_follower_scanner_factory,
+    }
+
+    # Force the eval_log backend to choose the spooled path for every file.
+    monkeypatch.setattr("inspect_scout._util.constants.SPOOL_THRESHOLD_BYTES", 0)
+
+    created, close_counts = _spy_spooled_handles(monkeypatch)
+
+    # Enough mock responses for all scanners across all scanned transcripts.
+    mock_responses = [
+        ModelOutput.from_content(
+            model="mockllm",
+            content=f"Reasoning about [M2].\n\nANSWER: {'yes' if i % 2 else 'no'}",
+        )
+        for i in range(limit * len(scanner_names) * 4)
+    ]
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        status = scan(
+            scanners=[factories[name]() for name in scanner_names],
+            transcripts=transcripts_from(LOGS_DIR),
+            scans=tmpdir,
+            limit=limit,
+            max_processes=1,  # in-process so the monkeypatched spies apply
+            model="mockllm/model",
+            model_args={"custom_outputs": mock_responses},
+            display="none",
+        )
+
+        assert status.complete
+        assert status.location is not None
+
+        for scanner_name in scanner_names:
+            results = scan_results_df(status.location, scanner=scanner_name)
+            df = results.scanners[scanner_name]
+            assert len(df) == limit
+            assert "value" in df.columns
+            assert "explanation" in df.columns
+            assert all(isinstance(v, bool) for v in df["value"].tolist())
+
+    # The streaming path was actually exercised.
+    assert len(created) >= 1, "no SpooledTranscriptHandle was created -- not streaming"
+    # One shared handle per transcript => one per scanned transcript.
+    assert len(created) == limit
+
+    # Each spooled handle closed exactly once by the real on_complete counter.
+    for h in created:
+        assert close_counts[id(h)] == 1, (
+            f"handle closed {close_counts[id(h)]} times, expected exactly 1"
+        )
+
+
+def _mock_responses(n: int) -> list[ModelOutput]:
+    return [
+        ModelOutput.from_content(model="mockllm", content="Reasoning.\n\nANSWER: yes")
+        for _ in range(n)
+    ]
+
+
+@scanner(name="attachment_scanner", messages="all", events="all")
+def attachment_scanner_factory() -> Scanner[Transcript]:
+    """Messages+events llm_scanner over an attachment-bearing eval log."""
+    return llm_scanner(
+        question="Is this conversation helpful?",
+        answer="boolean",
+        content=TranscriptContent(messages="all", events="all"),
+    )
+
+
+# The one example log whose samples externalize content as `attachment://`
+# refs -- inspect_ai does that for any text value over 100 chars, so the
+# recorded events are full of refs the reader has to resolve.
+_ATTACHMENT_LOG = LOGS_DIR / (
+    "2025-09-23T08-09-58-04-00_theory-of-mind_bbB4eRCx2rFJLyPH42Cj9r.eval"
+)
+
+
+def _scan_input_column(monkeypatch: pytest.MonkeyPatch, *, spool_threshold: int) -> str:
+    """`scan_results_df`'s `input` value for a one-transcript scan."""
+    monkeypatch.setattr(
+        "inspect_scout._util.constants.SPOOL_THRESHOLD_BYTES", spool_threshold
+    )
+    with tempfile.TemporaryDirectory() as tmpdir:
+        status = scan(
+            scanners=[attachment_scanner_factory()],
+            transcripts=transcripts_from(str(_ATTACHMENT_LOG)),
+            scans=tmpdir,
+            limit=1,
+            max_processes=1,  # in-process so the monkeypatched threshold applies
+            model="mockllm/model",
+            model_args={"custom_outputs": _mock_responses(40)},
+            display="none",
+        )
+        assert status.complete
+        assert status.location is not None
+        # `input`/`input_data` are heavy columns, excluded by default since
+        # #583; this test is about what they contain.
+        results = scan_results_df(
+            status.location, scanner="attachment_scanner", exclude_columns=()
+        )
+        return str(results.scanners["attachment_scanner"]["input"].tolist()[0])
+
+
+def _materialized_read_drops_score_explanation() -> bool:
+    """True until load_filtered.py carries `TranscriptInfo.score_explanation`.
+
+    That fix is made against `main` in a separate PR rather than in this series,
+    so two PRs do not edit the same lines. While it is true, the test below
+    tolerates exactly that one key; once it lands and the series is rebased this
+    returns False and the tolerance switches itself off.
+    """
+    from dataclasses import fields
+
+    from inspect_scout._transcript.json.load_filtered import RawTranscript
+
+    return "score_explanation" not in {f.name for f in fields(RawTranscript)}
+
+
+def test_recorded_input_resolves_attachments_like_materialized(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A streamed scan's recorded transcript must be readable.
+
+    The pooled passthrough copies events out of the spool with their
+    `attachment://<hash>` refs intact and ships the lookup table inside
+    `input_data`, which `scan_results_df` drops. If nothing resolves those
+    refs on the read path, every externalized value (any text over 100
+    chars: system prompts, model output, tool results) reaches the caller of
+    this public API as a dangling hash.
+    """
+    created, _ = _spy_spooled_handles(monkeypatch)
+
+    streamed_input = _scan_input_column(monkeypatch, spool_threshold=0)
+    assert created, "no SpooledTranscriptHandle was created -- not streaming"
+
+    # Control: a threshold nothing can exceed forces the materialized path.
+    created.clear()
+    control_input = _scan_input_column(monkeypatch, spool_threshold=2**62)
+    assert not created, "control run streamed -- not a materialized comparison"
+
+    assert "attachment://" not in streamed_input
+    streamed = json.loads(streamed_input)
+    control = json.loads(control_input)
+    if _materialized_read_drops_score_explanation():
+        # Known gap, fixed against main in its own PR: the materialized read
+        # drops score_explanation. Tolerate exactly that key; anything else
+        # must still fail.
+        assert set(streamed) ^ set(control) == {"score_explanation"}
+        streamed.pop("score_explanation")
+    assert streamed == control
+
+
+def test_unreadable_record_input_is_an_error_row(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """If the transcript can't be read back for the record, the row must say so.
+
+    The scan itself succeeded, so its value is kept; but recording an info-only
+    placeholder under `error=None` would present a transcript nobody could read
+    as a clean result (design/exception_handling.md: job failures are Error rows).
+    """
+    created, _ = _spy_spooled_handles(monkeypatch)
+
+    def boom(info: object, parsed: object) -> object:
+        raise OSError("spool vanished")
+
+    monkeypatch.setattr("inspect_scout._scan.pooled_passthrough", boom)
+    monkeypatch.setattr("inspect_scout._util.constants.SPOOL_THRESHOLD_BYTES", 0)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        status = scan(
+            scanners=[attachment_scanner_factory()],
+            transcripts=transcripts_from(str(_ATTACHMENT_LOG)),
+            scans=tmpdir,
+            limit=1,
+            max_processes=1,
+            model="mockllm/model",
+            model_args={"custom_outputs": _mock_responses(40)},
+            display="none",
+        )
+        # A recorded row-level Error always flips `complete` to False in this
+        # codebase (see tests/llm_scanner/test_retry_refusals.py); the row's
+        # kept value below is the thing under test, not this summary flag.
+        assert not status.complete
+        assert status.location is not None
+        results = scan_results_df(
+            status.location, scanner="attachment_scanner", exclude_columns=()
+        )
+        # `results.scanners[...]` loads the parquet lazily, so it must be
+        # accessed while `tmpdir` (its backing location) still exists.
+        assert created, "not streaming"
+        df = results.scanners["attachment_scanner"]
+        assert len(df) == 1
+        assert "spool vanished" in str(df["scan_error"].iloc[0])
+        assert df["value"].notna().all(), "the scan's own result must be kept"

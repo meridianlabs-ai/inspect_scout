@@ -21,7 +21,7 @@ Here are the available `Transcript` fields:
 | `total_tokens` | number | Tokens spent in execution of task. |
 | `error` | str | Error message that terminated the task. |
 | `limit` | str | Limit that caused the task to exit (e.g. "tokens", "messages, etc.) |
-| `metadata` | dict\[str, JsonValue\] | Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.). |
+| `metadata` | dict\[str, JsonValue\] | Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.). For Inspect logs this includes `sample_metadata`, `target` and `scores` from the sample body unless the scanner passes `metadata=False`. |
 | `messages` | [list\[ChatMessage\]](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages) | Message history. |
 | `events` | [list\[Event\]](https://inspect.aisi.org.uk/reference/inspect_ai.event.html) | Event history (e.g. model events, tool events, etc.) |
 | `timelines` | list\[Timeline\] | Optional list of custom timelines for this transcript. |

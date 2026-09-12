@@ -7,8 +7,8 @@ from inspect_ai.model import StopReason
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.tool._tool_choice import ToolChoice
 from inspect_ai.tool._tool_info import ToolInfo
-from wrapt import ObjectProxy
 
+from ._wrapt import TypedObjectProxy, wrap_function_wrapper
 from .provider import ObserveEmit
 
 _StreamEventT = TypeVar("_StreamEventT")
@@ -84,8 +84,6 @@ class OpenAIProvider:
                 "The 'openai' package is required to use provider='openai'. "
                 "Install it with: pip install openai"
             ) from None
-
-        from wrapt import wrap_function_wrapper
 
         def _is_stream_type(response: Any, module: str, class_name: str) -> bool:
             """Check if response is an instance of a stream class.
@@ -530,7 +528,7 @@ class OpenAIChatStreamAccumulator:
 
 
 class OpenAIChatStreamCapture(
-    ObjectProxy[_SyncStream[_StreamEventT]], Generic[_StreamEventT]
+    TypedObjectProxy[_SyncStream[_StreamEventT]], Generic[_StreamEventT]
 ):
     """Capture wrapper for OpenAI Chat Completions sync streams."""
 
@@ -566,7 +564,7 @@ class OpenAIChatStreamCapture(
 
 
 class OpenAIChatAsyncStreamCapture(
-    ObjectProxy[_AsyncStream[_StreamEventT]], Generic[_StreamEventT]
+    TypedObjectProxy[_AsyncStream[_StreamEventT]], Generic[_StreamEventT]
 ):
     """Capture wrapper for OpenAI Chat Completions async streams."""
 
@@ -602,7 +600,7 @@ class OpenAIChatAsyncStreamCapture(
 
 
 class OpenAIResponsesStreamCapture(
-    ObjectProxy[_SyncStream[_StreamEventT]], Generic[_StreamEventT]
+    TypedObjectProxy[_SyncStream[_StreamEventT]], Generic[_StreamEventT]
 ):
     """Capture wrapper for OpenAI Responses API sync streams."""
 
@@ -647,7 +645,7 @@ class OpenAIResponsesStreamCapture(
 
 
 class OpenAIResponsesAsyncStreamCapture(
-    ObjectProxy[_AsyncStream[_StreamEventT]], Generic[_StreamEventT]
+    TypedObjectProxy[_AsyncStream[_StreamEventT]], Generic[_StreamEventT]
 ):
     """Capture wrapper for OpenAI Responses API async streams."""
 

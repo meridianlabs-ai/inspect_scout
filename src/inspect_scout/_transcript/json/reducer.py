@@ -184,7 +184,9 @@ def call_pool_item_coroutine(state: ParseState, item_prefix: str) -> CoroutineGe
 
 
 @_ijson_coroutine  # type: ignore
-def attachments_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
+def attachments_coroutine(
+    state: ParseState, *, retain_all: bool = False
+) -> CoroutineGen:  # pragma: no cover
     attachments_prefix_len = len(ATTACHMENTS_PREFIX)
     while True:
         prefix, event, value = yield
@@ -198,7 +200,7 @@ def attachments_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cove
             if end == -1
             else prefix[attachments_prefix_len:end]
         )
-        if attachment_id in state.attachment_refs:
+        if retain_all or attachment_id in state.attachment_refs:
             state.attachments[attachment_id] = value
 
 

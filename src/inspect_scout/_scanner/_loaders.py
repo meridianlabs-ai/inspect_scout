@@ -12,11 +12,27 @@ from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 from typing_extensions import Literal
 
+from .._transcript.handle import is_transcript_handle_type
 from .._transcript.types import Transcript, TranscriptContent
 from .._transcript.util import filter_list, filter_timelines, filter_transcript
 from .._util.type_hints import is_union_type
 from .loader import Loader, loader
 from .types import ScannerInput
+
+
+def _matches_transcript_or_handle(type_annotation: Any) -> bool:
+    """Whether an annotation is a union of ``Transcript`` and TranscriptHandle types.
+
+    Such a scanner uses the identity loader.
+    """
+    if not is_union_type(type_annotation):
+        return False
+    args = get_args(type_annotation)
+    has_transcript = any(arg is Transcript for arg in args)
+    others_are_handles = all(
+        arg is Transcript or is_transcript_handle_type(arg) for arg in args
+    )
+    return has_transcript and others_are_handles
 
 
 def _IdentityLoader(
@@ -116,7 +132,14 @@ def create_implicit_loader(
     input_annotation = next(
         iter(inspect.signature(scanner_fn).parameters.values())
     ).annotation
-    if input_annotation is inspect.Parameter.empty or input_annotation == Transcript:
+    # A `Transcript | TranscriptHandle` union also takes the identity loader:
+    # a materialized Transcript flows through it, while a handle bypasses the
+    # loader entirely (the pipeline passes it straight to the scanner).
+    if (
+        input_annotation is inspect.Parameter.empty
+        or input_annotation == Transcript
+        or _matches_transcript_or_handle(input_annotation)
+    ):
         return _IdentityLoader(content)
 
     # Check if it's a list type

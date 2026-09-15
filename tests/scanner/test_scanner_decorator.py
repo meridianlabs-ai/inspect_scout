@@ -1,6 +1,7 @@
 """Tests for the scanner decorator functionality."""
 
 import functools
+import types
 from collections.abc import AsyncIterator, Callable
 from typing import Any
 
@@ -12,9 +13,11 @@ from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import (
     SCANNER_CONFIG,
     Scanner,
+    mark_streaming_support,
     scanner,
     scanner_supports_streaming,
 )
+from inspect_scout._transcript.handle import TranscriptHandle
 from inspect_scout._transcript.types import Transcript
 
 # Scanner decorator tests
@@ -344,3 +347,124 @@ def test_callable_question_is_vouched_against() -> None:
         return llm_scanner(question=question, answer="boolean")
 
     assert scanner_supports_streaming(dynamic()) is False
+
+
+@pytest.mark.parametrize(
+    ("declared", "vouched", "expected"),
+    [
+        (None, None, False),
+        (None, True, True),
+        (None, False, False),
+        (False, None, False),
+        (False, True, False),
+        (True, None, True),
+        (True, True, True),
+        (True, False, False),
+    ],
+    ids=[
+        "undeclared-unvouched",
+        "undeclared-vouched-for",
+        "undeclared-vouched-against",
+        "declared-off-unvouched",
+        "declared-off-vouched-for",
+        "declared-on-unvouched",
+        "declared-on-vouched-for",
+        "declared-on-vouched-against",
+    ],
+)
+def test_streaming_support_combines_declaration_and_vouch(
+    declared: bool | None, vouched: bool | None, expected: bool
+) -> None:
+    """Undeclared defers to the vouch; declared is a conjunction -- neither False is overridden."""
+    kwargs: dict[str, Any] = {"messages": "all"}
+    if declared is not None:
+        kwargs["supports_streaming"] = declared
+
+    @scanner(**kwargs)
+    def s() -> Scanner[Transcript]:
+        async def scan(transcript: Transcript | TranscriptHandle) -> Result:
+            return Result(value=True)
+
+        if vouched is not None:
+            mark_streaming_support(scan, vouched)
+        return scan
+
+    assert scanner_supports_streaming(s()) is expected
+
+
+def test_streaming_declaration_requires_a_handle_capable_signature() -> None:
+    """`supports_streaming=True` on a Transcript-only scan function raises when the factory runs."""
+
+    @scanner(messages="all", supports_streaming=True)
+    def s() -> Scanner[Transcript]:
+        async def scan(transcript: Transcript) -> Result:
+            return Result(value=True)
+
+        return scan
+
+    with pytest.raises(TypeError, match="supports_streaming=True"):
+        s()
+
+
+def test_streaming_declaration_resolves_string_annotations() -> None:
+    """A literal string annotation (simulating `from __future__ import annotations`) resolves."""
+
+    @scanner(messages="all", supports_streaming=True)
+    def string_annotated() -> Scanner[Transcript]:
+        async def scan(transcript: "Transcript | TranscriptHandle") -> Result:
+            return Result(value=True)
+
+        return scan
+
+    instance = string_annotated()
+    assert scanner_supports_streaming(instance) is True
+
+
+def test_streaming_declaration_resolves_hints_in_the_scan_functions_module() -> None:
+    """A scan function from another module resolves against its own globals.
+
+    `from __future__ import annotations` there makes the annotation a string only
+    that module's namespace can resolve; the factory's namespace need not carry
+    `Transcript` or `TranscriptHandle` at all.
+    """
+    lib = types.ModuleType("streaming_lib")
+    exec(
+        "from __future__ import annotations\n"
+        "from inspect_scout import Result, Transcript, TranscriptHandle\n"
+        "async def scan(transcript: Transcript | TranscriptHandle) -> Result:\n"
+        "    return Result(value=True)\n",
+        lib.__dict__,
+    )
+    ns: dict[str, Any] = {"scanner": scanner, "lib": lib}
+    exec(
+        "@scanner(messages='all', supports_streaming=True)\n"
+        "def cross():\n"
+        "    return lib.scan\n",
+        ns,
+    )
+
+    assert scanner_supports_streaming(ns["cross"]()) is True
+
+
+def test_streaming_declaration_refuses_a_functools_wraps_wrapper() -> None:
+    """`wraps` copies the wrapped function's annotations, so nothing is verifiable.
+
+    The wrapper below is `Transcript`-only but carries `llm_scanner`'s
+    `Transcript | TranscriptHandle` annotation, which would let an untruthful
+    declaration through.
+    """
+
+    @scanner(messages="all", supports_streaming=True)
+    def wrapping() -> Scanner[Transcript]:
+        inner = llm_scanner(question="q?", answer="boolean")
+
+        @functools.wraps(inner)
+        async def scan(transcript: Transcript) -> Result | list[Result]:
+            if not transcript.messages:
+                return Result(value=False)
+            return await inner(transcript)
+
+        return scan
+
+    with pytest.raises(TypeError, match="__wrapped__"):
+        wrapping()

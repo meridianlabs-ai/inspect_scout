@@ -7,9 +7,8 @@ from inspect_ai.model import StopReason
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.tool._tool_choice import ToolChoice
 from inspect_ai.tool._tool_info import ToolInfo
-from wrapt import ObjectProxy  # type: ignore[import-untyped]
 
-from .provider import ObserveEmit
+from .provider import ObjectProxyBase, ObserveEmit
 
 
 def _stop_reason_from_openai_error(error: Exception) -> StopReason | None:
@@ -518,7 +517,7 @@ class OpenAIChatStreamAccumulator:
         return self.accumulated
 
 
-class OpenAIChatStreamCapture(ObjectProxy):  # type: ignore[misc]
+class OpenAIChatStreamCapture(ObjectProxyBase):
     """Capture wrapper for OpenAI Chat Completions sync streams."""
 
     def __init__(
@@ -552,7 +551,7 @@ class OpenAIChatStreamCapture(ObjectProxy):  # type: ignore[misc]
             self._self_emit(data)
 
 
-class OpenAIChatAsyncStreamCapture(ObjectProxy):  # type: ignore[misc]
+class OpenAIChatAsyncStreamCapture(ObjectProxyBase):
     """Capture wrapper for OpenAI Chat Completions async streams."""
 
     def __init__(
@@ -586,7 +585,7 @@ class OpenAIChatAsyncStreamCapture(ObjectProxy):  # type: ignore[misc]
             self._self_emit(data)
 
 
-class OpenAIResponsesStreamCapture(ObjectProxy):  # type: ignore[misc]
+class OpenAIResponsesStreamCapture(ObjectProxyBase):
     """Capture wrapper for OpenAI Responses API sync streams."""
 
     def __init__(
@@ -629,7 +628,7 @@ class OpenAIResponsesStreamCapture(ObjectProxy):  # type: ignore[misc]
                 self._self_emit(data)
 
 
-class OpenAIResponsesAsyncStreamCapture(ObjectProxy):  # type: ignore[misc]
+class OpenAIResponsesAsyncStreamCapture(ObjectProxyBase):
     """Capture wrapper for OpenAI Responses API async streams."""
 
     def __init__(

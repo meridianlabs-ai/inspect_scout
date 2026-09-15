@@ -1,7 +1,7 @@
-from functools import partial
-from typing import Any, Awaitable, Callable, Literal, cast, overload
+import sys
+from typing import Any, AsyncIterator, Awaitable, Callable, Literal, cast, overload
 
-from inspect_ai._util._async import tg_collect
+import anyio
 from inspect_ai._util.content import ContentText
 from inspect_ai.model import (
     CachePolicy,
@@ -24,7 +24,11 @@ from .._scanner.scanner import (
     Scanner,
     scanner,
 )
-from .._transcript.messages import _effective_segment_budget, transcript_messages
+from .._transcript.messages import (
+    MessagesSegment,
+    _effective_segment_budget,
+    transcript_messages,
+)
 from .._transcript.timeline import TimelineMessages
 from .._transcript.types import Transcript, TranscriptContent
 from ._reducer import aggregate_results
@@ -35,6 +39,63 @@ from .prompt import (
     DEFAULT_SCANNER_TEMPLATE_SUFFIX,
 )
 from .types import AnswerSpec
+
+if sys.version_info < (3, 11):
+    from exceptiongroup import ExceptionGroup
+
+# Bounds memory (one rendered segment string per slot), not connections:
+# inspect_ai's own per-model semaphore gates the real generate calls, so a
+# surplus admitted task costs a string and nothing else.
+_SEGMENT_WINDOW_CAP = 16
+
+
+async def _scan_segments_bounded(
+    segments: AsyncIterator[MessagesSegment],
+    scan_segment: Callable[[str], Awaitable[Result]],
+) -> list[tuple[str | None, Result]]:
+    """Scan lazily-yielded segments with bounded concurrency, in segment order.
+
+    Each result is paired with its originating span id (None on non-timeline
+    paths) so ``aggregate_results`` can group timeline chunks by span.
+
+    A failing segment aborts the scan and raises its own exception, unwrapped
+    from the task group's ``ExceptionGroup``.
+    """
+    window = anyio.Semaphore(_SEGMENT_WINDOW_CAP)
+    indexed: list[tuple[int, str | None, Result]] = []
+
+    async def scan_bounded(index: int, span_id: str | None, messages_str: str) -> None:
+        try:
+            indexed.append((index, span_id, await scan_segment(messages_str)))
+        finally:
+            window.release()
+
+    try:
+        async with anyio.create_task_group() as tg:
+            index = 0
+            while True:
+                # Admit before pulling: `async for` renders the next segment
+                # while the window is full, holding one string over the cap.
+                await window.acquire()
+                seg = await anext(segments, None)
+                if seg is None:
+                    window.release()
+                    break
+                tg.start_soon(
+                    scan_bounded,
+                    index,
+                    seg.span.id if isinstance(seg, TimelineMessages) else None,
+                    seg.messages_str,
+                )
+                index += 1
+    except ExceptionGroup as ex:
+        # Deliberately not inspect_ai's `inner_exception`: it also walks
+        # `__context__`, and picks from an unordered set -- so an unrelated
+        # chained exception can win over the segment's actual failure.
+        raise ex.exceptions[0] from None
+
+    # Reduction is order-sensitive, so undo the completion-order interleaving.
+    return [(span_id, r) for _, span_id, r in sorted(indexed, key=lambda t: t[0])]
 
 
 @overload
@@ -303,9 +364,8 @@ def llm_scanner(
                 "the scanner template."
             )
 
-        segments = [
-            seg
-            async for seg in transcript_messages(
+        results = await _scan_segments_bounded(
+            transcript_messages(
                 transcript,
                 messages_as_str=messages_as_str_fn,
                 model=resolved_model,
@@ -314,20 +374,9 @@ def llm_scanner(
                 compaction=compaction,
                 depth=depth,
                 prompt_reserve=template_tokens,
-            )
-        ]
-        segment_results: list[Result] = await tg_collect(
-            [partial(scan_segment, seg.messages_str) for seg in segments]
+            ),
+            scan_segment,
         )
-        # Pair each result with its originating span id (None on non-timeline
-        # paths) so aggregate_results can group timeline chunks by span.
-        results: list[tuple[str | None, Result]] = [
-            (
-                seg.span.id if isinstance(seg, TimelineMessages) else None,
-                result,
-            )
-            for seg, result in zip(segments, segment_results, strict=True)
-        ]
 
         return await aggregate_results(
             results=results,

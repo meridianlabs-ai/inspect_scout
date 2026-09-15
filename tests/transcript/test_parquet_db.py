@@ -2180,3 +2180,60 @@ async def test_pool_dedup_content_size_includes_pools(
     assert size >= streamed_size * 0.9, (
         f"Content size {size} omits pool data (streamed {streamed_size} bytes)"
     )
+
+
+@pytest.mark.asyncio
+async def test_content_columns_are_page_bounded(test_location: Path) -> None:
+    """Content cells land in PLAIN pages split near data_page_size.
+
+    The page reader can fetch one transcript without its row-group siblings.
+    Non-content columns keep dictionary encoding.
+    """
+    import pyarrow.parquet as pq
+    from inspect_scout._transcript.database.parquet.page_reader import (
+        _PAGE_TYPE_DATA,
+        _PAGE_TYPE_DICTIONARY,
+        _ChunkSource,
+        _PageInfo,
+        _walk_pages,
+    )
+
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+    big = create_sample_transcript(
+        id="big-000",
+        messages=[ChatMessageUser(content="z" * 3_000_000)],
+    )
+    await db.insert(
+        [big] + [create_sample_transcript(id=f"small-{i:03d}") for i in range(5)]
+    )
+    await db.commit()
+    await db.disconnect()
+
+    files = list(test_location.glob("transcripts_*.parquet"))
+    assert len(files) == 1
+    metadata = pq.ParquetFile(str(files[0])).metadata
+    columns = {metadata.schema.column(i).name: i for i in range(metadata.num_columns)}
+
+    def pages_of(column: str) -> list[_PageInfo]:
+        chunk_meta = metadata.row_group(0).column(columns[column])
+        starts = [
+            offset
+            for offset in (
+                chunk_meta.dictionary_page_offset,
+                chunk_meta.data_page_offset,
+            )
+            if offset is not None and offset > 0
+        ]
+        with open(files[0], "rb") as f:
+            return list(
+                _walk_pages(
+                    _ChunkSource(f, min(starts), chunk_meta.total_compressed_size)
+                )
+            )
+
+    message_pages = pages_of("messages")
+    assert all(p.page_type == _PAGE_TYPE_DATA for p in message_pages)
+    assert len(message_pages) >= 2  # the 3MB cell split away from the smalls
+    id_pages = pages_of("transcript_id")
+    assert any(p.page_type == _PAGE_TYPE_DICTIONARY for p in id_pages)

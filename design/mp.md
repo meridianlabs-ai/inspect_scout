@@ -88,8 +88,6 @@ SIGINT delivered only to parent (workers have `SIGINT=SIG_IGN`). Parent's task g
 
 **Key design:** Workers ignore SIGINT to avoid races. Parent coordinates shutdown via condition variable + drain-while-waiting to unblock feeder threads. Most queue items are drained during Phase 2 while workers exit, preventing feeder thread deadlock. Shutdown sentinel injection prevents collector deadlock if workers are forcibly terminated.
 
-### Errors during collection and shutdown
+### Worker error transport
 
-The collector raises `WorkerProcessError` from a `WorkerError` diagnostic. A queue-read failure also remains fatal. See [exception handling](exception_handling.md) for containment and error selection.
-
-Both shutdown drains log read failures, stop the affected queue, and finish termination and closure. The first read error is raised only after otherwise normal completion; primary failures and interruptions take precedence. Closed-queue `ValueError` is included because reconstruction can raise the same exception. Existing item limits and deadlines remain; they do not bound an OS pipe read that never returns. `cancel_join_thread()` permits exit without waiting for buffered delivery; it does not ensure delivery.
+The collector raises `WorkerProcessError` from a `WorkerError` diagnostic. See [exception handling](exception_handling.md) for the containment boundary and public reporting behavior.

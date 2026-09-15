@@ -79,9 +79,7 @@ When a worker's work task encounters an infrastructure exception, a prerequisite
 3. **Re-raise**: The original exception propagates locally; the shutdown monitor is cancelled in `finally`
 4. **Completion**: `WorkerComplete` is sent only on clean completion, never to reinterpret a fatal error as success
 
-`WorkerError` contains plain diagnostic strings and an integer worker ID. Optional status/request ID come from the caught exception's own exact built-in `int`/`str` attributes. Exception objects, responses, and traceback locals stay in the worker; exception text itself is not redacted or size-limited.
-
-`TracebackException` formats available chains/groups. If formatting or class metadata fails, the fallback keeps the caught exception's available frames and normalized type/message. The shared single-process strategy selects the exception before this boundary and can already have discarded siblings.
+`WorkerError` contains plain diagnostic strings and an integer worker ID. Optional status/request ID come from the caught exception's own exact built-in `int`/`str` attributes. Exception objects, responses, and traceback locals stay in the worker; exception text itself is not redacted or size-limited. Chains and exception groups are preserved as formatted traceback text when they reach this boundary, and a formatting failure falls back to the caught exception's available frames and normalized type/message.
 
 ### Parent Exception Handling
 
@@ -95,6 +93,4 @@ When the parent's collector receives an infrastructure exception from the queue:
 
 This ensures orderly teardown even when one worker encounters an infrastructure failure.
 
-The parent unwraps only single-member task groups and suppresses incidental context. Multi-member groups remain grouped. The public scan path records incomplete status and displays the error. Python 3.10 uses the existing `exceptiongroup` formatter for backported groups; later versions use Rich.
-
-Collector read failures remain fatal. During shutdown, read failures are logged and the affected queue is no longer read, while termination and closure continue. The first read error is raised after teardown only when the scan otherwise completed normally; a primary failure or interruption takes precedence. This includes `ValueError` from a closed queue: the exception type alone does not distinguish closure from failed reconstruction. See [shutdown](mp.md#errors-during-collection-and-shutdown).
+The public scan path records incomplete status and displays the error. Python 3.10 uses the existing `exceptiongroup` formatter for backported groups; later versions use Rich.

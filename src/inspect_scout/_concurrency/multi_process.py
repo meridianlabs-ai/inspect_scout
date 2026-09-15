@@ -18,9 +18,7 @@ from __future__ import annotations
 
 import multiprocessing
 import signal
-import sys
 import time
-from logging import getLogger
 from multiprocessing.context import SpawnProcess
 from types import FrameType
 from typing import Any, AsyncIterator, Awaitable, Callable
@@ -33,6 +31,7 @@ from inspect_ai.model._model_config import (
     model_roles_to_model_roles_config,
     model_to_model_config,
 )
+from inspect_ai.util._anyio import inner_exception
 from inspect_ai.util._concurrency import init_concurrency
 
 from inspect_scout._display._display import display
@@ -68,11 +67,6 @@ from .common import (
     ScannerJob,
     sum_metrics,
 )
-
-if sys.version_info < (3, 11):
-    from exceptiongroup import ExceptionGroup
-
-logger = getLogger(__name__)
 
 # If no explicit number of processes is presented, we'll limit process concurrency
 # to this number regardless of the number of CPUs. We may raise this as we see real
@@ -357,7 +351,6 @@ def multi_process_strategy(
             # Restore SIGINT handler in parent only (workers inherited SIG_IGN)
             signal.signal(signal.SIGINT, original_sigint_handler)
 
-            completed = False
             try:
                 # Run producer and collector concurrently - all in one cancel scope
                 async with create_task_group() as tg:
@@ -366,7 +359,6 @@ def multi_process_strategy(
 
                 # If we get here, everything completed normally
                 print_diagnostics("MP Main", "Task group exited normally")
-                completed = True
 
             except KeyboardInterrupt:
                 # ONLY parent gets here on Ctrl-C (workers are immune)
@@ -375,11 +367,7 @@ def multi_process_strategy(
 
             except Exception as ex:
                 print_diagnostics("MP Main", f"Exception: {ex}")
-                # Unwrap task groups only: incidental __context__ (including
-                # sync entry-point loop detection) is not the task's failure.
-                while isinstance(ex, ExceptionGroup) and len(ex.exceptions) == 1:
-                    ex = ex.exceptions[0]
-                raise ex from None
+                raise inner_exception(ex) from ex
 
             except anyio.get_cancelled_exc_class():
                 print_diagnostics("MP Main", "Caught cancelled exception")
@@ -390,24 +378,12 @@ def multi_process_strategy(
                 # Unified shutdown sequence for both clean and Ctrl-C shutdown
                 # Shield from cancellation so cleanup can complete even if we were cancelled
                 with anyio.CancelScope(shield=True):
-                    try:
-                        cleanup_error = await shutdown_subprocesses(
-                            processes,
-                            ipc_ctx,
-                            print_diagnostics,
-                            _SHUTDOWN_SENTINEL,
-                        )
-                    except Exception:
-                        if completed:
-                            raise
-                        logger.warning(
-                            "Secondary worker shutdown failure", exc_info=True
-                        )
-                    else:
-                        # Ctrl-C is swallowed above; sys.exc_info() alone cannot
-                        # distinguish it from normal completion here.
-                        if cleanup_error is not None and completed:
-                            raise cleanup_error
+                    await shutdown_subprocesses(
+                        processes,
+                        ipc_ctx,
+                        print_diagnostics,
+                        _SHUTDOWN_SENTINEL,
+                    )
 
         finally:
             if original_sigint_handler is not None:

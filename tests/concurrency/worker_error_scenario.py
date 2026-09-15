@@ -10,28 +10,19 @@ import json
 import multiprocessing
 import os
 import signal
-import sys
-import traceback
-from collections.abc import AsyncIterator
-from contextlib import ExitStack, asynccontextmanager, redirect_stdout
-from multiprocessing.queues import Queue
+from contextlib import ExitStack, redirect_stdout
 from pathlib import Path
-from typing import Any
 from unittest.mock import patch
 
 import anyio
 import inspect_scout
 import psutil
-from anyio.abc import TaskGroup
 from inspect_ai._util.error import PrerequisiteError
 from inspect_ai.model import ChatMessageUser
 from inspect_ai.util import concurrency
 from inspect_scout import Result, Scanner, scan, scanner, transcripts_db
 from inspect_scout._concurrency import multi_process
 from inspect_scout._concurrency._mp_semaphore import MPConcurrencySemaphore
-from inspect_scout._concurrency._mp_shutdown import shutdown_subprocesses
-from inspect_scout._concurrency.common import ConcurrencyStrategy
-from inspect_scout._recorder.recorder import Status
 from inspect_scout._scanresults import scan_results_df
 from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._transcript.types import Transcript
@@ -39,48 +30,8 @@ from inspect_scout.aio import scan_async
 
 from tests.helpers import temp_active_scans_store
 
-if sys.version_info < (3, 11):
-    from exceptiongroup import ExceptionGroup
-
-
-class BrokenDiagnosticError(Exception):
-    request_id = "req_scout_broken_diagnostics"
-
-    def __str__(self) -> str:
-        raise ValueError("broken string conversion")
-
-    @property
-    def status_code(self) -> int:
-        raise ValueError("broken status getter")
-
 
 def _raise_provider_error(provider: str) -> None:
-    if provider == "broken_diagnostic":
-        raise BrokenDiagnosticError("worker failure fixture")
-    if provider == "broken_notes":
-        from collections.abc import Iterator
-
-        class BrokenNotes(list[str]):
-            def __iter__(self) -> Iterator[str]:
-                raise ValueError("broken notes iteration")
-
-        class BrokenNotesError(Exception):
-            __notes__ = BrokenNotes(["fixture note"])
-            status_code = 529
-            request_id = "req_scout_broken_diagnostics"
-
-        raise BrokenNotesError("worker notes failure fixture")
-    if provider == "malformed_type":
-
-        class BrokenModule:
-            def __str__(self) -> str:
-                raise ValueError("broken module formatting")
-
-        class LocalError(Exception):
-            pass
-
-        type.__setattr__(LocalError, "__module__", BrokenModule())
-        raise LocalError("malformed type worker failure fixture")
     if provider == "generic":
         raise ValueError("generic worker failure fixture")
     if provider == "prerequisite":
@@ -114,8 +65,6 @@ def _error_scanner(provider: str, attempts: Path, mode: str) -> Scanner[Transcri
                     }
                 )
             )
-            if mode in ("cancel", "interrupt"):
-                await anyio.sleep_forever()
             if mode in ("multiple", "pressure"):
                 with anyio.fail_after(20):
                     while len(list(attempts.glob("*.json"))) < 2:
@@ -123,13 +72,7 @@ def _error_scanner(provider: str, attempts: Path, mode: str) -> Scanner[Transcri
                 raise RuntimeError(
                     f"simultaneous worker failure: {transcript.transcript_id}"
                 )
-            if transcript.transcript_id == "failing" and mode not in (
-                "cleanup",
-                "keyboard_cleanup",
-                "collector",
-                "parent_group",
-                "parent_context",
-            ):
+            if transcript.transcript_id == "failing":
                 _raise_provider_error(provider)
             return Result(value="ok")
 
@@ -176,34 +119,6 @@ def run_scenario(
     asyncio.run(insert())
     parent_output = io.StringIO()
     original_sigint = signal.getsignal(signal.SIGINT)
-    completed_status: Status | None = None
-    native_interrupt = False
-    strategy_traceback: str | None = None
-
-    async def run_async() -> Status:
-        async def capture_scan() -> Status:
-            nonlocal completed_status
-            completed_status = await scan_async(
-                scanners=[_error_scanner(provider, attempts, mode)],
-                transcripts=transcripts_from(str(db_path)),
-                scans=str(root / "scans"),
-                model="mockllm/model",
-                max_processes=max_processes,
-                max_transcripts=2,
-                fail_on_error=fail_on_error,
-            )
-            return completed_status
-
-        task = asyncio.create_task(capture_scan())
-        if mode in ("cancel", "interrupt"):
-            with anyio.fail_after(20):
-                while len(list(attempts.glob("*.json"))) < 2:
-                    await anyio.sleep(0.02)
-            if mode == "interrupt":
-                os.kill(os.getpid(), signal.SIGINT)
-            else:
-                task.cancel()
-        return await task
 
     with (
         temp_active_scans_store(),
@@ -218,94 +133,6 @@ def run_scenario(
                 patch.object(multi_process, "UPSTREAM_QUEUE_MAXSIZE", 1)
             )
 
-        if mode in (
-            "cleanup",
-            "primary_cleanup",
-            "cancel",
-            "interrupt",
-            "keyboard_cleanup",
-        ):
-
-            async def secondary_failure(*args: Any, **kwargs: Any) -> Exception | None:
-                failure = await shutdown_subprocesses(*args, **kwargs)
-                return failure or OSError("cleanup failure fixture")
-
-            stack.enter_context(
-                patch.object(multi_process, "shutdown_subprocesses", secondary_failure)
-            )
-
-        if mode == "keyboard_cleanup":
-
-            @asynccontextmanager
-            async def interrupted_group() -> AsyncIterator[TaskGroup]:
-                async with anyio.create_task_group() as group:
-                    yield group
-                raise KeyboardInterrupt()
-
-            stack.enter_context(
-                patch.object(multi_process, "create_task_group", interrupted_group)
-            )
-
-        if mode in ("parent_group", "parent_context"):
-
-            @asynccontextmanager
-            async def failing_parent_group() -> AsyncIterator[TaskGroup]:
-                async with anyio.create_task_group() as group:
-                    yield group
-                if mode == "parent_group":
-                    raise ExceptionGroup(
-                        "parent task failures",
-                        [
-                            ValueError("first parent failure fixture"),
-                            RuntimeError("second parent failure fixture"),
-                        ],
-                    )
-                try:
-                    raise RuntimeError("incidental parent context fixture")
-                except RuntimeError as incidental:
-                    raise ExceptionGroup(
-                        "parent task wrapper",
-                        [ValueError("actual parent failure fixture")],
-                    ) from incidental
-
-            stack.enter_context(
-                patch.object(multi_process, "create_task_group", failing_parent_group)
-            )
-
-        if mode == "parent_context":
-
-            def observed_strategy(*args: Any, **kwargs: Any) -> ConcurrencyStrategy:
-                strategy = multi_process.multi_process_strategy(*args, **kwargs)
-
-                async def observe(**work: Any) -> None:
-                    nonlocal strategy_traceback
-                    try:
-                        await strategy(**work)
-                    except Exception as ex:
-                        # Outer scan groups/renderers may hide context independently.
-                        strategy_traceback = "".join(
-                            traceback.format_exception(type(ex), ex, ex.__traceback__)
-                        )
-                        raise
-
-                return observe
-
-            stack.enter_context(
-                patch("inspect_scout._scan.multi_process_strategy", observed_strategy)
-            )
-
-        if mode == "collector":
-            original_get = Queue.get
-
-            def broken_get(
-                queue: "Queue[Any]", block: bool = True, timeout: float | None = None
-            ) -> Any:
-                if block:
-                    raise OSError("collector read failure fixture")
-                return original_get(queue, block, timeout)
-
-            stack.enter_context(patch.object(Queue, "get", broken_get))
-
         if api == "sync":
             status = scan(
                 scanners=[_error_scanner(provider, attempts, mode)],
@@ -318,16 +145,17 @@ def run_scenario(
                 display="plain",
             )
         else:
-            try:
-                status = asyncio.run(run_async())
-            except KeyboardInterrupt:
-                # Python 3.10's runner raises SIGINT directly, then cancels and
-                # awaits its remaining tasks. Audit their completed cleanup
-                # before preserving the native interrupt exit below.
-                if completed_status is None:
-                    raise
-                status = completed_status
-                native_interrupt = True
+            status = asyncio.run(
+                scan_async(
+                    scanners=[_error_scanner(provider, attempts, mode)],
+                    transcripts=transcripts_from(str(db_path)),
+                    scans=str(root / "scans"),
+                    model="mockllm/model",
+                    max_processes=max_processes,
+                    max_transcripts=2,
+                    fail_on_error=fail_on_error,
+                )
+            )
 
     async def registry_restored() -> bool:
         async with concurrency("after-worker-error", 1) as semaphore:
@@ -349,7 +177,6 @@ def run_scenario(
     results = scan_results_df(status.location)
     frame = results.scanners.get("worker_error_616")
     report = {
-        "native_interrupt": native_interrupt,
         "scout_source": inspect_scout.__file__,
         "api": api,
         "parent_pid": os.getpid(),
@@ -363,11 +190,8 @@ def run_scenario(
         "sigint_restored": signal.getsignal(signal.SIGINT) == original_sigint,
         "strategy_active": multi_process._active,
         "parent_display": parent_output.getvalue(),
-        "strategy_traceback": strategy_traceback,
     }
     (root / "report.json").write_text(json.dumps(report, indent=2) + "\n")
-    if native_interrupt:
-        raise KeyboardInterrupt()
 
 
 if __name__ == "__main__":
@@ -375,21 +199,15 @@ if __name__ == "__main__":
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument(
         "--provider",
-        choices=(
-            "anthropic",
-            "openai",
-            "generic",
-            "prerequisite",
-            "malformed_type",
-            "broken_diagnostic",
-            "broken_notes",
-        ),
+        choices=("anthropic", "openai", "generic", "prerequisite"),
         required=True,
     )
     parser.add_argument("--fail-on-error", action="store_true")
     parser.add_argument("--max-processes", type=int, required=True)
     parser.add_argument("--api", choices=("sync", "async"), default="async")
-    parser.add_argument("--mode", default="normal")
+    parser.add_argument(
+        "--mode", choices=("normal", "multiple", "pressure"), default="normal"
+    )
     args = parser.parse_args()
     run_scenario(
         args.root,

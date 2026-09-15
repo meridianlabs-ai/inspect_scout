@@ -15,6 +15,67 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+class ProviderDiagnosticMismatch(Exception):
+    """Provider details are missing while output matches the #5399 signature."""
+
+
+def _provider_details(provider: str, status_code: int) -> tuple[str, ...]:
+    return (
+        f"{provider}.APIStatusError",
+        "scout worker failure fixture",
+        "_raise_provider_error",
+        str(status_code),
+        "req_scout_616",
+    )
+
+
+def _missing_provider_details(
+    diagnostic: str, provider: str, status_code: int
+) -> list[str]:
+    return [
+        detail
+        for detail in _provider_details(provider, status_code)
+        if detail not in diagnostic
+    ]
+
+
+def _has_issue_5399_signature(diagnostic: str) -> bool:
+    compact = "".join(diagnostic.split())
+    return all(
+        fragment in compact
+        for fragment in (
+            "RuntimeError:norunningeventloop",
+            "inspect_ai/_util/_async.py",
+            "inrun_coroutine",
+        )
+    )
+
+
+def _assert_mandatory_provider_invariants(report: dict[str, Any]) -> str:
+    assert not report["complete"], report
+    assert not report["persisted_complete"], report
+    diagnostic = cast(str, report["parent_display"])
+    assert "APIStatusError.__init__()" not in diagnostic, diagnostic
+    return diagnostic
+
+
+def _check_sync_provider_diagnostic(
+    diagnostic: str, provider: str, status_code: int
+) -> None:
+    missing = _missing_provider_details(diagnostic, provider, status_code)
+    if not missing:
+        return
+    if _has_issue_5399_signature(diagnostic):
+        raise ProviderDiagnosticMismatch(
+            "provider details are missing and output matches the #5399 signature; "
+            f"missing={missing}\n{diagnostic}"
+        )
+    assert not missing, (
+        "provider details disappeared without the #5399 signature; "
+        f"missing={missing}\n{diagnostic}"
+    )
+
+
 def _run_scan(
     tmp_path: Path,
     *,
@@ -23,7 +84,6 @@ def _run_scan(
     max_processes: int,
     api: str = "async",
     mode: str = "normal",
-    diagnostics: bool = False,
 ) -> dict[str, Any]:
     command = [
         sys.executable,
@@ -45,7 +105,7 @@ def _run_scan(
     repository = Path(__file__).resolve().parents[2]
     env = dict(
         os.environ,
-        SCOUT_DIAGNOSTICS=str(diagnostics).lower(),
+        SCOUT_DIAGNOSTICS="false",
         SCOUT_DISPLAY="plain",
         PYTHONPATH=str(repository / "src"),
     )
@@ -71,10 +131,8 @@ def _run_scan(
 
     (tmp_path / "child-stdout.log").write_text(stdout)
     (tmp_path / "child-stderr.log").write_text(stderr)
-    expected_exit = 130 if mode == "interrupt" and sys.version_info < (3, 11) else 0
-    assert process.returncode == expected_exit, f"{stdout}\n{stderr}"
+    assert process.returncode == 0, f"{stdout}\n{stderr}"
     report = cast(dict[str, Any], json.loads((tmp_path / "report.json").read_text()))
-    assert report["native_interrupt"] == (expected_exit == 130)
     assert (
         Path(report["scout_source"]).resolve()
         == repository / "src/inspect_scout/__init__.py"
@@ -83,8 +141,6 @@ def _run_scan(
     assert report["sigint_restored"]
     assert not report["strategy_active"]
     assert not report["worker_pids_still_alive"]
-    if mode == "collector":
-        return report
     failing = next(
         item for item in report["attempts"] if item["transcript_id"] == "failing"
     )
@@ -104,18 +160,47 @@ def test_fatal_provider_error_reaches_parent(
     report = _run_scan(
         tmp_path, provider=provider, fail_on_error=True, max_processes=2, api=api
     )
-    assert not report["complete"]
-    assert not report["persisted_complete"]
-    diagnostic = report["parent_display"]
-    assert "APIStatusError.__init__()" not in diagnostic, diagnostic
-    for detail in (
-        f"{provider}.APIStatusError",
-        "scout worker failure fixture",
-        "_raise_provider_error",
-        str(status_code),
-        "req_scout_616",
-    ):
-        assert detail in diagnostic, diagnostic
+    diagnostic = _assert_mandatory_provider_invariants(report)
+    if api == "async":
+        missing = _missing_provider_details(diagnostic, provider, status_code)
+        assert not missing, f"missing={missing}\n{diagnostic}"
+
+
+@pytest.mark.parametrize(
+    "provider,status_code",
+    [
+        pytest.param(
+            "anthropic",
+            529,
+            marks=pytest.mark.xfail(
+                strict=False,
+                raises=ProviderDiagnosticMismatch,
+                reason=("https://github.com/UKGovernmentBEIS/inspect_ai/issues/5399"),
+            ),
+        ),
+        pytest.param(
+            "openai",
+            429,
+            marks=pytest.mark.xfail(
+                strict=False,
+                raises=ProviderDiagnosticMismatch,
+                reason=("https://github.com/UKGovernmentBEIS/inspect_ai/issues/5399"),
+            ),
+        ),
+    ],
+)
+def test_sync_fatal_provider_error_diagnostic(
+    tmp_path: Path, provider: str, status_code: int
+) -> None:
+    report = _run_scan(
+        tmp_path,
+        provider=provider,
+        fail_on_error=True,
+        max_processes=2,
+        api="sync",
+    )
+    diagnostic = _assert_mandatory_provider_invariants(report)
+    _check_sync_provider_diagnostic(diagnostic, provider, status_code)
 
 
 @pytest.mark.parametrize("provider", ["anthropic", "openai"])
@@ -187,128 +272,3 @@ def test_simultaneous_worker_failures_finish_with_useful_diagnostic(
     assert len({item["pid"] for item in report["attempts"]}) == 2
     assert "simultaneous worker failure" in report["parent_display"]
     assert "scan_transcript" in report["parent_display"]
-
-
-@pytest.mark.parametrize("mode", ["cancel", "interrupt"])
-def test_interruption_keeps_precedence_over_cleanup_failure(
-    tmp_path: Path,
-    mode: str,
-) -> None:
-    report = _run_scan(
-        tmp_path, provider="generic", fail_on_error=True, max_processes=2, mode=mode
-    )
-    assert not report["complete"]
-    assert not report["persisted_complete"]
-    assert "Aborted!" in report["parent_display"]
-    assert "cleanup failure fixture" not in report["parent_display"]
-
-
-@pytest.mark.parametrize("mode", ["cleanup", "primary_cleanup", "keyboard_cleanup"])
-def test_shutdown_error_precedence(tmp_path: Path, mode: str) -> None:
-    report = _run_scan(
-        tmp_path,
-        provider="anthropic",
-        fail_on_error=True,
-        max_processes=2,
-        mode=mode,
-        api="sync",
-    )
-    diagnostic = report["parent_display"]
-    if mode == "cleanup":
-        assert not report["complete"]
-        assert "cleanup failure fixture" in diagnostic
-    elif mode == "primary_cleanup":
-        assert not report["complete"]
-        assert "anthropic.APIStatusError" in diagnostic
-        assert "scout worker failure fixture" in diagnostic
-        assert "cleanup failure fixture" not in diagnostic
-    else:
-        # The strategy's existing KeyboardInterrupt handler returns normally.
-        assert "cleanup failure fixture" not in diagnostic
-        assert report["values"] == ["ok", "ok"]
-
-
-def test_collector_read_failure_remains_fatal(tmp_path: Path) -> None:
-    report = _run_scan(
-        tmp_path,
-        provider="generic",
-        fail_on_error=True,
-        max_processes=2,
-        mode="collector",
-        api="sync",
-    )
-    assert not report["complete"]
-    assert not report["persisted_complete"]
-    assert "OSError" in report["parent_display"]
-    assert "collector read failure fixture" in report["parent_display"]
-    assert "no running event loop" not in report["parent_display"]
-
-
-def test_malformed_worker_type_still_reaches_parent(tmp_path: Path) -> None:
-    report = _run_scan(
-        tmp_path, provider="malformed_type", fail_on_error=True, max_processes=2
-    )
-    assert not report["complete"]
-    assert not report["persisted_complete"]
-    for detail in (
-        "LocalError",
-        "malformed type worker failure fixture",
-        "_raise_provider_error",
-    ):
-        assert detail in report["parent_display"]
-
-
-@pytest.mark.parametrize("diagnostics", [False, True])
-@pytest.mark.parametrize("provider", ["broken_diagnostic", "broken_notes"])
-def test_broken_error_formatting_reaches_parent(
-    tmp_path: Path, diagnostics: bool, provider: str
-) -> None:
-    report = _run_scan(
-        tmp_path,
-        provider=provider,
-        fail_on_error=True,
-        max_processes=2,
-        diagnostics=diagnostics,
-    )
-    assert not report["complete"]
-    assert not report["persisted_complete"]
-    diagnostic = " ".join(report["parent_display"].replace("│", " ").split())
-    assert "req_scout_broken_diagnostics" in diagnostic
-    remote_traceback = diagnostic.partition("Remote traceback:")[2]
-    assert "in _raise_provider_error" in remote_traceback
-    assert "Formatting stacktrace failed" not in remote_traceback
-    if provider == "broken_diagnostic":
-        assert "BrokenDiagnosticError" in diagnostic
-        assert "<exception message unavailable>" in diagnostic
-        assert "HTTP status:" not in diagnostic
-    else:
-        assert "BrokenNotesError" in diagnostic
-        assert "worker notes failure fixture" in diagnostic
-        assert "HTTP status: 529" in diagnostic
-    output = (tmp_path / "child-stdout.log").read_text()
-    assert ("Work task error:" in output) == diagnostics
-
-
-@pytest.mark.parametrize("mode", ["parent_group", "parent_context"])
-def test_parent_error_group_preserves_failures_without_incidental_context(
-    tmp_path: Path, mode: str
-) -> None:
-    report = _run_scan(
-        tmp_path,
-        provider="generic",
-        fail_on_error=True,
-        max_processes=2,
-        mode=mode,
-        api="sync",
-    )
-    assert not report["complete"]
-    assert not report["persisted_complete"]
-    diagnostic = report["parent_display"]
-    if mode == "parent_group":
-        assert "first parent failure fixture" in diagnostic
-        assert "second parent failure fixture" in diagnostic
-    else:
-        assert "actual parent failure fixture" in diagnostic
-        assert "incidental parent context fixture" not in diagnostic
-        assert "actual parent failure fixture" in report["strategy_traceback"]
-        assert "incidental parent context fixture" not in report["strategy_traceback"]

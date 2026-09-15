@@ -24,7 +24,11 @@ from inspect_scout._transcript.json.stream_parse import (
     StreamParseResult,
     stream_parse_to_spool,
 )
-from inspect_scout._transcript.types import Transcript, TranscriptInfo
+from inspect_scout._transcript.types import (
+    Transcript,
+    TranscriptContent,
+    TranscriptInfo,
+)
 from inspect_scout._transcript.util import union_transcript_contents
 
 
@@ -103,11 +107,14 @@ async def test_scan_one_stream_error_contained() -> None:
 
 
 def _scanner_with(
-    messages: Any = None, events: Any = None, timeline: Any = None
+    messages: Any = None,
+    events: Any = None,
+    timeline: Any = None,
+    metadata: Any = None,
 ) -> Scanner[Any]:
     """Build a handle-accepting scanner with the given content filters."""
 
-    @scanner(messages=messages, events=events, timeline=timeline)
+    @scanner(messages=messages, events=events, timeline=timeline, metadata=metadata)
     def factory() -> Scanner[Transcript]:
         async def scan(transcript: Transcript) -> Result:
             return Result(value="ok")
@@ -144,6 +151,11 @@ def _scanner_with(
             False,
             id="timeline_one",
         ),
+        pytest.param(
+            [{"messages": "all", "metadata": False}, {"messages": "all"}],
+            True,
+            id="metadata_disagreement_does_not_force_materialization",
+        ),
     ],
 )
 def test_streaming_eligible(filters: list[dict[str, Any]], expected: bool) -> None:
@@ -153,6 +165,21 @@ def test_streaming_eligible(filters: list[dict[str, Any]], expected: bool) -> No
         [_content_for_scanner(s) for s in scanners]
     )
     assert _streaming_eligible(scanners, union_content) is expected
+
+
+@pytest.mark.parametrize(
+    ("values", "expected"),
+    [
+        pytest.param([False, False], False, id="all_declined"),
+        pytest.param([False, None], None, id="one_unset"),
+    ],
+)
+def test_union_metadata_declines_only_when_every_scanner_declines(
+    values: list[bool | None], expected: bool | None
+) -> None:
+    """A read skips the body's metadata only if no scanner in the scan wants it."""
+    contents = [TranscriptContent(messages="all", metadata=v) for v in values]
+    assert union_transcript_contents(contents).metadata is expected
 
 
 @pytest.mark.asyncio

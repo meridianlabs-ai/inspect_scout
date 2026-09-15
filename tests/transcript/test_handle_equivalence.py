@@ -124,6 +124,38 @@ async def test_streamed_equals_materialized(
     await _assert_streamed_equals_materialized(log, content)
 
 
+POPULARITY = next(log for log in LOGS if "popularity" in log.name)
+
+
+@pytest.mark.asyncio
+async def test_declined_metadata_keeps_the_index_summary_on_both_paths(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Declining leaves sample_metadata/target/scores as the index has them, streamed or not."""
+    monkeypatch.setattr(constants_mod, "SPOOL_THRESHOLD_BYTES", 0)
+    view = EvalLogTranscriptsView(str(POPULARITY))
+    await view.connect()
+    try:
+        info = [i async for i in view.select()][0]
+        merged = await view.read(info, TranscriptContent(messages="all"))
+        declined_content = TranscriptContent(messages="all", metadata=False)
+        declined = await view.read(info, declined_content)
+        async with await view.open(info, declined_content) as h:
+            assert isinstance(h, SpooledTranscriptHandle)
+            loaded = await h.load()
+
+        # The fixture really has body metadata, so the comparison means something.
+        assert "label_confidence" in merged.metadata["sample_metadata"]
+        assert "scores" in merged.metadata
+
+        assert declined.metadata is info.metadata
+        assert declined.metadata["sample_metadata"] == info.metadata["sample_metadata"]
+        assert "scores" not in declined.metadata
+        assert loaded.metadata == declined.metadata
+    finally:
+        await view.disconnect()
+
+
 @pytest.mark.asyncio
 async def test_small_file_uses_materialized_handle() -> None:
     # default threshold (64MB) >> fixture size -> MaterializedTranscriptHandle

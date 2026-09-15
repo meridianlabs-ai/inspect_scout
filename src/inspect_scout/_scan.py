@@ -1394,6 +1394,11 @@ def _streaming_eligible(
     broadened content. Messages and events both stream; any `timeline` filter
     forces materialization (timeline selection needs the full transcript).
 
+    `metadata` is deliberately not compared. A scanner that declined it does
+    not read it, so receiving the union's merged metadata cannot change its
+    output -- while forcing materialization here would defeat the decline for
+    exactly the metadata-heavy sets it exists for.
+
     Callers must already have checked `scanner_supports_streaming`.
     """
     if union_content.timeline is not None:

@@ -23,6 +23,7 @@ from pydantic import JsonValue
 
 from ..._util._json import to_json_bytes_compact
 from ..types import Transcript, TranscriptInfo
+from ..util import LazyJSONDict
 from .pool import slice_positions
 from .reducer import ATTACHMENT_REF_JSON_BYTES
 from .spool import ByteSpool
@@ -137,20 +138,28 @@ def pooled_passthrough(
             emit(_dumps(key) + ":")
             emit_bytes(to_json_bytes_compact(value))
             emit(",")
-        emit('"metadata":{')
-        for index, (key, value) in enumerate(_merged_metadata(info, result).items()):
-            emit(("," if index else "") + _dumps(key) + ":")
-            if value is _SPOOLED_SAMPLE_METADATA:
-                # Copied through without scanning for attachment refs:
-                # `condense_sample` walks input, messages, events,
-                # error_retries, attachments and events_data, never metadata,
-                # so it writes no ref here -- and scanning would mean a regex
-                # pass over the largest section of a metadata-heavy transcript.
-                for chunk in result.metadata_json.chunks():
-                    envelope.write(chunk)
-            else:
-                emit_bytes(to_json_bytes_compact(value))
-        emit('},"messages":[')
+        merged = _merged_metadata(info, result)
+        emit('"metadata":')
+        if isinstance(merged, LazyJSONDict):
+            # The uncopied index row: to_json_string() splices its unparsed JSON
+            # values verbatim, where iterating .items() would double-encode them.
+            emit(merged.to_json_string())
+        else:
+            emit("{")
+            for index, (key, value) in enumerate(merged.items()):
+                emit(("," if index else "") + _dumps(key) + ":")
+                if value is _SPOOLED_SAMPLE_METADATA:
+                    # Copied through without scanning for attachment refs:
+                    # `condense_sample` walks input, messages, events,
+                    # error_retries, attachments and events_data, never metadata,
+                    # so it writes no ref here -- and scanning would mean a regex
+                    # pass over the largest section of a metadata-heavy transcript.
+                    for chunk in result.metadata_json.chunks():
+                        envelope.write(chunk)
+                else:
+                    emit_bytes(to_json_bytes_compact(value))
+            emit("}")
+        emit(',"messages":[')
         for index, message in enumerate(result.messages.items()):
             if index:
                 emit(",")

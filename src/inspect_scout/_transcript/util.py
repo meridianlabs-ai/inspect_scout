@@ -10,6 +10,7 @@ from inspect_ai.model._chat_message import ChatMessage, ChatMessageBase
 from .types import (
     EventFilter,
     MessageFilter,
+    MetadataFilter,
     TimelineFilter,
     Transcript,
     TranscriptContent,
@@ -217,7 +218,7 @@ def union_transcript_contents(
     return reduce(
         _union_contents,
         contents,
-        TranscriptContent(None, None, None),
+        TranscriptContent(messages=None, events=None, timeline=None, metadata=False),
     )
 
 
@@ -262,10 +263,17 @@ def filter_transcript(transcript: Transcript, content: TranscriptContent) -> Tra
 
 def _union_contents(a: TranscriptContent, b: TranscriptContent) -> TranscriptContent:
     return TranscriptContent(
-        _union_filters(a.messages, b.messages),
-        _union_filters(a.events, b.events),
-        _union_filters(a.timeline, b.timeline),
+        messages=_union_filters(a.messages, b.messages),
+        events=_union_filters(a.events, b.events),
+        timeline=_union_filters(a.timeline, b.timeline),
+        metadata=_union_metadata(a.metadata, b.metadata),
     )
+
+
+def _union_metadata(a: MetadataFilter, b: MetadataFilter) -> MetadataFilter:
+    # None (unset) means read, so it beats False. Not `_union_filters`: its
+    # TypeVar excludes bool, and it reads True as "timeline all".
+    return False if a is False and b is False else None
 
 
 T = TypeVar("T", MessageFilter, EventFilter, TimelineFilter)

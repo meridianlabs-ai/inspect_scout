@@ -543,6 +543,7 @@ class EvalLogTranscriptsView(TranscriptsView):
                         t,
                         content.messages,
                         events_filter,
+                        metadata=content.metadata is not False,
                     )
         else:
             # JSON format - read sample via inspect_ai and serialize
@@ -565,6 +566,7 @@ class EvalLogTranscriptsView(TranscriptsView):
                     t,
                     content.messages,
                     events_filter,
+                    metadata=content.metadata is not False,
                 )
 
         return _resolve_timelines_and_filter_events(transcript, content)
@@ -628,7 +630,11 @@ class EvalLogTranscriptsView(TranscriptsView):
         async def parse() -> StreamParseResult:
             async with await zip_reader.open_member(entry) as json_iterable:
                 return await stream_parse_to_spool(
-                    json_iterable, content.messages, content.events, spool_dir
+                    json_iterable,
+                    content.messages,
+                    content.events,
+                    spool_dir,
+                    metadata=content.metadata is not False,
                 )
 
         return SpooledTranscriptHandle(t, parse, load)

@@ -505,8 +505,8 @@ def config_for_scanner(scanner: Scanner[Any]) -> ScannerConfig:
 def scanner_supports_streaming(scanner: Scanner[Any]) -> bool:
     """Whether a scanner can operate on a streaming `TranscriptHandle`.
 
-    Prefers the registered `ScannerConfig`, falling back to the attr on the
-    scan function for direct-call cases with no registered config.
+    Prefers the registered `ScannerConfig`, falling back to the vouch registry
+    for direct-call cases with no registered config.
     """
     try:
         return config_for_scanner(scanner).supports_streaming

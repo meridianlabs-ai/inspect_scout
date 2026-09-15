@@ -3,11 +3,126 @@
 from __future__ import annotations
 
 import inspect
+from functools import partial
 from typing import Optional, get_type_hints
 
+import pytest
+from inspect_ai.model import ChatMessageAssistant
 from inspect_ai.model._chat_message import ChatMessage
-from inspect_scout._scanner.result import Result
-from inspect_scout._scanner.scanner import Scanner, scanner
+from inspect_scout import Result, Scanner, Transcript, scanner
+
+from tests.scanner.wrappers import wrap_async
+
+
+@pytest.mark.asyncio
+async def test_scanner_instantiates_with_postponed_transcript_annotation() -> None:
+    @scanner(messages="all")
+    def transcript_scanner() -> Scanner[Transcript]:
+        async def scan(transcript: Transcript) -> Result:
+            return Result(value=len(transcript.messages))
+
+        return scan
+
+    instance = transcript_scanner()
+    transcript = Transcript(
+        transcript_id="postponed",
+        source_type="test",
+        source_id="test",
+        source_uri="test://postponed",
+        messages=[ChatMessageAssistant(content="hello")],
+    )
+    result = await instance(transcript)
+    assert isinstance(result, Result)
+    assert result.value == 1
+
+
+@pytest.mark.asyncio
+async def test_scanner_instantiates_with_postponed_message_list_annotation() -> None:
+    @scanner
+    def message_scanner() -> Scanner[list[ChatMessageAssistant]]:
+        async def scan(messages: list[ChatMessageAssistant]) -> Result:
+            return Result(value=len(messages))
+
+        return scan
+
+    instance: Scanner[list[ChatMessageAssistant]] = message_scanner()
+    result = await instance([ChatMessageAssistant(content="hello")])
+    assert isinstance(result, Result)
+    assert result.value == 1
+
+
+@pytest.mark.asyncio
+async def test_scanner_registers_with_unresolvable_return_annotation() -> None:
+    """Scanner registration resolves its input annotation without its return type."""
+
+    def create_scanner() -> Scanner[Transcript]:
+        from inspect_scout._scanner.result import Result as LocalResult
+
+        @scanner(messages="all")
+        def local_result_scanner() -> Scanner[Transcript]:
+            async def scan(transcript: Transcript) -> LocalResult:
+                return LocalResult(value=len(transcript.messages))
+
+            return scan
+
+        return local_result_scanner()
+
+    instance = create_scanner()
+    transcript = Transcript(
+        transcript_id="local-result",
+        source_type="test",
+        source_id="test",
+        source_uri="test://local-result",
+    )
+    result = await instance(transcript)
+    assert isinstance(result, Result)
+    assert result.value == 0
+
+
+@pytest.mark.asyncio
+async def test_scanner_registers_partial_with_postponed_input_annotation() -> None:
+    """Partial scanners retain their postponed input annotation resolution."""
+
+    @scanner(messages="all")
+    def partial_scanner() -> Scanner[Transcript]:
+        async def scan(transcript: Transcript) -> Result:
+            return Result(value=transcript.transcript_id)
+
+        return partial(scan)
+
+    instance = partial_scanner()
+    transcript = Transcript(
+        transcript_id="partial",
+        source_type="test",
+        source_id="test",
+        source_uri="test://partial",
+    )
+    result = await instance(transcript)
+    assert isinstance(result, Result)
+    assert result.value == "partial"
+
+
+@pytest.mark.asyncio
+async def test_scanner_registers_wrapped_with_postponed_input_annotation() -> None:
+    """Wrapped scanners resolve annotations in the wrapped function's globals."""
+
+    @scanner(messages="all")
+    def wrapped_scanner() -> Scanner[Transcript]:
+        async def scan(transcript: Transcript) -> Result:
+            return Result(value=transcript.transcript_id)
+
+        return wrap_async(scan)
+
+    instance = wrapped_scanner()
+    transcript = Transcript(
+        transcript_id="wrapped",
+        source_type="test",
+        source_id="test",
+        source_uri="test://wrapped",
+    )
+    result = await instance(transcript)
+    assert isinstance(result, Result)
+    assert result.value == "wrapped"
 
 
 def test_scanner_preserves_type_annotations_with_future_annotations() -> None:

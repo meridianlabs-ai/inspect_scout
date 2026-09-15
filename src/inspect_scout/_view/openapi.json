@@ -5265,6 +5265,9 @@
                   "$ref": "#/components/schemas/ApprovalEvent"
                 },
                 {
+                  "$ref": "#/components/schemas/ReviewEvent"
+                },
+                {
                   "$ref": "#/components/schemas/BranchEvent"
                 },
                 {
@@ -6999,6 +7002,112 @@
         "title": "Result",
         "type": "object"
       },
+      "ReviewEvent": {
+        "description": "Tool result review.",
+        "properties": {
+          "call": {
+            "$ref": "#/components/schemas/ToolCall"
+          },
+          "decision": {
+            "enum": [
+              "continue",
+              "terminate",
+              "escalate"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "event": {
+            "const": "review",
+            "default": "review",
+            "title": "Event",
+            "type": "string"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "reviewer": {
+            "title": "Reviewer",
+            "type": "string"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "timestamp",
+          "working_start",
+          "event",
+          "message",
+          "call",
+          "reviewer",
+          "decision"
+        ],
+        "title": "ReviewEvent",
+        "type": "object"
+      },
       "Sample": {
         "description": "Sample for an evaluation task.",
         "properties": {
@@ -8550,6 +8659,9 @@
                 "$ref": "#/components/schemas/ApprovalEvent"
               },
               {
+                "$ref": "#/components/schemas/ReviewEvent"
+              },
+              {
                 "$ref": "#/components/schemas/BranchEvent"
               },
               {
@@ -8620,6 +8732,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/ApprovalEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ReviewEvent"
                     },
                     {
                       "$ref": "#/components/schemas/BranchEvent"
@@ -11071,6 +11186,9 @@
                 },
                 {
                   "$ref": "#/components/schemas/ApprovalEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/ReviewEvent"
                 },
                 {
                   "$ref": "#/components/schemas/BranchEvent"

@@ -2,9 +2,11 @@ import hashlib
 import io
 import json
 import sqlite3
+import tempfile
 from datetime import datetime
 from logging import getLogger
 from os import PathLike
+from pathlib import Path
 from types import TracebackType
 from typing import (
     Any,
@@ -58,12 +60,19 @@ from .._query.condition_sql import condition_as_sql, conditions_as_filter
 from .._query.sql import quote_identifier, validate_column
 from .._scanspec import ScanTranscripts
 from .._transcript.transcripts import Transcripts
+from .._util import constants as constants_mod
 from .._util.caching_async_zip import CachingAsyncZipReader
 from .._util.constants import TRANSCRIPT_SOURCE_EVAL_LOG
 from .caching import samples_df_with_caching
 from .database.database import TranscriptsView
 from .database.schema import reserved_columns
+from .handle import (
+    MaterializedTranscriptHandle,
+    SpooledTranscriptHandle,
+    TranscriptHandle,
+)
 from .json.load_filtered import load_filtered_transcript
+from .json.stream_parse import StreamParseResult, stream_parse_to_spool
 from .local_files_cache import init_task_files_cache
 from .transcripts import TranscriptsReader
 from .types import (
@@ -195,6 +204,12 @@ class EvalLogTranscriptsReader(TranscriptsReader):
         self, transcript: TranscriptInfo, content: TranscriptContent
     ) -> Transcript:
         return await self._db.read(transcript, content)
+
+    @override
+    async def open(
+        self, transcript: TranscriptInfo, content: TranscriptContent
+    ) -> TranscriptHandle:
+        return await self._db.open(transcript, content)
 
     @override
     async def snapshot(self) -> ScanTranscripts:
@@ -528,6 +543,7 @@ class EvalLogTranscriptsView(TranscriptsView):
                         t,
                         content.messages,
                         events_filter,
+                        metadata=content.metadata is not False,
                     )
         else:
             # JSON format - read sample via inspect_ai and serialize
@@ -550,9 +566,78 @@ class EvalLogTranscriptsView(TranscriptsView):
                     t,
                     content.messages,
                     events_filter,
+                    metadata=content.metadata is not False,
                 )
 
         return _resolve_timelines_and_filter_events(transcript, content)
+
+    @override
+    async def open(
+        self,
+        t: TranscriptInfo,
+        content: TranscriptContent,
+    ) -> TranscriptHandle:
+        """Open a streaming handle to transcript content.
+
+        The returned handle references ``self`` (filesystem, ``read``), so use
+        it within the view's `connect()`/`disconnect()` lifetime.
+
+        A spooled parse that hits malformed JSON (NaN/Inf) falls back to
+        `read()`, which re-reads the ZIP member -- and `read()` itself retries
+        ijson before its own json5 fallback, so such a sample is streamed
+        three times. Accepted rather than adding dedicated member spooling.
+        """
+        if not t.source_uri:
+            raise ValueError("source_uri must be set")
+
+        async def load() -> Transcript:
+            # `read()` returns whatever the sample stores. The handle contract
+            # is "content is whatever the handle was opened for", and the
+            # spooled path never carries timelines, so an unrequested stored
+            # timeline is dropped here -- otherwise the same scan records
+            # different `input` on either side of the spool threshold.
+            transcript = await self.read(t, content)
+            if content.timeline is None and transcript.timelines:
+                transcript = transcript.model_copy(update={"timelines": []})
+            return transcript
+
+        if recorder_type_for_location(t.source_uri) is not EvalRecorder:
+            # JSON format not yet supported for streaming reads.
+            return MaterializedTranscriptHandle(load, t)
+
+        zip_reader, entry = await self._get_zip_reader_and_entry(t)
+
+        # Small files, or timeline requests (which need the full in-memory
+        # event set to resolve stored timeline UUID references), use the
+        # existing materialized read path unchanged.
+        if (
+            entry.uncompressed_size <= constants_mod.SPOOL_THRESHOLD_BYTES
+            or content.timeline is not None
+        ):
+            return MaterializedTranscriptHandle(load, t)
+
+        # A subdirectory of the files cache, not the cache root: on Windows
+        # the spool files stay listed until their fds close, and the cache's
+        # size accounting (`LocalFilesCache.resolve_remote_uri_to_local`)
+        # would count multi-GB spools against its own budget.
+        spool_dir = (
+            self._files_cache.cache_dir / "spool"
+            if self._files_cache
+            else Path(tempfile.gettempdir())
+        )
+        spool_dir.mkdir(parents=True, exist_ok=True)
+
+        async def parse() -> StreamParseResult:
+            async with await zip_reader.open_member(entry) as json_iterable:
+                return await stream_parse_to_spool(
+                    json_iterable,
+                    content.messages,
+                    content.events,
+                    spool_dir,
+                    metadata=content.metadata is not False,
+                )
+
+        return SpooledTranscriptHandle(t, parse, load)
 
     @override
     async def read_messages_events(

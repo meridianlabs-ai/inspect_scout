@@ -113,7 +113,7 @@ transcript.metadata["sample_id"]        # sample uuid
 transcript.metadata["id"]               # dataset sample id 
 transcript.metadata["epoch"]            # sample epoch
 transcript.metadata["eval_metadata"]    # eval metadata
-transcript.metadata["sample_metadata"]  # sample metadata
+transcript.metadata["sample_metadata"]  # sample metadata (full, unless the scanner passes metadata=False)
 transcript.metadata["score_<scorer>"]   # named sample scores
 ```
 

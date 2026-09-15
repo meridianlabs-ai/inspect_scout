@@ -5,6 +5,7 @@ from typing import (
     Callable,
     get_args,
     get_origin,
+    get_type_hints,
 )
 
 from inspect_ai.event import Timeline
@@ -12,11 +13,27 @@ from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 from typing_extensions import Literal
 
+from .._transcript.handle import is_transcript_handle_type
 from .._transcript.types import Transcript, TranscriptContent
 from .._transcript.util import filter_list, filter_timelines, filter_transcript
 from .._util.type_hints import is_union_type
 from .loader import Loader, loader
 from .types import ScannerInput
+
+
+def _matches_transcript_or_handle(type_annotation: Any) -> bool:
+    """Whether an annotation is a union of ``Transcript`` and TranscriptHandle types.
+
+    Such a scanner uses the identity loader.
+    """
+    if not is_union_type(type_annotation):
+        return False
+    args = get_args(type_annotation)
+    has_transcript = any(arg is Transcript for arg in args)
+    others_are_handles = all(
+        arg is Transcript or is_transcript_handle_type(arg) for arg in args
+    )
+    return has_transcript and others_are_handles
 
 
 def _IdentityLoader(
@@ -112,11 +129,28 @@ def create_implicit_loader(
     Returns:
         Appropriate loader for the scanner's input type.
     """
-    # Get the first parameter's annotation
-    input_annotation = next(
-        iter(inspect.signature(scanner_fn).parameters.values())
-    ).annotation
-    if input_annotation is inspect.Parameter.empty or input_annotation == Transcript:
+    # Get the first parameter's annotation, resolved -- under
+    # `from __future__ import annotations` (or a literal string annotation)
+    # the raw annotation is a string, so it must be resolved via
+    # get_type_hints before matching. A function's __globals__ is its
+    # defining module, so no extra namespace argument is needed. Fall back to
+    # the raw annotation if resolution raises (e.g. an unresolvable forward
+    # reference).
+    first_param = next(iter(inspect.signature(scanner_fn).parameters.values()))
+    try:
+        input_annotation = get_type_hints(scanner_fn).get(
+            first_param.name, first_param.annotation
+        )
+    except Exception:
+        input_annotation = first_param.annotation
+    # A `Transcript | TranscriptHandle` union also takes the identity loader:
+    # a materialized Transcript flows through it, while a handle bypasses the
+    # loader entirely (the pipeline passes it straight to the scanner).
+    if (
+        input_annotation is inspect.Parameter.empty
+        or input_annotation == Transcript
+        or _matches_transcript_or_handle(input_annotation)
+    ):
         return _IdentityLoader(content)
 
     # Check if it's a list type

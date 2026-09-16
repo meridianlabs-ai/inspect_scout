@@ -30,28 +30,37 @@ def _provider_details(provider: str, status_code: int) -> tuple[str, ...]:
     )
 
 
+def _compact(text: str) -> str:
+    """Drop the wrapping Rich applies, so a phrase check holds at any width.
+
+    The parent display is a Rich panel wrapped to the console width, so an
+    expected phrase can arrive split across lines with the panel's borders
+    between the halves. Where a line breaks depends on the console width and on
+    the length of the absolute paths in the traceback, so both sides of every
+    comparison lose their whitespace and box-drawing glyphs first.
+    """
+    return re.sub(r"[\s\u2500-\u257f]+", "", text)
+
+
 def _missing_provider_details(
     diagnostic: str, provider: str, status_code: int
 ) -> list[str]:
+    compact = _compact(diagnostic)
     return [
         detail
         for detail in _provider_details(provider, status_code)
-        if detail not in diagnostic
+        if _compact(detail) not in compact
     ]
 
 
 def _has_issue_5399_signature(diagnostic: str) -> bool:
-    # Rich wraps the traceback in a panel, so a frame header can break mid-token
-    # with the panel's borders left between the halves. Where that break lands
-    # depends on the absolute checkout path, so drop the box-drawing glyphs
-    # along with the whitespace.
-    compact = re.sub(r"[\s\u2500-\u257f]+", "", diagnostic)
+    compact = _compact(diagnostic)
     return all(
-        fragment in compact
+        _compact(fragment) in compact
         for fragment in (
-            "RuntimeError:norunningeventloop",
+            "RuntimeError: no running event loop",
             "inspect_ai/_util/_async.py",
-            "inrun_coroutine",
+            "in run_coroutine",
         )
     )
 
@@ -60,7 +69,7 @@ def _assert_mandatory_provider_invariants(report: dict[str, Any]) -> str:
     assert not report["complete"], report
     assert not report["persisted_complete"], report
     diagnostic = cast(str, report["parent_display"])
-    assert "APIStatusError.__init__()" not in diagnostic, diagnostic
+    assert _compact("APIStatusError.__init__()") not in _compact(diagnostic), diagnostic
     return diagnostic
 
 
@@ -237,10 +246,11 @@ def test_single_process_provider_error_keeps_diagnostic(
     report = _run_scan(tmp_path, provider=provider, fail_on_error=True, max_processes=1)
     assert not report["complete"]
     assert not report["persisted_complete"]
-    assert "APIStatusError" in report["parent_display"]
-    assert "scout worker failure fixture" in report["parent_display"]
-    assert "_raise_provider_error" in report["parent_display"]
-    assert "missing 2 required keyword-only arguments" not in report["parent_display"]
+    display = _compact(cast(str, report["parent_display"]))
+    assert _compact("APIStatusError") in display
+    assert _compact("scout worker failure fixture") in display
+    assert _compact("_raise_provider_error") in display
+    assert _compact("missing 2 required keyword-only arguments") not in display
 
 
 @pytest.mark.parametrize(
@@ -259,9 +269,10 @@ def test_non_provider_fatal_errors_keep_existing_semantics(
     assert not report["complete"]
     assert not report["persisted_complete"]
     assert not report["errors"]
-    assert type_name in report["parent_display"]
-    assert f"{provider} worker failure fixture" in report["parent_display"]
-    assert "_raise_provider_error" in report["parent_display"]
+    display = _compact(cast(str, report["parent_display"]))
+    assert _compact(type_name) in display
+    assert _compact(f"{provider} worker failure fixture") in display
+    assert _compact("_raise_provider_error") in display
 
 
 @pytest.mark.parametrize("mode", ["multiple", "pressure"])
@@ -275,5 +286,6 @@ def test_simultaneous_worker_failures_finish_with_useful_diagnostic(
     assert not report["complete"]
     assert not report["persisted_complete"]
     assert len({item["pid"] for item in report["attempts"]}) == 2
-    assert "simultaneous worker failure" in report["parent_display"]
-    assert "scan_transcript" in report["parent_display"]
+    display = _compact(cast(str, report["parent_display"]))
+    assert _compact("simultaneous worker failure") in display
+    assert _compact("scan_transcript") in display

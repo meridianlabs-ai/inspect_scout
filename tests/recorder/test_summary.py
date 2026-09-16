@@ -8,7 +8,7 @@ from inspect_scout._recorder.validation import (
     ValidationResults,
     compute_validation_metrics,
 )
-from inspect_scout._scanner.result import Result, ResultReport, as_resultset
+from inspect_scout._scanner.result import Error, Result, ResultReport, as_resultset
 from inspect_scout._transcript.types import Transcript
 from inspect_scout._validation.validate import is_positive_value
 
@@ -311,6 +311,70 @@ class TestSummaryResultsetCounting:
         summary._report(None, "scanner", [r3], None)  # type: ignore[arg-type]
         assert summary.scanners["scanner"].results == 4
         assert summary.scanners["scanner"].scans == 3
+
+
+class TestSummaryUnscoredCounting:
+    """Tests that _report counts results with no value as unscored."""
+
+    def _make_report(self, value: int | None) -> ResultReport:
+        """Helper: create a ResultReport whose single Result has the given value."""
+        return ResultReport(
+            input_type="transcript",
+            input_ids=["t1"],
+            input=Transcript(transcript_id="t1"),
+            result=Result(value=value),
+            validation=None,
+            error=None,
+            events=[],
+            model_usage={},
+        )
+
+    @pytest.mark.parametrize(
+        "values, expected_unscored, expected_results",
+        [
+            ([7, None, 7], 1, 2),
+            ([None, None], 2, 0),
+            ([7, 0, 7], 0, 2),
+        ],
+        ids=["one_none", "all_none", "falsy_value_is_not_unscored"],
+    )
+    def test_counts_none_values_as_unscored(
+        self, values: list[int | None], expected_unscored: int, expected_results: int
+    ) -> None:
+        summary = Summary(scanners=["scanner"])
+        for value in values:
+            summary._report(
+                Transcript(transcript_id="t1"),
+                "scanner",
+                [self._make_report(value)],
+                None,
+            )
+        assert summary.scanners["scanner"].unscored == expected_unscored
+        assert summary.scanners["scanner"].results == expected_results
+        assert summary.scanners["scanner"].scans == len(values)
+
+    def test_error_is_not_unscored(self) -> None:
+        """An errored scan has no result at all, so it is an error, not unscored."""
+        report = ResultReport(
+            input_type="transcript",
+            input_ids=["t1"],
+            input=Transcript(transcript_id="t1"),
+            result=None,
+            validation=None,
+            error=Error(
+                transcript_id="t1",
+                scanner="scanner",
+                error="boom",
+                traceback="",
+                refusal=False,
+            ),
+            events=[],
+            model_usage={},
+        )
+        summary = Summary(scanners=["scanner"])
+        summary._report(Transcript(transcript_id="t1"), "scanner", [report], None)
+        assert summary.scanners["scanner"].errors == 1
+        assert summary.scanners["scanner"].unscored == 0
 
 
 class TestValidationResults:

@@ -15,6 +15,7 @@ from typing import (
 
 from .._scanner.result import ResultReport
 from .._scanner.scanner import Scanner
+from .._transcript.handle import TranscriptHandle
 from .._transcript.transcripts import TranscriptsReader
 from .._transcript.types import Transcript, TranscriptInfo
 
@@ -72,8 +73,11 @@ class ParseJob(NamedTuple):
 class ScannerJob(NamedTuple):
     """Represents a unit of work for filtering a union transcript and scanning it with a specific scanner."""
 
-    union_transcript: Transcript
+    union_transcript: Transcript | TranscriptHandle
     """Transcript pre-filtered with the union of ALL scanners' content filters.
+
+    On the streaming path this is one `TranscriptHandle` shared by the lead
+    and all of its followers.
 
     This contains a superset of the data needed by all scanners and typically needs
     to be filtered again per-scanner (based on that scanner's specific content filter)
@@ -93,6 +97,25 @@ class ScannerJob(NamedTuple):
     populate the prompt cache; once it completes, followers are enqueued to
     hit the warm cache.
     """
+
+    on_complete: Callable[[], Awaitable[None]] | None = None
+    """Awaited once after this job's scan completes, or once by the strategy's
+    teardown drain if the job is stranded undispatched.
+
+    Closes the shared `TranscriptHandle` once the last job (lead + all
+    followers) has finished. `None` for the materialized-`Transcript` path.
+
+    Both callers run it in a `finally`, so it must be cheap and total: the
+    drain runs after the reader context manager has exited and swallows
+    whatever it raises (`single_process.py`), and `_scan_one` awaits it while
+    another exception may be propagating.
+    """
+
+    @property
+    def transcript_info(self) -> TranscriptInfo:
+        """Metadata for the union transcript; a `Transcript` is itself one."""
+        union = self.union_transcript
+        return union if isinstance(union, Transcript) else union.info
 
 
 ParseFunctionResult = (

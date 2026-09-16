@@ -66,6 +66,7 @@ from ._transcript.database.database import TranscriptsDB
 from ._transcript.database.factory import transcripts_db
 from ._transcript.database.schema import transcripts_db_schema
 from ._transcript.factory import transcripts_from
+from ._transcript.handle import TranscriptHandle
 from ._transcript.log import LogColumns, log_columns
 from ._transcript.messages import (
     MessagesSegment,
@@ -147,6 +148,7 @@ __all__ = [
     "TranscriptsReader",
     "Transcript",
     "TranscriptInfo",
+    "TranscriptHandle",
     "Column",
     "Condition",
     "Columns",

@@ -62,6 +62,7 @@ EventType = Literal[
 MessageFilter: TypeAlias = Literal["all"] | Sequence[MessageType] | None
 EventFilter: TypeAlias = Literal["all"] | Sequence[EventType | str] | None
 TimelineFilter: TypeAlias = Literal[True] | Literal["all"] | Sequence[EventType] | None
+MetadataFilter: TypeAlias = bool | None
 
 LogPaths: TypeAlias = (
     PathLike[str] | str | EvalLogInfo | Sequence[PathLike[str] | str | EvalLogInfo]
@@ -72,8 +73,9 @@ LogPaths: TypeAlias = (
 class TranscriptContent:
     """Content filters for transcript loading.
 
-    Specifies which messages, events, and timeline data to include
-    when loading transcript content for scanning.
+    Specifies which messages, events, and timeline data to include when loading
+    transcript content for scanning, and whether to read the sample's metadata,
+    target and scores from the log body.
     """
 
     messages: MessageFilter = field(default=None)
@@ -84,6 +86,16 @@ class TranscriptContent:
 
     timeline: TimelineFilter = field(default=None)
     """Filter for which timeline events to include."""
+
+    metadata: MetadataFilter = field(default=None)
+    """Read the sample's full metadata, target and scores from the log body.
+
+    None and True (the default) read them. False leaves the log's summary
+    values in place: metadata thinned to about 1 KB per key, target as a
+    single string, and scores as ``score_*`` values only. Declining is
+    honored when every scanner in the scan declines; a scanner sharing a
+    read with one that wants metadata receives it anyway.
+    """
 
 
 class BytesContextManager:

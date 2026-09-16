@@ -11,6 +11,7 @@ from inspect_scout._query.condition_sql import conditions_as_filter
 from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._util.constants import TRANSCRIPT_SOURCE_DATABASE
 
+from ..handle import TranscriptHandle
 from ..transcripts import TranscriptsReader
 from ..types import Transcript, TranscriptContent, TranscriptInfo
 from .database import TranscriptsView
@@ -71,6 +72,15 @@ class TranscriptsViewReader(TranscriptsReader):
             Full Transcript with content.
         """
         return await self._view.read(transcript, content)
+
+    @override
+    async def open(
+        self, transcript: TranscriptInfo, content: TranscriptContent
+    ) -> TranscriptHandle:
+        """Open a streaming handle to transcript content."""
+        # Without this override the inherited default would always
+        # materialize, so the view never gets to choose a spooled handle.
+        return await self._view.open(transcript, content)
 
     @override
     async def snapshot(self) -> ScanTranscripts:

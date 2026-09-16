@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -40,7 +41,11 @@ def _missing_provider_details(
 
 
 def _has_issue_5399_signature(diagnostic: str) -> bool:
-    compact = "".join(diagnostic.split())
+    # Rich wraps the traceback in a panel, so a frame header can break mid-token
+    # with the panel's borders left between the halves. Where that break lands
+    # depends on the absolute checkout path, so drop the box-drawing glyphs
+    # along with the whitespace.
+    compact = re.sub(r"[\s\u2500-\u257f]+", "", diagnostic)
     return all(
         fragment in compact
         for fragment in (

@@ -697,6 +697,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 model=t.model,
                 model_options=t.model_options,
                 score=t.score,
+                score_explanation=t.score_explanation,
                 success=t.success,
                 message_count=t.message_count,
                 total_time=t.total_time,

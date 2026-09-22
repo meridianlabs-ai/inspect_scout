@@ -5219,6 +5219,11 @@
             "title": "Exclude Reasoning",
             "type": "boolean"
           },
+          "exclude_role_label": {
+            "default": false,
+            "title": "Exclude Role Label",
+            "type": "boolean"
+          },
           "exclude_system": {
             "default": true,
             "title": "Exclude System",
@@ -5233,7 +5238,8 @@
         "required": [
           "exclude_system",
           "exclude_reasoning",
-          "exclude_tool_usage"
+          "exclude_tool_usage",
+          "exclude_role_label"
         ],
         "title": "MessageFormatOptions",
         "type": "object"

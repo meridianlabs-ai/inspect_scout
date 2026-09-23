@@ -1,10 +1,13 @@
 # Copy this file to .github/workflows/claude.yml in any Meridian repo
 # (or run scripts/enable-claude.sh <org/repo> to open a PR that adds it).
 #
-# Requires only that the Claude GitHub App is installed on the repo
-# (org-level install covers this). Auth uses Workload Identity Federation —
-# no secrets needed, but `id-token: write` below is required for the OIDC
-# exchange.
+# Requires the Claude GitHub App installed on the repo (org-level install
+# covers this) and the machine account's two org secrets scoped to it,
+# MARVIN_APP_CLIENT_ID and MARVIN_APP_PRIVATE_KEY (the GitHub App the
+# workflow's gate and land jobs act as; without them pushes and PRs come
+# from github-actions[bot] and trigger nothing). Model auth uses Workload
+# Identity Federation — no API-key secret, but `id-token: write` below is
+# required for the OIDC exchange.
 
 name: Claude
 
@@ -43,20 +46,26 @@ jobs:
     # same thing; the action's trigger_phrase is single-valued, so
     # `with.trigger_phrase` below resolves which phrase the *event's own text*
     # contains (comment body for a comment, review body for a review, issue
-    # body/title for an issue — the same source the action checks) and this gate
-    # fires if that text has either phrase.
+    # body/title for an opened issue — the same source the action checks) and
+    # this gate fires if that text has either phrase; the `claude` label fires
+    # it on its own.
     #
     # Machine-account guard: github.actor != 'i-am-marvin' over the whole gate,
     # so a comment/review/issue authored by the machine account can't self-
     # trigger the dev agent and loop (its own output — and the fork guidance —
-    # can contain @claude/@i-am-marvin). Hoisted rather than per-source: the
+    # can contain @claude/@i-am-marvin). Its Phase 2 GitHub App login,
+    # meridian-marvin[bot], is covered by the `[bot]` clause and stays
+    # excluded here on purpose. Hoisted rather than per-source: the
     # sources are OR'd, so guarding only the comment branch is bypassable by a
     # phrase left in the enclosing issue body/title.
     #
     # Sources are scoped to the event that carries them (github.event.action /
     # event_name), so a comment event is judged by the comment alone — a stale
     # @claude in the enclosing issue can't fire a runner-spin for an unrelated
-    # comment, nor mask an alias typed in the comment.
+    # comment, nor mask an alias typed in the comment. Issue body/title count
+    # only on `opened`: the action checks them only there (trigger.ts), so
+    # matching them on `labeled` too let any later label on an issue whose
+    # body mentions a phrase spin a runner the action then no-op'd.
     #
     # On an edited comment (the only `edited` action we subscribe to), fire only
     # when the edit newly introduced a phrase — comparing against the pre-edit
@@ -81,28 +90,35 @@ jobs:
             contains(github.event.review.body, '@claude') ||
             contains(github.event.review.body, '@i-am-marvin')
         ) ) ||
-        ( github.event_name == 'issues' && (
+        ( github.event_name == 'issues' && github.event.action == 'opened' && (
             contains(github.event.issue.body, '@claude') ||
             contains(github.event.issue.body, '@i-am-marvin') ||
             contains(github.event.issue.title, '@claude') ||
-            contains(github.event.issue.title, '@i-am-marvin') ||
-            github.event.label.name == 'claude'
-        ) )
+            contains(github.event.issue.title, '@i-am-marvin')
+        ) ) ||
+        ( github.event_name == 'issues' && github.event.action == 'labeled'
+          && github.event.label.name == 'claude' )
       )
     uses: meridianlabs-ai/agents/.github/workflows/claude.yml@main
-    # Pass the machine-account PAT (MARVIN_TOKEN, an org secret) through to the
-    # reusable workflow so agent-opened PRs trigger CI and @review. Passed
-    # explicitly — NOT via `secrets: inherit` — so this repo's other secrets
-    # aren't exposed to an external workflow pinned to a mutable @main ref
-    # (least privilege; the reusable workflow consumes only this one secret).
-    # An absent MARVIN_TOKEN resolves to empty: the agent still runs, just with
+    # Pass the machine account's secrets (org secrets) through to the
+    # reusable workflow so agent-opened PRs trigger CI and @review: the
+    # GitHub App's client id and private key, from which the workflow's
+    # gate and land jobs mint per-job tokens (Phase 2). Passed explicitly —
+    # NOT via
+    # `secrets: inherit` — so this repo's other secrets aren't exposed to an
+    # external workflow pinned to a mutable @main ref (least privilege; the
+    # reusable workflow consumes only the secrets named here).
+    # Absent secrets resolve to empty: the agent still runs, just with
     # issue-triggered PR creation degraded (see the reusable workflow's
-    # secrets.MARVIN_TOKEN and design/auto-agent.md).
+    # secrets.MARVIN_APP_CLIENT_ID and design/auto-agent.md).
     secrets:
-      MARVIN_TOKEN: ${{ secrets.MARVIN_TOKEN }}
+      MARVIN_APP_CLIENT_ID: ${{ secrets.MARVIN_APP_CLIENT_ID }}
+      MARVIN_APP_PRIVATE_KEY: ${{ secrets.MARVIN_APP_PRIVATE_KEY }}
       # codex engine (design/codex-engine.md in the agents repo):
       # consumed only on items labeled engine:codex; optional.
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    # Agent runs restore caches, never save them (agents repo: design/agent-cache-scope.md).
+    cache-mode: read
     permissions:
       contents: write
       pull-requests: write
@@ -110,14 +126,37 @@ jobs:
       id-token: write
       actions: read
     with:
+      # provision (optional; agents#136): the repository's provisioning recipe
+      # — bash run as the unprivileged agent user in the checkout, in place of
+      # the generic `uv venv && uv pip install -e .[dev]`. Codex runs use it
+      # today; Claude runs keep this repository's claude-setup action until
+      # they move to an agent user too, and then use this recipe instead
+      # (design/executed-paths-residual.md in the agents repo). The codex job
+      # never runs claude-setup (a composite runs as the runner; nothing from
+      # the checkout may run as the runner there), so put here what
+      # claude-setup does that the generic recipe does not. uv is on PATH,
+      # HOME is the agent user's (/home/codex), no sudo, network on; create
+      # .venv so the agent's tools are found. A stub that still sets the
+      # earlier `codex_provision` keeps working: it is used when `provision`
+      # is empty. Examples —
+      # a Python pin:          uv venv --python 3.11 && uv pip install -e ".[dev]"
+      # a lockfile sync:       uv venv --python 3.11 && uv sync --dev
+      # Node tooling:          corepack enable --install-directory ~/.local/bin && pnpm install --frozen-lockfile
+      # provision: |
+      #   uv venv --python 3.11
+      #   uv sync --dev
       # trigger_phrase is single-valued, so resolve it from the SAME source the
       # action will check for this event (comment > review > issue), not from a
       # union of all sources — otherwise a stale @claude in an enclosing issue
       # would mask an @i-am-marvin typed in a comment, resolving @claude and
       # then no-op'ing (the action only checks the comment body on a comment
       # event). Within a source, default @claude and only switch to
-      # @i-am-marvin when that's what's present; the trailing @claude covers the
-      # `claude` label event and is a harmless fallback.
+      # @i-am-marvin when that's what's present. On the `claude` label event
+      # the phrase is moot — the action fires on label_trigger and the reusable
+      # workflow's trig step matches the label name, neither reads the body —
+      # so the issue branch resolving @i-am-marvin from a body mention there is
+      # harmless; the trailing @claude is the fallback for an event with no
+      # matching source.
       # Caveat: this pick is substring-based (workflow expressions have no
       # regex), so it also SELECTS which phrase the action then re-checks with
       # word boundaries. In the contrived case where the other phrase appears
@@ -139,7 +178,8 @@ jobs:
   # PR inherits the `auto` label (so the loop in claude-auto.yml engages), and it
   # runs to a human handoff. Same reusable dev workflow, different trigger — the
   # action's trigger_phrase/label_trigger are single-valued, so `auto` needs its
-  # own invocation. Needs MARVIN_TOKEN (the PR must trigger CI/@review).
+  # own invocation. Needs the machine account's secrets (the PR must trigger
+  # CI/@review).
   claude-auto:
     # See the `claude` job's `if:` — same edited-comment guard, so adding @auto
     # to an existing comment kicks off the autonomous loop but re-editing a
@@ -147,31 +187,41 @@ jobs:
     # otherwise open a duplicate PR). Same machine-account guard too: @auto is
     # the loop-prone trigger, so keep the machine account from kicking it off
     # (nothing in the designed loop relies on marvin posting @auto).
-    # Machine-account EXCEPTION — the auto-LABEL path: automation (e.g. a
-    # triage pipeline) may add the `auto` label as the machine account, and a
-    # label event's actor is whoever added it. The hoisted marvin guard ate
-    # that trigger (observed: inspect_ai#236). Labeling is safe to exempt:
-    # the gate reads the label NAME (no quoted-token hazard), labeling needs
-    # triage access, and the reusable workflow's trigger check verifies the
-    # labeler has write access before running. Comment/body paths keep the
-    # full guard.
+    # The auto-LABEL path carries the same machine-account guard, under both
+    # of its logins (`i-am-marvin`, the User; `meridian-marvin[bot]`, the
+    # GitHub App): a label the machine account applies is not a human's
+    # decision to hand the issue to the autonomous agent — the triage
+    # pipeline used to apply `auto` as marvin from an agent's manifest, and
+    # that agent had read test output, which anyone can shape (Claude
+    # Security finding 4628345; the exception was added for inspect_ai#236).
+    # A triage-filed issue is read by a human, who applies `auto` themselves
+    # if the brief is worth automating; the label event's actor is then that
+    # human, and the reusable workflow's trigger check verifies their write
+    # access before anything runs. The gate reads the label NAME (no
+    # quoted-token hazard); every bot stays excluded, github-actions[bot]
+    # included. Comment/body paths keep the full guard.
     # author_association filter (OWNER/MEMBER/COLLABORATOR) on the text
     # paths: a COST filter, not the gate. On a public repo anyone can comment
     # `@auto` on a PR; without this every such comment spun a runner. It is
     # not authoritative — CONTRIBUTOR is anyone with a merged commit, and
     # whether org members show as MEMBER depends on org settings — so the
     # reusable workflow's trigger check (a fail-closed permission lookup on
-    # the actor, before any write) remains the authority. A collaborator
-    # whose association is reported looser than expected is dropped here
-    # silently; the trig check would refuse them anyway. The issue-body
-    # branch is scoped to `issues` events like the `claude` job's: an
-    # issue_comment payload also carries issue.body/author_association, so
-    # without the scope a member-authored issue mentioning @auto would let
-    # every comment from anyone spin a runner (refused by trig, but paid for).
+    # the actor, before any write) remains the authority. A writer whose
+    # association is reported looser than expected is dropped here silently
+    # — trig would have AUTHORIZED them, so this filter is what they hit; the
+    # `auto` label path above carries no association filter and is their
+    # fallback. The issue-body branch is scoped to `issues: opened` like the
+    # `claude` job's: an issue_comment payload also carries
+    # issue.body/author_association, so without the event scope a
+    # member-authored issue mentioning @auto would let every comment from
+    # anyone spin a runner, and without the action scope so would any later
+    # label added to that issue (trig skips both, but the runner is paid
+    # for). The label path is the leading branch, so no label clause is
+    # repeated inside the guarded one.
     if: |
       ( github.event_name == 'issues' && github.event.action == 'labeled'
         && github.event.label.name == 'auto'
-        && !endsWith(github.actor, '[bot]') ) ||
+        && github.actor != 'i-am-marvin' && !endsWith(github.actor, '[bot]') ) ||
       ( github.actor != 'i-am-marvin' && !endsWith(github.actor, '[bot]') && (
         ( github.event.action == 'edited'
           && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
@@ -182,19 +232,21 @@ jobs:
               && contains(github.event.comment.body, '@auto') ) ||
             ( contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association)
               && contains(github.event.review.body, '@auto') ) ||
-            ( github.event_name == 'issues'
+            ( github.event_name == 'issues' && github.event.action == 'opened'
               && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)
               && ( contains(github.event.issue.body, '@auto')
-                || contains(github.event.issue.title, '@auto') ) ) ||
-            github.event.label.name == 'auto'
+                || contains(github.event.issue.title, '@auto') ) )
         ) )
       ) )
     uses: meridianlabs-ai/agents/.github/workflows/claude.yml@main
     secrets:
-      MARVIN_TOKEN: ${{ secrets.MARVIN_TOKEN }}
+      MARVIN_APP_CLIENT_ID: ${{ secrets.MARVIN_APP_CLIENT_ID }}
+      MARVIN_APP_PRIVATE_KEY: ${{ secrets.MARVIN_APP_PRIVATE_KEY }}
       # codex engine (design/codex-engine.md in the agents repo):
       # consumed only on items labeled engine:codex; optional.
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    # Agent runs restore caches, never save them (agents repo: design/agent-cache-scope.md).
+    cache-mode: read
     permissions:
       contents: write
       pull-requests: write
@@ -202,5 +254,24 @@ jobs:
       id-token: write
       actions: read
     with:
+      # provision (optional; agents#136): the repository's provisioning recipe
+      # — bash run as the unprivileged agent user in the checkout, in place of
+      # the generic `uv venv && uv pip install -e .[dev]`. Codex runs use it
+      # today; Claude runs keep this repository's claude-setup action until
+      # they move to an agent user too, and then use this recipe instead
+      # (design/executed-paths-residual.md in the agents repo). The codex job
+      # never runs claude-setup (a composite runs as the runner; nothing from
+      # the checkout may run as the runner there), so put here what
+      # claude-setup does that the generic recipe does not. uv is on PATH,
+      # HOME is the agent user's (/home/codex), no sudo, network on; create
+      # .venv so the agent's tools are found. A stub that still sets the
+      # earlier `codex_provision` keeps working: it is used when `provision`
+      # is empty. Examples —
+      # a Python pin:          uv venv --python 3.11 && uv pip install -e ".[dev]"
+      # a lockfile sync:       uv venv --python 3.11 && uv sync --dev
+      # Node tooling:          corepack enable --install-directory ~/.local/bin && pnpm install --frozen-lockfile
+      # provision: |
+      #   uv venv --python 3.11
+      #   uv sync --dev
       trigger_phrase: "@auto"
       label_trigger: "auto"

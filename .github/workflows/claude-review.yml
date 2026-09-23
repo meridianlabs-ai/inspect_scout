@@ -1,12 +1,35 @@
 # Copy to .github/workflows/claude-review.yml in any Meridian repo to add the
-# read-only reviewer. Reviews PRs on demand via an @review comment.
+# read-only reviewer, on demand: comment @review on a PR (or on an
+# External-labeled issue) to run it.
 # Independent of the dev agent (claude.yml) — different trigger, different
-# (lower) permissions.
+# (lower) permissions. Requires the machine account's two org secrets
+# scoped to this repo, MARVIN_APP_CLIENT_ID and MARVIN_APP_PRIVATE_KEY:
+# the review is posted by the GitHub App they name, and a run without them
+# fails at the gate.
 #
-# Auto-review-on-open is intentionally disabled in this repo: the upstream
-# template also subscribes to `pull_request` (opened, reopened,
-# ready_for_review), which we have dropped so PRs are only reviewed when
-# someone asks with @review.
+# issue_comment is the ONLY trigger the reusable workflow admits — the
+# comment-only contract. Auto-review on PR open / ready_for_review was
+# switched off as policy on 2026-09-16 (decision: Ransom: no unasked CI
+# reviews; reviews are driven from Orca workspaces — first for
+# meridianlabs-ai/actions on 2026-09-14 after actions#110 was reviewed
+# unasked, then after inspect_ai#501 was) and the reusable's pull_request /
+# pull_request_target path was removed on 2026-09-22, when eight of the ten
+# deployed stubs were already comment-only (inspect_harbor and inspect_vscode
+# still carried PR triggers; see the agents repo's design/architecture.md →
+# The reviewer: auto-review tradeoffs). A stub that still fires a PR event
+# gets a red run with an error naming the fix, not a review. A repo that
+# wants a review from CI posts a top-level @review comment as a write-access
+# identity (the machine account, for example) and lets this trigger pick it
+# up.
+#
+# Caveat: PRs from forks — a maintainer can review a fork PR with an @review
+# comment, the same trust decision made explicitly — the reusable's trig
+# check enforces it (fork-head @review requires a commenter with write
+# access, checked before checkout), and the run then treats the fork's tree
+# as UNTRUSTED code: no runner-side provisioning, execution only inside the
+# reviewer's OS-level sandbox, project Claude Code configuration stripped
+# from the checkout, and the Claude engine even if the PR is labeled
+# engine:codex (agents#59).
 
 name: Review
 
@@ -16,15 +39,101 @@ on:
 
 jobs:
   review:
-    # Run on a PR comment containing @review. `@review` does not collide with
-    # the dev agent's `@claude` trigger.
+    # Run on a PR comment containing @review (works on drafts, and on a fork
+    # PR when the commenter has write access — see the header, sandboxed
+    # path), or on an @review comment on an External-labeled issue. `@review`
+    # does not collide with the dev agent's `@claude` trigger.
+    # The two comment gates exclude the reviewer's own comments: reviewing
+    # files that contain the trigger token makes it routine for the review
+    # summary's prose to mention that token, which passes this cheap
+    # substring gate and spawns a Review run whose newest-wins concurrency
+    # CANCELS the very run that posted the summary, before it posts the
+    # verdict marker; the loop then never engages (observed: agents#36
+    # round 2, 2026-08-31 — a backticked mention; agents#20 round 2,
+    # 2026-08-27 — a bare mention followed by '/'). The reusable's
+    # word-boundary trig gate rejects both shapes, so the spawned run only
+    # ever no-ops — but its concurrency entry does the damage the moment
+    # the job starts, so it must not start at all. Hence two exclusions:
+    # a backticked token (mirrors the word-boundary gate's deliberate
+    # blindness to backticked mentions; deterministic) and the
+    # claude-review-comment marker the reviewer is prompted to stamp on
+    # every top-level comment it posts (covers bare non-word-boundary
+    # mentions like agents#20's; prompt-driven). Cost: a comment carrying
+    # either alongside a genuine bare trigger is wrongly skipped — rare,
+    # recoverable by re-commenting the bare token alone.
+    # author_association filter (OWNER/MEMBER/COLLABORATOR) on both comment
+    # paths: a COST filter, not the gate (the shape the dev stub's
+    # `claude-auto` job uses). On a public repo anyone can comment `@review`;
+    # without this every such comment spun a runner (Claude Security
+    # 4085111). It is not authoritative — CONTRIBUTOR is anyone with a
+    # merged commit, and whether org members show as MEMBER depends on org
+    # settings — so the reusable workflow's trig check (a fail-closed
+    # permission lookup on the actor, before any write or checkout) remains
+    # the authority. A writer whose association is reported looser than
+    # expected is dropped here silently — trig would have AUTHORIZED them,
+    # so this filter is what they hit, and there is no fallback path: a
+    # collaborator re-triggers. The loops' hand-back passes: their land jobs
+    # post `@review` as the machine account, a User with write access. A
+    # Bot commenter (the payload's user.type — a GitHub App, `[bot]` suffix
+    # or not) passes too: its association is NONE whatever it may do, and
+    # the reusable's `allowed_bots` input is what decides a bot's request
+    # (its trig step refuses every bot not named there), so the filter must
+    # not drop an allow-listed bot first. Bounded cost: only Apps installed
+    # on the repo can comment as a Bot, and github-actions[bot] triggers no
+    # workflow. Phase 2's App identity passes the same way and is admitted
+    # by the reusable's TRUSTED_LOGINS.
     if: >
-      github.event.issue.pull_request != null &&
-      contains(github.event.comment.body, '@review')
+      (github.event.issue.pull_request != null &&
+       (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) ||
+        github.event.comment.user.type == 'Bot') &&
+       contains(github.event.comment.body, '@review') &&
+       !contains(github.event.comment.body, '`@review`') &&
+       !contains(github.event.comment.body, '<!-- claude-review-comment -->')) ||
+      (github.event.issue.pull_request == null &&
+       contains(github.event.issue.labels.*.name, 'External') &&
+       (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) ||
+        github.event.comment.user.type == 'Bot') &&
+       contains(github.event.comment.body, '@review') &&
+       !contains(github.event.comment.body, '`@review`') &&
+       !contains(github.event.comment.body, '<!-- claude-review-comment -->'))
+    # provision (optional; agents#136): the repository's provisioning recipe
+    # — bash run as the unprivileged agent user in the checkout, in place of
+    # the generic `uv venv && uv pip install -e .[dev]`. Codex runs use it
+    # today; Claude runs keep this repository's claude-setup action until
+    # they move to an agent user too, and then use this recipe instead
+    # (design/executed-paths-residual.md in the agents repo). The codex job
+    # never runs claude-setup (a composite runs as the runner; nothing from
+    # the checkout may run as the runner there), so put here what
+    # claude-setup does that the generic recipe does not. uv is on PATH,
+    # HOME is the agent user's (/home/codex), no sudo, network on; create
+    # .venv so the agent's tools are found. A stub that still sets the
+    # earlier `codex_provision` keeps working: it is used when `provision`
+    # is empty. Examples —
+    # a Python pin:          uv venv --python 3.11 && uv pip install -e ".[dev]"
+    # a lockfile sync:       uv venv --python 3.11 && uv sync --dev
+    # Node tooling:          corepack enable --install-directory ~/.local/bin && pnpm install --frozen-lockfile
+    # with:
+    #   provision: |
+    #     uv venv --python 3.11
+    #     uv sync --dev
     uses: meridianlabs-ai/agents/.github/workflows/claude-review.yml@main
+    # The machine account's secrets, for the gate's deterministic ack/stage
+    # steps (eyes reaction + board stage) and the land job's posts (the
+    # review itself lands there — agents#114); never handed to the review
+    # agent, which stays read-only. REQUIRED for the review to reach the PR:
+    # absent, the run fails at the gate's mint step, before any review runs
+    # (the job token below holds no write permission).
+    secrets:
+      MARVIN_APP_CLIENT_ID: ${{ secrets.MARVIN_APP_CLIENT_ID }}
+      MARVIN_APP_PRIVATE_KEY: ${{ secrets.MARVIN_APP_PRIVATE_KEY }}
+      # codex engine (design/codex-engine.md in the agents repo):
+      # consumed only on items labeled engine:codex; optional.
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    # Agent runs restore caches, never save them (agents repo: design/agent-cache-scope.md).
+    cache-mode: read
     permissions:
       contents: read
-      pull-requests: write
+      pull-requests: read     # the review is posted by the land job as the machine account (agents#114)
       issues: read
       id-token: write
       actions: read

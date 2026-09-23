@@ -138,6 +138,10 @@ def create_implicit_loader(
         annotation_source = inspect.unwrap(scanner_fn)
         while isinstance(annotation_source, partial):
             annotation_source = inspect.unwrap(annotation_source.func)
+        if not (
+            inspect.isfunction(annotation_source) or inspect.ismethod(annotation_source)
+        ):
+            annotation_source = inspect.unwrap(annotation_source.__call__)
         input_annotation = eval(input_annotation, annotation_source.__globals__)
     # A `Transcript | TranscriptHandle` union also takes the identity loader:
     # a materialized Transcript flows through it, while a handle bypasses the

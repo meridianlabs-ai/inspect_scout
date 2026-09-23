@@ -80,6 +80,31 @@ async def test_scanner_registers_with_unresolvable_return_annotation() -> None:
 
 
 @pytest.mark.asyncio
+async def test_callable_scanner_resolves_only_postponed_input() -> None:
+    """Callable scanners resolve the input without evaluating a local return alias."""
+    from inspect_scout._scanner.result import Result as LocalResult
+
+    class CallableScanner:
+        async def __call__(self, transcript: Transcript) -> LocalResult:
+            return LocalResult(value=transcript.transcript_id)
+
+    @scanner(messages="all")
+    def callable_scanner() -> Scanner[Transcript]:
+        return CallableScanner()
+
+    instance = callable_scanner()
+    transcript = Transcript(
+        transcript_id="callable-instance",
+        source_type="test",
+        source_id="test",
+        source_uri="test://callable-instance",
+    )
+    result = await instance(transcript)
+    assert isinstance(result, Result)
+    assert result.value == "callable-instance"
+
+
+@pytest.mark.asyncio
 async def test_scanner_registers_partial_with_postponed_input_annotation() -> None:
     """Partial scanners retain their postponed input annotation resolution."""
 

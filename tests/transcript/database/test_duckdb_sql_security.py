@@ -22,19 +22,20 @@ def _minimal_transcript_table(transcript_id: str) -> pa.Table:
 
 
 @pytest.mark.asyncio
-async def test_malicious_transcript_filename_is_data(tmp_path: Path) -> None:
+async def test_malicious_transcript_filename_is_data(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     location = tmp_path / "transcripts"
     location.mkdir()
+    # A relative marker keeps the filename short however long tmp_path is.
+    monkeypatch.chdir(tmp_path)
     marker = tmp_path / "transcript-marker.txt"
 
     pq.write_table(_minimal_transcript_table("normal"), location / "a.parquet")
     pq.write_table(_minimal_transcript_table("companion"), location / "z")
 
-    escaped_marker = str(marker).replace("\\", "\\\\").replace("/", "\\x2f")
     malicious_name = (
-        "z']); "
-        f"COPY (SELECT 'INJECTED') TO E'{escaped_marker}' "
-        "(HEADER false); --.parquet"
+        f"z']); COPY (SELECT 'INJECTED') TO '{marker.name}' (HEADER false); --.parquet"
     )
     pq.write_table(
         _minimal_transcript_table("malicious-name"),

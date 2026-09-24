@@ -128,15 +128,14 @@ jobs:
     with:
       # provision (optional; agents#136): the repository's provisioning recipe
       # — bash run as the unprivileged agent user in the checkout, in place of
-      # the generic `uv venv && uv pip install -e .[dev]`. Codex runs use it
-      # today; Claude runs keep this repository's claude-setup action until
-      # they move to an agent user too, and then use this recipe instead
-      # (design/executed-paths-residual.md in the agents repo). The codex job
-      # never runs claude-setup (a composite runs as the runner; nothing from
-      # the checkout may run as the runner there), so put here what
-      # claude-setup does that the generic recipe does not. uv is on PATH,
-      # HOME is the agent user's (/home/codex), no sudo, network on; create
-      # .venv so the agent's tools are found. A stub that still sets the
+      # the generic `uv venv && uv pip install -e .[dev]`, on both engines
+      # (design/executed-paths-residual.md in the agents repo). No agent job
+      # runs a claude-setup action any more (a composite runs as the runner,
+      # and nothing from the checkout may run as the runner there), so put
+      # here what claude-setup did that the generic recipe does not. uv is on
+      # PATH, HOME is the agent user's (/home/claude-agent or /home/codex), no
+      # sudo, no Docker, network on; create .venv so the agent's tools are
+      # found. A stub that still sets the
       # earlier `codex_provision` keeps working: it is used when `provision`
       # is empty. Examples —
       # a Python pin:          uv venv --python 3.11 && uv pip install -e ".[dev]"
@@ -172,6 +171,17 @@ jobs:
         (contains(github.event.issue.body, '@i-am-marvin') || contains(github.event.issue.title, '@i-am-marvin')) && '@i-am-marvin' ||
         '@claude'
         }}
+      # allow_build_config (optional, default false; agents repo:
+      # design/executed-paths-residual.md → Land: tier-2 opt-in): let the
+      # agent's commits change build and dependency configuration
+      # (pyproject.toml, setup.py, uv.lock, requirements*.txt, package.json,
+      # the npm, pnpm and yarn lockfiles, …), which the land job otherwise
+      # refuses. Set it in the dev-agent and @auto stubs alike, and only when
+      # no other automation in this repository checks out and runs code from
+      # agent-landed branches as the runner (a scheduled agent job that
+      # continues an earlier agent branch, say; CI on agent PRs does not
+      # count). .github/ and agent instructions stay refused either way.
+      allow_build_config: true
 
   # @auto kickoff (distinct from the one-shot `claude` above). An `auto` label or
   # `@auto` mention drives the issue autonomously: the dev agent opens a PR, the
@@ -256,15 +266,14 @@ jobs:
     with:
       # provision (optional; agents#136): the repository's provisioning recipe
       # — bash run as the unprivileged agent user in the checkout, in place of
-      # the generic `uv venv && uv pip install -e .[dev]`. Codex runs use it
-      # today; Claude runs keep this repository's claude-setup action until
-      # they move to an agent user too, and then use this recipe instead
-      # (design/executed-paths-residual.md in the agents repo). The codex job
-      # never runs claude-setup (a composite runs as the runner; nothing from
-      # the checkout may run as the runner there), so put here what
-      # claude-setup does that the generic recipe does not. uv is on PATH,
-      # HOME is the agent user's (/home/codex), no sudo, network on; create
-      # .venv so the agent's tools are found. A stub that still sets the
+      # the generic `uv venv && uv pip install -e .[dev]`, on both engines
+      # (design/executed-paths-residual.md in the agents repo). No agent job
+      # runs a claude-setup action any more (a composite runs as the runner,
+      # and nothing from the checkout may run as the runner there), so put
+      # here what claude-setup did that the generic recipe does not. uv is on
+      # PATH, HOME is the agent user's (/home/claude-agent or /home/codex), no
+      # sudo, no Docker, network on; create .venv so the agent's tools are
+      # found. A stub that still sets the
       # earlier `codex_provision` keeps working: it is used when `provision`
       # is empty. Examples —
       # a Python pin:          uv venv --python 3.11 && uv pip install -e ".[dev]"
@@ -275,3 +284,14 @@ jobs:
       #   uv sync --dev
       trigger_phrase: "@auto"
       label_trigger: "auto"
+      # allow_build_config (optional, default false; agents repo:
+      # design/executed-paths-residual.md → Land: tier-2 opt-in): let the
+      # agent's commits change build and dependency configuration
+      # (pyproject.toml, setup.py, uv.lock, requirements*.txt, package.json,
+      # the npm, pnpm and yarn lockfiles, …), which the land job otherwise
+      # refuses. Set it in the dev-agent and @auto stubs alike, and only when
+      # no other automation in this repository checks out and runs code from
+      # agent-landed branches as the runner (a scheduled agent job that
+      # continues an earlier agent branch, say; CI on agent PRs does not
+      # count). .github/ and agent instructions stay refused either way.
+      allow_build_config: true

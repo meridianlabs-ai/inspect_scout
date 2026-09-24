@@ -154,7 +154,7 @@ async def test_invalid_answer_args_then_retry() -> None:
 
 @pytest.mark.anyio
 async def test_context_tool_call_then_retry() -> None:
-    """Model ignores tool_choice and calls a context tool → stub redirects, retry."""
+    """Model calls a context tool → stub redirects, retry."""
     lookup = ToolInfo(name="lookup", description="lookup", parameters=ToolParams())
     value, messages, gen = await _run(
         [

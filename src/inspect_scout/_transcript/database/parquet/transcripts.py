@@ -849,6 +849,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 t,
                 content.messages,
                 events_filter,
+                metadata=content.metadata is not False,
             )
 
             # Resolve pool references back to full messages/calls

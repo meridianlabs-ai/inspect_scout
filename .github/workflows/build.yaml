@@ -67,11 +67,13 @@ jobs:
         with:
           version: "0.9.4"
       - name: Install dependencies
+        env:
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           uv venv --python "$(which python)"
           # Track inspect_ai main everywhere EXCEPT the release PR, where we
           # validate against the pinned/shipped version pulled in via .[dev] below.
-          if [ "${{ github.head_ref }}" != "release-please--branches--main" ]; then
+          if [ "$HEAD_REF" != "release-please--branches--main" ]; then
             uv pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
           fi
           uv pip install .[dev]
@@ -102,11 +104,13 @@ jobs:
         with:
           version: "0.9.4"
       - name: Install dependencies
+        env:
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           uv venv --python "$(which python)"
           # Track inspect_ai main everywhere EXCEPT the release PR, where we
           # validate against the pinned/shipped version pulled in via .[dev] below.
-          if [ "${{ github.head_ref }}" != "release-please--branches--main" ]; then
+          if [ "$HEAD_REF" != "release-please--branches--main" ]; then
             uv pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
           fi
           uv pip install .[dev]
@@ -136,11 +140,13 @@ jobs:
         with:
           version: "0.9.4"
       - name: Install build dependencies
+        env:
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           uv venv --python "$(which python)"
           # Track inspect_ai main everywhere EXCEPT the release PR, where we
           # validate against the pinned/shipped version pulled in via . below.
-          if [ "${{ github.head_ref }}" != "release-please--branches--main" ]; then
+          if [ "$HEAD_REF" != "release-please--branches--main" ]; then
             uv pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
           fi
           uv pip install build
@@ -149,7 +155,8 @@ jobs:
       - name: Verify package
         run: |
           uv pip install dist/*.whl
-          .venv/bin/python -c "import inspect_scout; print('Package imported successfully')"
+          # -I so the import resolves to the installed wheel, not a checkout-root module.
+          .venv/bin/python -I -c "import inspect_scout; print('Package imported successfully')"
       - name: Minimize uv cache
         if: ${{ !cancelled() }}
         run: uv cache prune --ci
@@ -322,6 +329,14 @@ jobs:
       - name: Install dependencies
         working-directory: src/inspect_scout/_view/ts-mono
         run: pnpm install --frozen-lockfile
+
+      # Same gate the npm publish workflow runs (lint, typecheck, format). The
+      # build below is plain `vite build` and does not typecheck, so without
+      # this a gitlink bump to a non-compiling ts-mono commit passes CI here
+      # and only fails at release time.
+      - name: Check
+        working-directory: src/inspect_scout/_view/ts-mono
+        run: pnpm check
 
       - name: Build
         working-directory: src/inspect_scout/_view/ts-mono

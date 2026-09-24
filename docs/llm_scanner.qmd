@@ -5,7 +5,7 @@ llms-description: "Customizable LLM scanner for model evaluation of transcripts"
 
 ## Overview
 
-The `llm_scanner()` provides a core "batteries included" implementation of an LLM-based `Transcript` scanner with the following features:.
+The `llm_scanner()` provides a core "batteries included" implementation of an LLM-based `Transcript` scanner with the following features:
 
 -   Support for a variety of model answer types including boolean, number, string, classification (single or multi), and structured JSON output.
 -   Textual presentation of message history including a numbering scheme that enables models to create reference links to specific messages.
@@ -110,7 +110,7 @@ You can provide your own `template` as an argument to `llm_scanner()`. The follo
 | `{{{ question }}}` | str | Question about the transcript posed to the LLM (e.g. "Did the assistant refuse the user's request?") |
 | `{{{ answer_prompt }}}` | str | The prompt used by the current answer type (e.g. "Answer the following yes or no question:") |
 | `{{{ answer_format }}}` | str | Formatting guidelines used by the current answer type (e.g. ""'ANSWER: \$VALUE' (without quotes) where \$VALUE is yes or no.") |
-| `{{{ date}}}` | str | ISO 8601 datetime when the transcript was created. |
+| `{{{ date }}}` | str | ISO 8601 datetime when the transcript was created. |
 | `{{{ task_set }}}` | str | Set from which transcript task was drawn (e.g. Inspect taks name or benchmark name). |
 | `{{{ task_id }}}` | str | Identifier for task (e.g. dataset sample id). |
 | `{{{ task_repeat }}}` | int | Repeat for a given task id within a task set (e.g. epoch). |
@@ -125,7 +125,7 @@ You can provide your own `template` as an argument to `llm_scanner()`. The follo
 | `{{{ total_tokens }}}` | number | Tokens spent in execution of task. |
 | `{{{ error }}}` | str | Error message that terminated the task. |
 | `{{{ limit }}}` | str | Limit that caused the task to exit (e.g. "tokens", "messages, etc.) |
-| `{{{ metadata }}}` | dict | Additional metadata |
+| `{{{ metadata }}}` | dict | Additional metadata (includes `sample_metadata`, `target` and `scores` from the log body unless the scanner declines them with `metadata=False`) |
 
 : {tbl-colwidths=\[40,15,45\]}
 
@@ -357,7 +357,7 @@ Instead of a static string, you can pass a function that takes a `Transcript` an
 ``` python
 async def question_from_transcript(transcript: Transcript) -> str:
     # access sample metadata
-    topic = transcript.metadata["sample_metadata]".get("topic", "unknown")
+    topic = transcript.metadata["sample_metadata"].get("topic", "unknown")  # needs the default metadata=True
 
     # access message count
     num_messages = len(transcript.messages)

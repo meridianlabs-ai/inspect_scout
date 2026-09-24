@@ -73,7 +73,7 @@ Never change the ts-mono submodule gitlink (`src/inspect_scout/_view/ts-mono`) u
 - **No gitlink change** (the diff is empty; only the local submodule worktree is stale): run `git submodule update`.
 - **Gitlink changed** (the recorded pointer was bumped incidentally): reset it and commit: `git checkout origin/main -- src/inspect_scout/_view/ts-mono`. `git submodule update` will NOT fix this—it syncs the working tree to the already-recorded pointer, not the reverse. Never `git add` the submodule path in this state—that stages the wrong pointer.
 
-When a change legitimately requires a coordinated ts-mono update (e.g. regenerated types), follow [.claude/skills/land-ts-mono/SKILL.md](.claude/skills/land-ts-mono/SKILL.md).
+When a change legitimately requires a coordinated ts-mono update (e.g. regenerated types), follow [.agents/skills/land-ts-mono/SKILL.md](.agents/skills/land-ts-mono/SKILL.md).
 
 ## Documentation
 
@@ -180,6 +180,10 @@ Pipeline: Pydantic models → openapi.json → generated.ts
 After Python API changes:
 1. `.venv/bin/python scripts/export_openapi_schema.py`—regenerates `src/inspect_scout/_view/openapi.json`
 2. In the submodule's `apps/scout`: `pnpm types:generate`—regenerates `apps/scout/src/types/generated.ts` (`pnpm build` does NOT regenerate types)
-3. Commit both: `openapi.json` in this repo, `generated.ts` in the submodule. Landing a submodule change requires the coordinated flow in [.claude/skills/land-ts-mono/SKILL.md](.claude/skills/land-ts-mono/SKILL.md)
+3. Commit both: `openapi.json` in this repo, `generated.ts` in the submodule. Landing a submodule change requires the coordinated flow in [.agents/skills/land-ts-mono/SKILL.md](.agents/skills/land-ts-mono/SKILL.md)
 
 CI validates sync.
+
+## Repository skills
+
+Shared skills live in `.agents/skills`. `.claude/skills` links to that directory. Use `$skill-name` in Codex or `/skill-name` in Claude Code.

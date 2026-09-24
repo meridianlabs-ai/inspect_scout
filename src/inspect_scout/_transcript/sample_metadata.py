@@ -125,7 +125,12 @@ class SampleMetadata:
 
     @property
     def sample_metadata(self) -> dict[str, Any]:
-        """Sample metadata. Same as EvalSampleSummary.metadata."""
+        """Sample metadata.
+
+        The full metadata from the sample body, or the thinned
+        ``EvalSampleSummary.metadata`` when the scanner declined it with
+        ``metadata=False``.
+        """
         return self._metadata.get("sample_metadata") or {}
 
     @property

@@ -696,4 +696,5 @@ def test_scan_refusal_column_populated() -> None:
         assert pd.notna(error_df["scan_error"].iloc[0])
         assert pd.notna(error_df["scan_error_traceback"].iloc[0])
         assert "Regular error occurred" in error_df["scan_error"].iloc[0]
+        assert pd.isna(error_df["scan_error_type"].iloc[0])
         assert pd.isna(error_df["value"].iloc[0])

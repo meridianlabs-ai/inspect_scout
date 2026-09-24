@@ -9,6 +9,7 @@ from inspect_scout._transcript.transcripts import Transcripts
 
 from ..._query import Query
 from ..._query.condition import Condition, ScalarValue
+from ..handle import MaterializedTranscriptHandle, TranscriptHandle
 from ..types import (
     Transcript,
     TranscriptContent,
@@ -96,6 +97,27 @@ class TranscriptsView(abc.ABC):
             max_bytes: Max content size in bytes. Raises TranscriptTooLargeError if exceeded.
         """
         ...
+
+    async def open(
+        self,
+        t: TranscriptInfo,
+        content: TranscriptContent,
+    ) -> TranscriptHandle:
+        """Open a streaming handle to transcript content.
+
+        The default materializes eagerly via `read()`; backends supporting
+        true streaming reads should override. Use the handle within the view's
+        connected lifetime.
+
+        Args:
+            t: Transcript to open.
+            content: Content to read.
+        """
+
+        async def load_fn() -> Transcript:
+            return await self.read(t, content)
+
+        return MaterializedTranscriptHandle(load_fn, t)
 
     @abc.abstractmethod
     async def read_messages_events(

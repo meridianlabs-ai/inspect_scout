@@ -22,7 +22,9 @@ def _write_status(scan: Path, scanners: list[str]) -> None:
     (scan / "_summary.json").write_text(summary.model_dump_json(), encoding="utf-8")
 
 
-def test_undeclared_malicious_scan_file_is_ignored(tmp_path: Path) -> None:
+def test_undeclared_malicious_scan_file_is_ignored(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     scan = tmp_path / "scan_id=security"
     scan.mkdir()
     _write_status(scan, ["safe"])
@@ -31,11 +33,12 @@ def test_undeclared_malicious_scan_file_is_ignored(tmp_path: Path) -> None:
         scan / "safe.parquet",
     )
 
+    # A relative marker keeps the filename short however long tmp_path is.
+    monkeypatch.chdir(tmp_path)
     marker = tmp_path / "scan-marker.txt"
-    escaped_marker = str(marker).replace("\\", "\\\\").replace("/", "\\x2f")
     malicious_name = (
         "safe'); "
-        f"COPY (SELECT 'INJECTED') TO E'{escaped_marker}' "
+        f"COPY (SELECT 'INJECTED') TO '{marker.name}' "
         "(HEADER false); --.parquet"
     )
     (scan / malicious_name).write_bytes(b"not parquet")
@@ -52,13 +55,16 @@ def test_undeclared_malicious_scan_file_is_ignored(tmp_path: Path) -> None:
     assert not marker.exists()
 
 
-def test_declared_malicious_names_are_quoted(tmp_path: Path) -> None:
+def test_declared_malicious_names_are_quoted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     scan = tmp_path / "scan_id=security"
     scan.mkdir()
+    # A relative marker keeps the filename short however long tmp_path is.
+    monkeypatch.chdir(tmp_path)
     marker = tmp_path / "declared-marker.txt"
-    escaped_marker = str(marker).replace("\\", "\\\\").replace("/", "\\x2f")
     scanner_name = (
-        f"x'); COPY (SELECT 'INJECTED') TO E'{escaped_marker}' (HEADER false); --"
+        f"x'); COPY (SELECT 'INJECTED') TO '{marker.name}' (HEADER false); --"
     )
     malicious_column = 'extra"; COPY (SELECT 1); --'
     _write_status(scan, [scanner_name])

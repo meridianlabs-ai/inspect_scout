@@ -155,7 +155,8 @@ jobs:
       - name: Verify package
         run: |
           uv pip install dist/*.whl
-          .venv/bin/python -c "import inspect_scout; print('Package imported successfully')"
+          # -I so the import resolves to the installed wheel, not a checkout-root module.
+          .venv/bin/python -I -c "import inspect_scout; print('Package imported successfully')"
       - name: Minimize uv cache
         if: ${{ !cancelled() }}
         run: uv cache prune --ci

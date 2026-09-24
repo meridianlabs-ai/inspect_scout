@@ -20,7 +20,10 @@ from inspect_ai._util.json import jsonable_python
 from inspect_ai._util.path import pretty_path
 from inspect_ai._util.platform import platform_init as init_platform
 from inspect_ai._util.rich import clean_control_characters
-from inspect_ai.model._generate_config import GenerateConfig
+from inspect_ai.model._generate_config import (
+    GenerateConfig,
+    set_active_generate_config,
+)
 from inspect_ai.model._model import (
     Model,
     ModelRoles,
@@ -35,6 +38,7 @@ from inspect_ai.model._model_config import (
 from inspect_ai.model._util import resolve_model_roles
 from inspect_ai.util import span
 from inspect_ai.util._anyio import inner_exception
+from inspect_ai.util._concurrency import adaptive_active
 from pydantic import JsonValue, TypeAdapter
 from rich import box
 from rich.table import Column, Table
@@ -129,6 +133,57 @@ def certainly_single_process(*, limit: int | None, max_processes: int | None) ->
     return limit == 1 or max_processes == 1 or os.name == "nt"
 
 
+def resolve_connection_limit(
+    generate_config: GenerateConfig,
+    *,
+    model: Model,
+    model_roles: dict[str, Model | list[Model]] | None,
+    limit: int | None,
+    max_processes: int | None,
+    max_transcripts: int,
+) -> GenerateConfig:
+    """Fill in `max_connections` unless adaptive connections will actually activate.
+
+    `max_transcripts` is the default for `max_connections`, but supplying it
+    disables adaptive connections, which `adaptive_active()` gates on
+    `max_connections` being None.
+
+    Must run after model resolution: a pre-built `Model` is reflected back by
+    `resolve_models()` carrying its own config, which never reaches the scanjob's,
+    so adaptive can only be judged against the merged pair. Roles are included
+    because a role that cannot use adaptive still inherits `max_connections` from
+    the active config, and would otherwise fall through to its provider default or
+    the batch ceiling.
+
+    Returns a new config rather than mutating the one passed in: `get_model()` keys
+    its memo cache on the config it was handed and then stores that object as
+    `Model.config`.
+    """
+    if generate_config.max_connections is not None:
+        return generate_config
+
+    models: list[Model] = [model]
+    for role in (model_roles or {}).values():
+        models.extend(role if isinstance(role, list) else [role])
+
+    # merge the scan-wide config into each model's own; a model with no opinion
+    # inherits the scan-wide answer
+    adaptive_everywhere = all(
+        adaptive_active(
+            effective.adaptive_connections,
+            effective.max_connections,
+            effective.batch,
+        )
+        for effective in (m.config.merge(generate_config) for m in models)
+    )
+    if adaptive_everywhere and certainly_single_process(
+        limit=limit, max_processes=max_processes
+    ):
+        return generate_config
+
+    return generate_config.model_copy(update={"max_connections": max_transcripts})
+
+
 def scan(
     scanners: Scanners,
     transcripts: Transcripts | None = None,
@@ -175,7 +230,7 @@ def scan(
         model_base_url: Base URL for communicating with the model API.
         model_args: Model creation args (as a dictionary or as a path to a JSON or YAML config file).
         model_roles: Named roles for use in `get_model()`.
-        max_transcripts: The maximum number of transcripts to process concurrently (this also serves as the default value for `max_connections`). Defaults to 25.
+        max_transcripts: The maximum number of transcripts to process concurrently (this also serves as the default value for `max_connections`, unless the scan can use adaptive connections). Defaults to 25.
         max_processes: The maximum number of concurrent processes (for multiproccesing). Defaults to 4.
         limit: Limit the number of transcripts processed.
         shuffle: Shuffle the order of transcripts (pass an `int` to set a seed for shuffling).
@@ -266,7 +321,7 @@ async def scan_async(
         model_base_url: Base URL for communicating with the model API.
         model_args: Model creation args (as a dictionary or as a path to a JSON or YAML config file).
         model_roles: Named roles for use in `get_model()`.
-        max_transcripts: The maximum number of transcripts to process concurrently (this also serves as the default value for `max_connections`). Defaults to 25.
+        max_transcripts: The maximum number of transcripts to process concurrently (this also serves as the default value for `max_connections`, unless the scan can use adaptive connections). Defaults to 25.
         max_processes: The maximum number of concurrent processes (for multiproccesing). Defaults to 4.
         limit: Limit the number of transcripts processed.
         shuffle: Shuffle the order of transcripts (pass an `int` to set a seed for shuffling).
@@ -347,20 +402,13 @@ async def scan_async(
     scanjob._tags = tags or scanjob._tags
     scanjob._metadata = metadata or scanjob._metadata
 
-    # derive max_connections if not specified
+    # merge model config (the max_connections default is applied after model
+    # resolution, below, where the effective configuration is knowable)
     scanjob._generate_config = (
         scanjob._generate_config.merge(model_config)
         if scanjob._generate_config and model_config
         else model_config or scanjob._generate_config or GenerateConfig()
     )
-    if (
-        scanjob._generate_config.max_connections is None
-        and not certainly_single_process(
-            limit=scanjob._limit,
-            max_processes=scanjob._max_processes,
-        )
-    ):
-        scanjob._generate_config.max_connections = scanjob._max_transcripts
 
     # initialize runtime context
     resolved_model, resolved_model_args, resolved_model_roles = init_scan_model_context(
@@ -375,6 +423,18 @@ async def scan_async(
         scanjob._model = resolved_model
     scanjob._model_args = resolved_model_args
     scanjob._model_roles = resolved_model_roles
+
+    scanjob._generate_config = resolve_connection_limit(
+        scanjob._generate_config,
+        model=resolved_model,
+        model_roles=resolved_model_roles,
+        limit=scanjob._limit,
+        max_processes=scanjob._max_processes,
+        max_transcripts=scanjob._max_transcripts,
+    )
+    # init_scan_model_context() published the pre-resolution config; republish the
+    # resolved one so spawned workers get it too
+    set_active_generate_config(scanjob._generate_config)
 
     scan = await create_scan(scanjob)
     if dry_run:
@@ -455,10 +515,24 @@ async def scan_resume_async(
         model = None
 
     # create/initialize models then call init runtime context
-    init_scan_model_context(
+    spec_model_config = scan.spec.model.config if scan.spec.model else None
+    resolved_model, _, resolved_model_roles = init_scan_model_context(
         model=model,
-        model_config=scan.spec.model.config if scan.spec.model else None,
+        model_config=spec_model_config,
         model_roles=model_roles_config_to_model_roles(scan.spec.model_roles),
+    )
+    # the spec records the model's own config, which carries no max_connections
+    # when the original scan ran adaptively, so re-derive rather than inheriting
+    # a limit (or the absence of one) that does not suit the resuming host
+    set_active_generate_config(
+        resolve_connection_limit(
+            spec_model_config or GenerateConfig(),
+            model=resolved_model,
+            model_roles=resolved_model_roles,
+            limit=scan.spec.options.limit,
+            max_processes=scan.spec.options.max_processes,
+            max_transcripts=scan.spec.options.max_transcripts,
+        )
     )
 
     # create recorder and scan

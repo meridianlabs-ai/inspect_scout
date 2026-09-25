@@ -77,3 +77,57 @@ async def test_read_json_log_respects_max_bytes(json_log: Path) -> None:
 
     with pytest.raises(TranscriptTooLargeError):
         await _read_first_transcript(json_log, content, max_bytes=10)
+
+
+POPULARITY_LOG = (
+    TEST_EVAL_LOGS_DIR
+    / "2025-09-23T08-09-58-04-00_popularity_DN2wbX2ZvACsBpjwptzBRo.eval"
+)
+
+# Index metadata columns that are stored as JSON strings and parsed lazily. The
+# sample body overlays `sample_metadata`, so only the index-only keys were
+# stranded by the merge; these four are what the popularity fixture carries.
+INDEX_ONLY_JSON_KEYS = ("eval_metadata", "task_args", "generate_config", "model_roles")
+
+
+@pytest.mark.asyncio
+async def test_default_read_parses_index_only_json_metadata() -> None:
+    """A default read must not hand scanners raw JSON strings.
+
+    The merge in the read path did ``base.copy() | overrides``, and both
+    ``dict.copy()`` and ``dict.__or__`` drop back to a plain dict, stranding
+    every index key nobody had read as its raw string.
+    """
+    transcript = await _read_first_transcript(
+        POPULARITY_LOG, TranscriptContent(messages="all", events="all")
+    )
+    for key in INDEX_ONLY_JSON_KEYS:
+        assert isinstance(transcript.metadata[key], dict), (
+            f"{key} came back as {type(transcript.metadata[key]).__name__}"
+        )
+
+
+@pytest.mark.asyncio
+async def test_default_read_metadata_matches_the_declined_path() -> None:
+    """The default read should agree with the declined path key for key.
+
+    Declining metadata leaves the index dict uncopied, so that path never had
+    the bug.
+    """
+    content = TranscriptContent(messages="all", events="all")
+    default = await _read_first_transcript(POPULARITY_LOG, content)
+    declined = await _read_first_transcript(
+        POPULARITY_LOG,
+        TranscriptContent(messages="all", events="all", metadata=False),
+    )
+    for key in INDEX_ONLY_JSON_KEYS:
+        assert default.metadata[key] == declined.metadata[key]
+
+
+@pytest.mark.asyncio
+async def test_default_read_keeps_non_json_strings_as_strings() -> None:
+    """The fix must not start parsing columns that hold plain text."""
+    transcript = await _read_first_transcript(
+        POPULARITY_LOG, TranscriptContent(messages="all", events="all")
+    )
+    assert isinstance(transcript.metadata["input"], str)

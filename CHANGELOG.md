@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.4](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.3...0.5.4) (2026-09-25)
+
+
+### Bug Fixes
+
+* record each loader item's own events on its ResultReport ([#663](https://github.com/meridianlabs-ai/inspect_scout/issues/663)) ([1d5f774](https://github.com/meridianlabs-ai/inspect_scout/commit/1d5f77402c7b4e24bfaccb3259ddc677870c7523))
+
 ## [0.5.3](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.2...0.5.3) (2026-09-16)
 
 

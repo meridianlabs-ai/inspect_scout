@@ -300,6 +300,34 @@ def test_anthropic_sync_sdk_manager(via: str, fail: bool) -> None:
     assert message.content[0].text == "hello"
 
 
+def test_anthropic_sync_sdk_manager_error_before_message_start() -> None:
+    response = _response(
+        _sse(
+            {
+                "type": "error",
+                "error": {"type": "overloaded_error", "message": "overloaded"},
+            }
+        )
+    )
+    captures: list[dict[str, Any]] = []
+
+    with anthropic.Anthropic(
+        api_key="test", http_client=httpx2.Client(transport=_transport(response))
+    ) as client:
+        manager = AnthropicStreamManagerCapture(
+            client.messages.stream(model="test", max_tokens=5, messages=[]),
+            {},
+            captures.append,
+        )
+        with pytest.raises(anthropic.APIStatusError) as raised:
+            with manager as stream:
+                list(stream)
+
+    assert len(captures) == 1
+    assert captures[0]["response"] is None
+    assert captures[0]["error"] is raised.value
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("via", ["iter", "text", "final"])
 @pytest.mark.parametrize("fail", [False, True])
@@ -341,6 +369,36 @@ async def test_anthropic_async_sdk_manager(via: str, fail: bool) -> None:
     assert isinstance(message, Message)
     assert message.content[0].type == "text"
     assert message.content[0].text == "hello"
+
+
+@pytest.mark.asyncio
+async def test_anthropic_async_sdk_manager_error_before_message_start() -> None:
+    response = _response(
+        _sse(
+            {
+                "type": "error",
+                "error": {"type": "overloaded_error", "message": "overloaded"},
+            }
+        )
+    )
+    captures: list[dict[str, Any]] = []
+
+    async with anthropic.AsyncAnthropic(
+        api_key="test", http_client=httpx2.AsyncClient(transport=_transport(response))
+    ) as client:
+        manager = AnthropicAsyncStreamManagerCapture(
+            client.messages.stream(model="test", max_tokens=5, messages=[]),
+            {},
+            captures.append,
+        )
+        with pytest.raises(anthropic.APIStatusError) as raised:
+            async with manager as stream:
+                async for _ in stream:
+                    pass
+
+    assert len(captures) == 1
+    assert captures[0]["response"] is None
+    assert captures[0]["error"] is raised.value
 
 
 class _Counter:

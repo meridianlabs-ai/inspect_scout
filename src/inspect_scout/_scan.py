@@ -48,7 +48,7 @@ from inspect_scout._transcript.local_files_cache import (
     cleanup_task_files_cache,
     init_task_files_cache,
 )
-from inspect_scout._util.item_events import ItemEvents
+from inspect_scout._util.attachments import resolve_event_attachments
 from inspect_scout._util.refusal import RefusalError
 from inspect_scout._validation.predicates import PredicateFn
 from inspect_scout._validation.types import ValidationSet
@@ -1145,7 +1145,6 @@ async def _scan_one(
 
     inspect_transcript = InspectTranscript()
     init_transcript(inspect_transcript)
-    item_events = ItemEvents(inspect_transcript)
 
     results: list[ResultReport] = []
 
@@ -1206,6 +1205,14 @@ async def _scan_one(
         # still re-raises.
         it = aiter(loader_iterations)
         while True:
+            # Each yielded item gets its own Inspect transcript, so the
+            # report's `events` describe that invocation alone (the loader
+            # work that produced the item plus its scan) rather than a
+            # snapshot of every earlier item's history; the shared
+            # transcript grew the recorded events quadratically in the
+            # item count.
+            inspect_transcript = InspectTranscript()
+            init_transcript(inspect_transcript)
             try:
                 loader_result = await anext(it)
             except StopAsyncIteration:
@@ -1258,7 +1265,6 @@ async def _scan_one(
                     assert loader_input is not None
                     type_and_ids = get_input_type_and_ids(loader_input)
                 if type_and_ids is None:
-                    item_events.skip()
                     init_model_usage(initial_usage={})
                     continue
 
@@ -1339,12 +1345,12 @@ async def _scan_one(
                         result=final_result,
                         validation=validation_result,
                         error=error,
-                        events=jsonable_python(item_events.take()),
+                        events=jsonable_python(
+                            resolve_event_attachments(inspect_transcript)
+                        ),
                         model_usage=model_usage(),
                     )
                 )
-            else:
-                item_events.skip()
 
             # Usage is reported per yielded item, so reset it before the next
             # one rather than letting it accumulate across the loop (#586).

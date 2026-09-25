@@ -303,7 +303,7 @@ batch_option = click.option(
 max_connections_option = click.option(
     "--max-connections",
     type=int,
-    help="Maximum number of concurrent connections to Model API (defaults to max_transcripts)",
+    help="Maximum number of concurrent connections to Model API (defaults to max_transcripts, unless the scan can use adaptive connections)",
     envvar="SCOUT_SCAN_MAX_CONNECTIONS",
 )
 

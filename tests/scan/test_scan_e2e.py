@@ -4,8 +4,9 @@ import os
 import shutil
 import tempfile
 from collections.abc import AsyncIterator, Callable
+from contextlib import AbstractAsyncContextManager, nullcontext
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import pytest
 from inspect_ai.log import transcript as inspect_transcript
@@ -493,26 +494,49 @@ def retained_transcript_loader_factory() -> Loader[ChatMessageUser]:
 
 
 @loader(name="persistent_worker_loader", messages=["user"])
-def persistent_worker_loader_factory() -> Loader[ChatMessageUser]:
-    """Create a loader whose one worker task makes each item's model call."""
+def persistent_worker_loader_factory(
+    setup_span: bool = False, worker_span: bool = False, skip_first: bool = False
+) -> Loader[list[ChatMessage]]:
+    """Create a loader whose one worker task makes each item's model call.
 
-    async def load(transcript: Transcript) -> AsyncIterator[ChatMessageUser]:
+    Args:
+        setup_span: Start the worker inside a span that ends before the first
+            yield, so the worker records under an ended span.
+        worker_span: The worker records inside its own span, a child of
+            wherever it started.
+        skip_first: Yield an empty item, which gets no report, first.
+    """
+
+    async def load(transcript: Transcript) -> AsyncIterator[list[ChatMessage]]:
         requests: asyncio.Queue[ChatMessageUser | None] = asyncio.Queue()
         completed: asyncio.Queue[ChatMessageUser] = asyncio.Queue()
+        started = asyncio.Event()
 
         async def worker() -> None:
-            while (message := await requests.get()) is not None:
-                await get_model().generate(
-                    [ChatMessageUser(content=SHARED_PROMPT), message]
-                )
-                await completed.put(message)
+            context: AbstractAsyncContextManager[None] = (
+                span("worker") if worker_span else nullcontext()
+            )
+            async with context:
+                started.set()
+                while (message := await requests.get()) is not None:
+                    await get_model().generate(
+                        [ChatMessageUser(content=SHARED_PROMPT), message]
+                    )
+                    await completed.put(message)
 
-        worker_task = asyncio.create_task(worker())
+        if setup_span:
+            async with span("worker_setup"):
+                worker_task = asyncio.create_task(worker())
+        else:
+            worker_task = asyncio.create_task(worker())
         try:
+            await started.wait()
+            if skip_first:
+                yield []
             for message in transcript.messages:
                 if isinstance(message, ChatMessageUser):
                     await requests.put(message)
-                    yield await completed.get()
+                    yield [await completed.get()]
         finally:
             await requests.put(None)
             await worker_task
@@ -560,6 +584,48 @@ def _item_scanner(name: str, item_loader: Loader[Any]) -> Scanner[Any]:
     return factory()
 
 
+class _LoaderCase(NamedTuple):
+    factory: Callable[[], Loader[Any]]
+    worker: bool = False
+    """The loader's worker task makes one model call per item."""
+    spans: tuple[str, ...] = ()
+    """Loader spans every report must contain, besides its scan span."""
+
+
+_LOADER_CASES = {
+    "retained_transcript_loader": _LoaderCase(retained_transcript_loader_factory),
+    "persistent_worker_loader": _LoaderCase(
+        persistent_worker_loader_factory, worker=True
+    ),
+    "worker_in_ended_span": _LoaderCase(
+        lambda: persistent_worker_loader_factory(setup_span=True),
+        worker=True,
+        spans=("worker_setup",),
+    ),
+    "worker_child_of_ended_span": _LoaderCase(
+        lambda: persistent_worker_loader_factory(setup_span=True, worker_span=True),
+        worker=True,
+        spans=("worker_setup", "worker"),
+    ),
+    "worker_in_ended_span_skipped_first": _LoaderCase(
+        lambda: persistent_worker_loader_factory(setup_span=True, skip_first=True),
+        worker=True,
+        spans=("worker_setup",),
+    ),
+    "worker_child_of_ended_span_skipped_first": _LoaderCase(
+        lambda: persistent_worker_loader_factory(
+            setup_span=True, worker_span=True, skip_first=True
+        ),
+        worker=True,
+        spans=("worker_setup", "worker"),
+    ),
+    "enclosing_span_loader": _LoaderCase(
+        enclosing_span_loader_factory, spans=("loader",)
+    ),
+    "skipped_item_loader": _LoaderCase(skipped_item_loader_factory),
+}
+
+
 def _dangling_span_refs(events: list[dict[str, Any]]) -> list[str]:
     """Span ids referenced by `events` whose `span_begin` is not among them."""
     begun = {e["id"] for e in events if e["event"] == "span_begin"}
@@ -572,16 +638,15 @@ def _dangling_span_refs(events: list[dict[str, Any]]) -> list[str]:
 @pytest.mark.parametrize(
     "loader_name",
     [
-        "retained_transcript_loader",
         pytest.param(
-            "persistent_worker_loader",
+            name,
             marks=pytest.mark.skipif(
-                os.environ.get("INSPECT_ASYNC_BACKEND", "").lower() == "trio",
+                case.worker
+                and os.environ.get("INSPECT_ASYNC_BACKEND", "").lower() == "trio",
                 reason="the worker is an asyncio task",
             ),
-        ),
-        "enclosing_span_loader",
-        "skipped_item_loader",
+        )
+        for name, case in _LOADER_CASES.items()
     ],
 )
 def test_scan_events_survive_loader_state_across_yields(
@@ -592,15 +657,12 @@ def test_scan_events_survive_loader_state_across_yields(
     A saved `transcript()` reference, a worker task started before the first
     yield, and a span open across yields all keep the transcript they were
     created with; replacing the transcript per item lost their later events
-    or left later reports with dangling span references. Events recorded for
-    an empty item, which gets no report, stay out of the next item's report.
+    or left later reports with dangling span references. A worker keeps
+    recording under the span it started in after that span ends, so later
+    reports still need that span's begin event. Events recorded for an empty
+    item, which gets no report, stay out of the next item's report.
     """
-    loaders: dict[str, Callable[[], Loader[Any]]] = {
-        "retained_transcript_loader": retained_transcript_loader_factory,
-        "persistent_worker_loader": persistent_worker_loader_factory,
-        "enclosing_span_loader": enclosing_span_loader_factory,
-        "skipped_item_loader": skipped_item_loader_factory,
-    }
+    case = _LOADER_CASES[loader_name]
     db_path = tmp_path / "transcript_db"
     scans_path = tmp_path / "scans"
     db_path.mkdir()
@@ -624,7 +686,7 @@ def test_scan_events_survive_loader_state_across_yields(
     asyncio.run(insert_transcript())
     scanner_name = f"{loader_name}_scanner"
     status = scan(
-        scanners=[_item_scanner(scanner_name, loaders[loader_name]())],
+        scanners=[_item_scanner(scanner_name, case.factory())],
         transcripts=transcripts_from(str(db_path)),
         scans=str(scans_path),
         max_processes=1,
@@ -645,7 +707,7 @@ def test_scan_events_survive_loader_state_across_yields(
         span_names = [e["name"] for e in events if e["event"] == "span_begin"]
         # Earlier items' completed scan spans stay in their own reports.
         assert span_names.count("scan") == 1, f"report {i}: {span_names}"
-        if loader_name == "persistent_worker_loader":
+        if case.worker:
             model_events = [e for e in events if e["event"] == "model"]
             assert [e["input"][-1]["content"] for e in model_events] == [item_text]
             # Attachments resolve for every report, including ones first
@@ -656,8 +718,8 @@ def test_scan_events_survive_loader_state_across_yields(
         else:
             infos = [e["data"] for e in events if e["event"] == "info"]
             assert infos == [item_text], f"report {i}"
-        if loader_name == "enclosing_span_loader":
-            assert "loader" in span_names, f"report {i}: {span_names}"
+        for name in case.spans:
+            assert name in span_names, f"report {i}: {span_names}"
 
 
 def test_scan_model_usage_is_per_loader_item(tmp_path: Path) -> None:

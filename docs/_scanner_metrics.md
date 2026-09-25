@@ -14,3 +14,5 @@ def efficiency() -> Scanner[Transcript]:
 Note that we import the `mean` metric from `inspect_ai`. You can use any standard Inspect metric or create custom metrics, and can optionally include more than one metric (e.g. `stderr`). 
 
 See the Inspect documentation on [Built in Metrics](https://inspect.aisi.org.uk/scorers.html#built-in-metrics) and [Custom Metrics](https://inspect.aisi.org.uk/scorers.html#custom-metrics) for additional details.
+
+A result whose `value` is `None` (for example, a scanner that caught a judge refusal and returned no value) is not included in the metrics. The number of such results is reported as `unscored` on the scanner's summary, alongside `scans`, `results`, and `errors`, so a metric is always readable against how many results it was computed over.

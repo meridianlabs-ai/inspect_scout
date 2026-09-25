@@ -19,8 +19,8 @@ from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, AsyncIterator
 
-from inspect_ai.event import Event, ModelEvent
-from inspect_ai.model import ChatMessage, stable_message_ids
+from inspect_ai.event import Event
+from inspect_ai.model import ChatMessage
 
 if TYPE_CHECKING:
     from inspect_scout import Transcript
@@ -45,12 +45,12 @@ from inspect_swe._claude_code._events.tree import (
 )
 from inspect_swe._claude_code._events.util import parse_timestamp as _parse_timestamp
 
+from .._util import apply_stable_message_ids, get_source_uri, total_active_time
 from .client import (
     CLAUDE_CODE_SOURCE_TYPE,
     _find_sessions_in_directory,
     discover_session_files,
     get_project_path_from_file,
-    get_source_uri,
     peek_first_timestamp,
     peek_slug,
     read_jsonl_events,
@@ -298,8 +298,7 @@ def _merge_transcripts(transcripts: list["Transcript"], slug: str) -> "Transcrip
     timeline = timeline_build(merged_events)
     root = timeline.root
     if root.content:
-        wall_clock = (root.end_time() - root.start_time()).total_seconds()
-        total_time = wall_clock - root.idle_time()
+        total_time = total_active_time(root)
     else:
         total_time = sum(t.total_time for t in transcripts if t.total_time)
 
@@ -448,20 +447,13 @@ async def _create_transcript(
     if not messages:
         return None
 
-    # Apply stable message IDs
-    apply_ids = stable_message_ids()
-    for event in scout_events:
-        if isinstance(event, ModelEvent):
-            apply_ids(event)
-    apply_ids(messages)
+    apply_stable_message_ids(scout_events, messages)
 
     # Extract metadata
     metadata = extract_session_metadata(events)
     model_name = extract_model_name(events)
     total_tokens = sum_scout_tokens(scout_events)
-    root = timeline.root
-    wall_clock = (root.end_time() - root.start_time()).total_seconds()
-    total_time = wall_clock - root.idle_time()
+    total_time = total_active_time(timeline.root)
     first_timestamp = get_first_timestamp(events)
 
     # Get project path for task_set

@@ -41,7 +41,8 @@ dependencies = [
     "universal-pathlib>=0.2.6",
     "uvicorn",
     "wrapt>=1.16.0",
-    "zstandard>=0.20.0",
+    # reading zstd-compressed codex rollout files (>=0.22 for stream_reader closefd)
+    "zstandard>=0.22.0",
 ]
 
 [project.urls]

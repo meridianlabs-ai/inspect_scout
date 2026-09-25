@@ -1,12 +1,17 @@
+import asyncio
 import json
+import os
 import shutil
 import tempfile
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
-from inspect_ai.model import ModelOutput, get_model
+from inspect_ai.log import transcript as inspect_transcript
+from inspect_ai.model import ChatMessage, ModelOutput, get_model
 from inspect_ai.model._chat_message import ChatMessageUser
+from inspect_ai.util import span
 from inspect_scout import (
     Loader,
     Result,
@@ -466,6 +471,193 @@ def test_scan_events_are_per_loader_item(tmp_path: Path) -> None:
             assert event["input"][0]["content"] == f"Item {i} message"
         # The scan span is recorded once per item alongside the calls.
         assert [e["event"] for e in events].count("span_begin") == 1
+
+
+# Long enough to be condensed into an attachment, and shared by every call so
+# later items reference an attachment first recorded for item 0.
+SHARED_PROMPT = "Shared instructions for every item. " * 10
+
+
+@loader(name="retained_transcript_loader", messages=["user"])
+def retained_transcript_loader_factory() -> Loader[ChatMessageUser]:
+    """Create a loader that logs each item through one saved transcript."""
+
+    async def load(transcript: Transcript) -> AsyncIterator[ChatMessageUser]:
+        log = inspect_transcript()
+        for message in transcript.messages:
+            if isinstance(message, ChatMessageUser):
+                log.info(message.text)
+                yield message
+
+    return load
+
+
+@loader(name="persistent_worker_loader", messages=["user"])
+def persistent_worker_loader_factory() -> Loader[ChatMessageUser]:
+    """Create a loader whose one worker task makes each item's model call."""
+
+    async def load(transcript: Transcript) -> AsyncIterator[ChatMessageUser]:
+        requests: asyncio.Queue[ChatMessageUser | None] = asyncio.Queue()
+        completed: asyncio.Queue[ChatMessageUser] = asyncio.Queue()
+
+        async def worker() -> None:
+            while (message := await requests.get()) is not None:
+                await get_model().generate(
+                    [ChatMessageUser(content=SHARED_PROMPT), message]
+                )
+                await completed.put(message)
+
+        worker_task = asyncio.create_task(worker())
+        try:
+            for message in transcript.messages:
+                if isinstance(message, ChatMessageUser):
+                    await requests.put(message)
+                    yield await completed.get()
+        finally:
+            await requests.put(None)
+            await worker_task
+
+    return load
+
+
+@loader(name="enclosing_span_loader", messages=["user"])
+def enclosing_span_loader_factory() -> Loader[ChatMessageUser]:
+    """Create a loader whose span stays open across every yield."""
+
+    async def load(transcript: Transcript) -> AsyncIterator[ChatMessageUser]:
+        async with span("loader"):
+            for message in transcript.messages:
+                if isinstance(message, ChatMessageUser):
+                    inspect_transcript().info(message.text)
+                    yield message
+
+    return load
+
+
+@loader(name="skipped_item_loader", messages=["user"])
+def skipped_item_loader_factory() -> Loader[list[ChatMessage]]:
+    """Create a loader that yields an empty item, which gets no report, first."""
+
+    async def load(transcript: Transcript) -> AsyncIterator[list[ChatMessage]]:
+        for message in transcript.messages:
+            if isinstance(message, ChatMessageUser):
+                inspect_transcript().info(f"skipped before {message.text}")
+                yield []
+                inspect_transcript().info(message.text)
+                yield [message]
+
+    return load
+
+
+def _item_scanner(name: str, item_loader: Loader[Any]) -> Scanner[Any]:
+    @scanner(name=name, loader=item_loader)
+    def factory() -> Scanner[ChatMessage | list[ChatMessage]]:
+        async def scan_item(item: ChatMessage | list[ChatMessage]) -> Result:
+            return Result(value=True)
+
+        return scan_item
+
+    return factory()
+
+
+def _dangling_span_refs(events: list[dict[str, Any]]) -> list[str]:
+    """Span ids referenced by `events` whose `span_begin` is not among them."""
+    begun = {e["id"] for e in events if e["event"] == "span_begin"}
+    refs = [e.get("span_id") for e in events]
+    refs += [e.get("parent_id") for e in events if e["event"] == "span_begin"]
+    refs += [e["id"] for e in events if e["event"] == "span_end"]
+    return [ref for ref in refs if ref is not None and ref not in begun]
+
+
+@pytest.mark.parametrize(
+    "loader_name",
+    [
+        "retained_transcript_loader",
+        pytest.param(
+            "persistent_worker_loader",
+            marks=pytest.mark.skipif(
+                os.environ.get("INSPECT_ASYNC_BACKEND", "").lower() == "trio",
+                reason="the worker is an asyncio task",
+            ),
+        ),
+        "enclosing_span_loader",
+        "skipped_item_loader",
+    ],
+)
+def test_scan_events_survive_loader_state_across_yields(
+    tmp_path: Path, loader_name: str
+) -> None:
+    """Loader state that outlives a yield still records into each item's report.
+
+    A saved `transcript()` reference, a worker task started before the first
+    yield, and a span open across yields all keep the transcript they were
+    created with; replacing the transcript per item lost their later events
+    or left later reports with dangling span references. Events recorded for
+    an empty item, which gets no report, stay out of the next item's report.
+    """
+    loaders: dict[str, Callable[[], Loader[Any]]] = {
+        "retained_transcript_loader": retained_transcript_loader_factory,
+        "persistent_worker_loader": persistent_worker_loader_factory,
+        "enclosing_span_loader": enclosing_span_loader_factory,
+        "skipped_item_loader": skipped_item_loader_factory,
+    }
+    db_path = tmp_path / "transcript_db"
+    scans_path = tmp_path / "scans"
+    db_path.mkdir()
+    scans_path.mkdir()
+    item_count = 3
+    transcript = Transcript(
+        transcript_id=f"{loader_name}-events",
+        source_type="test",
+        source_id="source-0",
+        source_uri=f"test://{loader_name}-events",
+        messages=[
+            ChatMessageUser(content=f"Item {i} message") for i in range(item_count)
+        ],
+        events=[],
+    )
+
+    async def insert_transcript() -> None:
+        async with transcripts_db(str(db_path)) as db:
+            await db.insert([transcript])
+
+    asyncio.run(insert_transcript())
+    scanner_name = f"{loader_name}_scanner"
+    status = scan(
+        scanners=[_item_scanner(scanner_name, loaders[loader_name]())],
+        transcripts=transcripts_from(str(db_path)),
+        scans=str(scans_path),
+        max_processes=1,
+        model="mockllm/model",
+        display="none",
+    )
+    assert status.complete
+    assert status.location is not None
+    df = scan_results_df(
+        status.location, scanner=scanner_name, exclude_columns=[]
+    ).scanners[scanner_name]
+    assert len(df) == item_count
+
+    for i in range(item_count):
+        events: list[dict[str, Any]] = json.loads(df["scan_events"].iloc[i])
+        item_text = f"Item {i} message"
+        assert _dangling_span_refs(events) == [], f"report {i}"
+        span_names = [e["name"] for e in events if e["event"] == "span_begin"]
+        # Earlier items' completed scan spans stay in their own reports.
+        assert span_names.count("scan") == 1, f"report {i}: {span_names}"
+        if loader_name == "persistent_worker_loader":
+            model_events = [e for e in events if e["event"] == "model"]
+            assert [e["input"][-1]["content"] for e in model_events] == [item_text]
+            # Attachments resolve for every report, including ones first
+            # recorded while producing an earlier item.
+            call = json.dumps(model_events[0]["call"])
+            assert "attachment://" not in call
+            assert SHARED_PROMPT in call
+        else:
+            infos = [e["data"] for e in events if e["event"] == "info"]
+            assert infos == [item_text], f"report {i}"
+        if loader_name == "enclosing_span_loader":
+            assert "loader" in span_names, f"report {i}: {span_names}"
 
 
 def test_scan_model_usage_is_per_loader_item(tmp_path: Path) -> None:

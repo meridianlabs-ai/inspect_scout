@@ -193,6 +193,37 @@ async def test_scanner_table_casts_mixed_transcript_score_to_string(
     assert table.schema.field("transcript_score").type == pa.string()
 
 
+@pytest.mark.asyncio
+async def test_scanner_table_records_transcript_score_explanation(
+    recorder_buffer: RecorderBuffer,
+    sample_results: list[ResultReport],
+    tmp_path: Path,
+) -> None:
+    scanner_name = "test_scanner"
+    explanation = "graded C because the tests failed"
+    await recorder_buffer.record(
+        TranscriptInfo(
+            transcript_id="explained",
+            source_type="test",
+            source_id="source-1",
+            source_uri="/path/to/source-1.log",
+            score="C",
+            score_explanation=explanation,
+        ),
+        scanner_name,
+        sample_results,
+        None,
+    )
+
+    out_path = tmp_path / "out.parquet"
+    assert scanner_table(recorder_buffer._buffer_dir, scanner_name, str(out_path))
+
+    table = pq.read_table(out_path)
+    assert set(table.column("transcript_score_explanation").to_pylist()) == {
+        explanation
+    }
+
+
 def test_buffer_dir_respects_env_var(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -258,6 +289,69 @@ async def test_scanner_table_dedupes_extra_inputs_against_buffer(
         f"vs expected {first_tbl.num_rows}"
     )
     assert set(second_tbl.column("transcript_id").to_pylist()) == {"tid-A", "tid-B"}
+
+
+@pytest.mark.asyncio
+async def test_scanner_table_keeps_columns_only_some_inputs_carry(
+    recorder_buffer: RecorderBuffer,
+    sample_results: list[ResultReport],
+    tmp_path: Path,
+) -> None:
+    """A column any input carries survives, even when the first file lacks it.
+
+    `extra_inputs` are read after the buffer's files, which pins the failing order.
+    """
+    from upath import UPath
+
+    scanner_name = "test_scanner"
+    explanation = "graded C because the tests failed"
+    scanner_dir = recorder_buffer._buffer_dir / f"scanner={scanner_name}"
+
+    await recorder_buffer.record(
+        TranscriptInfo(
+            transcript_id="new",
+            source_type="test",
+            source_id="src-new",
+            source_uri="/path/new.log",
+            score_explanation=explanation,
+        ),
+        scanner_name,
+        sample_results,
+        None,
+    )
+    prior_path = tmp_path / "prior.parquet"
+    assert scanner_table(recorder_buffer._buffer_dir, scanner_name, str(prior_path))
+    (scanner_dir / "new.parquet").unlink()
+
+    await recorder_buffer.record(
+        TranscriptInfo(
+            transcript_id="old",
+            source_type="test",
+            source_id="src-old",
+            source_uri="/path/old.log",
+        ),
+        scanner_name,
+        sample_results,
+        None,
+    )
+    old_file = str(scanner_dir / "old.parquet")
+    pq.write_table(
+        pq.read_table(old_file).drop_columns(["transcript_score_explanation"]),
+        old_file,
+    )
+
+    out_path = tmp_path / "out.parquet"
+    assert scanner_table(
+        recorder_buffer._buffer_dir,
+        scanner_name,
+        str(out_path),
+        extra_inputs=[UPath(prior_path)],
+    )
+    table = pq.read_table(out_path)
+    assert set(table.column("transcript_score_explanation").to_pylist()) == {
+        explanation,
+        None,
+    }
 
 
 @pytest.mark.asyncio

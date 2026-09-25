@@ -87,11 +87,12 @@ def multi_item_model_usage_scanner_factory() -> Scanner[ChatMessageUser]:
 
 @loader(name="per_item_events_loader", messages=["user"])
 def per_item_events_loader_factory() -> Loader[ChatMessageUser]:
-    """Create a loader that yields each user message as its own item."""
+    """Create a loader that makes one model call before yielding each message."""
 
     async def load(transcript: Transcript) -> AsyncIterator[ChatMessageUser]:
         for message in transcript.messages:
             if isinstance(message, ChatMessageUser):
+                await get_model().generate([message])
                 yield message
 
     return load
@@ -404,7 +405,9 @@ def test_scan_events_are_per_loader_item(tmp_path: Path) -> None:
     Regression test for reports built from one Inspect transcript shared
     across every item a loader yields: item k recorded the events of items
     0..k, so the stored `scan_events` grew quadratically in the item count
-    and attributed earlier items' model calls to later reports.
+    and attributed earlier items' model calls to later reports. The loader
+    call that produces an item and the scan of that item both belong to
+    that item's report.
     """
     db_path = tmp_path / "transcript_db"
     scans_path = tmp_path / "scans"
@@ -438,7 +441,7 @@ def test_scan_events_are_per_loader_item(tmp_path: Path) -> None:
         model_args={
             "custom_outputs": [
                 ModelOutput.from_content(model="mockllm", content="ok")
-                for _ in range(item_count)
+                for _ in range(2 * item_count)
             ]
         },
         display="none",
@@ -454,12 +457,14 @@ def test_scan_events_are_per_loader_item(tmp_path: Path) -> None:
     for i in range(item_count):
         events = json.loads(df["scan_events"].iloc[i])
         model_events = [e for e in events if e["event"] == "model"]
-        # Exactly the one call this item made, not the calls of items 0..i-1.
-        assert len(model_events) == 1, (
-            f"report {i} carries {len(model_events)} model events, expected 1"
+        # The loader's call for this item and the scan's call, and nothing
+        # from items 0..i-1.
+        assert len(model_events) == 2, (
+            f"report {i} carries {len(model_events)} model events, expected 2"
         )
-        assert model_events[0]["input"][0]["content"] == f"Item {i} message"
-        # The scan span is recorded once per item alongside the call.
+        for event in model_events:
+            assert event["input"][0]["content"] == f"Item {i} message"
+        # The scan span is recorded once per item alongside the calls.
         assert [e["event"] for e in events].count("span_begin") == 1
 
 

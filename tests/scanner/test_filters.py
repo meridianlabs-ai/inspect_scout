@@ -1,10 +1,14 @@
 """Tests for message and event filter functionality."""
 
+from collections.abc import Callable
+from typing import Any
+
 import pytest
 from inspect_scout import EventType, MessageType
 from inspect_scout._scanner.filter import (
     normalize_events_filter,
     normalize_messages_filter,
+    normalize_timeline_filter,
     validate_events_filter,
     validate_messages_filter,
 )
@@ -267,10 +271,14 @@ def test_empty_timeline_filter() -> None:
 
 
 def test_invalid_timeline_filter() -> None:
-    """Invalid event types in timeline filter should raise ValueError."""
+    """Invalid event types in timeline filter should raise ValueError.
+
+    Reported against `timeline`, the argument the caller wrote, rather than
+    against `events`, which it is converted to before loading.
+    """
     from inspect_scout._scanner.filter import normalize_timeline_filter
 
-    with pytest.raises(ValueError, match="Invalid events filter"):
+    with pytest.raises(ValueError, match="Invalid timeline filter"):
         normalize_timeline_filter(["invalid"])  # type: ignore[list-item]
 
 
@@ -301,6 +309,50 @@ def test_timeline_filter_true_contains_expected_types() -> None:
         "span_end",
     }
     assert set(TIMELINE_DEFAULT_EVENTS) == expected
+
+
+# "all" inside a list
+
+
+# Typed as Any so these need no suppression: a list containing "all" is a static
+# type error as well as a runtime one, and the runtime path is what is under test.
+ALL_IN_LIST: list[tuple[str, Callable[[Any], object]]] = [
+    ("messages", normalize_messages_filter),
+    ("events", normalize_events_filter),
+    ("timeline", normalize_timeline_filter),
+]
+
+
+@pytest.mark.parametrize(
+    ("param", "normalize"), ALL_IN_LIST, ids=[n[0] for n in ALL_IN_LIST]
+)
+def test_all_inside_a_list_is_rejected(
+    param: str, normalize: Callable[[Any], object]
+) -> None:
+    """A list containing "all" selected nothing rather than everything.
+
+    "all" is not a message role or an event type, so selection matched it against
+    neither and the scan quietly ran on an empty list.
+    """
+    with pytest.raises(ValueError) as exc_info:
+        normalize(["all"])
+
+    message = str(exc_info.value)
+    assert f"Invalid {param} filter(s): ['all']" in message
+    # and the rejection must not go on to advertise "all" as allowed
+    assert "'all'" not in message.split("Allowed:")[1]
+
+
+@pytest.mark.parametrize(
+    ("param", "normalize"), ALL_IN_LIST, ids=[n[0] for n in ALL_IN_LIST]
+)
+def test_all_mixed_into_a_list_is_rejected(
+    param: str, normalize: Callable[[Any], object]
+) -> None:
+    """The same holds when "all" is one entry among valid ones."""
+    valid = "user" if param == "messages" else "model"
+    with pytest.raises(ValueError, match=r"Invalid .* filter\(s\): \['all'\]"):
+        normalize([valid, "all"])
 
 
 def test_timeline_filter_order_preserved() -> None:

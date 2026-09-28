@@ -207,9 +207,9 @@ def _apply_message_ids(
     minute import of the 1.14GB CRUX1 capture; a 100MB, 7,265-turn capture
     went from ~295s to ~39s end to end once this pass became linear.
 
-    The final pass is a guard, not the mechanism: an event with a message the
-    two passes did not reach (a ``build_content`` change that stops sharing
-    objects) still gets its ids the direct way, at that event's own cost.
+    There is no per-event fallback pass: messages carry ids from
+    construction, so an id-is-None check cannot detect a message the
+    stable-id passes missed - the object sharing above is the contract.
     """
     apply_ids = stable_message_ids()
     apply_ids(messages)
@@ -219,13 +219,3 @@ def _apply_message_ids(
             last_in_lane[event.span_id] = event
     for event in last_in_lane.values():
         apply_ids(event)
-    for event in events:
-        if isinstance(event, ModelEvent) and _missing_ids(event):
-            apply_ids(event)
-
-
-def _missing_ids(event: ModelEvent) -> bool:
-    """Whether any message of ``event`` (input or output) has no id yet."""
-    if any(message.id is None for message in event.input):
-        return True
-    return bool(event.output.choices) and event.output.message.id is None

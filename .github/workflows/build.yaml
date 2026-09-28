@@ -42,7 +42,7 @@ jobs:
         # rationale: test the supported floor and the latest release
         python-version: &python-versions ["3.10", "3.14"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Lint with Ruff
         uses: chartboost/ruff-action@v1
       - name: Format with Ruff
@@ -57,9 +57,9 @@ jobs:
       matrix:
         python-version: *python-versions
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install uv
@@ -91,12 +91,12 @@ jobs:
       matrix:
         python-version: *python-versions
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # setup-python (not uv's managed python): uv 0.9.4 resolves "3.14" to
       # CPython 3.14.0, where a string member in a runtime `|` union raises
       # TypeError (fixed in a later 3.14 patch; hostedtoolcache has 3.14.7).
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install uv
@@ -130,9 +130,9 @@ jobs:
       matrix:
         python-version: *python-versions
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install uv
@@ -165,16 +165,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: true
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Cache pip dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}
@@ -193,7 +193,7 @@ jobs:
           python -m pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
           python -m pip install .
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: src/inspect_scout/_view/ts-mono/package.json
       - name: Install Node.js
@@ -252,7 +252,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Verify submodule commit is on ts-mono main
         run: |
@@ -280,11 +280,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: true
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: src/inspect_scout/_view/ts-mono/package.json
 
@@ -311,11 +311,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: true
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: src/inspect_scout/_view/ts-mono/package.json
 

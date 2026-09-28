@@ -19,8 +19,8 @@ jobs:
     if: ${{ github.head_ref == 'release-please--branches--main' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Fail if any dependency points at a git ref

@@ -1205,6 +1205,14 @@ async def _scan_one(
         # still re-raises.
         it = aiter(loader_iterations)
         while True:
+            # Each yielded item gets its own Inspect transcript, so the
+            # report's `events` describe that invocation alone (the loader
+            # work that produced the item plus its scan) rather than a
+            # snapshot of every earlier item's history; the shared
+            # transcript grew the recorded events quadratically in the
+            # item count.
+            inspect_transcript = InspectTranscript()
+            init_transcript(inspect_transcript)
             try:
                 loader_result = await anext(it)
             except StopAsyncIteration:

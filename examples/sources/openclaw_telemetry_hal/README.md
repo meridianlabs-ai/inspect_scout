@@ -42,7 +42,11 @@ python -m openclaw_telemetry_hal.populate_db /path/to/telemetry.jsonl
 ```
 
 > [!WARNING]
-> Importing a large capture such as CRUX1 can take around 10 minutes.
+> Importing a large capture takes minutes, not seconds: a 100 MB, 7,000-turn
+> capture imports in about 40 s. Message-id assignment used to dominate
+> (quadratic in turns; ~5 minutes on that capture, and most of the ~10
+> minutes the 1.14 GB CRUX1 capture took) and is now linear, so the
+> remaining cost is parsing plus per-turn `ModelEvent` validation.
 
 The test suite (`tests/`) is not part of Scout's CI test run (it lives outside
 `tests/`); run it directly with `pytest

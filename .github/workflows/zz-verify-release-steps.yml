@@ -1,19 +1,12 @@
 # TEMPORARY (PR #666 only): runs the exact steps of publish.yaml and
 # npm-publish.yml on the bumped action versions, minus the real publish steps,
-# environments, secrets and OIDC. Removed before merge.
+# environments, secrets and OIDC. npm takes the prerelease path so the
+# dry-run gets a version not already on the registry. Removed before merge.
 name: Verify release steps (temporary)
 
 on:
   pull_request:
     branches: [main]
-  # Declared only so `inputs.*` in the copied npm steps type-check; on
-  # pull_request they are empty, i.e. the non-prerelease path.
-  workflow_dispatch:
-    inputs:
-      prerelease:
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -90,7 +83,6 @@ jobs:
 
         '
     - name: Bump to prerelease version
-      if: ${{ inputs.prerelease }}
       run: 'CURRENT_VERSION=$(node -p "require(''./package.json'').version")
 
         TIMESTAMP=$(date +%s)
@@ -106,7 +98,6 @@ jobs:
       working-directory: src/inspect_scout/_view/ts-mono
       run: pnpm check
     - name: Build library for prerelease
-      if: ${{ inputs.prerelease }}
       run: pnpm build:lib
     - name: Publish to NPM (dry-run)
-      run: npm publish --dry-run --access public ${{ inputs.prerelease && '--tag beta --ignore-scripts' || '' }}
+      run: npm publish --dry-run --access public --tag beta --ignore-scripts

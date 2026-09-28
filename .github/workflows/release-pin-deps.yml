@@ -80,7 +80,7 @@ jobs:
         if: steps.relpr.outputs.found == 'true'
         # -I keeps the checkout off sys.path: the release branch can carry
         # agent-landed commits, and a json.py or re.py at its root would
-        # otherwise run here, beside the App token in .git/config.
+        # otherwise run here, beside the App token checkout persists for git.
         run: |
           python3 -I - <<'PY'
           import json, re, sys, urllib.request

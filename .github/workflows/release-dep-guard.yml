@@ -24,8 +24,11 @@ jobs:
         with:
           python-version: "3.12"
       - name: Fail if any dependency points at a git ref
+        # -I keeps the checkout off sys.path: the release branch can carry
+        # agent-landed commits, and a tomllib.py at its root would otherwise
+        # replace the stdlib parser and pass the guard.
         run: |
-          python3 - <<'PY'
+          python3 -I - <<'PY'
           import tomllib, sys
           proj = tomllib.load(open("pyproject.toml", "rb")).get("project", {})
           deps = list(proj.get("dependencies", []))

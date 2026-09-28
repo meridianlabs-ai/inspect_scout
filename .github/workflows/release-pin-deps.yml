@@ -78,8 +78,11 @@ jobs:
 
       - name: Pin/bump inspect_ai to the shipped PyPI version
         if: steps.relpr.outputs.found == 'true'
+        # -I keeps the checkout off sys.path: the release branch can carry
+        # agent-landed commits, and a json.py or re.py at its root would
+        # otherwise run here, beside the App token in .git/config.
         run: |
-          python3 - <<'PY'
+          python3 -I - <<'PY'
           import json, re, sys, urllib.request
 
           with urllib.request.urlopen("https://pypi.org/pypi/inspect-ai/json", timeout=30) as r:

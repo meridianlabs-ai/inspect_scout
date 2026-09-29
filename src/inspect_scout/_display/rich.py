@@ -41,7 +41,6 @@ from inspect_scout._display.util import (
 from inspect_scout._recorder.summary import (
     ScannerSummary,
     Summary,
-    add_model_usage,
 )
 from inspect_scout._recorder.validation import ValidationResults
 from inspect_scout._scanspec import ScanSpec
@@ -415,7 +414,7 @@ def scan_panel(
             for m, usage in scanner_summary.model_usage.items():
                 if m not in total_usage:
                     total_usage[m] = ModelUsage()
-                total_usage[m] = add_model_usage(total_usage[m], usage)
+                total_usage[m] = total_usage[m] + usage
         if total_usage:
             usage_table = Table.grid(expand=False)
             usage_table.add_column()

@@ -1,6 +1,7 @@
 """Tests for summary module with ValidationEntry and precision/recall metrics."""
 
 import pytest
+from inspect_ai.model import ModelUsage
 from inspect_scout._recorder.summary import ScannerSummary, Summary
 from inspect_scout._recorder.validation import (
     ValidationEntry,
@@ -352,3 +353,44 @@ class TestValidationResults:
         assert len(results.entries) == 2
         assert results.metrics is None
         assert results.metrics_by_key is None
+
+
+class TestSummaryModelUsage:
+    """Tests that _report aggregates model usage without losing fields."""
+
+    def _make_report(self, usage: ModelUsage) -> ResultReport:
+        return ResultReport(
+            input_type="transcript",
+            input_ids=["t1"],
+            input=Transcript(transcript_id="t1"),
+            result=Result(value=True),
+            validation=None,
+            error=None,
+            events=[],
+            model_usage={"provider/model": usage},
+        )
+
+    def test_total_cost_is_summed(self) -> None:
+        summary = Summary(scanners=["scanner"])
+        for cost in (0.5, 0.25):
+            report = self._make_report(
+                ModelUsage(
+                    input_tokens=10, output_tokens=1, total_tokens=11, total_cost=cost
+                )
+            )
+            summary._report(None, "scanner", [report], None)  # type: ignore[arg-type]
+        usage = summary.scanners["scanner"].model_usage["provider/model"]
+        assert usage.total_tokens == 22
+        assert usage.total_cost == 0.75
+
+    def test_unreported_fields_stay_none(self) -> None:
+        summary = Summary(scanners=["scanner"])
+        report = self._make_report(
+            ModelUsage(input_tokens=10, output_tokens=1, total_tokens=11)
+        )
+        summary._report(None, "scanner", [report], None)  # type: ignore[arg-type]
+        usage = summary.scanners["scanner"].model_usage["provider/model"]
+        assert usage.input_tokens_cache_read is None
+        assert usage.input_tokens_cache_write is None
+        assert usage.reasoning_tokens is None
+        assert usage.total_cost is None

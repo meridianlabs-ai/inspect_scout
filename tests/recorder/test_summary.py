@@ -378,7 +378,7 @@ class TestSummaryModelUsage:
                     input_tokens=10, output_tokens=1, total_tokens=11, total_cost=cost
                 )
             )
-            summary._report(None, "scanner", [report], None)  # type: ignore[arg-type]
+            summary._report(Transcript(transcript_id="t1"), "scanner", [report], None)
         usage = summary.scanners["scanner"].model_usage["provider/model"]
         assert usage.total_tokens == 22
         assert usage.total_cost == 0.75
@@ -388,7 +388,7 @@ class TestSummaryModelUsage:
         report = self._make_report(
             ModelUsage(input_tokens=10, output_tokens=1, total_tokens=11)
         )
-        summary._report(None, "scanner", [report], None)  # type: ignore[arg-type]
+        summary._report(Transcript(transcript_id="t1"), "scanner", [report], None)
         usage = summary.scanners["scanner"].model_usage["provider/model"]
         assert usage.input_tokens_cache_read is None
         assert usage.input_tokens_cache_write is None

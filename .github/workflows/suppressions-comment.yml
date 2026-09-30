@@ -93,9 +93,12 @@ jobs:
             body=$(python3 scripts/suppressions_pr_delta.py /tmp/base-suppressions.json /tmp/merged-suppressions.json)
           fi
           # Sticky comment: match on the marker, not --edit-last, so other
-          # bot comments on the PR are never clobbered.
+          # bot comments on the PR are never clobbered. Match only comments
+          # this job's token posted (github-actions[bot]): anyone can post
+          # the marker, and a PR author's copy must never be edited or stop
+          # the bot posting its own.
           cid=$(gh api "repos/$GH_REPO/issues/$PR/comments" --paginate \
-            -q '.[] | select(.body | startswith("<!-- suppressions-delta -->")) | .id' | head -1)
+            -q '.[] | select(.user.login == "github-actions[bot]" and .user.type == "Bot" and (.body | startswith("<!-- suppressions-delta -->"))) | .id' | head -1)
           if [ -n "$body" ] && [ -n "$cid" ]; then
             gh api -X PATCH "repos/$GH_REPO/issues/comments/$cid" -f body="$body" > /dev/null
           elif [ -n "$body" ]; then

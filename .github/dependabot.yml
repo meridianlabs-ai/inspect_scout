@@ -1,0 +1,18 @@
+version: 2
+
+updates:
+  # Keeps the SHA-pinned actions current. Dependabot bumps a `<sha> # vX.Y.Z`
+  # pin to the new release's SHA and rewrites the tag comment to match.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # One PR per week for all actions, not one per action.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    # pr-title-lint requires a Conventional Commits title; `ci` keeps these
+    # out of the release notes.
+    commit-message:
+      prefix: ci

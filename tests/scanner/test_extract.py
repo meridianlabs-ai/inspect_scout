@@ -663,6 +663,17 @@ def test_prefill_wrapping(message: ChatMessageAssistant, expected: str) -> None:
             "[M1] USER:\nHello\n\n[M2] ASSISTANT:\nDone\n",
             {"M1": "msg1", "M2": "msg2"},
         ),
+        # Role labels excluded when filter set
+        (
+            [
+                ChatMessageUser(content="Hello", id="msg1"),
+                ChatMessageAssistant(content="Hi", id="msg2"),
+            ],
+            MessagesPreprocessor(exclude_role_label=True),
+            True,
+            "[M1] Hello\n\n[M2] Hi\n",
+            {"M1": "msg1", "M2": "msg2"},
+        ),
         # Empty list
         ([], None, True, "", {}),
         # Single message

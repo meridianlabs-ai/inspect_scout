@@ -23,6 +23,7 @@ from inspect_ai.model._chat_message import ChatMessage
 
 from .json.stream_parse import StreamParseResult, replay_events, replay_messages
 from .types import Transcript, TranscriptInfo
+from .util import merge_metadata
 
 _CHECKPOINT_INTERVAL = 64
 
@@ -274,7 +275,7 @@ def _merge_unthinned(base: dict[str, Any], result: StreamParseResult) -> dict[st
         overrides["target"] = result.target
     if result.scores:
         overrides["scores"] = result.scores
-    return base.copy() | overrides if overrides else base
+    return merge_metadata(base, overrides)
 
 
 def is_transcript_handle_type(type_hint: Any) -> bool:

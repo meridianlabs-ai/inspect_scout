@@ -3,11 +3,31 @@ from typing import Literal
 from .._transcript.types import EventType, MessageType
 
 
+def _reject_bare_string(filter: object, param: str) -> None:
+    """Reject a non-empty bare string filter other than "all".
+
+    A string is iterable, so a filter like `assistant` would otherwise be read as
+    its characters and rejected as a list of single letters, which says nothing
+    about what the caller did wrong. The empty string is left alone so that it
+    still reaches the existing "provide at least one filter" message, which is
+    the right advice for it.
+    """
+    if isinstance(filter, str) and filter:
+        # str.__str__ so that a str-mixin enum renders its value rather than its
+        # member name, keeping the quoted value and the worked example in step.
+        value = str.__str__(filter)
+        raise ValueError(
+            f'{param}={value!r} is not a valid filter. Use "all", or a list, '
+            f'for example ["{value}"].'
+        )
+
+
 def normalize_messages_filter(
     filter: list[MessageType] | Literal["all"],
 ) -> list[MessageType] | Literal["all"]:
     if filter == "all":
         return filter
+    _reject_bare_string(filter, "messages")
     uniq: list[MessageType] = []
     seen: set[MessageType] = set()
     for x in filter:
@@ -23,6 +43,7 @@ def normalize_events_filter(
 ) -> list[EventType] | Literal["all"]:
     if filter == "all":
         return filter
+    _reject_bare_string(filter, "events")
     uniq: list[EventType] = []
     seen: set[EventType] = set()
     for x in filter:
@@ -66,6 +87,7 @@ def normalize_timeline_filter(
         return list(TIMELINE_DEFAULT_EVENTS)
     if filter == "all":
         return filter
+    _reject_bare_string(filter, "timeline")
     uniq: list[EventType] = []
     seen: set[EventType] = set()
     for x in filter:

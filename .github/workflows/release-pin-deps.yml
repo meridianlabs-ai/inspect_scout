@@ -63,14 +63,14 @@ jobs:
 
       # App token so the pin commit re-triggers the PR's checks (guard + build).
       # A commit pushed with the default GITHUB_TOKEN would not trigger them.
-      - uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         if: steps.relpr.outputs.found == 'true'
         id: app-token
         with:
           app-id: ${{ secrets.RELEASE_PLEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
 
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: steps.relpr.outputs.found == 'true'
         with:
           ref: ${{ github.event_name == 'pull_request' && github.head_ref || 'release-please--branches--main' }}

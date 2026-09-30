@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.4](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.3...0.5.4) (2026-09-30)
+
+
+### Bug Fixes
+
+* record each loader item's own events on its ResultReport ([#663](https://github.com/meridianlabs-ai/inspect_scout/issues/663)) ([1d5f774](https://github.com/meridianlabs-ai/inspect_scout/commit/1d5f77402c7b4e24bfaccb3259ddc677870c7523))
+
+
+### Performance Improvements
+
+* **examples/openclaw_telemetry_hal:** assign message ids once per lane, not per model event ([#652](https://github.com/meridianlabs-ai/inspect_scout/issues/652)) ([b8ff1bc](https://github.com/meridianlabs-ai/inspect_scout/commit/b8ff1bcaa29a4e0dd9b1e3868bbc1e46dbc8adae))
+
 ## [0.5.3](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.2...0.5.3) (2026-09-16)
 
 

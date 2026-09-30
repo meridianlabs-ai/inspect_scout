@@ -56,13 +56,13 @@ jobs:
         with:
           package_json_file: src/inspect_scout/_view/ts-mono/package.json
 
+      # No pnpm cache: the published package must be built from the reviewed
+      # lockfile, not from a pnpm store another workflow saved to the cache.
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22.x"
           registry-url: "https://registry.npmjs.org"
-          cache: "pnpm"
-          cache-dependency-path: src/inspect_scout/_view/ts-mono/pnpm-lock.yaml
 
       - name: Upgrade npm (for Trusted Publishing)
         run: |

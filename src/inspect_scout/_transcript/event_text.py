@@ -14,6 +14,7 @@ from inspect_ai.event import (
     InterruptEvent,
     LoggerEvent,
     ModelEvent,
+    ReviewEvent,
     SampleInitEvent,
     SampleLimitEvent,
     SandboxEvent,
@@ -41,7 +42,7 @@ def event_as_str(event: Event) -> str | None:
             return _info_event_as_str(event)
         case "logger":
             return _logger_event_as_str(event)
-        case "approval":
+        case "approval" | "review":
             return _approval_event_as_str(event)
         case "score":
             return _score_event_as_str(event)
@@ -126,9 +127,10 @@ def _logger_event_as_str(event: Event) -> str | None:
 
 
 def _approval_event_as_str(event: Event) -> str | None:
-    if not isinstance(event, ApprovalEvent):
+    if not isinstance(event, ApprovalEvent | ReviewEvent):
         return None
-    parts = [f"APPROVAL ({event.decision}):"]
+    label = "APPROVAL" if isinstance(event, ApprovalEvent) else "REVIEW"
+    parts = [f"{label} ({event.decision}):"]
     if event.message:
         parts.append(f"Message: {event.message}")
     call = event.call

@@ -63,6 +63,7 @@ EventType = Literal[
     "anchor",
     "checkpoint",
     "interrupt",
+    "review",
     "span_begin",
     "span_end",
 ]

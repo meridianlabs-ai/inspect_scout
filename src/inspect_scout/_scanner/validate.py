@@ -25,6 +25,7 @@ from inspect_ai.event._input import InputEvent
 from inspect_ai.event._interrupt import InterruptEvent
 from inspect_ai.event._logger import LoggerEvent
 from inspect_ai.event._model import ModelEvent
+from inspect_ai.event._review import ReviewEvent
 from inspect_ai.event._sample_init import SampleInitEvent
 from inspect_ai.event._sample_limit import SampleLimitEvent
 from inspect_ai.event._sandbox import SandboxEvent
@@ -76,6 +77,7 @@ TYPE_TO_EVENT_FILTER: dict[type[Event], EventType] = {
     AnchorEvent: "anchor",
     CheckpointEvent: "checkpoint",
     InterruptEvent: "interrupt",
+    ReviewEvent: "review",
 }
 
 EVENT_FILTER_TO_TYPE: dict[EventType, type[Event]] = {

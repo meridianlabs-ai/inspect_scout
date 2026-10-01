@@ -26,17 +26,14 @@ async def as_value(fn: Callable[[], Awaitable[T]]) -> T | BaseException:
         return ex
 
 
+# A class, like `aclosing`: an `@asynccontextmanager` runs a generator of its
+# own, which garbage collection can finalize before the abandoned generator
+# using it, whose exit then raises.
 class aclosing_iter(Generic[T]):
     """`contextlib.aclosing` for an iterator typed as a plain `AsyncIterator`.
 
-    `aclosing` needs `aclose()`, which `AsyncIterator` does not promise (e.g.
-    `TranscriptHandle.messages()`). Closing an async generator on exit, rather
-    than whenever it is garbage collected, ends its iteration (and releases
-    what it holds open) as soon as the caller stops reading it.
-
-    A class, like `aclosing`: an `@asynccontextmanager` runs a generator of its
-    own, which garbage collection can finalize before the abandoned generator
-    using it, whose exit then raises.
+    Closes the iterator on exit if it is an async generator; `aclosing` needs
+    `aclose()`, which `AsyncIterator` does not promise.
     """
 
     def __init__(self, iterator: AsyncIterator[T]) -> None:

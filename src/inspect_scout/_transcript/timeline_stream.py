@@ -194,14 +194,9 @@ def _stub_model_event(event: ModelEvent, interner: _PromptInterner) -> ModelEven
 def stub_projection() -> EventProjection:
     """An `EventProjection` keeping what `_stub_model_event` reads of a ModelEvent.
 
-    A raw top-level ModelEvent keeps only its system-role ``input`` entries
-    and loses ``call`` and ``tools``. Pooled entries are fetched by position,
-    and one known not to be a system message is skipped unread. A possible
-    warmup call (``config.max_tokens <= 1``) keeps its whole input, since the
-    stub also reads its trailing user message. The mirror test in
-    ``test_timeline_stream.py`` fails if this and the stub drift apart.
-
-    Holds a per-pass cache of pool roles, so use one projection per pass.
+    Top-level ModelEvents keep only their system-role ``input`` entries (a
+    possible warmup call keeps all of them) and lose ``call`` and ``tools``.
+    Caches pool roles, so use one projection per pass.
     """
     roles: dict[int, Any] = {}
 
@@ -212,7 +207,7 @@ def stub_projection() -> EventProjection:
         for start, end in refs:
             for i in slice_positions(start, end, pool_len):
                 if roles.get(i, "system") != "system":
-                    continue
+                    continue  # known not to be a system message: skip unread
                 raw = blobs.get(("message_pool", i))
                 if raw is None:
                     continue
@@ -229,7 +224,7 @@ def stub_projection() -> EventProjection:
         item["tools"] = []
         max_tokens = (item.get("config") or {}).get("max_tokens")
         if max_tokens is not None and max_tokens <= 1:
-            return
+            return  # a possible warmup call: the stub reads its last user message
         refs = item.get("input_refs")
         pool_len = blobs.pool_len("message_pool")
         if refs and pool_len:
@@ -543,8 +538,6 @@ async def stream_timeline_messages(
         prompt_reserve: Context-window allowance for prompt scaffolding.
         events: Which non-message event types to interleave into each span's
             thread, as in `timeline_messages()` (`None` disables it).
-            Enabling it also retains every off-thread `ModelEvent`'s output
-            message, which renders as a `MODEL (BRANCH)` entry.
 
     Yields:
         `TimelineMessages` segments whose span ids and rendered strings match

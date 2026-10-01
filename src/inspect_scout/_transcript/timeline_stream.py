@@ -47,14 +47,13 @@ from inspect_ai.event import (
     TimelineSpan,
     ToolEvent,
     timeline_build,
-    timeline_filter,
 )
 from inspect_ai.model import ChatMessageSystem, ChatMessageUser, ContentText, Model
 
 from inspect_scout._transcript.timeline import (
     TimelineMessages,
-    _walk_spans,
     timeline_messages,
+    walk_owned_spans,
 )
 
 if TYPE_CHECKING:
@@ -318,6 +317,7 @@ def needed_model_event_uuids(
     *,
     compaction: Literal["all", "last"] | int,
     depth: int | None,
+    include_scorers: bool,
 ) -> set[str]:
     """Select every ModelEvent whose content the scanning path reads.
 
@@ -330,6 +330,8 @@ def needed_model_event_uuids(
         root: Root ``TimelineSpan`` of the built (stub) timeline.
         compaction: Compaction strategy (``"all"``, ``"last"``, or an int N).
         depth: Scannable-span nesting limit (``None`` = unlimited).
+        include_scorers: Whether scorers spans are walked, as in
+            ``walk_owned_spans``.
 
     Returns:
         The set of selected ModelEvent uuids across all scannable spans.
@@ -338,9 +340,9 @@ def needed_model_event_uuids(
         _StubSkeletonUnsupported: If any selected ModelEvent lacks a uuid.
     """
     needed: set[str] = set()
-    for span in _walk_spans(root, depth=depth):
+    for owned in walk_owned_spans(root, depth=depth, include_scorers=include_scorers):
         span_events = [
-            item.event for item in span.content if isinstance(item, TimelineEvent)
+            item.event for item in owned.span.content if isinstance(item, TimelineEvent)
         ]
         needed |= _needed_uuids_for_span(span_events, compaction=compaction)
     return needed
@@ -378,7 +380,7 @@ def _substitute_full_events(
     every `TimelineEvent` wrapping a `ModelEvent` whose uuid is in
     `full_by_uuid`. Reaches nested tool-spawned-agent events too, since the
     tree builder expands such `ToolEvent`s into nested spans. `span.branches`
-    is not walked: `full_by_uuid` is keyed by the uuids `_walk_spans` selected,
+    is not walked: `full_by_uuid` is keyed by the uuids `walk_owned_spans` selected,
     and it does not descend into branches either.
     """
     for item in span.content:
@@ -440,10 +442,10 @@ async def stream_timeline_messages(
     interner = _PromptInterner()
     stubs: list[Event] = [stub_event(ev, interner) async for ev in handle.events()]
     tree = timeline_build(stubs)
-    if not include_scorers:
-        tree = timeline_filter(tree, lambda s: s.span_type != "scorers")
 
-    needed = needed_model_event_uuids(tree.root, compaction=compaction, depth=depth)
+    needed = needed_model_event_uuids(
+        tree.root, compaction=compaction, depth=depth, include_scorers=include_scorers
+    )
 
     full_by_uuid: dict[str, ModelEvent] = {}
     async for ev in handle.events():
@@ -471,5 +473,6 @@ async def stream_timeline_messages(
         compaction=compaction,
         depth=depth,
         prompt_reserve=prompt_reserve,
+        include_scorers=include_scorers,
     ):
         yield seg

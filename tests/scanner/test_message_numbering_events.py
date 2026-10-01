@@ -7,51 +7,38 @@ from inspect_scout._scanner.extract import (
 )
 
 
+def _event(id: str) -> ChatMessageUser:
+    return ChatMessageUser(
+        content="SCORE: x\n", id=id, metadata={EVENT_MARKER_KEY: True}
+    )
+
+
 @pytest.mark.asyncio
-async def test_event_message_numbered_as_e_and_skips_m() -> None:
+async def test_event_messages_numbered_on_their_own_counter() -> None:
+    """[E#] skips [M#] and, like it, accumulates across per-segment render calls."""
     render, extract_refs = message_numbering()
-    text = await render(
+    first = await render(
         [
             ChatMessageUser(content="hi", id="u1"),
-            ChatMessageUser(
-                content="SCORE (match): value=C\n",
-                id="ev-1",
-                metadata={EVENT_MARKER_KEY: True},
-            ),
+            _event("ev-1"),
             ChatMessageUser(content="bye", id="u2"),
         ]
     )
-    assert "[M1] USER:\nhi" in text
-    assert "[E1] SCORE (match): value=C" in text
-    assert "[M2] USER:\nbye" in text
-
-
-@pytest.mark.asyncio
-async def test_event_counter_continues_across_render_calls() -> None:
-    # segment_messages renders per-segment via separate calls; ordinals must
-    # accumulate globally so [E#] stays unique across segments.
-    def event(id: str) -> ChatMessageUser:
-        return ChatMessageUser(
-            content="SCORE: x\n", id=id, metadata={EVENT_MARKER_KEY: True}
-        )
-
-    render, extract_refs = message_numbering()
-    await render([event("ev-1")])
-    await render([ChatMessageUser(content="hi", id="u1")])
-    text = await render([event("ev-2")])
-    assert "[E2] SCORE: x" in text
-    refs = extract_refs("[E1] [E2] [M1]")
+    second = await render([_event("ev-2")])
+    assert "[M1] USER:\nhi" in first
+    assert "[E1] SCORE: x" in first
+    assert "[M2] USER:\nbye" in first
+    assert "[E2] SCORE: x" in second
+    refs = extract_refs("[E1] [E2] [M2]")
     assert {(r.type, r.id) for r in refs} == {
         ("event", "ev-1"),
         ("event", "ev-2"),
-        ("message", "u1"),
+        ("message", "u2"),
     }
 
 
 @pytest.mark.asyncio
 async def test_transform_does_not_see_event_messages() -> None:
-    # A custom preprocessor.transform is written against real conversation
-    # turns; synthetic event entries must bypass it untouched.
     seen: list[str] = []
 
     async def transform(messages: list[ChatMessage]) -> list[ChatMessage]:
@@ -61,14 +48,7 @@ async def test_transform_does_not_see_event_messages() -> None:
     render, _ = message_numbering(
         preprocessor=MessagesPreprocessor(transform=transform)
     )
-    text = await render(
-        [
-            ChatMessageUser(content="hi", id="u1"),
-            ChatMessageUser(
-                content="SCORE: x\n", id="ev-1", metadata={EVENT_MARKER_KEY: True}
-            ),
-        ]
-    )
+    text = await render([ChatMessageUser(content="hi", id="u1"), _event("ev-1")])
     assert seen == ["hi"]
     assert "[M1] USER:\nHI" in text
     assert "[E1] SCORE: x" in text

@@ -1,9 +1,4 @@
-"""Shared ``TimelineSpan``/``ModelEvent`` test builders.
-
-Also duplicated verbatim in ``tests/transcript/test_timeline_interleave.py``
-(its local helpers) -- that file intentionally keeps its own copies rather
-than importing from here, so an edit in either place does not propagate.
-"""
+"""Shared ``TimelineSpan``/``ModelEvent`` test builders."""
 
 from __future__ import annotations
 
@@ -38,7 +33,6 @@ def _span_of(
     *,
     span_type: str | None = "agent",
 ) -> TimelineSpan:
-    """Like ``_span`` but accepts a mix of events and nested spans, and a span_type."""
     items: list[TimelineEvent | TimelineSpan] = [
         item
         if isinstance(item, TimelineSpan)

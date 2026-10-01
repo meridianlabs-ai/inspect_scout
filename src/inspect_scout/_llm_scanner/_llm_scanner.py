@@ -1,4 +1,5 @@
 import sys
+from dataclasses import replace
 from logging import getLogger
 from typing import Any, AsyncIterator, Awaitable, Callable, Literal, cast, overload
 
@@ -547,11 +548,7 @@ def llm_scanner(
             loaded_events = list(
                 dict.fromkeys([*existing, *events, *sorted(INTERLEAVE_DEPENDENCIES)])
             )
-        content = TranscriptContent(
-            messages=content.messages if content is not None else None,
-            events=loaded_events,
-            timeline=content.timeline if content is not None else None,
-        )
+        content = replace(content or TranscriptContent(), events=loaded_events)
 
     # set content override for @scanner to merge into ScannerConfig
     if content is not None:

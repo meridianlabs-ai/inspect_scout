@@ -540,9 +540,9 @@ def llm_scanner(
             try:
                 results = await _scan_segments_bounded(segments, scan_segment)
             except _StubSkeletonUnsupported as ex:
-                # Raised while building the pass-1 stub skeleton, before any
-                # segment is yielded and thus before any LLM call, so the
-                # fallback re-runs from scratch with no duplicated scan work.
+                # Raised in pass 1 or pass 2, before any segment is yielded
+                # and thus before any LLM call, so the fallback re-runs from
+                # scratch with no duplicated scan work.
                 logger.info(
                     "Streaming events skeleton unsupported for transcript %s "
                     "(%s); falling back to materialized scan.",

@@ -13,6 +13,7 @@ from typing import Any, Callable, Iterator, cast
 import pytest
 from inspect_ai.event import (
     CompactionEvent,
+    InfoEvent,
     ModelEvent,
     ScoreEvent,
     SpanBeginEvent,
@@ -77,6 +78,26 @@ def _score_only_transcript() -> Transcript:
             ModelOutput.from_content(model="mockllm", content="4").message,
         ],
         events=[ScoreEvent(score=Score(value="C"), target="C", scorer="match")],
+    )
+
+
+def _agentic_with_score_and_info() -> Transcript:
+    """The agentic fixture plus a score and an info event in its first agent turn."""
+    transcript = agentic_transcript()
+    events = list(transcript.events)
+    i, first = next((i, e) for i, e in enumerate(events) if isinstance(e, ModelEvent))
+    extra: list[Event] = [
+        InfoEvent(span_id=first.span_id, timestamp=first.timestamp, data="progress"),
+        ScoreEvent(
+            span_id=first.span_id,
+            timestamp=first.timestamp,
+            score=Score(value="C"),
+            scorer="match",
+            intermediate=True,
+        ),
+    ]
+    return transcript.model_copy(
+        update={"events": events[: i + 1] + extra + events[i + 1 :]}
     )
 
 
@@ -296,6 +317,14 @@ def _yes_model() -> Model:
             False,
             id="events-param-spans",
         ),
+        # The span route renders only the requested event types.
+        pytest.param(
+            _agentic_with_score_and_info,
+            {"events": ["score"]},
+            2,
+            False,
+            id="events-param-spans-filtered",
+        ),
         # The routes below render differently, so these pin the streaming
         # router to transcript_messages' flat gate (messages, no spans).
         pytest.param(
@@ -382,7 +411,7 @@ async def test_handle_scan_equivalent_to_transcript_scan(
         assert not load_calls, "streamed scan materialized the handle"
     assert len(prompts_transcript) >= min_prompts
     if scanner_kwargs.get("events") == ["score"]:
-        assert "[E1] SCORE" in prompts_transcript[0]  # non-vacuous
+        assert any("SCORE (match)" in p for p in prompts_transcript)  # non-vacuous
     assert prompts_handle == prompts_transcript
     assert result_handle.value == result_transcript.value
     assert result_handle.answer == result_transcript.answer

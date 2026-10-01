@@ -2,7 +2,6 @@
 
 from collections import defaultdict
 from typing import (
-    TYPE_CHECKING,
     Any,
     AsyncIterator,
     Container,
@@ -29,15 +28,13 @@ from .._scanner.extract import EVENT_MARKER_KEY, message_as_str
 from .._scanner.util import EventId, MessageId, SpanId, _event_id, _message_id
 from .._util._async import aclosing_iter
 from .event_text import event_as_str
+from .handle import TranscriptHandle, projected_events
 from .json.spool import BlobSpool
 from .json.stream_parse import EventProjection
 from .messages import span_messages
 from .timeline import OwnedBranch, OwnedItem, OwnedSpan
 from .types import EventType, Transcript
 from .util import nested_tool_events
-
-if TYPE_CHECKING:
-    from .handle import TranscriptHandle
 
 
 class InterleavedEvent(NamedTuple):
@@ -133,18 +130,31 @@ def _off_thread_model_text(event: ModelEvent) -> str | None:
     return text if text else None
 
 
-def output_only_projection(keep: Container[str] = frozenset()) -> EventProjection:
+def output_only_projection(
+    keep_uuids: Container[str] = frozenset(),
+    keep_positions: Container[int] = frozenset(),
+) -> EventProjection:
     """An `EventProjection` reducing raw ModelEvents to what output readers use.
 
-    Drops ``input``, ``call`` and ``tools`` from every top-level ModelEvent
-    whose uuid is not in ``keep``, leaving its output, uuid, span id and
-    timestamps: everything `_output_only_model_event`,
-    `_off_thread_model_text` and `_AnchorWalk` read. The mirror test in
-    ``test_timeline_stream.py`` fails if they drift apart.
+    Drops ``input``, ``call`` and ``tools`` from every top-level ModelEvent,
+    bar those with a uuid in ``keep_uuids`` or a stream position in
+    ``keep_positions``, leaving its output, uuid, span id and timestamps:
+    everything `_output_only_model_event`, `_off_thread_model_text` and
+    `_AnchorWalk` read. The mirror test in ``test_timeline_stream.py`` fails
+    if they drift apart.
+
+    Counts positions as it goes, so use one projection per pass.
     """
+    position = -1
 
     def project(item: dict[str, Any], blobs: BlobSpool) -> None:
-        if item.get("event") == "model" and item.get("uuid") not in keep:
+        nonlocal position
+        position += 1
+        if (
+            item.get("event") == "model"
+            and item.get("uuid") not in keep_uuids
+            and position not in keep_positions
+        ):
             item.pop("input_refs", None)
             item.pop("call", None)
             item["input"] = []
@@ -591,8 +601,30 @@ def interleave_events(
     return list(walk.spliced(messages))
 
 
+async def _with_model_inputs(
+    handle: TranscriptHandle, skeleton: list[tuple[int, Event]]
+) -> list[Event]:
+    """``skeleton``'s events, its ModelEvents re-read with their inputs.
+
+    Matched by stream position, so uuid-less events come back too.
+    """
+    wanted = {position for position, event in skeleton if isinstance(event, ModelEvent)}
+    full: dict[int, Event] = {}
+    async with aclosing_iter(
+        projected_events(handle, output_only_projection(keep_positions=wanted))
+    ) as handle_events:
+        position = -1
+        async for event in handle_events:
+            position += 1
+            if position in wanted:
+                full[position] = event
+                if len(full) == len(wanted):
+                    break
+    return [full.get(position, event) for position, event in skeleton]
+
+
 async def stream_interleave_events(
-    handle: "TranscriptHandle",
+    handle: TranscriptHandle,
     events: EventsSpec = "all",
 ) -> AsyncIterator[ChatMessage]:
     """Streaming counterpart to ``interleave_events`` over a handle.
@@ -601,7 +633,9 @@ async def stream_interleave_events(
     memory at once: one pass collects message ids, one derives compaction
     exclusions (from each region's first and last ``ModelEvent``) and grader
     spans, one runs the anchor walk, and a final one re-streams the messages
-    with the anchored entries spliced in.
+    with the anchored entries spliced in. On a spooled handle the event passes
+    skip decoding ModelEvent inputs, so a transcript with compaction takes one
+    more pass to re-read the few its exclusions come from.
 
     Raises:
         EventsOnlyInterleaveUnsupported: The handle has no messages; use
@@ -615,31 +649,38 @@ async def stream_interleave_events(
             "stream_timeline_messages for an events-only transcript"
         )
 
-    skeleton: list[Event] = []
+    # Each kept event with its position in the event stream.
+    skeleton: list[tuple[int, Event]] = []
     begins: list[SpanBeginEvent] = []
     compaction_spans: set[SpanId | None] = set()
-    async with aclosing_iter(handle.events()) as handle_events:
+    async with aclosing_iter(
+        projected_events(handle, output_only_projection())
+    ) as handle_events:
+        position = -1
         async for event in handle_events:
+            position += 1
             if isinstance(event, SpanBeginEvent):
                 begins.append(event)
             elif isinstance(event, CompactionEvent):
                 compaction_spans.add(
                     None if event.span_id is None else SpanId(event.span_id)
                 )
-                skeleton.append(event)
+                skeleton.append((position, event))
             elif isinstance(event, ModelEvent):
                 # `span_messages` reads only each region's first ModelEvent
                 # (the trim prefix) and its last; mirror any change there.
                 if len(skeleton) >= 2 and all(
-                    isinstance(e, ModelEvent) for e in skeleton[-2:]
+                    isinstance(e, ModelEvent) for _, e in skeleton[-2:]
                 ):
-                    skeleton[-1] = event
+                    skeleton[-1] = (position, event)
                 else:
-                    skeleton.append(event)
+                    skeleton.append((position, event))
     excluded_ids: frozenset[MessageId] = frozenset()
     if compaction_spans:
         excluded_ids = _compaction_excluded_ids(
-            skeleton, message_ids, compaction="last"
+            await _with_model_inputs(handle, skeleton),
+            message_ids,
+            compaction="last",
         )
 
     walk = _AnchorWalk(
@@ -649,7 +690,9 @@ async def stream_interleave_events(
         grader_spans=scorer_span_ids(begins),
         compaction_spans=frozenset(compaction_spans),
     )
-    async with aclosing_iter(handle.events()) as handle_events:
+    async with aclosing_iter(
+        projected_events(handle, output_only_projection())
+    ) as handle_events:
         async for event in handle_events:
             walk.add(event)
 

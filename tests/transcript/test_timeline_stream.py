@@ -674,12 +674,18 @@ async def test_projections_keep_everything_their_readers_read(
         assert output_only(output_replay) == output_only(full)
         assert _input_count(output_replay) == 0
 
-        model_events = [e for e in full if isinstance(e, ModelEvent)]
-        keep = {e.uuid for e in model_events[::2] if e.uuid}
-        assert keep
-        kept_replay = replay_events(result, output_only_projection(keep=keep))
-        assert [e.model_dump() for e in kept_replay if e.uuid in keep] == [
-            e.model_dump() for e in full if e.uuid in keep
+        # Every ModelEvent is exempt, half by uuid and half by position.
+        model_positions = [i for i, e in enumerate(full) if isinstance(e, ModelEvent)]
+        keep_uuids = {u for i in model_positions[::2] if (u := full[i].uuid)}
+        assert len(keep_uuids) == len(model_positions[::2])
+        kept_replay = list(
+            replay_events(
+                result,
+                output_only_projection(keep_uuids, set(model_positions[1::2])),
+            )
+        )
+        assert [kept_replay[i].model_dump() for i in model_positions] == [
+            full[i].model_dump() for i in model_positions
         ]
     finally:
         result.close()

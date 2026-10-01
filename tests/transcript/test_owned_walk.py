@@ -108,6 +108,83 @@ def test_tier2_latest_started_not_latest_touched_with_nested_walked_span() -> No
     assert reference[limit.uuid] == "sub"
 
 
+def test_branch_on_nonwalked_carrier_owner_captured_at_span_start() -> None:
+    """A non-walked carrier's branch rides the owner at the carrier's start.
+
+    The carrier is unwalked but holds a nested walked span and a branch. The
+    branch must ride the tier-2 owner on entering the carrier (main1), not the
+    nested span that becomes ``latest`` once the carrier's content is walked,
+    and not main2, which comes later still.
+    """
+    out_m1 = ModelOutput.from_content(model="mockllm", content="m1")
+    main1 = _span(
+        "m1", "main1", [_model_event([ChatMessageUser(content="q1")], out_m1)]
+    )
+
+    out_nested = ModelOutput.from_content(model="mockllm", content="nested")
+    nested = _span(
+        "nested",
+        "nested-agent",
+        [_model_event([ChatMessageUser(content="qn")], out_nested)],
+    )
+
+    out_alt = ModelOutput.from_content(model="mockllm", content="ALT")
+    branch_event = _model_event([ChatMessageUser(content="bq")], out_alt)
+    branch = _span_of("br", "branch", [branch_event], span_type="agent")
+    carrier = _span_of("carrier", "carrier", [nested], span_type="agent")
+    carrier = carrier.model_copy(update={"branches": [branch]})
+
+    out_m2 = ModelOutput.from_content(model="mockllm", content="m2")
+    main2 = _span(
+        "m2", "main2", [_model_event([ChatMessageUser(content="q2")], out_m2)]
+    )
+
+    root = _span_of("root", "root", [main1, carrier, main2], span_type=None)
+
+    owned = _owned(root)
+    assert [o.span.id for o in owned] == ["m1", "nested", "m2"]
+    by_id = {o.span.id: o for o in owned}
+    assert len(by_id["m1"].branches) == 1
+    assert by_id["nested"].branches == []
+    assert by_id["m2"].branches == []
+
+    # oracle 3 trusts the brute-force reference; it must agree here
+    assert branch_event.uuid is not None
+    reference = expected_owners(root, depth=None, include_scorers=False)
+    assert reference[branch_event.uuid] == "m1"
+
+
+def test_utility_child_of_a_nonwalked_span_belongs_to_the_walked_ancestor() -> None:
+    """A one-shot helper run by a grouping agent belongs to the nearest walked span.
+
+    Not to tier-2 ``latest``, the walked sub-agent the grouping agent ran
+    before it.
+    """
+    out_w = ModelOutput.from_content(model="mockllm", content="w")
+    out_b = ModelOutput.from_content(model="mockllm", content="b")
+    out_u = ModelOutput.from_content(model="mockllm", content="u")
+    helper = _model_event([ChatMessageUser(content="qu")], out_u)
+    sub = _span(
+        "b", "researcher", [_model_event([ChatMessageUser(content="qb")], out_b)]
+    )
+    util = _span("u", "summarizer", [helper]).model_copy(update={"utility": True})
+    group = _span_of("g", "team", [sub, util])
+    root = _span_of(
+        "w", "main", [_model_event([ChatMessageUser(content="qw")], out_w), group]
+    )
+
+    owned = _owned(root)
+    assert [o.span.id for o in owned] == ["w", "b"]
+    by_id = {o.span.id: o for o in owned}
+    assert any(i.event is helper and not i.own for i in by_id["w"].items)
+    assert not any(i.event is helper for i in by_id["b"].items)
+
+    # oracle 3 trusts the brute-force reference; it must agree here
+    assert helper.uuid is not None
+    reference = expected_owners(root, depth=None, include_scorers=False)
+    assert reference[helper.uuid] == "w"
+
+
 def test_nested_branches_flatten_onto_owners_branch_list() -> None:
     """A branch's own branches flatten onto the owner's list, each replay-cut."""
     out_replay1 = ModelOutput.from_content(model="mockllm", content="replay1")

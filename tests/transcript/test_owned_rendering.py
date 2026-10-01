@@ -38,10 +38,11 @@ def _render(
     *,
     events: EventsSpec = "all",
     compaction: Compaction = "all",
+    depth: int | None = None,
 ) -> list[list[ChatMessage]]:
     return [
         span_owned_messages(owned, events=events, compaction=compaction)
-        for owned in walk_owned_spans(root)
+        for owned in walk_owned_spans(root, depth=depth)
     ]
 
 
@@ -109,6 +110,47 @@ def test_foreign_model_events_bypass_the_events_filter_but_others_obey_it() -> N
     assert "FORK" in markers
     assert "SCORE" in markers
     assert "LIMIT" not in markers
+
+
+def test_depth_excluded_sub_agent_turns_on_the_owner_thread_stay_foreign() -> None:
+    """A handoff sub-agent past ``depth``: its turns also join the owner's thread.
+
+    They still render as ``MODEL (BRANCH)`` and never move the anchor, so the
+    sub-agent's other entries stay after the owner's own turn.
+    """
+    task = ChatMessageUser(content="task")
+    out1 = ModelOutput.from_content(model="mockllm", content="a1")
+    a1 = out1.choices[0].message
+    sub_out = ModelOutput.from_content(model="mockllm", content="s1")
+    limit = SampleLimitEvent.model_construct(
+        event="sample_limit", type="message", limit=1, message="lim"
+    )
+    sub = _span_of(
+        "sub",
+        "researcher",
+        [_model_event([ChatMessageUser(content="sq")], sub_out), limit],
+    )
+    thread: list[ChatMessage] = [
+        task,
+        a1,
+        sub_out.choices[0].message,
+        ChatMessageUser(content="next"),
+    ]
+    out2 = ModelOutput.from_content(model="mockllm", content="a2")
+    owner = _span_of(
+        "o", "main", [_model_event([task], out1), sub, _model_event(thread, out2)]
+    )
+
+    [rendered] = _render(owner, depth=1)
+    assert _texts(rendered) == [
+        "task",
+        "a1",
+        "MODEL (BRANCH):\ns1\n",
+        "LIMIT (message): lim\n",
+        "s1",
+        "next",
+        "a2",
+    ]
 
 
 def test_grouped_branches_splice_consecutively_and_empty_key_appends() -> None:

@@ -271,7 +271,8 @@ def llm_scanner(
             positioning). ``model``/``tool`` and structural events are never
             interleaved (they are already the message thread). On timeline
             scans interleaving is per-span, with events outside any scanned
-            span attaching to the last preceding one.
+            span attaching to the last preceding one. Showing events makes
+            the scanner read the whole transcript instead of streaming it.
         context_window: Override the model's context window size for chunking.
             When set, transcripts exceeding this limit are split into multiple
             segments, each scanned independently.

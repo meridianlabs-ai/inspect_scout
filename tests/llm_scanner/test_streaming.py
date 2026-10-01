@@ -12,7 +12,14 @@ from pathlib import Path
 from typing import Any, Callable, cast
 
 import pytest
-from inspect_ai.event import ScoreEvent
+from inspect_ai.event import (
+    ModelEvent,
+    ScoreEvent,
+    SpanBeginEvent,
+    SpanEndEvent,
+    ToolEvent,
+)
+from inspect_ai.event._event import Event
 from inspect_ai.model import (
     ChatMessage,
     ChatMessageUser,
@@ -42,7 +49,7 @@ from inspect_scout._transcript.types import (
     TranscriptInfo,
 )
 
-from tests.transcript.fixtures_agentic import agentic_transcript
+from tests.transcript.fixtures_agentic import agentic_events, agentic_transcript
 
 
 def _make_transcript(n_messages: int, *, words: int = 3) -> Transcript:
@@ -67,6 +74,44 @@ def _score_only_transcript() -> Transcript:
             ModelOutput.from_content(model="mockllm", content="4").message,
         ],
         events=[ScoreEvent(score=Score(value="C"), target="C", scorer="match")],
+    )
+
+
+def _uuidless(events: list[Event]) -> list[Event]:
+    """`events` as stored by a log writer that records no uuids."""
+    return [
+        e.model_copy(
+            update={"uuid": None}
+            | ({"events": _uuidless(e.events)} if isinstance(e, ToolEvent) else {})
+        )
+        for e in events
+    ]
+
+
+def _uuidless_side_call_transcript() -> Transcript:
+    """A span whose off-thread side call, rendered as a branch, has no uuid."""
+
+    def model_event(question: str, answer: str) -> ModelEvent:
+        return ModelEvent(
+            span_id="main",
+            model="mockllm",
+            input=[ChatMessageUser(content=question)],
+            tools=[],
+            tool_choice="none",
+            config=GenerateConfig(),
+            output=ModelOutput.from_content(model="mockllm", content=answer),
+        )
+
+    return Transcript(
+        transcript_id="t",
+        events=[
+            SpanBeginEvent(
+                id="main", parent_id=None, type="agent", name="main", span_id="main"
+            ),
+            *_uuidless([model_event("aside?", "aside")]),
+            model_event("2+2?", "4"),
+            SpanEndEvent(id="main", span_id="main"),
+        ],
     )
 
 
@@ -233,6 +278,23 @@ def _yes_model() -> Model:
             2,
             False,
             id="events-param-messages-and-spans",
+        ),
+        # Events stored without a uuid replay without one, as inspect_ai reads
+        # them, so both stream passes see the same events. A uuid-less event
+        # the prompt needs makes the scan load the transcript instead.
+        pytest.param(
+            _uuidless_side_call_transcript,
+            {"events": "all"},
+            1,
+            True,
+            id="events-param-uuidless-side-call",
+        ),
+        pytest.param(
+            lambda: agentic_transcript(_uuidless(agentic_events())),
+            {"events": "all"},
+            2,
+            True,
+            id="events-param-uuidless-spans",
         ),
     ],
 )

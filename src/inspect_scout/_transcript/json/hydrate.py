@@ -4,10 +4,15 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+from inspect_ai._util.constants import DESERIALIZING
 from inspect_ai.event._event import Event
 from pydantic import TypeAdapter, ValidationError
 
 _EVENT_ADAPTER: TypeAdapter[Event] = TypeAdapter(Event)
+
+# Validate as inspect_ai reads a log: an id or uuid the log lacks stays None
+# rather than getting a fresh random one on every read.
+DESERIALIZING_CONTEXT = {DESERIALIZING: True}
 
 
 def hydrate_nested_tool_events(
@@ -43,7 +48,9 @@ def hydrate_nested_tool_events(
             hydrated.append(resolved)  # not an event: validating would invent one
             continue
         try:
-            hydrated.append(_EVENT_ADAPTER.validate_python(resolved))
+            hydrated.append(
+                _EVENT_ADAPTER.validate_python(resolved, context=DESERIALIZING_CONTEXT)
+            )
         except ValidationError:
             hydrated.append(resolved)  # unknown or future event type
     item["events"] = hydrated

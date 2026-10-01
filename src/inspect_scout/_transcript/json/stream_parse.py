@@ -28,7 +28,7 @@ from inspect_ai.model._chat_message import ChatMessage
 from pydantic import TypeAdapter
 
 from ..types import EventFilter, MessageFilter
-from .hydrate import hydrate_nested_tool_events
+from .hydrate import DESERIALIZING_CONTEXT, hydrate_nested_tool_events
 from .pool import slice_positions
 from .reducer import (
     ATTACHMENT_PREFIX,
@@ -561,7 +561,7 @@ def replay_messages(result: StreamParseResult) -> Iterator[ChatMessage]:
     """Replay spooled messages, resolving attachments and validating each."""
     for item in result.messages.items():
         yield _CHAT_MESSAGE_ADAPTER.validate_python(
-            resolve_item_dict(item, result.blobs)
+            resolve_item_dict(item, result.blobs), context=DESERIALIZING_CONTEXT
         )
 
 
@@ -572,4 +572,4 @@ def replay_events(result: StreamParseResult) -> Iterator[Event]:
         hydrate_nested_tool_events(
             resolved, lambda d: resolve_item_dict(d, result.blobs)
         )
-        yield _EVENT_ADAPTER.validate_python(resolved)
+        yield _EVENT_ADAPTER.validate_python(resolved, context=DESERIALIZING_CONTEXT)

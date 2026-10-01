@@ -17,7 +17,7 @@ from ..types import (
     TranscriptInfo,
 )
 from ..util import filter_transcript
-from .hydrate import hydrate_nested_tool_events
+from .hydrate import DESERIALIZING_CONTEXT, hydrate_nested_tool_events
 from .pool import resolve_pools
 from .reducer import (
     ATTACHMENT_PREFIX,
@@ -576,7 +576,9 @@ def _resolve_attachments(
         "events": resolved_events,
     }
 
-    validated = Transcript.model_validate(transcript_data)
+    validated = Transcript.model_validate(
+        transcript_data, context=DESERIALIZING_CONTEXT
+    )
 
     # Resolve timelines with event UUID context (events must be validated first)
     if transcript.timelines:

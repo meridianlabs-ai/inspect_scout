@@ -28,17 +28,21 @@ from inspect_ai.tool import ToolChoice, ToolInfo
 from inspect_scout import llm_scanner
 from inspect_scout._scanner.extract import EVENT_MARKER_KEY
 from inspect_scout._scanner.scanner import SCANNER_CONTENT_ATTR
+from inspect_scout._transcript.handle import MaterializedTranscriptHandle
 from inspect_scout._transcript.interleave import (
     INTERLEAVE_DEPENDENCIES,
+    EventsOnlyInterleaveUnsupported,
     EventsSpec,
     interleave_events,
     span_owned_messages,
+    stream_interleave_events,
 )
 from inspect_scout._transcript.timeline import walk_owned_spans
 from inspect_scout._transcript.types import (
     EventType,
     Transcript,
     TranscriptContent,
+    TranscriptInfo,
 )
 
 
@@ -379,3 +383,235 @@ def test_legacy_raw_dict_subevents_are_skipped_not_crashed() -> None:
     )
 
     assert [m.text for m in interleave_events(transcript, "all")] == ["q"]
+
+
+# Streaming drivers: stream_interleave_events and stream_timeline_messages(events=...)
+
+
+def _handle_for(transcript: Transcript) -> MaterializedTranscriptHandle:
+    async def load_fn() -> Transcript:
+        return transcript
+
+    info = TranscriptInfo(
+        **transcript.model_dump(exclude={"messages", "events", "timelines"})
+    )
+    return MaterializedTranscriptHandle(load_fn, info)
+
+
+def _scorers_span_transcript() -> Transcript:
+    """Transcript whose grader model call sits in a top-level `scorers` span."""
+    out = ModelOutput.from_content(model="mockllm", content="4")
+    assistant = out.choices[0].message
+    user = ChatMessageUser(content="2+2?")
+    model_event = ModelEvent(
+        span_id="span-main",
+        model="mockllm",
+        input=[user],
+        output=out,
+        role="assistant",
+        tools=[],
+        tool_choice="auto",
+        config=GenerateConfig(),
+    )
+    grader_out = ModelOutput.from_content(model="mockllm", content="grader assessment")
+    grader_event = ModelEvent(
+        span_id="span-scorers",
+        model="mockllm",
+        input=[ChatMessageUser(content="grade this")],
+        output=grader_out,
+        role="assistant",
+        tools=[],
+        tool_choice="auto",
+        config=GenerateConfig(),
+    )
+    score_event = ScoreEvent(
+        span_id="span-scorers", scorer="match", score=Score(value="C")
+    )
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[user, assistant],
+        events=[
+            SpanBeginEvent(
+                id="span-main",
+                parent_id=None,
+                type="agent",
+                name="main",
+                span_id="span-main",
+            ),
+            model_event,
+            SpanEndEvent(id="span-main", span_id="span-main"),
+            SpanBeginEvent(
+                id="span-scorers",
+                parent_id=None,
+                type="scorers",
+                name="scorers",
+                span_id="span-scorers",
+            ),
+            grader_event,
+            score_event,
+            SpanEndEvent(id="span-scorers", span_id="span-scorers"),
+        ],
+    )
+    return transcript
+
+
+@pytest.mark.anyio
+async def test_events_only_transcripts_are_rejected_by_the_streaming_flat_driver() -> (
+    None
+):
+    out = ModelOutput.from_content(model="mockllm", content="a1")
+    events_only = Transcript(
+        transcript_id="t", messages=[], events=[_model_event("q1", out)]
+    )
+    with pytest.raises(EventsOnlyInterleaveUnsupported):
+        async for _ in stream_interleave_events(_handle_for(events_only), "all"):
+            pass
+
+
+@pytest.mark.anyio
+async def test_stream_messages_present_hides_compaction_pruned_turn() -> None:
+    """Streaming counterpart: matches the materialized fix exactly.
+
+    Same fixture and invariants as
+    `test_messages_present_hides_compaction_pruned_turn`, driven through
+    `stream_interleave_events`'s messages-present branch (the dedicated
+    extra pass that reconstructs `excluded_ids` from a
+    `model`/`compaction`-filtered skeleton).
+    """
+    transcript = _compaction_pruned_and_fork_transcript()
+    expected = interleave_events(transcript)
+    streamed = [m async for m in stream_interleave_events(_handle_for(transcript))]
+
+    assert expected  # non-vacuous
+    assert [(m.id, m.text) for m in streamed] == [(m.id, m.text) for m in expected]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("events_spec", ["all", ["score"]])
+async def test_stream_excludes_grader_model_event_like_materialized(
+    events_spec: EventsSpec,
+) -> None:
+    """Streaming must hide grader model calls exactly as materialized does.
+
+    The messages-present streaming path fed every ModelEvent to the walk,
+    so a grader's output surfaced as a `MODEL (BRANCH)` entry -- leaking the
+    answer into the judge prompt on the streaming path only.
+    """
+    transcript = _scorers_span_transcript()
+    expected = interleave_events(transcript, events=events_spec)
+    streamed = [
+        m
+        async for m in stream_interleave_events(
+            _handle_for(transcript), events=events_spec
+        )
+    ]
+    assert "grader assessment" not in "\n".join(_event_texts(streamed))
+    assert [(m.id, m.text) for m in streamed] == [(m.id, m.text) for m in expected]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("events_spec", ["all", ["score"]])
+async def test_stream_interleave_matches_materialized(
+    events_spec: EventsSpec,
+) -> None:
+    # Duplicate id=None assistant turns exercise the position-based anchoring
+    # through the streaming walk as well.
+    out1 = ModelOutput.from_content(model="mockllm", content="yes")
+    out2 = ModelOutput.from_content(model="mockllm", content="yes")
+    a1, a2 = out1.choices[0].message, out2.choices[0].message
+    a1.id = None
+    a2.id = None
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[
+            ChatMessageUser(content="q1", id="u1"),
+            a1,
+            ChatMessageUser(content="q2", id="u2"),
+            a2,
+        ],
+        events=[
+            _model_event("q1", out1),
+            ScoreEvent(score=Score(value=0.5), scorer="graded", intermediate=True),
+            _model_event("q2", out2),
+            ScoreEvent(score=Score(value="C"), target="C", scorer="match"),
+            ErrorEvent(
+                error=EvalError(message="boom", traceback="", traceback_ansi="")
+            ),
+        ],
+    )
+    expected = interleave_events(transcript, events=events_spec)
+    streamed = [
+        m
+        async for m in stream_interleave_events(
+            _handle_for(transcript), events=events_spec
+        )
+    ]
+    assert [(m.id, m.text) for m in streamed] == [(m.id, m.text) for m in expected]
+
+
+@pytest.mark.anyio
+async def test_stream_multi_agent_branch_entries_match_materialized() -> None:
+    """Flat streaming messages-present path: two off-thread agents both surface.
+
+    `transcript.messages` carries only agent A's on-thread conversation.
+    Agent B contributes two entirely separate ``ModelEvent``s -- genuine
+    forks, since their outputs never join ``transcript.messages`` at all
+    (there is no compaction here, so this is unambiguously the fork case,
+    not a compaction-pruned turn). The messages-present branch of
+    ``stream_interleave_events`` streams full events with no stub
+    skeleton, so both materialized ``interleave_events`` and the streaming
+    driver must surface agent B's outputs as ``[E#] MODEL (BRANCH):``
+    entries, and the two outputs must match exactly.
+    """
+    out_a = ModelOutput.from_content(model="mockllm", content="agent-a-answer")
+    a = out_a.choices[0].message
+    user_a = ChatMessageUser(content="agent-a-question")
+
+    out_b1 = ModelOutput.from_content(model="mockllm", content="agent-b-answer-1")
+    out_b2 = ModelOutput.from_content(model="mockllm", content="agent-b-answer-2")
+
+    model_a = _model_event("agent-a-question", out_a)
+    model_b1 = ModelEvent.model_construct(
+        event="model",
+        model="mockllm",
+        input=[ChatMessageUser(content="agent-b-question-1")],
+        output=out_b1,
+        role="assistant",
+        config=GenerateConfig(),
+    )
+    model_b2 = ModelEvent.model_construct(
+        event="model",
+        model="mockllm",
+        input=[ChatMessageUser(content="agent-b-question-2")],
+        output=out_b2,
+        role="assistant",
+        config=GenerateConfig(),
+    )
+
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[user_a, a],
+        events=[model_a, model_b1, model_b2],
+    )
+
+    expected = interleave_events(transcript)
+    streamed = [m async for m in stream_interleave_events(_handle_for(transcript))]
+
+    assert [(m.id, m.text) for m in streamed] == [(m.id, m.text) for m in expected]
+
+    event_texts = [
+        m.text for m in streamed if m.metadata and m.metadata.get(EVENT_MARKER_KEY)
+    ]
+    assert sum("MODEL (BRANCH):" in t for t in event_texts) == 2
+    combined = "\n".join(event_texts)
+    assert "agent-b-answer-1" in combined
+    assert "agent-b-answer-2" in combined
+
+
+@pytest.mark.anyio
+async def test_stream_interleave_no_events_passthrough() -> None:
+    transcript = Transcript(
+        transcript_id="t", messages=[ChatMessageUser(content="hi", id="u1")], events=[]
+    )
+    streamed = [m async for m in stream_interleave_events(_handle_for(transcript))]
+    assert [m.id for m in streamed] == ["u1"]

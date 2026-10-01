@@ -2,6 +2,8 @@
 
 from collections import defaultdict
 from typing import (
+    TYPE_CHECKING,
+    AsyncIterator,
     Final,
     Iterable,
     Iterator,
@@ -28,6 +30,9 @@ from .messages import span_messages
 from .timeline import OwnedBranch, OwnedItem, OwnedSpan
 from .types import EventType, Transcript
 from .util import nested_tool_events
+
+if TYPE_CHECKING:
+    from .handle import TranscriptHandle
 
 
 class InterleavedEvent(NamedTuple):
@@ -559,3 +564,70 @@ def interleave_events(
         walk.add(event)
 
     return list(walk.spliced(messages))
+
+
+async def stream_interleave_events(
+    handle: "TranscriptHandle",
+    events: EventsSpec = "all",
+) -> AsyncIterator[ChatMessage]:
+    """Streaming counterpart to ``interleave_events`` over a handle.
+
+    Yields the same sequence without holding messages and event payloads in
+    memory at once: one pass collects message ids, one derives compaction
+    exclusions (from a region-last ``ModelEvent`` skeleton) and grader spans,
+    one runs the anchor walk, and a final one re-streams the messages with
+    the anchored entries spliced in.
+
+    Raises:
+        EventsOnlyInterleaveUnsupported: The handle has no messages; use
+            ``stream_timeline_messages`` instead.
+    """
+    message_ids = [_message_id(m) async for m in handle.messages()]
+    if not message_ids:
+        raise EventsOnlyInterleaveUnsupported(
+            "stream_interleave_events needs a handle with messages; use "
+            "stream_timeline_messages for an events-only transcript"
+        )
+
+    skeleton: list[Event] = []
+    begins: list[SpanBeginEvent] = []
+    compaction_spans: set[SpanId | None] = set()
+    async for event in handle.events():
+        if isinstance(event, SpanBeginEvent):
+            begins.append(event)
+        elif isinstance(event, CompactionEvent):
+            compaction_spans.add(
+                None if event.span_id is None else SpanId(event.span_id)
+            )
+            skeleton.append(event)
+        elif isinstance(event, ModelEvent):
+            # Region-last wins: only the last ModelEvent before each
+            # compaction boundary contributes to the untruncated thread.
+            if skeleton and isinstance(skeleton[-1], ModelEvent):
+                skeleton[-1] = event
+            else:
+                skeleton.append(event)
+    excluded_ids: frozenset[MessageId] = frozenset()
+    if compaction_spans:
+        excluded_ids = _compaction_excluded_ids(
+            skeleton, message_ids, compaction="last"
+        )
+
+    walk = _AnchorWalk(
+        message_ids,
+        events,
+        excluded_ids=excluded_ids,
+        grader_spans=scorer_span_ids(begins),
+        compaction_spans=frozenset(compaction_spans),
+    )
+    async for event in handle.events():
+        walk.add(event)
+
+    for event_id, text in walk.leading:
+        yield _event_message(event_id, text)
+    index = 0
+    async for message in handle.messages():
+        yield message
+        for event_id, text in walk.anchored.get(index, []):
+            yield _event_message(event_id, text)
+        index += 1

@@ -195,6 +195,40 @@ async def test_spanless_multi_agent_off_thread_agent_renders_via_branch_entries(
     assert "SCORE" in combined
 
 
+def test_repeated_idless_turns_each_anchor_their_own_events() -> None:
+    """Logs written without message ids keep them unset, so repeated text shares a fallback id."""
+    out1 = ModelOutput.from_content(model="mockllm", content="yes")
+    out2 = ModelOutput.from_content(model="mockllm", content="yes")
+    a1, a2 = out1.choices[0].message, out2.choices[0].message
+    a1.id = None
+    a2.id = None
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[
+            ChatMessageUser(content="q1", id="u1"),
+            a1,
+            ChatMessageUser(content="q2", id="u2"),
+            a2,
+        ],
+        events=[
+            _model_event("q1", out1),
+            ScoreEvent(score=Score(value=0.5), scorer="graded", intermediate=True),
+            _model_event("q2", out2),
+            ScoreEvent(score=Score(value="C"), target="C", scorer="match"),
+        ],
+    )
+    texts = [m.text for m in interleave_events(transcript)]
+    assert (
+        texts[0] == "q1"
+        and texts[1] == "yes"
+        and texts[3] == "q2"
+        and texts[4] == "yes"
+    )
+    assert texts[2].startswith("SCORE (graded)")
+    assert texts[5].startswith("SCORE (match)")
+    assert len(texts) == 6
+
+
 def test_interleave_filters_to_selected_event_types() -> None:
     """``_interleavable_text`` defaults to ``"all"``, so a dropped selection still type-checks."""
     out = ModelOutput.from_content(model="mockllm", content="ans")

@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import errno
+import os
 import random
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+from inspect_scout._transcript.json import spool as spool_mod
 from inspect_scout._transcript.json.spool import ByteSpool, ItemSpool
 
 
@@ -112,3 +116,33 @@ def test_byte_spool_concurrent_first_reads_agree(tmp_path: Path) -> None:
         assert results == [payload] * 8
     finally:
         spool.close()
+
+
+@pytest.mark.parametrize("flush_by", ["read", "write"])
+def test_byte_spool_close_keeps_a_failed_flush_error(
+    flush_by: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A batch write that fails surfaces its own error, not one from close().
+
+    Cleanup paths close the spool while that error, and its traceback, are
+    still live.
+    """
+
+    def disk_full(fd: int, data: memoryview) -> int:
+        raise OSError(errno.ENOSPC, os.strerror(errno.ENOSPC))
+
+    spool = ByteSpool(tmp_path)
+    spool.write(b"batched")
+    monkeypatch.setattr(
+        spool_mod, "os", SimpleNamespace(**{**vars(os), "write": disk_full})
+    )
+    with pytest.raises(OSError) as raised:
+        try:
+            if flush_by == "read":
+                spool.read()
+            else:
+                spool.write(bytes(spool_mod._WRITE_BATCH_SIZE))
+        except BaseException:
+            spool.close()
+            raise
+    assert raised.value.errno == errno.ENOSPC

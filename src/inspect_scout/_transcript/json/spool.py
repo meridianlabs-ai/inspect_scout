@@ -65,8 +65,13 @@ def _write_at_locked(
     """``_write_at`` for a caller already holding the spool's lock."""
     os.lseek(fd, offset, os.SEEK_SET)
     view = memoryview(data)
-    while view:
-        view = view[os.write(fd, view) :]
+    try:
+        while view:
+            view = view[os.write(fd, view) :]
+    finally:
+        # A failed write's traceback keeps this frame, and so the view, alive;
+        # while it lives, `data` (ByteSpool's batch) cannot be resized.
+        view.release()
 
 
 def _open_spool_file(dir: Path, suffix: str) -> IO[bytes]:
@@ -200,7 +205,8 @@ class ByteSpool:
             self._file.close()
             self._file = None
             self._fd = None
-        self._pending.clear()
+        # Rebound, not cleared: clearing raises if the buffer is still exported.
+        self._pending = bytearray()
 
 
 class ItemSpool:

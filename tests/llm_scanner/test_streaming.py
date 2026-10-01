@@ -58,6 +58,18 @@ def _make_transcript(n_messages: int, *, words: int = 3) -> Transcript:
     return Transcript(transcript_id="t", messages=msgs)
 
 
+def _score_only_transcript() -> Transcript:
+    """Messages with no ModelEvent behind them, so only the flat route shows them."""
+    return Transcript(
+        transcript_id="t",
+        messages=[
+            ChatMessageUser(content="2+2?", id="m0"),
+            ModelOutput.from_content(model="mockllm", content="4").message,
+        ],
+        events=[ScoreEvent(score=Score(value="C"), target="C", scorer="match")],
+    )
+
+
 def _spooled_handle_for(
     transcript: Transcript, spool_dir: Path
 ) -> SpooledTranscriptHandle:
@@ -186,15 +198,41 @@ def _yes_model() -> Model:
             True,
             id="events-requested-but-absent",
         ),
-        # events= has no streaming implementation yet, so the handle is loaded.
+        # events= on a spanless transcript with messages: the flat
+        # stream_interleave_events route, mirroring interleave_events.
         pytest.param(
-            lambda: _make_transcript(2).model_copy(
-                update={"events": [ScoreEvent(score=Score(value="C"), scorer="m")]}
-            ),
+            _score_only_transcript,
             {"events": ["score"]},
             1,
-            True,
+            False,
             id="events-param",
+        ),
+        # events= on a span-structured transcript: per-span interleaving via
+        # stream_timeline_messages(events=...).
+        pytest.param(
+            agentic_transcript,
+            {"events": "all"},
+            2,
+            False,
+            id="events-param-spans",
+        ),
+        # The routes below render differently, so these pin the streaming
+        # router to transcript_messages' flat gate (messages, no spans).
+        pytest.param(
+            _score_only_transcript,
+            {"events": ["score"], "content": TranscriptContent(events="all")},
+            1,
+            False,
+            id="events-param-flat-with-content-events",
+        ),
+        pytest.param(
+            lambda: agentic_transcript().model_copy(
+                update={"messages": [ChatMessageUser(content="top level", id="t0")]}
+            ),
+            {"events": "all"},
+            2,
+            False,
+            id="events-param-messages-and-spans",
         ),
     ],
 )
@@ -265,6 +303,7 @@ def _dynamic_template_variables(_t: Transcript) -> dict[str, Any]:
         pytest.param(
             {"content": TranscriptContent(timeline="all")}, False, id="content-timeline"
         ),
+        pytest.param({"events": ["score"]}, True, id="events-param"),
     ],
 )
 def test_streaming_attr_gating(kwargs: dict[str, Any], expected: bool) -> None:

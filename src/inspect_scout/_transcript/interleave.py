@@ -28,7 +28,7 @@ from .._scanner.extract import EVENT_MARKER_KEY, message_as_str
 from .._scanner.util import EventId, MessageId, SpanId, _event_id, _message_id
 from .._util._async import aclosing_iter
 from .event_text import event_as_str
-from .handle import TranscriptHandle, projected_events
+from .handle import SpooledTranscriptHandle, TranscriptHandle, projected_events
 from .json.spool import BlobSpool
 from .json.stream_parse import EventProjection
 from .messages import span_messages
@@ -606,8 +606,12 @@ async def _with_model_inputs(
 ) -> list[Event]:
     """``skeleton``'s events, its ModelEvents re-read with their inputs.
 
-    Matched by stream position, so uuid-less events come back too.
+    Matched by stream position, so uuid-less events come back too. Only a
+    spooled handle's projection strips inputs; other handles' skeletons
+    already hold full events and are returned as they are.
     """
+    if not isinstance(handle, SpooledTranscriptHandle):
+        return [event for _, event in skeleton]
     wanted = {position for position, event in skeleton if isinstance(event, ModelEvent)}
     full: dict[int, Event] = {}
     async with aclosing_iter(

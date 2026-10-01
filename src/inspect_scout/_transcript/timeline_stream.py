@@ -380,8 +380,9 @@ def _substitute_full_events(
     every `TimelineEvent` wrapping a `ModelEvent` whose uuid is in
     `full_by_uuid`. Reaches nested tool-spawned-agent events too, since the
     tree builder expands such `ToolEvent`s into nested spans. `span.branches`
-    is not walked: `full_by_uuid` is keyed by the uuids `walk_owned_spans` selected,
-    and it does not descend into branches either.
+    is not walked: `full_by_uuid` is keyed by the uuids
+    `needed_model_event_uuids` selected, which reads only each walked span's
+    direct content, never `OwnedSpan.branches`.
     """
     for item in span.content:
         if isinstance(item, TimelineEvent):

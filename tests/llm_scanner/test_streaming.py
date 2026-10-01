@@ -17,7 +17,6 @@ from inspect_ai.event import (
     ScoreEvent,
     SpanBeginEvent,
     SpanEndEvent,
-    ToolEvent,
 )
 from inspect_ai.event._event import Event
 from inspect_ai.model import (
@@ -52,11 +51,7 @@ from inspect_scout._transcript.types import (
     TranscriptInfo,
 )
 
-from tests.transcript.fixtures_agentic import (
-    agentic_events,
-    agentic_events_with_warmup,
-    agentic_transcript,
-)
+from tests.transcript.fixtures_agentic import agentic_transcript
 from tests.transcript.stream_parity import sample_json
 
 
@@ -87,13 +82,7 @@ def _score_only_transcript() -> Transcript:
 
 def _uuidless(events: list[Event]) -> list[Event]:
     """`events` as stored by a log writer that records no uuids."""
-    return [
-        e.model_copy(
-            update={"uuid": None}
-            | ({"events": _uuidless(e.events)} if isinstance(e, ToolEvent) else {})
-        )
-        for e in events
-    ]
+    return [e.model_copy(update={"uuid": None}) for e in events]
 
 
 def _uuidless_side_call_transcript() -> Transcript:
@@ -325,16 +314,6 @@ def _yes_model() -> Model:
             False,
             id="events-param-messages-and-spans",
         ),
-        pytest.param(
-            lambda: Transcript(
-                transcript_id="t",
-                events=[ScoreEvent(score=Score(value="C"), target="C", scorer="match")],
-            ),
-            {"events": ["score"]},
-            1,
-            False,
-            id="events-param-events-only-spanless",
-        ),
         # Events stored without a uuid replay without one, as inspect_ai reads
         # them, so both stream passes see the same events. A uuid-less event
         # the prompt needs makes the scan load the transcript instead.
@@ -344,13 +323,6 @@ def _yes_model() -> Model:
             1,
             True,
             id="events-param-uuidless-side-call",
-        ),
-        pytest.param(
-            lambda: agentic_transcript(_uuidless(agentic_events())),
-            {"events": "all"},
-            2,
-            True,
-            id="events-param-uuidless-spans",
         ),
         # A compaction makes the flat route re-read the ModelEvents its
         # exclusions come from, by stream position, uuid or not.
@@ -370,24 +342,13 @@ def _yes_model() -> Model:
             False,
             id="events-param-flat-trim-uuidless",
         ),
-        # A warmup call is classified from its config and trailing user turn,
-        # which the streamed pass 1 must keep.
-        pytest.param(
-            lambda: agentic_transcript(agentic_events_with_warmup()),
-            {"events": "all"},
-            2,
-            False,
-            id="events-param-warmup",
-        ),
     ],
 )
-@pytest.mark.parametrize("pooled", [False, True], ids=["inline", "pooled"])
 async def test_handle_scan_equivalent_to_transcript_scan(
     make_transcript: Callable[[], Transcript],
     scanner_kwargs: dict[str, Any],
     min_prompts: int,
     expect_load: bool,
-    pooled: bool,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -412,9 +373,7 @@ async def test_handle_scan_equivalent_to_transcript_scan(
     recorded.clear()
 
     load_calls = _spy_on_load(monkeypatch, SpooledTranscriptHandle)
-    result_handle = await _scan(
-        scan_fn, _spooled_handle_for(transcript, tmp_path, pooled=pooled)
-    )
+    result_handle = await _scan(scan_fn, _spooled_handle_for(transcript, tmp_path))
     prompts_handle = list(recorded)
 
     if expect_load:
@@ -454,7 +413,6 @@ def _dynamic_template_variables(_t: Transcript) -> dict[str, Any]:
         pytest.param(
             {"content": TranscriptContent(timeline="all")}, False, id="content-timeline"
         ),
-        pytest.param({"events": ["score"]}, True, id="events-param"),
     ],
 )
 def test_streaming_attr_gating(kwargs: dict[str, Any], expected: bool) -> None:

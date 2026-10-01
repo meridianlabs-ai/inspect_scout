@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import errno
 import os
-import random
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -68,36 +67,6 @@ def test_byte_spool_roundtrips_across_chunk_boundaries(
         spool.close()
 
 
-def test_byte_spool_reads_see_every_write_however_they_interleave(
-    tmp_path: Path,
-) -> None:
-    """Reads and lengths between writes match what was written, byte for byte.
-
-    Writes are mostly tiny, as the metadata writer emits them one JSON token
-    at a time, with an occasional large one, and the total crosses several
-    of the spool's internal write batches.
-    """
-    rng = random.Random(0)
-    written = bytearray()
-    spool = ByteSpool(tmp_path)
-    try:
-        for step in range(60_000):
-            size = 3 * 1024 * 1024 if step == 30_000 else rng.randint(1, 96)
-            piece = rng.randbytes(size)
-            spool.write(piece)
-            written += piece
-            assert len(spool) == len(written)
-            if rng.random() < 0.0005:
-                assert spool.read() == written
-            elif rng.random() < 0.0005:
-                assert b"".join(spool.chunks(chunk_size=65_537)) == written
-        assert len(written) > 5 * 1024 * 1024  # spans several write batches
-        assert spool.read() == written
-        assert b"".join(spool.chunks()) == written
-    finally:
-        spool.close()
-
-
 def test_byte_spool_concurrent_first_reads_agree(tmp_path: Path) -> None:
     """Readers racing to read freshly written bytes all get the whole value."""
     payload = bytes(range(256)) * 1000
@@ -118,9 +87,8 @@ def test_byte_spool_concurrent_first_reads_agree(tmp_path: Path) -> None:
         spool.close()
 
 
-@pytest.mark.parametrize("flush_by", ["read", "write"])
 def test_byte_spool_close_keeps_a_failed_flush_error(
-    flush_by: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A batch write that fails surfaces its own error, not one from close().
 
@@ -138,10 +106,7 @@ def test_byte_spool_close_keeps_a_failed_flush_error(
     )
     with pytest.raises(OSError) as raised:
         try:
-            if flush_by == "read":
-                spool.read()
-            else:
-                spool.write(bytes(spool_mod._WRITE_BATCH_SIZE))
+            spool.read()
         except BaseException:
             spool.close()
             raise

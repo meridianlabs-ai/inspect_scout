@@ -497,12 +497,7 @@ def agentic_events(*, big_payload: str = "x" * 200) -> list[Event]:
 
 
 def agentic_events_with_warmup() -> list[Event]:
-    """`agentic_events()` with a cache-warmup call closing the "main" span.
-
-    `timeline_build` wraps a warmup call (``max_tokens <= 1``, one-word
-    trailing user turn) in a utility span, so whether it is classified as one
-    decides which ModelEvent ends "main", and so what a scan of it renders.
-    """
+    """`agentic_events()` with a cache-warmup call (``max_tokens <= 1``) ending "main"."""
     events = agentic_events()
     index, main_3 = next(
         (i, e) for i, e in enumerate(events) if e.uuid == _uuid("main-3")
@@ -526,8 +521,8 @@ def agentic_events_with_warmup() -> list[Event]:
     return events
 
 
-def agentic_transcript(events: list[Event] | None = None) -> Transcript:
-    """Wrap `agentic_events()` (or a caller-supplied list) in a Transcript.
+def agentic_transcript() -> Transcript:
+    """Wrap `agentic_events()` in a Transcript.
 
     Returns:
         A minimal `Transcript` suitable for streaming/batch pipeline tests.
@@ -535,7 +530,7 @@ def agentic_transcript(events: list[Event] | None = None) -> Transcript:
     return Transcript.model_construct(
         transcript_id="agentic-1",
         messages=[],
-        events=events if events is not None else agentic_events(),
+        events=agentic_events(),
         timelines=[],
         metadata={},
     )

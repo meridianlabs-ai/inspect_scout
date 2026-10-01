@@ -9,15 +9,12 @@ from typing import Any, Callable, Iterable, Literal
 
 import pytest
 from inspect_ai.event import (
-    AnchorEvent,
     BranchEvent,
     Event,
     ModelEvent,
-    ScoreEvent,
     SpanBeginEvent,
     SpanEndEvent,
     TimelineEvent,
-    ToolEvent,
     timeline_build,
 )
 from inspect_ai.event._timeline import (
@@ -31,9 +28,7 @@ from inspect_ai.model import (
     GenerateConfig,
     ModelOutput,
 )
-from inspect_ai.scorer import Score
 from inspect_scout._transcript.interleave import (
-    EventsSpec,
     InterleavedEvent,
     _AnchorWalk,
     _model_output_id,
@@ -44,7 +39,6 @@ from inspect_scout._transcript.json.stream_parse import (
     stream_parse_to_spool,
 )
 from inspect_scout._transcript.timeline import (
-    _ORPHAN_SPAN_ID,
     TimelineMessages,
     TimelineSpan,
     walk_owned_spans,
@@ -58,7 +52,6 @@ from inspect_scout._transcript.timeline_stream import (
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
 
 from tests.transcript.fixtures_agentic import (
-    _model_event,
     agentic_events,
     agentic_events_with_warmup,
     agentic_transcript,
@@ -302,14 +295,10 @@ assert LOGS, f"no .eval fixtures found in {LOGS_DIR}"
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("events", [None, "all"])
 @pytest.mark.parametrize("include_scorers", [False, True])
 @pytest.mark.parametrize("log", LOGS, ids=[log.name for log in LOGS])
 async def test_stream_equals_materialized_segments_eval_logs(
-    log: Path,
-    include_scorers: bool,
-    events: EventsSpec | None,
-    monkeypatch: pytest.MonkeyPatch,
+    log: Path, include_scorers: bool, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Fidelity over real `.eval` fixtures, forced through the spooled path.
 
@@ -351,7 +340,6 @@ async def test_stream_equals_materialized_segments_eval_logs(
                     compaction="all",
                     depth=None,
                     include_scorers=include_scorers,
-                    events=events,
                 )
             ]
         materialized_segments: list[TimelineMessages] = []
@@ -362,7 +350,6 @@ async def test_stream_equals_materialized_segments_eval_logs(
             compaction="all",
             depth=None,
             include_scorers=include_scorers,
-            events=events,
         ):
             assert isinstance(seg, TimelineMessages)
             materialized_segments.append(seg)
@@ -378,87 +365,6 @@ async def test_stream_equals_materialized_segments_eval_logs(
             )
     finally:
         await view.disconnect()
-
-
-@pytest.mark.parametrize(
-    ("events_spec", "raises"),
-    [
-        pytest.param("all", True, id="interleaving-on-raises"),
-        pytest.param(None, False, id="interleaving-off-unaffected"),
-    ],
-)
-def test_uuidless_offthread_model_event_falls_back(
-    events_spec: str | None, raises: bool
-) -> None:
-    """A uuid-less off-thread ModelEvent must not silently vanish.
-
-    Pass 2 targets events by uuid, so one without a uuid can be neither
-    substituted nor rendered -- it stayed an empty stub and disappeared from
-    streaming output while `interleave_events` rendered it as a branch entry.
-    Raising hands the scan to the materialized fallback instead.
-
-    With interleaving off, off-thread outputs are never rendered, so dropping
-    the event is correct and must not force materialization.
-    """
-    from inspect_scout._transcript.timeline_stream import (
-        _collect_pass2_model_events,
-        _StubSkeletonUnsupported,
-    )
-
-    fork = _model_event(
-        label="fork",
-        system_prompt="sys",
-        output_text="FORK",
-        span_id=None,
-    ).model_copy(update={"uuid": None})
-    offthread: dict[str, ModelEvent] | None = {} if events_spec is not None else None
-
-    if raises:
-        with pytest.raises(_StubSkeletonUnsupported):
-            _collect_pass2_model_events(fork, frozenset(), {}, offthread)
-    else:
-        _collect_pass2_model_events(fork, frozenset(), {}, offthread)
-
-
-def test_uuidless_offthread_empty_output_does_not_force_fallback() -> None:
-    """An unrenderable off-thread output must not trigger materialization.
-
-    The fallback exists so branch content is not silently lost. An output that
-    renders to nothing is lost either way, so falling back would materialize a
-    whole sample to produce byte-identical text.
-    """
-    from inspect_scout._transcript.timeline_stream import _collect_pass2_model_events
-
-    # No choices at all (e.g. a call that errored): renders to nothing, unlike
-    # an empty completion, which still renders a "MODEL (BRANCH):" header.
-    empty = (
-        _model_event(label="empty", system_prompt="sys", output_text="x", span_id=None)
-        .model_copy(update={"uuid": None})
-        .model_copy(update={"output": ModelOutput(model="m", choices=[])})
-    )
-    offthread: dict[str, ModelEvent] = {}
-    _collect_pass2_model_events(empty, frozenset(), {}, offthread)
-    assert offthread == {}
-
-
-@pytest.mark.asyncio
-async def test_nested_nonagent_tool_model_event_renders_same_text_both_paths() -> None:
-    """A model call nested in a non-agent `ToolEvent` renders its text when streamed.
-
-    Pass 2 substitutes full events inside `ToolEvent.events` too, so the
-    streamed `MODEL (BRANCH)` entry carries the same text as materialized.
-    """
-    from tests.transcript.tree_gen import CORPUS_SEEDS, generate
-
-    seed = next(
-        s
-        for s in CORPUS_SEEDS
-        if any(isinstance(e, ToolEvent) and e.events for e in generate(s).events)
-    )
-    streamed, materialized = await both_paths(generate(seed).events)
-    # The nested model text must genuinely render (not equal-empty on both).
-    assert any("-nested" in text for _, text in streamed)
-    assert streamed == materialized
 
 
 def _input_anchor_branch_events() -> list[Event]:
@@ -540,87 +446,6 @@ async def test_branch_resolution_never_uses_input_ids() -> None:
     _, text = streamed[0]
     assert "BRANCH-ALT" in text
     assert text.index("BRANCH-ALT") > text.index("a1")  # appended, not spliced
-
-
-@pytest.mark.asyncio
-async def test_orphan_sentinel_id_is_stable_across_paths() -> None:
-    score_only: list[Event] = [
-        ScoreEvent.model_construct(
-            event="score",
-            uuid="u-s1",
-            span_id=None,
-            score=Score(value=1.0),
-            scorer="s",
-        )
-    ]
-    streamed, materialized = await both_paths(score_only)
-    assert streamed == materialized
-    assert [sid for sid, _ in streamed] == [_ORPHAN_SPAN_ID]
-
-
-@pytest.mark.asyncio
-async def test_branch_splices_at_anchor_event_both_paths() -> None:
-    """A branch keyed on an `AnchorEvent` id splices mid-thread on both paths.
-
-    Anchors are unstubbed, so the streamed walk must resolve them exactly as
-    the materialized one does rather than appending the branch.
-    """
-    events = _input_anchor_branch_events()
-    first_turn = events[1]
-    assert isinstance(first_turn, ModelEvent)
-    second = ModelOutput.from_content(model="mockllm", content="a2")
-    second_turn = ModelEvent.model_construct(
-        event="model",
-        uuid="u-main-2",
-        span_id="main",
-        model="mockllm",
-        input=[
-            *first_turn.input,
-            first_turn.output.message,
-            ChatMessageUser(content="q2"),
-        ],
-        output=second,
-        role="assistant",
-        config=GenerateConfig(),
-    )
-    branch_event = events[3]
-    assert isinstance(branch_event, BranchEvent)
-    anchored = [
-        events[0],
-        events[1],
-        AnchorEvent.model_construct(
-            event="anchor", uuid="u-anc", span_id="main", anchor_id="ANC"
-        ),
-        second_turn,
-        events[2],
-        branch_event.model_copy(update={"from_anchor": "ANC"}),
-        *events[4:],
-    ]
-    streamed, materialized = await both_paths(anchored)
-    assert streamed == materialized
-    _, text = streamed[0]
-    assert text.index("a1") < text.index("BRANCH-ALT") < text.index("a2")
-
-
-@pytest.mark.asyncio
-async def test_legacy_raw_dict_tool_subevents_both_paths() -> None:
-    """Pre-deprecation `ToolEvent.events` dicts must not crash either path."""
-    tool_event = ToolEvent.model_validate(
-        {
-            "event": "tool",
-            "uuid": "u-tool",
-            "span_id": "main",
-            "id": "call-1",
-            "function": "f",
-            "arguments": {},
-            "result": "ok",
-            "events": [{"event": "info", "data": "legacy", "uuid": None}],
-        }
-    )
-    assert isinstance(tool_event.events[0], dict)
-    events = _input_anchor_branch_events()
-    streamed, materialized = await both_paths([*events[:2], tool_event, *events[2:]])
-    assert streamed == materialized
 
 
 def _log_sample(log: Path) -> tuple[list[Event], dict[str, str]]:

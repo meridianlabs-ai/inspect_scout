@@ -869,6 +869,9 @@ class _StreamTrackingHandle(SpooledTranscriptHandle):
     ) -> AsyncIterator[Event]:
         return self._track(self._content.events)
 
+    async def has_event_type(self, event_type: str) -> bool:
+        return any(e.event == event_type for e in self._content.events)
+
     async def load(self) -> Transcript:
         self.loads += 1
         return self._content

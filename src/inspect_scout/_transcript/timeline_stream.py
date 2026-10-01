@@ -583,7 +583,7 @@ async def stream_timeline_messages(
     full_by_uuid: dict[str, ModelEvent] = {}
     offthread_by_uuid: dict[str, ModelEvent] | None = {} if events is not None else None
     async with aclosing_iter(
-        projected_events(handle, output_only_projection(keep=needed))
+        projected_events(handle, output_only_projection(keep_uuids=needed))
     ) as full_events:
         async for ev in full_events:
             _collect_pass2_model_events(ev, needed, full_by_uuid, offthread_by_uuid)

@@ -5,7 +5,6 @@ from typing import Any, AsyncIterator, Awaitable, Callable, Literal, cast, overl
 
 import anyio
 from inspect_ai._util.content import ContentText
-from inspect_ai.event import SpanBeginEvent
 from inspect_ai.model import (
     CachePolicy,
     ChatMessage,
@@ -32,6 +31,7 @@ from .._transcript.handle import (
     MaterializedTranscriptHandle,
     SpooledTranscriptHandle,
     TranscriptHandle,
+    has_event_type,
 )
 from .._transcript.interleave import (
     INTERLEAVE_DEPENDENCIES,
@@ -138,11 +138,7 @@ async def _interleaves_flat(handle: TranscriptHandle) -> bool:
     async with aclosing_iter(handle.messages()) as messages:
         if await anext(messages, None) is None:
             return False
-    async with aclosing_iter(handle.events()) as events:
-        async for event in events:
-            if isinstance(event, SpanBeginEvent):
-                return False
-    return True
+    return not await has_event_type(handle, "span_begin")
 
 
 @overload

@@ -12,6 +12,7 @@ from typing import Any, Callable, cast
 
 import pytest
 from inspect_ai.event import (
+    CompactionEvent,
     ModelEvent,
     ScoreEvent,
     SpanBeginEvent,
@@ -21,6 +22,7 @@ from inspect_ai.event import (
 from inspect_ai.event._event import Event
 from inspect_ai.model import (
     ChatMessage,
+    ChatMessageAssistant,
     ChatMessageUser,
     GenerateConfig,
     Model,
@@ -115,6 +117,45 @@ def _uuidless_side_call_transcript() -> Transcript:
             *_uuidless([model_event("aside?", "aside")]),
             model_event("2+2?", "4"),
             SpanEndEvent(id="main", span_id="main"),
+        ],
+    )
+
+
+def _flat_trim_transcript() -> Transcript:
+    """Messages, no spans, and a trim whose region a side call ends.
+
+    Hiding the trim's pruned turn reads the region's first ModelEvent after
+    the trim and the last one before it, not the side call.
+    """
+
+    def model_event(input: list[ChatMessage], text: str, id: str) -> ModelEvent:
+        output = ModelOutput.from_content(model="mockllm", content=text)
+        output.choices[0].message.id = id
+        return ModelEvent(
+            model="mockllm",
+            input=input,
+            tools=[],
+            tool_choice="none",
+            config=GenerateConfig(),
+            output=output,
+        )
+
+    u1 = ChatMessageUser(content="task", id="u1")
+    a1 = ChatMessageAssistant(content="pruned turn", id="a1")
+    u2 = ChatMessageUser(content="continue", id="u2")
+    a2 = ChatMessageAssistant(content="second", id="a2")
+    u3 = ChatMessageUser(content="more", id="u3")
+    a3 = ChatMessageAssistant(content="third", id="a3")
+    return Transcript(
+        transcript_id="t",
+        messages=[u2, a2, u3, a3],
+        events=[
+            model_event([u1], "pruned turn", "a1"),
+            model_event([u1, a1, u2], "second", "a2"),
+            CompactionEvent(type="trim"),
+            model_event([u2, a2, u3], "third", "a3"),
+            model_event([ChatMessageUser(content="side")], "side answer", "s1"),
+            ScoreEvent(score=Score(value="C"), target="C", scorer="match"),
         ],
     )
 
@@ -308,6 +349,24 @@ def _yes_model() -> Model:
             2,
             True,
             id="events-param-uuidless-spans",
+        ),
+        # A compaction makes the flat route re-read the ModelEvents its
+        # exclusions come from, by stream position, uuid or not.
+        pytest.param(
+            _flat_trim_transcript,
+            {"events": ["score"]},
+            1,
+            False,
+            id="events-param-flat-trim",
+        ),
+        pytest.param(
+            lambda: _flat_trim_transcript().model_copy(
+                update={"events": _uuidless(_flat_trim_transcript().events)}
+            ),
+            {"events": ["score"]},
+            1,
+            False,
+            id="events-param-flat-trim-uuidless",
         ),
         # A warmup call is classified from its config and trailing user turn,
         # which the streamed pass 1 must keep.

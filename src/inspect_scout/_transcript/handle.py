@@ -21,6 +21,7 @@ import ijson
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 
+from .._util._async import aclosing_iter
 from .json.stream_parse import (
     EventProjection,
     StreamParseResult,
@@ -229,6 +230,23 @@ class SpooledTranscriptHandle:
                 await anyio.lowlevel.checkpoint()
             yield event
 
+    async def has_event_type(self, event_type: str) -> bool:
+        """Whether any event is an ``event_type`` event.
+
+        Reads each spooled event's raw ``event`` discriminator, so no event is
+        resolved or validated.
+        """
+        result = await self._ensure_parsed()
+        if result is None:
+            assert self._fallback_transcript is not None
+            return any(e.event == event_type for e in self._fallback_transcript.events)
+        for i, item in enumerate(result.events.items()):
+            if i % _CHECKPOINT_INTERVAL == 0:
+                await anyio.lowlevel.checkpoint()
+            if item.get("event") == event_type:
+                return True
+        return False
+
     async def load(self) -> Transcript:
         if self._closed:
             raise RuntimeError("TranscriptHandle is closed")
@@ -306,6 +324,21 @@ def projected_events(
     if isinstance(handle, SpooledTranscriptHandle):
         return handle.projected_events(project)
     return handle.events()
+
+
+async def has_event_type(handle: TranscriptHandle, event_type: str) -> bool:
+    """Whether any of ``handle``'s events is an ``event_type`` event.
+
+    A spooled handle answers without validating its events; see
+    `SpooledTranscriptHandle.has_event_type`.
+    """
+    if isinstance(handle, SpooledTranscriptHandle):
+        return await handle.has_event_type(event_type)
+    async with aclosing_iter(handle.events()) as events:
+        async for event in events:
+            if event.event == event_type:
+                return True
+    return False
 
 
 def is_transcript_handle_type(type_hint: Any) -> bool:

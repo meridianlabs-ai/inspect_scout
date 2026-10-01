@@ -496,6 +496,36 @@ def agentic_events(*, big_payload: str = "x" * 200) -> list[Event]:
     return events
 
 
+def agentic_events_with_warmup() -> list[Event]:
+    """`agentic_events()` with a cache-warmup call closing the "main" span.
+
+    `timeline_build` wraps a warmup call (``max_tokens <= 1``, one-word
+    trailing user turn) in a utility span, so whether it is classified as one
+    decides which ModelEvent ends "main", and so what a scan of it renders.
+    """
+    events = agentic_events()
+    index, main_3 = next(
+        (i, e) for i, e in enumerate(events) if e.uuid == _uuid("main-3")
+    )
+    assert isinstance(main_3, ModelEvent)
+    warmup = main_3.model_copy(
+        update={
+            "uuid": _uuid("main-warmup"),
+            "input": [
+                ChatMessageSystem(content="MAIN"),
+                ChatMessageUser(content="user-input-main-warmup"),
+                ChatMessageUser(content="warmup"),
+            ],
+            "config": GenerateConfig(max_tokens=1),
+            "output": ModelOutput.from_content(
+                model="mockllm/model", content="main-warmup-output"
+            ),
+        }
+    )
+    events.insert(index + 1, warmup)
+    return events
+
+
 def agentic_transcript(events: list[Event] | None = None) -> Transcript:
     """Wrap `agentic_events()` (or a caller-supplied list) in a Transcript.
 

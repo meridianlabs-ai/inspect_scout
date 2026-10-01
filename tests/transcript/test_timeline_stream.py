@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import io
+from functools import partial
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Callable, Iterable, Literal
 
 import pytest
 from inspect_ai.event import (
@@ -22,6 +24,7 @@ from inspect_ai.event._timeline import (
     _get_system_prompt_for_event,
     _has_tool_calls,
 )
+from inspect_ai.log import read_eval_log_samples
 from inspect_ai.model import (
     ChatMessageSystem,
     ChatMessageUser,
@@ -29,21 +32,32 @@ from inspect_ai.model import (
     ModelOutput,
 )
 from inspect_ai.scorer import Score
-from inspect_scout._transcript.interleave import EventsSpec
+from inspect_scout._transcript.interleave import EventsSpec, output_only_projection
+from inspect_scout._transcript.json.stream_parse import (
+    replay_events,
+    stream_parse_to_spool,
+)
 from inspect_scout._transcript.timeline import (
     _ORPHAN_SPAN_ID,
     TimelineMessages,
     TimelineSpan,
     walk_owned_spans,
 )
+from inspect_scout._transcript.timeline_stream import (
+    _output_only_model_event,
+    _PromptInterner,
+    stub_event,
+    stub_projection,
+)
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
 
 from tests.transcript.fixtures_agentic import (
     _model_event,
     agentic_events,
+    agentic_events_with_warmup,
     agentic_transcript,
 )
-from tests.transcript.stream_parity import both_paths
+from tests.transcript.stream_parity import both_paths, sample_json
 
 
 def _collect_utility(span: TimelineSpan) -> list[TimelineSpan]:
@@ -601,3 +615,71 @@ async def test_legacy_raw_dict_tool_subevents_both_paths() -> None:
     events = _input_anchor_branch_events()
     streamed, materialized = await both_paths([*events[:2], tool_event, *events[2:]])
     assert streamed == materialized
+
+
+def _log_sample(log: Path) -> tuple[list[Event], dict[str, str]]:
+    sample = next(iter(read_eval_log_samples(str(log), all_samples_required=False)))
+    return sample.events, sample.attachments
+
+
+_PROJECTION_SOURCES: dict[str, Callable[[], tuple[list[Event], dict[str, str]]]] = {
+    **{log.name: partial(_log_sample, log) for log in LOGS},
+    "agentic-with-warmup": lambda: (agentic_events_with_warmup(), {}),
+}
+
+
+def _input_count(events: Iterable[Event]) -> int:
+    return sum(len(e.input) for e in events if isinstance(e, ModelEvent))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("pooled", [False, True], ids=["inline", "pooled"])
+@pytest.mark.parametrize("source", list(_PROJECTION_SOURCES))
+async def test_projections_keep_everything_their_readers_read(
+    source: str, pooled: bool, tmp_path: Path
+) -> None:
+    """A projected replay reads the same as a full one wherever its caller looks.
+
+    The projections hand-mirror the fields `stub_event` and the output-only
+    readers use, so this fails if either side changes without the other.
+    """
+    events, attachments = _PROJECTION_SOURCES[source]()
+    result = await stream_parse_to_spool(
+        io.BytesIO(sample_json(events, attachments=attachments, pooled=pooled)),
+        None,
+        "all",
+        tmp_path,
+    )
+    try:
+        assert bool(result.blobs.pool_len("message_pool")) is pooled
+        full = list(replay_events(result))
+        interner = _PromptInterner()
+
+        def stubs(events: Iterable[Event]) -> list[dict[str, Any]]:
+            return [stub_event(e, interner).model_dump() for e in events]
+
+        stub_replay = list(replay_events(result, stub_projection()))
+        assert stubs(stub_replay) == stubs(full)
+        assert _input_count(stub_replay) < _input_count(full)  # projects something
+
+        def output_only(events: Iterable[Event]) -> list[dict[str, Any]]:
+            return [
+                (
+                    _output_only_model_event(e) if isinstance(e, ModelEvent) else e
+                ).model_dump()
+                for e in events
+            ]
+
+        output_replay = list(replay_events(result, output_only_projection()))
+        assert output_only(output_replay) == output_only(full)
+        assert _input_count(output_replay) == 0
+
+        model_events = [e for e in full if isinstance(e, ModelEvent)]
+        keep = {e.uuid for e in model_events[::2] if e.uuid}
+        assert keep
+        kept_replay = replay_events(result, output_only_projection(keep=keep))
+        assert [e.model_dump() for e in kept_replay if e.uuid in keep] == [
+            e.model_dump() for e in full if e.uuid in keep
+        ]
+    finally:
+        result.close()

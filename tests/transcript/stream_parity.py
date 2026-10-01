@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Literal, NamedTuple
+import json
+from typing import Any, Literal, NamedTuple, Sequence
 
 from inspect_ai.event import Event
-from inspect_ai.model import get_model
+from inspect_ai.log import condense_events
+from inspect_ai.model import ChatMessage, get_model
 from inspect_scout._scanner.extract import message_numbering
 from inspect_scout._transcript.handle import MaterializedTranscriptHandle
 from inspect_scout._transcript.interleave import EventsSpec
@@ -71,3 +73,30 @@ async def both_paths(
         assert isinstance(seg, TimelineMessages)
         materialized.append((seg.span.id, seg.messages_str))
     return BothPaths(streamed, materialized)
+
+
+def sample_json(
+    events: Sequence[Event],
+    *,
+    messages: Sequence[ChatMessage] = (),
+    attachments: dict[str, str] | None = None,
+    pooled: bool = False,
+) -> bytes:
+    """A sample's JSON as a log stores it, for `stream_parse_to_spool`.
+
+    ``pooled`` moves ModelEvent inputs and calls into an ``events_data`` pool,
+    as inspect_ai's log writer does, so a replay reads them through refs.
+    """
+    sample: dict[str, Any] = {
+        "id": "s",
+        "messages": [m.model_dump(mode="json") for m in messages],
+        "attachments": attachments or {},
+    }
+    if pooled:
+        events, data = condense_events(events)
+        sample["events_data"] = {
+            "messages": [m.model_dump(mode="json") for m in data["messages"]],
+            "calls": data["calls"],
+        }
+    sample["events"] = [e.model_dump(mode="json") for e in events]
+    return json.dumps(sample).encode()

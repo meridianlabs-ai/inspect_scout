@@ -259,19 +259,15 @@ def message_numbering(
 
     async def _messages_as_str(messages: list[ChatMessage]) -> str:
         if preprocessor is not None and preprocessor.transform is not None:
-            # Synthetic event entries are not conversation turns; transforms
-            # are written against real messages, so route only those through
-            # and re-splice the event entries at their original positions.
+            # Transforms are written against real messages, so event entries
+            # bypass them and are re-spliced at their original positions.
             events = [
                 (index, message)
                 for index, message in enumerate(messages)
                 if _is_event_message(message)
             ]
             real = [m for m in messages if not _is_event_message(m)]
-            # Segments render one message at a time, so a segment that is only
-            # an event entry would otherwise hand the transform an empty list --
-            # a transform written for the previous always-exactly-one contract
-            # raises on messages[0].
+            # Skip event-only segments: transforms may assume messages[0].
             if real:
                 messages = list(await preprocessor.transform(real))
                 for index, message in events:

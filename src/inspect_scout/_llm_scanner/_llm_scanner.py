@@ -268,8 +268,10 @@ def llm_scanner(
             ``"all"``) inline in the transcript as citable ``[E#]`` entries,
             anchored to the assistant turn they followed. The named events
             are loaded automatically, along with model events (needed for
-            positioning). ``model``/``tool`` and structural events are never
-            interleaved (they are already the message thread). On timeline
+            positioning). ``model``/``tool`` events are the message thread
+            itself and structural events never render, but model calls whose
+            output left the thread (forks, retries) render as
+            ``MODEL (BRANCH)`` entries whatever the selection. On timeline
             scans interleaving is per-span, with events outside any scanned
             span attaching to the last preceding one. Showing events makes
             the scanner read the whole transcript instead of streaming it.

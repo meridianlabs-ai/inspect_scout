@@ -165,12 +165,10 @@ class TimelineMessages:
         messages: The original ChatMessage objects in this segment.
         messages_str: Pre-rendered string from messages_as_str.
         segment: 0-based segment index, globally unique across yields.
-        span: The TimelineSpan this segment was extracted from. For a
-            transcript where no span was walked (score-only, all-utility,
-            scorers-only shapes) this is a reserved synthetic span with
-            ``id == _ORPHAN_SPAN_ID`` (the literal string
-            ``"scout-orphans-9f0c6c2f"``) — isinstance checks still see a
-            ``TimelineSpan``, but it is not a span of the source timeline.
+        span: The TimelineSpan this segment was extracted from. When no
+            span was walked (e.g. score-only or all-utility transcripts) this
+            is a synthetic span with id ``"scout-orphans-9f0c6c2f"`` that is
+            not part of the source timeline.
     """
 
     messages: list[ChatMessage]
@@ -196,11 +194,9 @@ async def timeline_messages(
     Walks the span tree, passes each non-utility span with direct
     ``ModelEvent`` content to ``segment_messages()`` for message
     extraction and context window segmentation. Each yielded item
-    includes the span context alongside the pre-rendered text. When no
-    span in the tree is walked at all, a synthetic orphan segment (see
-    ``TimelineMessages.span``) carries the leftover content instead --
-    but only when ``events`` is set, since without interleaving there is
-    nothing to render for it.
+    includes the span context alongside the pre-rendered text. When
+    ``events`` is set and no span is walked, a synthetic orphan segment
+    (see ``TimelineMessages.span``) carries the events instead.
 
     Args:
         timeline: The timeline (or a specific span subtree) to extract
@@ -230,11 +226,9 @@ async def timeline_messages(
             an ``int`` reserves that many tokens (plus a small safety
             margin). Default ``0.2`` leaves 80% of the window for
             messages. Forwarded to ``segment_messages()``.
-        events: Which non-message event types to interleave into each
-            span's message thread as marked entries (``"all"``, a list
-            of event types, or ``None`` (default) to disable
-            interleaving). When set, each span's thread is built via
-            ``span_owned_messages()`` before segmentation.
+        events: Non-message event types to interleave into each span's
+            thread as ``[E#]`` entries (``"all"`` or a list). ``None``
+            (default) disables interleaving.
         include_scorers: When ``False`` (default), grader ``ModelEvent``s
             under scorers spans are suppressed (their ``ScoreEvent``s
             still render). When ``True``, the grader's own message
@@ -252,9 +246,7 @@ async def timeline_messages(
         source: TimelineSpan | list[ChatMessage]
         if events is None:
             if owned.span.id == _ORPHAN_SPAN_ID:
-                # The orphan segment carries only event entries; without
-                # interleaving there is nothing to render (#5 is an
-                # events-only fix — design §3, "Flag, do not fix").
+                # The orphan segment holds only event entries; nothing to render.
                 continue
             source = owned.span
         else:
@@ -289,16 +281,12 @@ def _span_has_direct_model_event(span: TimelineSpan) -> bool:
 
 
 def span_is_scannable(span: TimelineSpan) -> bool:
-    """True if ``span`` is scannable: not a utility span, with a direct ModelEvent.
-
-    The single walked-ness predicate for the ownership traversal
-    (``walk_owned_spans``).
-    """
+    """True if ``span`` is scannable: not a utility span, with a direct ModelEvent."""
     return not span.utility and _span_has_direct_model_event(span)
 
 
 # =============================================================================
-# Ownership traversal (design §1/§4)
+# Ownership traversal
 # =============================================================================
 
 
@@ -318,16 +306,13 @@ class OwnedSpan(NamedTuple):
     branches: list[OwnedBranch]
 
 
+# Fixed and collision-resistant; not the root's id, which is a real span's id
+# on the solvers/agent path.
 _ORPHAN_SPAN_ID: Final = "scout-orphans-9f0c6c2f"
 
 
 def _orphan_span() -> TimelineSpan:
-    """Reserved synthetic span for the zero-walked-spans segment (design §3).
-
-    A fixed, collision-resistant id — NOT the root's id, which is a real
-    span's id on the solvers/agent path. Documented on
-    ``TimelineMessages.span``.
-    """
+    """Synthetic span for the segment of a transcript with no walked spans."""
     return TimelineSpan(id=_ORPHAN_SPAN_ID, name="orphans")
 
 
@@ -337,32 +322,23 @@ def walk_owned_spans(
     depth: int | None = None,
     include_scorers: bool = False,
 ) -> Iterator[OwnedSpan]:
-    """Yield each walked span with every event and branch it owns.
+    """Yield each walked span with every event and branch it owns, in pre-order.
 
-    The single ownership traversal (design §1): the walked-ness predicate,
-    the depth counter, and the scorers rule exist exactly once, here.
-    Every event gets exactly one owner via three tiers: nearest enclosing
-    walked ancestor; else the latest-starting walked span preceding it in
-    document order; else orphan. Items are document-ordered and tagged
-    ``own`` (direct content of the walked span; may advance the splice
-    anchor) or ``foreign`` (never anchors). Events nested in ``ToolEvent
-    .events`` are flattened recursively as foreign (decision 6). Branch
-    subtrees are never walked; they ride ``OwnedSpan.branches`` with the
-    replay prefix (content before the branch's first direct
-    ``BranchEvent``) cut, positioned later by ``branched_from`` (§4).
-
-    Each ``OwnedSpan`` is yielded complete, in pre-order.
-
-    ``depth <= 0`` yields nothing (orphan homing suppressed too).
+    Every event gets exactly one owner: its nearest walked ancestor; else the
+    latest-starting walked span preceding it in document order; else the first
+    walked span, or a synthetic orphan span when none was walked. Items are in
+    document order and tagged ``own`` (direct content of the walked span; may
+    advance the splice anchor) or foreign (never anchors); events nested in
+    ``ToolEvent.events`` are always foreign. Branch subtrees are not walked:
+    they land in ``OwnedSpan.branches`` with their replay prefix (content
+    before the branch's ``BranchEvent``) cut. ``depth <= 0`` yields nothing.
     """
     if depth is not None and depth <= 0:
         return
 
-    # Deliberately eager, not an implementation convenience: every owner is
-    # fully accumulated before anything is yielded (items hold references,
-    # not copies), because tier-1 items keep accruing to a walked ancestor
-    # while nested walked spans come and go, and tier-2 ownership is only
-    # resolvable from later document positions. Do not make this lazy.
+    # Must stay eager: an ancestor keeps accruing items after its nested walked
+    # spans, and tier-2 ownership resolves only from later positions, so no
+    # owner is complete until the walk ends.
     owners: list[OwnedSpan] = []
     orphan_items: list[OwnedItem] = []
     orphan_branches: list[OwnedBranch] = []
@@ -383,17 +359,13 @@ def walk_owned_spans(
         own: bool,
         drop_models: bool = False,
     ) -> None:
-        # drop_models implements the scorers rule (design §2): with
-        # include_scorers=False, grader MODEL events are suppressed by
-        # non-existence — but the subtree's non-model events (ScoreEvents
-        # above all — decision 2 exists to NOT lose them) remain foreign
-        # items and render.
+        # drop_models is the scorers rule: grader model events are dropped,
+        # but the subtree's other events (ScoreEvents above all) still render.
         if drop_models and isinstance(event, ModelEvent):
             return
         items.append(OwnedItem(event, own))
         if isinstance(event, ToolEvent):
-            # Recursive and uniform (decision 6): nested events are foreign
-            # at any depth, wherever the traversal meets a ToolEvent.
+            # Nested events are foreign at any depth.
             for nested in nested_tool_events(event):
                 add_flattened(nested, items, own=False, drop_models=drop_models)
 
@@ -415,7 +387,7 @@ def walk_owned_spans(
                     # The replay cut applies to the branch span's DIRECT
                     # content only; a branch with no BranchEvent splices
                     # everything (timeline_build guarantees one, stored
-                    # timelines via timeline_load do not — design §4).
+                    # timelines via timeline_load do not).
                     if span is branch and isinstance(item.event, BranchEvent):
                         live = True
                     if live:
@@ -432,7 +404,7 @@ def walk_owned_spans(
             branches.append(OwnedBranch(branch.branched_from or "", items))
         # Branches-within-branches flatten into the same owner's list; their
         # branched_from names a message absent from the owner's thread, so
-        # they resolve unmatched and append (design §4, accepted).
+        # they resolve unmatched and append.
         for nested, nested_scorers in nested_branches:
             add_branch(nested, nested_scorers, branches)
 
@@ -451,8 +423,7 @@ def walk_owned_spans(
             next_depth = scannable_depth + 1
             walked = depth is None or next_depth <= depth
         else:
-            # A scannable-but-too-deep span still consumed a level above;
-            # non-scannable spans are transparent (see span_is_scannable).
+            # Non-scannable spans are transparent: they don't consume a level.
             next_depth = scannable_depth
             walked = False
 
@@ -462,12 +433,10 @@ def walk_owned_spans(
             owners.append(owned)
             latest = owned
 
-        # A span's owner is the owner an event at its start position would
-        # get (design §1, "Spans are owned too") — captured at entry.
+        # A span's branches go to the owner an event at its start would get,
+        # so resolve it before the content loop advances `latest`.
         branch_sink = owned.branches if owned is not None else sink(walked_ancestor)[1]
         for branch in span.branches:
-            # add_branch suppresses grader MODEL events internally via
-            # in_scorers; non-model scorers content still splices (§4).
             add_branch(branch, in_scorers, branch_sink)
 
         for item in span.content:

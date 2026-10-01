@@ -356,8 +356,8 @@ async def aggregate_results(
             :func:`default_reducer` is used.
     """
     if not results:
-        # Reducers index results[0]/results[-1]; a transcript with no scannable
-        # content reached them and raised IndexError for numeric answers.
+        # A transcript with no scannable content yields no results, and the
+        # reducers index results[0]/results[-1].
         return _empty_result()
 
     if len(results) == 1:

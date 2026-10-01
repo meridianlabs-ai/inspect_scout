@@ -232,9 +232,8 @@ def _score_edit_event_as_str(event: Event) -> str | None:
     result = f"SCORE EDIT ({event.score_name})"
     if header:
         result += f": {' '.join(header)}"
-    # answer and explanation are free text -- own lines, as _score_event_as_str
-    # does, so their newlines cannot be read as the start of a new entry.
-    # None clears the field, which is an edit in its own right and must show.
+    # Free text on its own line, as in _score_event_as_str. None means the
+    # field was cleared, which is itself an edit.
     for field, value in (("answer", edit.answer), ("explanation", edit.explanation)):
         if value != UNCHANGED:
             result += f"\n  {field}: {'(cleared)' if value is None else value}"

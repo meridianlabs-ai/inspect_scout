@@ -65,11 +65,9 @@ def widen_timeline_for_events(
 ) -> list[EventType] | Literal["all"] | None:
     """Widen a timeline filter to cover an explicit events selection.
 
-    Timeline content is pruned by its own filter, and interleaved entries are
-    rendered from the timeline -- so an event type present in ``events`` but
-    absent from the timeline filter is dropped silently rather than rendered.
-    ``timeline=True`` resolves to the default set, which excludes ``score``
-    -- the case this exists for.
+    Interleaved entries render from the timeline, which its own filter prunes,
+    so a selected type missing from that filter would silently not render
+    (e.g. ``score`` under ``timeline=True``'s default set).
     """
     if timeline is True:
         timeline = normalize_timeline_filter(True)
@@ -109,8 +107,6 @@ def normalize_timeline_filter(
 def validate_events_filter(filter: list[EventType] | None) -> None:
     if filter is None:
         return
-    # Derived from EventType rather than duplicated: the two lists drifted apart
-    # once already, leaving the literal narrower than what this accepted.
     allowed: set[str] = {"all", *get_args(EventType)}
     if not filter:
         raise ValueError("events=[] is not allowed; provide at least one filter")

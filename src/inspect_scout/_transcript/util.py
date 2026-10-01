@@ -358,10 +358,7 @@ _EVENT_CLASSES: Final[tuple[type[Event], ...]] = get_args(Event)
 def nested_tool_events(event: ToolEvent) -> list[Event]:
     """Sub-events of a ToolEvent, skipping legacy raw-dict entries.
 
-    ``ToolEvent.events`` is typed ``list[Any]`` upstream and is not validated,
-    so logs written before the field was deprecated deserialize their
-    sub-events as plain dicts. Passing one on raises ``AttributeError`` in any
-    caller that expects an ``Event``, and it carries nothing the top-level
-    event list lacks.
+    ``ToolEvent.events`` is unvalidated ``list[Any]`` upstream, so older logs
+    deserialize sub-events as dicts; those duplicate top-level events anyway.
     """
     return [e for e in event.events if isinstance(e, _EVENT_CLASSES)]

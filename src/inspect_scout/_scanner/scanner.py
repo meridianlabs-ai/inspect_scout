@@ -450,9 +450,7 @@ def scanner(
                     inferred_metadata = override.metadata
                 if override.events is not None:
                     # Widen last, so an explicit timeline override cannot drop
-                    # the selection: a timeline is pruned by its own filter and
-                    # interleaved entries render from the timeline, so a type
-                    # missing there is silently dropped rather than rendered.
+                    # the events selection.
                     inferred_timeline = widen_timeline_for_events(
                         inferred_timeline, override.events
                     )

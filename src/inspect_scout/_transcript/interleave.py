@@ -31,8 +31,6 @@ from .util import nested_tool_events
 
 
 class InterleavedEvent(NamedTuple):
-    """An interleavable event's id paired with its rendered ``[E#]`` text."""
-
     event_id: EventId
     text: str
 
@@ -40,46 +38,34 @@ class InterleavedEvent(NamedTuple):
 INTERLEAVE_DEPENDENCIES: Final[frozenset[EventType]] = frozenset(
     {"model", "tool", "compaction", "span_begin", "span_end", "branch", "anchor"}
 )
-"""Event types that must be LOADED for interleaving to be correct.
+"""Event types that must be loaded for interleaving to be correct.
 
-These carry the structure the walk runs on -- model events anchor entries,
-compaction events drive pruning, span begins resolve scorer spans, tool events
-nest sub-agent models, anchor events mark the thread position a branch forked
-from, and ``timeline_build`` needs a ``BranchEvent`` to form a branch span at
-all (without one it unrolls the branch into its parent, so the scanner reads
-the branch as the main thread). A caller that filters any of them
-out gets silent degradation rather than an error, so any content filter built
-for interleaving must be a superset of this.
-
-``span_end`` is retained without a demonstrated consumer: ``scorer_span_ids``
-reads begins only, and no probe has produced output that differs without ends.
-It stays because over-loading costs a few filtered events while under-loading
-is the silent-degradation bug this constant exists to prevent -- every member
-here was added after that failure, twice.
+Filtering any of them out degrades silently rather than raising, so a content
+filter built for interleaving must be a superset of this. Model events anchor
+entries, compaction events drive pruning, span begins resolve scorer spans, tool
+events nest sub-agent models, anchor events mark where a branch forked, and
+``timeline_build`` needs a ``BranchEvent`` to form a branch span at all (without
+one the branch unrolls into its parent and reads as the main thread).
+``span_end`` has no known consumer; it stays because over-loading is cheap
+and under-loading fails silently.
 """
 
 _NON_INTERLEAVED: Final[frozenset[EventType]] = frozenset(
     {"model", "tool", "compaction", "span_begin", "span_end", "anchor", "checkpoint"}
 )
-"""Event types never RENDERED as ``[E#]`` entries.
+"""Event types never rendered as ``[E#]`` entries.
 
-Either already present in the message thread (model, tool) or pure structure,
-plus replay/infrastructure markers carrying nothing a judge could cite.
-
-Deliberately independent of ``INTERLEAVE_DEPENDENCIES`` rather than derived
-from it: the two answer different questions and neither contains the other.
-``branch`` is required for structure yet renders a useful ``BRANCH`` entry;
-``anchor``/``checkpoint`` render nothing yet need not be loaded.
+Already in the message thread (model, tool), pure structure, or markers with
+nothing a judge could cite. Not derived from ``INTERLEAVE_DEPENDENCIES``:
+``branch`` must be loaded yet renders, and ``checkpoint`` renders nothing yet
+need not be loaded.
 """
 
 EventsSpec = Literal["all"] | list[EventType]
 """Which event types to interleave: ``"all"`` or an explicit list.
 
-Deliberately narrower than ``EventFilter``, which admits bare ``str``: an
-unrecognised name here renders nothing and reports nothing, so ``events=
-["scoer"]`` would silently produce a judge prompt with no ``[E#]`` entries.
-The ``| str`` this used to carry was justified as covering "event types not yet
-in the literal, e.g. score" -- the EventType widening put all of them in.
+Narrower than ``EventFilter`` (no bare ``str``) because a misspelled name would
+otherwise silently render no ``[E#]`` entries.
 """
 
 Compaction = Literal["all", "last"] | int
@@ -90,11 +76,9 @@ reconstructed from model events (events-only transcripts)."""
 class EventsOnlyInterleaveUnsupported(Exception):
     """A flat interleave driver was given a transcript with no messages.
 
-    Reconstructing a thread from events alone was dropped rather than repaired,
-    so this fails loudly instead of silently producing a different thread.
-    `llm_scanner` never hits it: a transcript with no messages goes through the
-    per-span timeline machinery, which handles span structure properly.
-    Callers reaching this directly should do the same.
+    Raised rather than reconstructing one thread from events, which would
+    collapse parallel agents into it. Use the timeline machinery for
+    events-only transcripts; ``llm_scanner`` routes them there automatically.
     """
 
 
@@ -122,10 +106,7 @@ def _model_output_id(event: ModelEvent) -> MessageId | None:
 
 
 def _off_thread_model_text(event: ModelEvent) -> str | None:
-    """Render an off-thread ModelEvent's output as a ``MODEL (BRANCH):`` entry.
-
-    Returns None if there is no output message or the render is empty.
-    """
+    """Render an off-thread ModelEvent's output as a ``MODEL (BRANCH):`` entry."""
     out = event.output
     if out is None or not out.choices or out.choices[0].message is None:
         return None
@@ -147,14 +128,12 @@ def _compaction_excluded_ids(
     current_message_ids: Iterable[MessageId],
     compaction: Compaction,
 ) -> frozenset[MessageId]:
-    """Ids in the untruncated ``compaction="all"`` thread absent from the current thread.
+    """Ids in the untruncated ``compaction="all"`` thread absent from the current one.
 
-    Feeds ``_AnchorWalk``'s ``excluded_ids``: these turns were deliberately
-    pruned by compaction and must stay hidden rather than resurfacing as
-    ``MODEL (BRANCH)`` entries. ``compaction="all"`` skips the computation
-    (the current thread already is the untruncated one); callers whose
-    current thread comes from elsewhere (e.g. a transcript's own top-level
-    messages) must pass a non-``"all"`` value to force it.
+    These compaction-pruned turns must stay hidden rather than resurface as
+    ``MODEL (BRANCH)`` entries. ``compaction="all"`` returns nothing, so a caller
+    whose current thread does not come from ``span_messages`` (e.g. a
+    transcript's top-level messages) must pass a non-``"all"`` value.
     """
     if compaction == "all":
         return frozenset()
@@ -167,9 +146,6 @@ def _compaction_excluded_ids(
 def scorer_span_ids(begins: Iterable[SpanBeginEvent]) -> frozenset[SpanId]:
     """Ids of spans under a top-level ``scorers`` span, by ``event_tree``'s rule.
 
-    Needs only the span begins, rather than the whole event tree the
-    differential oracle builds in memory.
-
     A cyclic parent chain (possible with reused span ids) terminates here
     rather than recursing, unlike ``event_tree``.
     """
@@ -179,13 +155,9 @@ def scorer_span_ids(begins: Iterable[SpanBeginEvent]) -> frozenset[SpanId]:
     # Last begin wins for the name, as event_tree's node index does.
     name_by_id = {begin.id: begin.name for begin in begins}
 
-    # `event_tree` indexes every span before resolving parents, and its
-    # `bucket()` treats a span as a root when its parent id is falsy *or*
-    # names a span it never saw. Resolving from the complete set of begins
-    # matches that: arrival order, span ends, and boundary balance are all
-    # irrelevant to event_tree, so they must be irrelevant here too --
-    # `parent_id=""` and events preceding their own span begin must resolve
-    # the same way event_tree resolves them.
+    # Like event_tree, resolve parents only after indexing every span, and
+    # treat a span as a root when its parent id is falsy or unknown: arrival
+    # order, span ends and boundary balance must not matter.
     def rooted_at_scorers(begin: SpanBeginEvent, seen: frozenset[str]) -> bool:
         if begin.id in seen:
             return False
@@ -208,23 +180,17 @@ def scorer_span_ids(begins: Iterable[SpanBeginEvent]) -> frozenset[SpanId]:
 class _AnchorWalk:
     """Incremental anchor walk over a message thread.
 
-    Consumes events one at a time and retains only the event id, rendered
-    text, and the message *position* it anchors to -- never event payloads.
-    Duplicate message ids are real (id-less messages fall back to a text
-    hash), so each ModelEvent consumes the next occurrence of its output id
-    rather than re-anchoring to the first.
+    Retains only each entry's event id, text and anchor position, never event
+    payloads. Duplicate message ids are real (id-less messages fall back to a
+    text hash), so each ModelEvent consumes the next occurrence of its output id
+    rather than re-anchoring to the first. A ModelEvent whose output is not on
+    the thread renders as a ``MODEL (BRANCH)`` entry regardless of the
+    ``events`` selection, unless ``excluded_ids`` marks it compaction-pruned.
 
-    A ModelEvent whose output id is not found in the thread splits on
-    ``excluded_ids``: if absent from it, the event is a genuine fork/branch
-    and renders unconditionally (regardless of the ``events`` selection) as
-    a ``MODEL (BRANCH)`` entry at the current anchor; if present, the turn
-    was compaction-pruned and stays hidden.
-
-    Known limitation, id-less messages only (unreachable for Inspect logs,
-    which auto-mint message ids): the order-based text-hash fallback lets a
-    fork steal the occurrence of a later on-thread turn with equal text
-    (pinned by ``test_idless_duplicate_text_fork_steals_anchor_known_limitation``).
-    Escalate to uuid-keyed anchoring rather than patching the heuristic.
+    Known limitation, id-less messages only (Inspect auto-mints message ids):
+    the text-hash fallback lets a fork steal the occurrence of a later
+    on-thread turn with equal text. Escalate to uuid-keyed anchoring rather
+    than patching the heuristic.
     """
 
     def __init__(
@@ -246,10 +212,9 @@ class _AnchorWalk:
         self._excluded_ids = excluded_ids
         self._grader_spans = grader_spans
         self._compaction_spans = compaction_spans
-        # Thread positions holding a model OUTPUT (assistant) message, when
-        # the caller can supply them. Read only when recording consumed
-        # positions for branch resolution (see _consumed_positions); the
-        # flat drivers stream ids without roles and never splice branches.
+        # Assistant-message positions, used only to position branches (see
+        # _turn_position). None for the flat drivers, which have no roles and
+        # never splice branches.
         self._output_positions = output_positions
         self._consumed_positions: dict[MessageId, int] = {}
         self._anchor_positions: dict[str, int] = {}
@@ -257,20 +222,16 @@ class _AnchorWalk:
         self.anchored: dict[int, list[InterleavedEvent]] = defaultdict(list)
 
     def add_model_output(self, message_id: MessageId) -> bool:
-        """Consume the next occurrence of `message_id` as the current anchor.
+        """Advance the anchor to the next occurrence of ``message_id``.
 
-        Returns:
-            True if an occurrence was found and consumed (the anchor
-            advanced to it). False if no (further) occurrence exists --
-            the output is off-thread and the anchor is left unchanged.
+        Returns False, leaving the anchor unchanged, if none remains.
         """
         position = self._next_occurrence[message_id]
         if position < len(self._occurrences.get(message_id, [])):
             self._last_anchor = self._occurrences[message_id][position]
             self._next_occurrence[message_id] = position + 1
-            # First-wins: the viewer resolves a branch to the FIRST output
-            # event carrying the id, so later consumptions of a duplicated
-            # id never displace it.
+            # First wins: the viewer resolves a branch to the first output
+            # event carrying the id.
             self._consumed_positions.setdefault(
                 message_id, self._turn_position(message_id, self._last_anchor)
             )
@@ -278,16 +239,13 @@ class _AnchorWalk:
         return False
 
     def _turn_position(self, message_id: MessageId, consumed: int) -> int:
-        """Thread position of the turn a consumption renders as.
+        """Thread position a branch keyed on ``message_id`` resolves to.
 
-        Normally the consumed occurrence itself. When an INPUT message
-        shares the id (a cross-role duplicate), the occurrence walk -- which
-        knows ids, not roles -- consumes that earlier occurrence, but a
-        branch keyed on the id names the model event's OUTPUT turn (design
-        §4's id tier narrowing; contentItems.ts:145 matches the output
-        event), so snap forward to the id's first output occurrence.
-        Anchoring is deliberately left on the consumed occurrence: this
-        correction is scoped to branch positioning.
+        Normally the consumed occurrence. When an input message shares the id,
+        the occurrence walk (ids, not roles) consumes that earlier occurrence,
+        but the viewer matches the model event's output turn, so snap forward to
+        the id's first assistant occurrence. Anchoring stays on the consumed
+        occurrence.
         """
         if self._output_positions is None or consumed in self._output_positions:
             return consumed
@@ -304,38 +262,32 @@ class _AnchorWalk:
             self.anchored[self._last_anchor].append(entry)
 
     def _consume_own_model_event(self, event: ModelEvent) -> None:
-        """Consume or off-thread-render an own ``ModelEvent``.
+        """Anchor to the event's output, else render it as ``MODEL (BRANCH)``.
 
-        Shared by ``add`` and ``add_owned`` (design's own-``ModelEvent``
-        handling): tries to advance the anchor to the event's output
-        occurrence; if that fails, renders it as a ``MODEL (BRANCH)``
-        entry unless the turn was compaction-pruned for its own span (in
-        which case it stays hidden). Not used for foreign items -- those
-        skip occurrence-consumption and the compaction check entirely
-        (hazard 2) -- and callers remain responsible for any grader-span
-        exclusion, which is not part of this shared behavior.
+        A compaction-pruned turn stays hidden. Callers handle grader exclusion.
+        Never call this for foreign items: consuming an occurrence would let
+        them steal the owner's anchor.
         """
         mid = _model_output_id(event)
         consumed = mid is not None and self.add_model_output(mid)
         if consumed:
             return
-        # Only suppress against a span that actually compacted; exclusions
-        # derived across all spans hid another agent's genuine fork output.
+        # Only suppress for a span that actually compacted: exclusions are
+        # derived across all spans and would hide another agent's genuine fork.
         if (
             mid is not None
             and mid in self._excluded_ids
             and event.span_id in self._compaction_spans
         ):
-            return  # compaction-pruned: stays hidden, no branch entry
+            return
         text = _off_thread_model_text(event)
         if text is not None:
             self.add_rendered(_event_id(event), text)
 
     def add(self, event: Event) -> None:
         if isinstance(event, ToolEvent):
-            # A tool-spawned sub-agent's model events never appear at the top
-            # level of the event list, so without this its output is absent
-            # from the prompt entirely.
+            # A tool-spawned sub-agent's model events are nested here, never
+            # at the top level of the event list.
             for nested in nested_tool_events(event):
                 self.add(nested)
             return
@@ -358,28 +310,20 @@ class _AnchorWalk:
         ``timeline_branch`` emits an ``AnchorEvent`` in the parent span and a
         ``BranchEvent`` carrying the same id, so ``branched_from`` names an
         anchor rather than a message. An anchor seen before any turn has been
-        consumed has no position to splice after and is left unresolved, which
-        appends the branch as before.
+        consumed is left unresolved, so its branch appends at the end.
         """
         if isinstance(event, AnchorEvent) and self._last_anchor is not None:
             self._anchor_positions.setdefault(event.anchor_id, self._last_anchor)
 
     def anchor_position(self, anchor_id: str) -> int | None:
-        """Thread position an anchor id marks, or None if it never resolved."""
         return self._anchor_positions.get(anchor_id)
 
     def add_owned(self, item: OwnedItem) -> None:
-        """Timeline-path entry point (design §2).
+        """Timeline-path counterpart of ``add``, for ``walk_owned_spans`` items.
 
-        No ``ToolEvent.events`` recursion — the ownership traversal already
-        flattened nested events into their own items (decision 6). Foreign
-        items never call ``add_model_output``, so they cannot consume an
-        owner turn's occurrence (hazard 2, both doors). Foreign
-        ``ModelEvent``s render unconditionally as ``MODEL (BRANCH)``;
-        foreign non-model events obey the ``events`` filter, as own ones do.
-        No grader handling here: with ``include_scorers=False`` the
-        traversal never emits grader events (suppression by non-existence,
-        hazard 4).
+        Foreign ``ModelEvent``s always render as ``MODEL (BRANCH)``. Grader
+        model calls are already dropped by the traversal unless
+        ``include_scorers``.
         """
         event = item.event
         if isinstance(event, ToolEvent):
@@ -390,6 +334,8 @@ class _AnchorWalk:
             if item.own:
                 self._consume_own_model_event(event)
             else:
+                # Never consume an occurrence for a foreign event: it would
+                # steal the owner turn's anchor.
                 text = _off_thread_model_text(event)
                 if text is not None:
                     self.add_rendered(_event_id(event), text)
@@ -399,11 +345,7 @@ class _AnchorWalk:
             self.add_rendered(_event_id(event), text)
 
     def spliced(self, messages: Iterable[ChatMessage]) -> Iterator[ChatMessage]:
-        """Yield ``messages`` with the walk's entries spliced in.
-
-        Leading entries first, then each message followed by the entries
-        anchored to its position.
-        """
+        """Yield ``messages`` with the walk's entries spliced in."""
         for event_id, text in self.leading:
             yield _event_message(event_id, text)
         for index, message in enumerate(messages):
@@ -412,25 +354,17 @@ class _AnchorWalk:
                 yield _event_message(event_id, text)
 
     def spliced_position_after(self, index: int) -> int:
-        """Index in ``spliced()``'s output just past thread message ``index``.
-
-        Translates a thread position into an insertion point in the
-        rendered sequence, mirroring ``spliced()``'s interleaving exactly:
-        the leading entries, then each message followed by the entries
-        anchored to it. The returned point is after the message AND its
-        anchored ``[E#]`` entries.
-        """
+        """Index in ``spliced()``'s output past message ``index`` and its entries."""
         return len(self.leading) + sum(
             1 + len(self.anchored.get(position, [])) for position in range(index + 1)
         )
 
 
 def _render_branch_block(branch: OwnedBranch, events: EventsSpec) -> list[ChatMessage]:
-    """Render a branch's items as a flat block of [E#] marker messages.
+    """Render a branch's items as ``[E#]`` entries; they never anchor.
 
-    Foreign rules apply: ModelEvents render unconditionally as MODEL
-    (BRANCH); everything else obeys the ``events`` filter. Branch items
-    never anchor (design §4).
+    ModelEvents always render as ``MODEL (BRANCH)``; everything else obeys
+    ``events``.
     """
     block: list[ChatMessage] = []
     for item in branch.items:
@@ -454,25 +388,20 @@ def _branch_thread_index(
 ) -> int | None:
     """Thread position a branch keyed ``key`` splices after, or None.
 
-    Event-level resolution over the owner's OWN items in document order,
-    first match wins (design §4). A matching ``ModelEvent`` positions at
-    the occurrence the anchor walk actually consumed for it -- one whose
-    output never landed on the thread is off-thread and cannot position a
-    branch at all. A matching ``ToolEvent`` has no occurrence bookkeeping,
-    so it positions at the first thread message carrying the id -- a
-    cross-role duplicate of a tool message id resolves to whichever thread
-    message comes first.
+    Matches the owner's own items in document order, first match wins. A
+    ``ModelEvent`` positions at the occurrence the walk consumed for it (none
+    if off-thread); a ``ToolEvent`` at the first message carrying the id.
+    Input message ids are never matched: not every path that must agree with
+    this one has them.
     """
     # `branched_from` names an AnchorEvent id on modern transcripts and a
-    # message id on older ones; try the anchor first and keep the message
-    # scan as the legacy path.
+    # message id on older ones.
     anchored_at = walk.anchor_position(key)
     if anchored_at is not None:
         return anchored_at
 
-    # Escalate to uuid/event-identity-keyed positioning rather than
-    # patching the role heuristics further (same route as _AnchorWalk's
-    # duplicate-id anchoring note).
+    # For duplicate-id problems, escalate to uuid-keyed positioning rather
+    # than patching these role heuristics.
     for item in owned.items:
         if not item.own:
             continue
@@ -495,29 +424,22 @@ def _splice_branches(
     walk: _AnchorWalk,
     message_ids: list[MessageId],
 ) -> list[ChatMessage]:
-    """Insert branch blocks at their branched_from positions (design §4).
+    """Insert branch blocks at their ``branched_from`` positions.
 
-    Branches sharing a ``branched_from`` are grouped and spliced
-    consecutively at the single resolved index; unmatched branches --
-    including ``""`` -- append at the end, matching the viewer's inline
-    positioning. Resolution is event-level against the owner's OWN items:
-    output message ids and ``ToolEvent.message_id`` only, never input ids.
-    Input ids are excluded deliberately: they are not available on every
-    path this has to agree with, and resolving against a tier one path
-    cannot reach would make the drivers disagree.
+    Branches sharing a ``branched_from`` splice consecutively at one index;
+    unmatched ones (including ``""``) append at the end, as the viewer places
+    them inline.
 
-    Known limitation, duplicate message ids within one thread only
-    (reachable for converter/synthetic logs; Inspect auto-mints unique
-    ids): an assistant-history message or tool-result sharing an id with
-    the resolution target can pull the splice off the viewer's position,
-    and anchoring may disagree with branch placement.
+    Known limitation, duplicate message ids within one thread only (converter
+    or synthetic logs; Inspect auto-mints unique ids): a message sharing the
+    target's id can pull the splice off the viewer's position, and anchoring
+    may disagree with branch placement.
     """
-    # Mirrors the viewer's insertBranchCards/findEventByMessageId (ts-mono
-    # inspect-components contentItems.ts). Knowing divergences: splice.py
-    # reads "" as "no shared prefix"; the swimlane geometry (markers.ts
-    # resolveForkTimestamp) draws a "" branch from the parent's start.
-    # Inline card order is what a debugging human compares against, and
-    # this matches it.
+    # Mirrors the viewer's inline branch cards (insertBranchCards in ts-mono's
+    # contentItems.ts). Known divergences: splice.py reads "" as "no shared
+    # prefix", and the swimlane (markers.ts resolveForkTimestamp) draws a ""
+    # branch from the parent's start. Inline card order is what a human
+    # debugging compares against.
     if not owned.branches:
         return spliced
 
@@ -535,12 +457,9 @@ def _splice_branches(
         return spliced
 
     def insertion_index(key: str) -> int | None:
-        # "" matches no own item and falls out here: unmatched, appended.
-        # Resolution goes through the anchor walk's consumed occurrences,
-        # translated by spliced_position_after -- never a message-id scan
-        # over the rendered sequence: a scan can match a foreign event's
-        # uuid (written into its marker's ChatMessage.id) or an input
-        # message sharing an output's id, before the turn the key names.
+        # Resolve via the walk, never by scanning `spliced` for the id: a scan
+        # can hit a foreign event's marker (its uuid is the ChatMessage.id) or
+        # an input message sharing an output's id.
         index = _branch_thread_index(MessageId(key), owned, walk, message_ids)
         return None if index is None else walk.spliced_position_after(index)
 
@@ -548,9 +467,7 @@ def _splice_branches(
     matched: list[tuple[str, int]] = [
         (key, idx) for key, idx in resolved if idx is not None
     ]
-    # Index insertion, never add_model_output -- consuming an occurrence
-    # would re-open hazard 2 through the branch door. Back-to-front so
-    # earlier insertions don't shift later indexes.
+    # Back-to-front so earlier insertions don't shift later indexes.
     for key, idx in sorted(matched, key=lambda pair: pair[1], reverse=True):
         spliced[idx:idx] = groups[key]
     for unmatched_key, unmatched_idx in resolved:
@@ -562,19 +479,14 @@ def _splice_branches(
 def span_owned_messages(
     owned: OwnedSpan, *, events: EventsSpec, compaction: Compaction
 ) -> list[ChatMessage]:
-    """Splice an owned span's items and branches into its message thread.
-
-    Walks the ownership traversal's per-span view (design §2): the thread
-    comes from the span's DIRECT content only
-    (``span_messages`` — hazard 1: foreign items never reach it), items
-    are consumed by ``_AnchorWalk.add_owned`` in document order, and
-    branch blocks are inserted at their resolved positions afterwards.
-    ``compaction_spans`` derives from OWN items only (hazard 3).
-    """
+    """Splice an owned span's items and branches into its message thread."""
     span = owned.span
+    # The thread comes from the span's direct content only, so a descendant's
+    # model event can never replace it.
     messages = span_messages(span, compaction=compaction)
     message_ids = [_message_id(m) for m in messages]
     excluded_ids = _compaction_excluded_ids(span, message_ids, compaction)
+    # Own items only, so foreign spans cannot widen the compaction scope.
     own_event_spans = frozenset(
         None if item.event.span_id is None else SpanId(item.event.span_id)
         for item in owned.items
@@ -605,26 +517,19 @@ def interleave_events(
     events with no preceding turn are prepended. A ``ModelEvent`` whose
     output never joined the thread renders as a ``[E#] MODEL (BRANCH):``
     entry unless the turn was compaction-pruned, in which case it stays
-    hidden (see ``_AnchorWalk``). Grader model calls under a ``scorers``
-    span are excluded from the walk entirely.
-
-    Args:
-        transcript: Transcript providing messages and events.
-        events: Which event types to interleave (``"all"`` or a list).
+    hidden. Grader model calls under a ``scorers`` span are excluded.
 
     Raises:
         EventsOnlyInterleaveUnsupported: The transcript has events but no
-            top-level messages; use the timeline machinery instead --
-            ``llm_scanner`` routes such transcripts there automatically.
+            top-level messages.
     """
     messages = list(transcript.messages)
     if not transcript.events:
         return messages
     excluded_ids: frozenset[MessageId] = frozenset()
     if messages:
-        # `messages` is the transcript's own live thread, already shaped by
-        # the original run's compaction. The "last" sentinel forces
-        # `_compaction_excluded_ids` past its `"all"` fast path.
+        # `messages` is already the compacted live thread; any non-"all" value
+        # makes `_compaction_excluded_ids` compute the pruned ids.
         if any(isinstance(e, CompactionEvent) for e in transcript.events):
             excluded_ids = _compaction_excluded_ids(
                 transcript.events,

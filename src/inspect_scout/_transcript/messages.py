@@ -368,10 +368,8 @@ async def transcript_messages(
       for context window segmentation only
 
     By default, grader ``ModelEvent``s under scorers spans are
-    suppressed (their ``ScoreEvent``s still render): on the timeline
-    path this is gated by ``include_scorers``; the flat (events-only)
-    path suppresses grader model calls unconditionally, by span name,
-    and does not consult ``include_scorers`` at all.
+    suppressed (with ``events`` set, their ``ScoreEvent``s still
+    render); ``include_scorers=True`` includes them.
 
     Since ``TimelineMessages`` is structurally compatible with
     ``MessagesSegment``, callers get a uniform interface. Those needing
@@ -402,11 +400,9 @@ async def transcript_messages(
             margin). Default ``0.2`` leaves 80% of the window for
             messages. Forwarded to ``segment_messages()`` /
             ``timeline_messages()``.
-        events: Which non-message event types to interleave into the
-            message thread as marked entries (``"all"``, a list of
-            event types, or ``None`` to disable interleaving). Flat
-            transcripts splice directly; the timeline path splices
-            per-span. Inert on a messages-only transcript.
+        events: Non-message event types to interleave into the message
+            thread as ``[E#]`` entries (``"all"`` or a list), per span on
+            the timeline path. ``None`` (default) disables interleaving.
 
     Yields:
         ``MessagesSegment`` (or ``TimelineMessages``) for each segment.
@@ -418,17 +414,11 @@ async def transcript_messages(
     if events is not None and not transcript.timelines and timeline is None:
         from inspect_scout._transcript.interleave import interleave_events
 
-        # Flat transcript (top-level messages, no timelines): splice events
-        # directly into the message thread and segment it like a plain
-        # message list. Events-only transcripts fall through to the timeline
-        # path below, which reconstructs per-span threads so parallel agents
-        # aren't collapsed into one.
-        #
-        # The condition must stay exactly "messages present". A third
-        # condition here ("does anything render?") made the same scanner
-        # config yield different content depending only on whether `question`
-        # was callable, because splicing nothing is not a reason to discard
-        # the thread.
+        # Events-only or span-structured transcripts fall through to the
+        # timeline path, which reconstructs per-span threads so parallel
+        # agents aren't collapsed into one. Don't also require that anything
+        # renders: the same config would then yield different content
+        # depending on whether `question` is callable.
         if transcript.messages and not _has_span_structure(transcript):
             async for seg in segment_messages(
                 interleave_events(transcript, events),

@@ -457,10 +457,8 @@ def scanner(
                 inferred_timeline = normalize_timeline_filter(True)
             content_override = getattr(scanner_fn, SCANNER_CONTENT_ATTR, None)
             if content_override is not None and content_override.events is not None:
-                # Widen last, so neither an explicit timeline override nor the
-                # default for a named timeline can drop the selection: a timeline
-                # is pruned by its own filter and interleaved entries render from
-                # the timeline, so a type missing there is silently dropped.
+                # Widen last, so neither an explicit timeline override nor a named
+                # timeline's default can drop the events selection.
                 inferred_timeline = widen_timeline_for_events(
                     inferred_timeline, content_override.events
                 )

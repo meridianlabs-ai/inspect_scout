@@ -55,12 +55,8 @@ def pooled_passthrough(
     value is read back whole, because a parquet cell is a single value --
     that read is the floor this cannot go below.
 
-    Two disclosed gaps against the materialized path: identifiers pydantic
-    synthesizes during validation (`ChatMessage.id`, `Event.uuid`) are not
-    added, because the spooled bytes are copied without being validated --
-    every log inspect_ai writes carries them, but on a legacy log that omits
-    them the scanner sees generated ids these columns do not; and the emitted
-    pool is pruned around top-level refs only (see `_referenced_positions`).
+    One disclosed gap against the materialized path: the emitted pool is
+    pruned around top-level refs only (see `_referenced_positions`).
 
     Args:
         info: Transcript metadata for the envelope.

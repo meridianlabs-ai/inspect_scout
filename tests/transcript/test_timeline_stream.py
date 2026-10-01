@@ -469,12 +469,10 @@ def _input_count(events: Iterable[Event]) -> int:
 async def test_projections_keep_everything_their_readers_read(
     source: str, pooled: bool, tmp_path: Path
 ) -> None:
-    """A projected replay reads the same as a full one wherever its caller looks.
+    """A projected replay reads the same as a full one wherever its readers look.
 
-    The projections hand-mirror the fields `stub_event` and the output-only
-    readers (`_output_only_model_event` and `_AnchorWalk`, which renders
-    branches with `_off_thread_model_text`) use, so this fails if either side
-    changes without the other.
+    Fails if a projection and the fields `stub_event`, `_output_only_model_event`
+    or `_AnchorWalk` read drift apart.
     """
     events, attachments = _PROJECTION_SOURCES[source]()
     result = await stream_parse_to_spool(

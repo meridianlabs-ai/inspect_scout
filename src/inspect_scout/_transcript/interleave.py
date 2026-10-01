@@ -134,17 +134,14 @@ def output_only_projection(
     keep_uuids: Container[str] = frozenset(),
     keep_positions: Container[int] = frozenset(),
 ) -> EventProjection:
-    """An `EventProjection` reducing raw ModelEvents to what output readers use.
+    """An `EventProjection` dropping top-level ModelEvents' input, call and tools.
 
-    Drops ``input``, ``call`` and ``tools`` from every top-level ModelEvent,
-    bar those with a uuid in ``keep_uuids`` or a stream position in
-    ``keep_positions``, leaving its output, uuid, span id and timestamps:
-    everything `_output_only_model_event`, `_off_thread_model_text` and
-    `_AnchorWalk` read. The mirror test in ``test_timeline_stream.py`` fails
-    if they drift apart.
-
-    Counts positions as it goes, so use one projection per pass.
+    Events with a uuid in ``keep_uuids`` or a stream position in
+    ``keep_positions`` are left whole. Counts positions as it goes, so use one
+    projection per pass.
     """
+    # What survives is everything `_output_only_model_event`,
+    # `_off_thread_model_text` and `_AnchorWalk` read.
     position = -1
 
     def project(item: dict[str, Any], blobs: BlobSpool) -> None:
@@ -606,10 +603,9 @@ async def _with_model_inputs(
 ) -> list[Event]:
     """``skeleton``'s events, its ModelEvents re-read with their inputs.
 
-    Matched by stream position, so uuid-less events come back too. Only a
-    spooled handle's projection strips inputs; other handles' skeletons
-    already hold full events and are returned as they are.
+    Matched by stream position, so uuid-less events come back too.
     """
+    # Only a spooled handle's projection strips inputs.
     if not isinstance(handle, SpooledTranscriptHandle):
         return [event for _, event in skeleton]
     wanted = {position for position, event in skeleton if isinstance(event, ModelEvent)}
@@ -634,12 +630,7 @@ async def stream_interleave_events(
     """Streaming counterpart to ``interleave_events`` over a handle.
 
     Yields the same sequence without holding messages and event payloads in
-    memory at once: one pass collects message ids, one derives compaction
-    exclusions (from each region's first and last ``ModelEvent``) and grader
-    spans, one runs the anchor walk, and a final one re-streams the messages
-    with the anchored entries spliced in. On a spooled handle the event passes
-    skip decoding ModelEvent inputs, so a transcript with compaction takes one
-    more pass to re-read the few its exclusions come from.
+    memory at once.
 
     Raises:
         EventsOnlyInterleaveUnsupported: The handle has no messages; use

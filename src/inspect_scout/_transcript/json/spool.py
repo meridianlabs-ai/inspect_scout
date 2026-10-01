@@ -141,11 +141,6 @@ class ByteSpool:
     Its own file rather than a ``BlobSpool`` entry: a value is written
     incrementally, so anything else appending to the same file in between
     would interleave with it.
-
-    Small writes are batched in memory -- the metadata writer emits one per
-    JSON token, and a seek+write syscall pair each made spooling a large
-    metadata section slow. Every read writes the batch out first, and both
-    happen under the lock, so concurrent readers never see a partial file.
     """
 
     def __init__(self, dir: Path) -> None:
@@ -154,6 +149,8 @@ class ByteSpool:
         self._lock = threading.Lock()
         self._write_offset = 0
         # The value's last bytes, not yet on disk; ends at `_write_offset`.
+        # Batches the metadata writer's one-write-per-JSON-token output. Reads
+        # flush it first, under the lock, so no reader sees a partial file.
         self._pending = bytearray()
 
     def write(self, data: bytes | bytearray | memoryview) -> None:

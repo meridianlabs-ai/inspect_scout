@@ -1,4 +1,5 @@
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from typing import TypeVar
 
 import anyio
@@ -24,3 +25,21 @@ async def as_value(fn: Callable[[], Awaitable[T]]) -> T | BaseException:
         return await fn()
     except (Exception, anyio.get_cancelled_exc_class()) as ex:
         return ex
+
+
+@asynccontextmanager
+async def aclosing_iter(
+    iterator: AsyncIterator[T],
+) -> AsyncIterator[AsyncIterator[T]]:
+    """`contextlib.aclosing` for an iterator typed as a plain `AsyncIterator`.
+
+    `aclosing` needs `aclose()`, which `AsyncIterator` does not promise (e.g.
+    `TranscriptHandle.messages()`). Closing an async generator on exit, rather
+    than whenever it is garbage collected, ends its iteration (and releases
+    what it holds open) as soon as the caller stops reading it.
+    """
+    try:
+        yield iterator
+    finally:
+        if isinstance(iterator, AsyncGenerator):
+            await iterator.aclose()

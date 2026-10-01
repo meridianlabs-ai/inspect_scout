@@ -50,6 +50,7 @@ from .._transcript.timeline_stream import (
     stream_timeline_messages,
 )
 from .._transcript.types import EventType, Transcript, TranscriptContent
+from .._util._async import aclosing_iter
 from ._reducer import aggregate_results
 from .answer import Answer, answer_from_argument
 from .generate import generate_answer
@@ -134,13 +135,13 @@ async def _interleaves_flat(handle: TranscriptHandle) -> bool:
 
     Messages present and no span structure; anything else interleaves per span.
     """
-    async for _ in handle.messages():
-        break
-    else:
-        return False
-    async for event in handle.events():
-        if isinstance(event, SpanBeginEvent):
+    async with aclosing_iter(handle.messages()) as messages:
+        if await anext(messages, None) is None:
             return False
+    async with aclosing_iter(handle.events()) as events:
+        async for event in events:
+            if isinstance(event, SpanBeginEvent):
+                return False
     return True
 
 

@@ -1,4 +1,4 @@
-from typing import AsyncIterator, Iterable, cast
+from typing import AsyncIterator, Callable, Iterable, NoReturn, TypeVar, cast
 
 import pytest
 from inspect_ai.event import (
@@ -48,6 +48,7 @@ from inspect_scout._transcript.types import (
     TranscriptContent,
     TranscriptInfo,
 )
+from inspect_scout._util._async import aclosing_iter
 
 
 def _model_event(user_text: str, output: ModelOutput) -> ModelEvent:
@@ -849,3 +850,99 @@ async def test_llm_scanner_handle_events_content_interleaves_without_load() -> N
 
     assert any("2+2?" in c for c in captured)
     assert any("[E1] SCORE" in c for c in captured)
+
+
+T = TypeVar("T")
+
+
+class _StreamTrackingHandle(SpooledTranscriptHandle):
+    """Streams `transcript` from memory and counts the streams left suspended.
+
+    Holding every stream it hands out keeps garbage collection from closing
+    one a caller abandoned, so `suspended` counts exactly the streams started
+    but neither exhausted nor closed.
+    """
+
+    def __init__(self, transcript: Transcript) -> None:
+        async def unused() -> NoReturn:
+            raise AssertionError("not called")
+
+        super().__init__(
+            TranscriptInfo(transcript_id=transcript.transcript_id), unused, unused
+        )
+        self._content = transcript
+        self._streams: list[AsyncIterator[object]] = []
+        self.suspended = 0
+        self.loads = 0
+
+    def messages(self) -> AsyncIterator[ChatMessage]:
+        return self._track(self._content.messages)
+
+    def events(self) -> AsyncIterator[Event]:
+        return self._track(self._content.events)
+
+    async def load(self) -> Transcript:
+        self.loads += 1
+        return self._content
+
+    def _track(self, items: list[T]) -> AsyncIterator[T]:
+        async def stream() -> AsyncIterator[T]:
+            self.suspended += 1
+            try:
+                for item in items:
+                    yield item
+            finally:
+                self.suspended -= 1
+
+        tracked = stream()
+        self._streams.append(tracked)
+        return tracked
+
+
+def _uuidless_off_thread_span_transcript() -> Transcript:
+    """`_timeline_scorers_flat_events` plus a uuid-less side call in "span-main".
+
+    The side call's output is off-thread and renders, so pass 2 cannot
+    substitute it and the scan falls back to `load()` partway through.
+    """
+    events = _timeline_scorers_flat_events()
+    side_call = _span_model_event("aside?", "aside", "span-main")
+    events.insert(2, side_call.model_copy(update={"uuid": None}))
+    return Transcript(transcript_id="t", events=events)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("make_transcript", "falls_back"),
+    [
+        pytest.param(_compaction_pruned_and_fork_transcript, False, id="flat"),
+        pytest.param(_scorers_span_transcript, False, id="messages-and-spans"),
+        pytest.param(_uuidless_off_thread_span_transcript, True, id="spans-fallback"),
+    ],
+)
+async def test_llm_scanner_handle_scan_closes_every_stream(
+    make_transcript: Callable[[], Transcript], falls_back: bool
+) -> None:
+    """A streamed events= scan closes each handle stream, however it stops reading."""
+    handle = _StreamTrackingHandle(make_transcript())
+    scan = llm_scanner(
+        question="Right?", answer="boolean", model=_mock_model([]), events="all"
+    )
+    await scan(cast(Transcript, handle))
+
+    assert handle.suspended == 0
+    assert bool(handle.loads) is falls_back
+
+
+@pytest.mark.anyio
+async def test_closing_stream_interleave_early_closes_the_handle_stream() -> None:
+    handle = _StreamTrackingHandle(
+        Transcript(
+            transcript_id="t",
+            messages=[ChatMessageUser(content="q1"), ChatMessageUser(content="q2")],
+        )
+    )
+    async with aclosing_iter(stream_interleave_events(handle)) as stream:
+        await anext(stream)
+
+    assert handle.suspended == 0

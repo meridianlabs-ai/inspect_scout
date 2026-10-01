@@ -25,6 +25,7 @@ from inspect_ai.model import ChatMessage, ChatMessageUser
 
 from .._scanner.extract import EVENT_MARKER_KEY, message_as_str
 from .._scanner.util import EventId, MessageId, SpanId, _event_id, _message_id
+from .._util._async import aclosing_iter
 from .event_text import event_as_str
 from .messages import span_messages
 from .timeline import OwnedBranch, OwnedItem, OwnedSpan
@@ -582,7 +583,8 @@ async def stream_interleave_events(
         EventsOnlyInterleaveUnsupported: The handle has no messages; use
             ``stream_timeline_messages`` instead.
     """
-    message_ids = [_message_id(m) async for m in handle.messages()]
+    async with aclosing_iter(handle.messages()) as messages:
+        message_ids = [_message_id(m) async for m in messages]
     if not message_ids:
         raise EventsOnlyInterleaveUnsupported(
             "stream_interleave_events needs a handle with messages; use "
@@ -592,21 +594,22 @@ async def stream_interleave_events(
     skeleton: list[Event] = []
     begins: list[SpanBeginEvent] = []
     compaction_spans: set[SpanId | None] = set()
-    async for event in handle.events():
-        if isinstance(event, SpanBeginEvent):
-            begins.append(event)
-        elif isinstance(event, CompactionEvent):
-            compaction_spans.add(
-                None if event.span_id is None else SpanId(event.span_id)
-            )
-            skeleton.append(event)
-        elif isinstance(event, ModelEvent):
-            # Region-last wins: only the last ModelEvent before each
-            # compaction boundary contributes to the untruncated thread.
-            if skeleton and isinstance(skeleton[-1], ModelEvent):
-                skeleton[-1] = event
-            else:
+    async with aclosing_iter(handle.events()) as handle_events:
+        async for event in handle_events:
+            if isinstance(event, SpanBeginEvent):
+                begins.append(event)
+            elif isinstance(event, CompactionEvent):
+                compaction_spans.add(
+                    None if event.span_id is None else SpanId(event.span_id)
+                )
                 skeleton.append(event)
+            elif isinstance(event, ModelEvent):
+                # Region-last wins: only the last ModelEvent before each
+                # compaction boundary contributes to the untruncated thread.
+                if skeleton and isinstance(skeleton[-1], ModelEvent):
+                    skeleton[-1] = event
+                else:
+                    skeleton.append(event)
     excluded_ids: frozenset[MessageId] = frozenset()
     if compaction_spans:
         excluded_ids = _compaction_excluded_ids(
@@ -620,14 +623,16 @@ async def stream_interleave_events(
         grader_spans=scorer_span_ids(begins),
         compaction_spans=frozenset(compaction_spans),
     )
-    async for event in handle.events():
-        walk.add(event)
+    async with aclosing_iter(handle.events()) as handle_events:
+        async for event in handle_events:
+            walk.add(event)
 
     for event_id, text in walk.leading:
         yield _event_message(event_id, text)
-    index = 0
-    async for message in handle.messages():
-        yield message
-        for event_id, text in walk.anchored.get(index, []):
-            yield _event_message(event_id, text)
-        index += 1
+    async with aclosing_iter(handle.messages()) as messages:
+        index = 0
+        async for message in messages:
+            yield message
+            for event_id, text in walk.anchored.get(index, []):
+                yield _event_message(event_id, text)
+            index += 1

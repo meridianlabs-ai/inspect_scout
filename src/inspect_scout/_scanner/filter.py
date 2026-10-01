@@ -60,16 +60,19 @@ TIMELINE_DEFAULT_EVENTS: list[EventType] = [
 
 
 def widen_timeline_for_events(
-    timeline: list[EventType] | Literal["all"] | None, events: EventFilter
+    timeline: Literal[True] | list[EventType] | Literal["all"] | None,
+    events: EventFilter,
 ) -> list[EventType] | Literal["all"] | None:
     """Widen a timeline filter to cover an explicit events selection.
 
     Timeline content is pruned by its own filter, and interleaved entries are
     rendered from the timeline -- so an event type present in ``events`` but
     absent from the timeline filter is dropped silently rather than rendered.
-    The caller normalizes ``timeline=True`` first, and that default set
-    excludes ``score`` -- the case this exists for.
+    ``timeline=True`` resolves to the default set, which excludes ``score``
+    -- the case this exists for.
     """
+    if timeline is True:
+        timeline = normalize_timeline_filter(True)
     if timeline is None:
         return timeline
     if timeline == "all" or events == "all":

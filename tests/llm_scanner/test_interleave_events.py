@@ -621,6 +621,19 @@ def test_events_param_extends_loaded_events(
     assert (loaded if loaded == "all" else set(loaded)) == expected
 
 
+def test_events_param_keeps_the_other_content_filters() -> None:
+    content = TranscriptContent(messages=["user"], timeline=["model"], metadata=False)
+    scan = llm_scanner(
+        question="q", answer="boolean", events=["score"], content=content
+    )
+    loaded = getattr(scan, SCANNER_CONTENT_ATTR)
+    assert (loaded.messages, loaded.timeline, loaded.metadata) == (
+        ["user"],
+        ["model"],
+        False,
+    )
+
+
 def test_selective_load_preserves_branch_structure() -> None:
     """A selective ``events=`` load must not flatten branch spans into the thread.
 

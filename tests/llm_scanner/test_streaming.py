@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Callable, cast
 
 import pytest
+from inspect_ai.event import ScoreEvent
 from inspect_ai.model import (
     ChatMessage,
     ChatMessageUser,
@@ -20,6 +21,7 @@ from inspect_ai.model import (
     ModelOutput,
     get_model,
 )
+from inspect_ai.scorer import Score
 from inspect_ai.tool import ToolChoice, ToolInfo
 from inspect_scout import llm_scanner
 from inspect_scout._llm_scanner._llm_scanner import _must_materialize
@@ -184,6 +186,16 @@ def _yes_model() -> Model:
             True,
             id="events-requested-but-absent",
         ),
+        # events= has no streaming implementation yet, so the handle is loaded.
+        pytest.param(
+            lambda: _make_transcript(2).model_copy(
+                update={"events": [ScoreEvent(score=Score(value="C"), scorer="m")]}
+            ),
+            {"events": ["score"]},
+            1,
+            True,
+            id="events-param",
+        ),
     ],
 )
 async def test_handle_scan_equivalent_to_transcript_scan(
@@ -219,7 +231,7 @@ async def test_handle_scan_equivalent_to_transcript_scan(
     prompts_handle = list(recorded)
 
     if expect_load:
-        assert load_calls, "expected the empty-segments fallback to load the handle"
+        assert load_calls, "expected the scan to load the handle"
     else:
         assert not load_calls, "streamed scan materialized the handle"
     assert len(prompts_transcript) >= min_prompts

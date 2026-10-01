@@ -12,7 +12,7 @@ from inspect_ai.event._timeline import (
     _has_tool_calls,
 )
 from inspect_ai.model import ChatMessageSystem
-from inspect_scout._transcript.timeline import TimelineSpan, _walk_spans
+from inspect_scout._transcript.timeline import TimelineSpan, walk_owned_spans
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
 
 from tests.transcript.fixtures_agentic import agentic_events, agentic_transcript
@@ -64,8 +64,8 @@ def test_stub_tree_matches_full_tree_structure() -> None:
     full_tree = timeline_build(events)
     stub_tree = timeline_build(stubbed_events)
 
-    full_spans = list(_walk_spans(full_tree.root, depth=None))
-    stub_spans = list(_walk_spans(stub_tree.root, depth=None))
+    full_spans = [o.span for o in walk_owned_spans(full_tree.root)]
+    stub_spans = [o.span for o in walk_owned_spans(stub_tree.root)]
 
     full_names = [s.name for s in full_spans]
     stub_names = [s.name for s in stub_spans]
@@ -158,7 +158,9 @@ def test_selection_uuidless_raises() -> None:
     events = [e.model_copy(update={"uuid": None}) if e is target else e for e in events]
     tree = timeline_build(events)
     with pytest.raises(_StubSkeletonUnsupported):
-        needed_model_event_uuids(tree.root, compaction="last", depth=None)
+        needed_model_event_uuids(
+            tree.root, compaction="last", depth=None, include_scorers=False
+        )
 
 
 def _info(transcript: Transcript) -> TranscriptInfo:
@@ -252,9 +254,10 @@ assert LOGS, f"no .eval fixtures found in {LOGS_DIR}"
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("include_scorers", [False, True])
 @pytest.mark.parametrize("log", LOGS, ids=[log.name for log in LOGS])
 async def test_stream_equals_materialized_segments_eval_logs(
-    log: Path, monkeypatch: pytest.MonkeyPatch
+    log: Path, include_scorers: bool, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Fidelity over real `.eval` fixtures, forced through the spooled path.
 
@@ -295,6 +298,7 @@ async def test_stream_equals_materialized_segments_eval_logs(
                     model="mockllm/model",
                     compaction="all",
                     depth=None,
+                    include_scorers=include_scorers,
                 )
             ]
         materialized_segments: list[TimelineMessages] = []
@@ -304,6 +308,7 @@ async def test_stream_equals_materialized_segments_eval_logs(
             model="mockllm/model",
             compaction="all",
             depth=None,
+            include_scorers=include_scorers,
         ):
             assert isinstance(seg, TimelineMessages)
             materialized_segments.append(seg)
@@ -313,5 +318,9 @@ async def test_stream_equals_materialized_segments_eval_logs(
         ]
         assert streamed  # non-vacuous: the fixture must yield >=1 segment
         assert streamed == materialized_tuples
+        for s_seg, m_seg in zip(streamed_segments, materialized_segments, strict=True):
+            assert _scrub_agent_result(s_seg.span.model_dump()) == _scrub_agent_result(
+                m_seg.span.model_dump()
+            )
     finally:
         await view.disconnect()

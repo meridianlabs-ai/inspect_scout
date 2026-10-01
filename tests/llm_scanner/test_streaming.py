@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Callable, cast
 
 import pytest
+from inspect_ai.event import ModelEvent, ScoreEvent
 from inspect_ai.model import (
     ChatMessage,
     ChatMessageUser,
@@ -20,6 +21,7 @@ from inspect_ai.model import (
     ModelOutput,
     get_model,
 )
+from inspect_ai.scorer import Score
 from inspect_ai.tool import ToolChoice, ToolInfo
 from inspect_scout import llm_scanner
 from inspect_scout._llm_scanner._llm_scanner import _must_materialize
@@ -54,6 +56,26 @@ def _make_transcript(n_messages: int, *, words: int = 3) -> Transcript:
         for i in range(n_messages)
     ]
     return Transcript(transcript_id="t", messages=msgs)
+
+
+def _scored_transcript() -> Transcript:
+    output = ModelOutput.from_content(model="mockllm", content="4")
+    question = ChatMessageUser(content="2+2?", id="m0")
+    return Transcript(
+        transcript_id="t",
+        messages=[question, output.message],
+        events=[
+            ModelEvent(
+                model="mockllm",
+                input=[question],
+                tools=[],
+                tool_choice="none",
+                config=GenerateConfig(),
+                output=output,
+            ),
+            ScoreEvent(score=Score(value="C"), target="C", scorer="match"),
+        ],
+    )
 
 
 def _spooled_handle_for(
@@ -184,6 +206,15 @@ def _yes_model() -> Model:
             True,
             id="events-requested-but-absent",
         ),
+        # events= has no streaming implementation, so the handle must be
+        # loaded and its [E#] entries rendered exactly as from a Transcript.
+        pytest.param(
+            _scored_transcript,
+            {"events": ["score"]},
+            1,
+            True,
+            id="events-param",
+        ),
     ],
 )
 async def test_handle_scan_equivalent_to_transcript_scan(
@@ -219,7 +250,7 @@ async def test_handle_scan_equivalent_to_transcript_scan(
     prompts_handle = list(recorded)
 
     if expect_load:
-        assert load_calls, "expected the empty-segments fallback to load the handle"
+        assert load_calls, "expected the scan to load the handle"
     else:
         assert not load_calls, "streamed scan materialized the handle"
     assert len(prompts_transcript) >= min_prompts
@@ -253,6 +284,8 @@ def _dynamic_template_variables(_t: Transcript) -> dict[str, Any]:
         pytest.param(
             {"content": TranscriptContent(timeline="all")}, False, id="content-timeline"
         ),
+        # Event interleaving has no streaming implementation yet.
+        pytest.param({"events": ["score"]}, False, id="events-param"),
     ],
 )
 def test_streaming_attr_gating(kwargs: dict[str, Any], expected: bool) -> None:

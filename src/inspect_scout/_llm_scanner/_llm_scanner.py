@@ -320,15 +320,17 @@ def llm_scanner(
     # @scanner decorator declares messages="all").
     content_has_events = content is not None and content.events is not None
 
-    # Streaming needs the full transcript only for callable template inputs or
-    # timeline extraction (by argument or by content filter). Hoisted so scan()
-    # and the streaming opt-in at the bottom cannot drift apart. (The
-    # preprocessor gets per-segment message lists, so it stays streaming-safe.)
+    # Streaming needs the full transcript only for callable template inputs,
+    # timeline extraction (by argument or by content filter), or event
+    # interleaving (no streaming implementation yet). Hoisted so scan() and the
+    # streaming opt-in at the bottom cannot drift apart. (The preprocessor gets
+    # per-segment message lists, so it stays streaming-safe.)
     full_transcript_needed = (
         callable(question)
         or callable(template_variables)
         or timeline is not None
         or (content is not None and content.timeline is not None)
+        or events is not None
     )
 
     # resolve retry_refusals

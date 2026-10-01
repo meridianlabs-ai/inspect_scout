@@ -17,6 +17,7 @@ from inspect_ai.model._chat_message import (
 from inspect_scout import Result, Scanner, Transcript, scanner
 from inspect_scout._scanner.scanner import SCANNER_CONFIG
 from inspect_scout._scanner.validate import infer_filters_from_type
+from inspect_scout._transcript.types import TranscriptContent
 
 
 def test_infer_single_message_type() -> None:
@@ -500,3 +501,30 @@ def test_explicit_timeline_override_cannot_drop_the_events_selection() -> None:
     assert "score" in timeline
     # the caller's own selection is still honoured
     assert "model" in timeline and "span_end" in timeline
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        pytest.param(
+            {"content": TranscriptContent(timeline=True), "events": ["score"]},
+            id="events-param",
+        ),
+        pytest.param(
+            {"content": TranscriptContent(events=["model", "score"], timeline=True)},
+            id="content-events",
+        ),
+    ],
+)
+def test_content_timeline_true_widens_for_the_events_selection(
+    kwargs: dict[str, Any],
+) -> None:
+    """A `content.timeline=True` override resolves to the default set, then widens."""
+    from inspect_scout._llm_scanner._llm_scanner import llm_scanner
+    from inspect_scout._scanner.scanner import config_for_scanner
+
+    scanner_obj = llm_scanner(question="q", answer="boolean", **kwargs)
+
+    timeline = config_for_scanner(scanner_obj).content.timeline
+    assert isinstance(timeline, list)
+    assert "score" in timeline and "model" in timeline

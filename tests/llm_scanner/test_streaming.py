@@ -7,7 +7,6 @@ in ``test_segment_concurrency.py``.
 from __future__ import annotations
 
 import io
-import json
 from pathlib import Path
 from typing import Any, Callable, cast
 
@@ -49,7 +48,12 @@ from inspect_scout._transcript.types import (
     TranscriptInfo,
 )
 
-from tests.transcript.fixtures_agentic import agentic_events, agentic_transcript
+from tests.transcript.fixtures_agentic import (
+    agentic_events,
+    agentic_events_with_warmup,
+    agentic_transcript,
+)
+from tests.transcript.stream_parity import sample_json
 
 
 def _make_transcript(n_messages: int, *, words: int = 3) -> Transcript:
@@ -116,15 +120,14 @@ def _uuidless_side_call_transcript() -> Transcript:
 
 
 def _spooled_handle_for(
-    transcript: Transcript, spool_dir: Path
+    transcript: Transcript, spool_dir: Path, *, pooled: bool = False
 ) -> SpooledTranscriptHandle:
-    """A SpooledTranscriptHandle over `transcript`, so the streaming path is exercised."""
-    sample = {
-        "id": transcript.transcript_id,
-        "messages": [m.model_dump(mode="json") for m in transcript.messages],
-        "events": [e.model_dump(mode="json") for e in transcript.events],
-    }
-    data = json.dumps(sample).encode()
+    """A SpooledTranscriptHandle over `transcript`, so the streaming path is exercised.
+
+    ``pooled`` stores ModelEvent inputs in a pool, as inspect_ai's log writer
+    does.
+    """
+    data = sample_json(transcript.events, messages=transcript.messages, pooled=pooled)
     info = TranscriptInfo(
         **transcript.model_dump(exclude={"messages", "events", "timelines"})
     )
@@ -306,13 +309,24 @@ def _yes_model() -> Model:
             True,
             id="events-param-uuidless-spans",
         ),
+        # A warmup call is classified from its config and trailing user turn,
+        # which the streamed pass 1 must keep.
+        pytest.param(
+            lambda: agentic_transcript(agentic_events_with_warmup()),
+            {"events": "all"},
+            2,
+            False,
+            id="events-param-warmup",
+        ),
     ],
 )
+@pytest.mark.parametrize("pooled", [False, True], ids=["inline", "pooled"])
 async def test_handle_scan_equivalent_to_transcript_scan(
     make_transcript: Callable[[], Transcript],
     scanner_kwargs: dict[str, Any],
     min_prompts: int,
     expect_load: bool,
+    pooled: bool,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -337,7 +351,9 @@ async def test_handle_scan_equivalent_to_transcript_scan(
     recorded.clear()
 
     load_calls = _spy_on_load(monkeypatch, SpooledTranscriptHandle)
-    result_handle = await _scan(scan_fn, _spooled_handle_for(transcript, tmp_path))
+    result_handle = await _scan(
+        scan_fn, _spooled_handle_for(transcript, tmp_path, pooled=pooled)
+    )
     prompts_handle = list(recorded)
 
     if expect_load:

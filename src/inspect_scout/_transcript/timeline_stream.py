@@ -9,7 +9,9 @@ the resulting skeleton to determine span structure and which events the
 scanning path actually reads. Pass 2 re-streams the handle and substitutes
 the *full* events back in. ``stream_timeline_messages`` orchestrates both and
 yields the same *extracted messages* -- span ids and rendered segment strings
--- as running over a fully materialized transcript.
+-- as running over a fully materialized transcript. On a spooled handle each
+pass also decodes only what it keeps (``stub_projection``,
+``output_only_projection``).
 
 Stubs must preserve every signal the classifier reads, so ``stub_event`` and
 its helpers keep uuids/span_ids/timestamps, system prompts, tool-call
@@ -38,7 +40,8 @@ transient -- never serialized into results or sent to the viewer.
 from __future__ import annotations
 
 import dataclasses
-from typing import TYPE_CHECKING, AsyncIterator, Container, Literal
+import json
+from typing import TYPE_CHECKING, Any, AsyncIterator, Container, Literal
 
 from inspect_ai.event import (
     CompactionEvent,
@@ -51,7 +54,15 @@ from inspect_ai.event import (
 )
 from inspect_ai.model import ChatMessageSystem, ChatMessageUser, ContentText, Model
 
-from inspect_scout._transcript.interleave import EventsSpec, _off_thread_model_text
+from inspect_scout._transcript.handle import projected_events
+from inspect_scout._transcript.interleave import (
+    EventsSpec,
+    _off_thread_model_text,
+    output_only_projection,
+)
+from inspect_scout._transcript.json.pool import slice_positions
+from inspect_scout._transcript.json.spool import BlobSpool
+from inspect_scout._transcript.json.stream_parse import EventProjection
 from inspect_scout._transcript.timeline import (
     TimelineMessages,
     timeline_messages,
@@ -101,6 +112,8 @@ def _stub_model_event(event: ModelEvent, interner: _PromptInterner) -> ModelEven
     `_has_tool_calls` still reads correctly. When `config.max_tokens <= 1`,
     the trailing `ChatMessageUser` is also retained (truncated) to preserve
     the `_is_warmup_call` signal; see the inline note below.
+
+    `stub_projection` mirrors the fields read here; change both together.
     """
     stub_input: list[ChatMessageSystem | ChatMessageUser] = []
     for msg in event.input:
@@ -176,6 +189,60 @@ def _stub_model_event(event: ModelEvent, interner: _PromptInterner) -> ModelEven
             "output": stub_output,
         }
     )
+
+
+def stub_projection() -> EventProjection:
+    """An `EventProjection` keeping what `_stub_model_event` reads of a ModelEvent.
+
+    A raw top-level ModelEvent keeps only its system-role ``input`` entries
+    and loses ``call`` and ``tools``. Pooled entries are fetched by position,
+    and one known not to be a system message is skipped unread. A possible
+    warmup call (``config.max_tokens <= 1``) keeps its whole input, since the
+    stub also reads its trailing user message. The mirror test in
+    ``test_timeline_stream.py`` fails if this and the stub drift apart.
+
+    Holds a per-pass cache of pool roles, so use one projection per pass.
+    """
+    roles: dict[int, Any] = {}
+
+    def system_entries(
+        refs: list[list[int]], blobs: BlobSpool, pool_len: int
+    ) -> list[Any]:
+        entries: list[Any] = []
+        for start, end in refs:
+            for i in slice_positions(start, end, pool_len):
+                if roles.get(i, "system") != "system":
+                    continue
+                raw = blobs.get(("message_pool", i))
+                if raw is None:
+                    continue
+                entry = json.loads(raw)
+                roles[i] = entry.get("role")
+                if roles[i] == "system":
+                    entries.append(entry)
+        return entries
+
+    def project(item: dict[str, Any], blobs: BlobSpool) -> None:
+        if item.get("event") != "model":
+            return
+        item.pop("call", None)
+        item["tools"] = []
+        max_tokens = (item.get("config") or {}).get("max_tokens")
+        if max_tokens is not None and max_tokens <= 1:
+            return
+        refs = item.get("input_refs")
+        pool_len = blobs.pool_len("message_pool")
+        if refs and pool_len:
+            del item["input_refs"]
+            item["input"] = system_entries(refs, blobs, pool_len)
+        else:
+            item["input"] = [
+                message
+                for message in item.get("input") or []
+                if isinstance(message, dict) and message.get("role") == "system"
+            ]
+
+    return project
 
 
 def _stub_tool_event(event: ToolEvent, interner: _PromptInterner) -> ToolEvent:
@@ -356,6 +423,7 @@ def _output_only_model_event(event: ModelEvent) -> ModelEvent:
 
     Enough for `_AnchorWalk` to render (or exclude) an off-thread event,
     without retaining its potentially huge `input`, `tools`, or other choices.
+    `output_only_projection` mirrors the fields read here; change both together.
     """
     output = event.output
     return event.model_copy(
@@ -495,7 +563,10 @@ async def stream_timeline_messages(
             content across the two calls, violating the multi-shot contract.
     """
     interner = _PromptInterner()
-    stubs: list[Event] = [stub_event(ev, interner) async for ev in handle.events()]
+    stubs: list[Event] = [
+        stub_event(ev, interner)
+        async for ev in projected_events(handle, stub_projection())
+    ]
     tree = timeline_build(stubs)
 
     needed = needed_model_event_uuids(
@@ -511,7 +582,9 @@ async def stream_timeline_messages(
 
     full_by_uuid: dict[str, ModelEvent] = {}
     offthread_by_uuid: dict[str, ModelEvent] | None = {} if events is not None else None
-    async with aclosing_iter(handle.events()) as full_events:
+    async with aclosing_iter(
+        projected_events(handle, output_only_projection(keep=needed))
+    ) as full_events:
         async for ev in full_events:
             _collect_pass2_model_events(ev, needed, full_by_uuid, offthread_by_uuid)
 

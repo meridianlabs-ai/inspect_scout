@@ -40,7 +40,10 @@ from inspect_scout._transcript.interleave import (
     span_owned_messages,
     stream_interleave_events,
 )
-from inspect_scout._transcript.json.stream_parse import StreamParseResult
+from inspect_scout._transcript.json.stream_parse import (
+    EventProjection,
+    StreamParseResult,
+)
 from inspect_scout._transcript.timeline import walk_owned_spans
 from inspect_scout._transcript.types import (
     EventType,
@@ -659,7 +662,9 @@ def _no_load_handle(events: list[Event]) -> SpooledTranscriptHandle:
             for m in no_messages:
                 yield m
 
-        async def events(self) -> AsyncIterator[Event]:
+        async def projected_events(
+            self, project: EventProjection | None = None
+        ) -> AsyncIterator[Event]:
             for e in events:
                 yield e
 
@@ -859,7 +864,9 @@ class _StreamTrackingHandle(SpooledTranscriptHandle):
     def messages(self) -> AsyncIterator[ChatMessage]:
         return self._track(self._content.messages)
 
-    def events(self) -> AsyncIterator[Event]:
+    def projected_events(
+        self, project: EventProjection | None = None
+    ) -> AsyncIterator[Event]:
         return self._track(self._content.events)
 
     async def load(self) -> Transcript:

@@ -3,7 +3,9 @@
 from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
+    Any,
     AsyncIterator,
+    Container,
     Final,
     Iterable,
     Iterator,
@@ -27,6 +29,8 @@ from .._scanner.extract import EVENT_MARKER_KEY, message_as_str
 from .._scanner.util import EventId, MessageId, SpanId, _event_id, _message_id
 from .._util._async import aclosing_iter
 from .event_text import event_as_str
+from .json.spool import BlobSpool
+from .json.stream_parse import EventProjection
 from .messages import span_messages
 from .timeline import OwnedBranch, OwnedItem, OwnedSpan
 from .types import EventType, Transcript
@@ -127,6 +131,26 @@ def _off_thread_model_text(event: ModelEvent) -> str | None:
     )
     text = message_as_str(branch_message)
     return text if text else None
+
+
+def output_only_projection(keep: Container[str] = frozenset()) -> EventProjection:
+    """An `EventProjection` reducing raw ModelEvents to what output readers use.
+
+    Drops ``input``, ``call`` and ``tools`` from every top-level ModelEvent
+    whose uuid is not in ``keep``, leaving its output, uuid, span id and
+    timestamps: everything `_output_only_model_event`,
+    `_off_thread_model_text` and `_AnchorWalk` read. The mirror test in
+    ``test_timeline_stream.py`` fails if they drift apart.
+    """
+
+    def project(item: dict[str, Any], blobs: BlobSpool) -> None:
+        if item.get("event") == "model" and item.get("uuid") not in keep:
+            item.pop("input_refs", None)
+            item.pop("call", None)
+            item["input"] = []
+            item["tools"] = []
+
+    return project
 
 
 def _compaction_excluded_ids(

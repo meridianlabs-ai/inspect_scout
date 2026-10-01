@@ -19,7 +19,7 @@ from ..types import (
     TranscriptInfo,
 )
 from ..util import filter_transcript, merge_metadata
-from .hydrate import hydrate_nested_tool_events
+from .hydrate import DESERIALIZING_CONTEXT, hydrate_nested_tool_events
 from .reducer import (
     ATTACHMENT_PREFIX,
     ATTACHMENT_PREFIX_LEN,
@@ -590,7 +590,9 @@ def _resolve_attachments(
         "events": resolved_events,
     }
 
-    validated = Transcript.model_validate(transcript_data)
+    validated = Transcript.model_validate(
+        transcript_data, context=DESERIALIZING_CONTEXT
+    )
 
     # Expand pool refs only after validation, against pool entries validated
     # once: every event then shares the same message objects. Expanding the
@@ -607,7 +609,8 @@ def _resolve_attachments(
                     [
                         _resolve_dict_attachments(message, resolve_string)
                         for message in transcript.message_pool
-                    ]
+                    ],
+                    context=DESERIALIZING_CONTEXT,
                 ),
                 calls=[
                     _resolve_dict_attachments(call, resolve_string)

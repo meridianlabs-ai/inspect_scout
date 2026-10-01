@@ -32,7 +32,13 @@ from inspect_ai.model import (
     ModelOutput,
 )
 from inspect_ai.scorer import Score
-from inspect_scout._transcript.interleave import EventsSpec, output_only_projection
+from inspect_scout._transcript.interleave import (
+    EventsSpec,
+    InterleavedEvent,
+    _AnchorWalk,
+    _model_output_id,
+    output_only_projection,
+)
 from inspect_scout._transcript.json.stream_parse import (
     replay_events,
     stream_parse_to_spool,
@@ -641,7 +647,9 @@ async def test_projections_keep_everything_their_readers_read(
     """A projected replay reads the same as a full one wherever its caller looks.
 
     The projections hand-mirror the fields `stub_event` and the output-only
-    readers use, so this fails if either side changes without the other.
+    readers (`_output_only_model_event` and `_AnchorWalk`, which renders
+    branches with `_off_thread_model_text`) use, so this fails if either side
+    changes without the other.
     """
     events, attachments = _PROJECTION_SOURCES[source]()
     result = await stream_parse_to_spool(
@@ -673,6 +681,26 @@ async def test_projections_keep_everything_their_readers_read(
         output_replay = list(replay_events(result, output_only_projection()))
         assert output_only(output_replay) == output_only(full)
         assert _input_count(output_replay) == 0
+
+        # Odd-numbered outputs are on the thread, so the walk anchors on those
+        # and renders the rest as branches.
+        model_events = [e for e in full if isinstance(e, ModelEvent)]
+        thread = [m for e in model_events[1::2] if (m := _model_output_id(e))]
+
+        def walked(
+            events: Iterable[Event],
+        ) -> list[tuple[int | None, InterleavedEvent]]:
+            walk = _AnchorWalk(thread, "all")
+            for event in events:
+                walk.add(event)
+            return [(None, entry) for entry in walk.leading] + [
+                (index, entry)
+                for index, entries in walk.anchored.items()
+                for entry in entries
+            ]
+
+        assert walked(output_replay) == walked(full)
+        assert any("BRANCH" in entry.text for _, entry in walked(full))
 
         # Every ModelEvent is exempt, half by uuid and half by position.
         model_positions = [i for i, e in enumerate(full) if isinstance(e, ModelEvent)]

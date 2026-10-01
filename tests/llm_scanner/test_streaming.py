@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import io
 from pathlib import Path
-from typing import Any, Callable, cast
+from typing import Any, Callable, Iterator, cast
 
 import pytest
 from inspect_ai.event import (
@@ -41,7 +41,9 @@ from inspect_scout._transcript.handle import (
     TranscriptHandle,
 )
 from inspect_scout._transcript.json.stream_parse import (
+    EventProjection,
     StreamParseResult,
+    replay_events,
     stream_parse_to_spool,
 )
 from inspect_scout._transcript.types import (
@@ -538,3 +540,41 @@ def test_materialized_handle_takes_the_batch_path() -> None:
     spooled = SpooledTranscriptHandle(info, parse, load_fn)
     assert _must_materialize(spooled, full_transcript_needed=False) is False
     assert _must_materialize(spooled, full_transcript_needed=True) is True
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "make_transcript",
+    [
+        pytest.param(agentic_transcript, id="timeline"),
+        pytest.param(_score_only_transcript, id="flat"),
+    ],
+)
+async def test_streamed_events_scan_projects_every_event_pass(
+    make_transcript: Callable[[], Transcript],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Every event pass of a streamed events= scan replays the spool projected.
+
+    An unprojected pass decodes every ModelEvent's pooled input in full, so
+    the scan would still render the same prompts, only slower.
+    """
+    projections: list[EventProjection | None] = []
+
+    def spy(
+        result: StreamParseResult, project: EventProjection | None = None
+    ) -> Iterator[Event]:
+        projections.append(project)
+        return replay_events(result, project)
+
+    monkeypatch.setattr("inspect_scout._transcript.handle.replay_events", spy)
+    scan_fn = llm_scanner(
+        question="Is this helpful?",
+        answer="boolean",
+        model=_yes_model(),
+        events=["score"],
+    )
+    await _scan(scan_fn, _spooled_handle_for(make_transcript(), tmp_path, pooled=True))
+    assert len(projections) >= 2
+    assert None not in projections

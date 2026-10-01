@@ -575,9 +575,9 @@ async def stream_interleave_events(
 
     Yields the same sequence without holding messages and event payloads in
     memory at once: one pass collects message ids, one derives compaction
-    exclusions (from a region-last ``ModelEvent`` skeleton) and grader spans,
-    one runs the anchor walk, and a final one re-streams the messages with
-    the anchored entries spliced in.
+    exclusions (from each region's first and last ``ModelEvent``) and grader
+    spans, one runs the anchor walk, and a final one re-streams the messages
+    with the anchored entries spliced in.
 
     Raises:
         EventsOnlyInterleaveUnsupported: The handle has no messages; use
@@ -604,9 +604,11 @@ async def stream_interleave_events(
                 )
                 skeleton.append(event)
             elif isinstance(event, ModelEvent):
-                # Region-last wins: only the last ModelEvent before each
-                # compaction boundary contributes to the untruncated thread.
-                if skeleton and isinstance(skeleton[-1], ModelEvent):
+                # `span_messages` reads only each region's first ModelEvent
+                # (the trim prefix) and its last; mirror any change there.
+                if len(skeleton) >= 2 and all(
+                    isinstance(e, ModelEvent) for e in skeleton[-2:]
+                ):
                     skeleton[-1] = event
                 else:
                     skeleton.append(event)

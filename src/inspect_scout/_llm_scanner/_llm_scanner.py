@@ -5,6 +5,7 @@ from typing import Any, AsyncIterator, Awaitable, Callable, Literal, cast, overl
 
 import anyio
 from inspect_ai._util.content import ContentText
+from inspect_ai.event import SpanBeginEvent
 from inspect_ai.model import (
     CachePolicy,
     ChatMessage,
@@ -32,7 +33,11 @@ from .._transcript.handle import (
     SpooledTranscriptHandle,
     TranscriptHandle,
 )
-from .._transcript.interleave import INTERLEAVE_DEPENDENCIES, EventsSpec
+from .._transcript.interleave import (
+    INTERLEAVE_DEPENDENCIES,
+    EventsSpec,
+    stream_interleave_events,
+)
 from .._transcript.messages import (
     MessagesSegment,
     _effective_segment_budget,
@@ -122,6 +127,21 @@ def _must_materialize(handle: TranscriptHandle, full_transcript_needed: bool) ->
     counting of the streaming path, so only a spooled handle is streamed.
     """
     return full_transcript_needed or isinstance(handle, MaterializedTranscriptHandle)
+
+
+async def _interleaves_flat(handle: TranscriptHandle) -> bool:
+    """Streaming mirror of `transcript_messages`' flat-interleave gate.
+
+    Messages present and no span structure; anything else interleaves per span.
+    """
+    async for _ in handle.messages():
+        break
+    else:
+        return False
+    async for event in handle.events():
+        if isinstance(event, SpanBeginEvent):
+            return False
+    return True
 
 
 @overload
@@ -273,8 +293,7 @@ def llm_scanner(
             output left the thread (forks, retries) render as
             ``MODEL (BRANCH)`` entries whatever the selection. On timeline
             scans interleaving is per-span, with events outside any scanned
-            span attaching to the last preceding one. Showing events makes
-            the scanner read the whole transcript instead of streaming it.
+            span attaching to the last preceding one.
         context_window: Override the model's context window size for chunking.
             When set, transcripts exceeding this limit are split into multiple
             segments, each scanned independently.
@@ -324,17 +343,15 @@ def llm_scanner(
     # @scanner decorator declares messages="all").
     content_has_events = content is not None and content.events is not None
 
-    # Streaming needs the full transcript only for callable template inputs,
-    # timeline extraction (by argument or by content filter), or event
-    # interleaving (no streaming implementation yet). Hoisted so scan() and the
-    # streaming opt-in at the bottom cannot drift apart. (The preprocessor gets
-    # per-segment message lists, so it stays streaming-safe.)
+    # Streaming needs the full transcript only for callable template inputs or
+    # timeline extraction (by argument or by content filter). Hoisted so scan()
+    # and the streaming opt-in at the bottom cannot drift apart. (The
+    # preprocessor gets per-segment message lists, so it stays streaming-safe.)
     full_transcript_needed = (
         callable(question)
         or callable(template_variables)
         or timeline is not None
         or (content is not None and content.timeline is not None)
-        or events is not None
     )
 
     # resolve retry_refusals
@@ -492,7 +509,15 @@ def llm_scanner(
             # zero segments would answer the question with no transcript
             # content, so fall back instead.
             segments: AsyncIterator[MessagesSegment | TimelineMessages]
-            if content_has_events:
+            if events is not None and await _interleaves_flat(handle):
+                segments = stream_segment_messages(
+                    stream_interleave_events(handle, events),
+                    messages_as_str=messages_as_str_fn,
+                    model=resolved_model,
+                    context_window=context_window,
+                    prompt_reserve=template_tokens,
+                )
+            elif events is not None or content_has_events:
                 segments = stream_timeline_messages(
                     handle,
                     messages_as_str=messages_as_str_fn,
@@ -501,6 +526,7 @@ def llm_scanner(
                     compaction=compaction,
                     depth=depth,
                     prompt_reserve=template_tokens,
+                    events=events,
                 )
             else:
                 segments = stream_segment_messages(

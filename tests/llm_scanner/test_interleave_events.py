@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import AsyncIterator, Iterable, cast
 
 import pytest
 from inspect_ai.event import (
@@ -28,7 +28,10 @@ from inspect_ai.tool import ToolChoice, ToolInfo
 from inspect_scout import llm_scanner
 from inspect_scout._scanner.extract import EVENT_MARKER_KEY
 from inspect_scout._scanner.scanner import SCANNER_CONTENT_ATTR
-from inspect_scout._transcript.handle import MaterializedTranscriptHandle
+from inspect_scout._transcript.handle import (
+    MaterializedTranscriptHandle,
+    SpooledTranscriptHandle,
+)
 from inspect_scout._transcript.interleave import (
     INTERLEAVE_DEPENDENCIES,
     EventsOnlyInterleaveUnsupported,
@@ -37,6 +40,7 @@ from inspect_scout._transcript.interleave import (
     span_owned_messages,
     stream_interleave_events,
 )
+from inspect_scout._transcript.json.stream_parse import StreamParseResult
 from inspect_scout._transcript.timeline import walk_owned_spans
 from inspect_scout._transcript.types import (
     EventType,
@@ -608,6 +612,149 @@ async def test_stream_multi_agent_branch_entries_match_materialized() -> None:
     assert "agent-b-answer-2" in combined
 
 
+def _no_load_handle(
+    events: list[Event],
+    messages: list[ChatMessage] | None = None,
+    info: TranscriptInfo | None = None,
+) -> SpooledTranscriptHandle:
+    """A spooled handle that streams the given content but raises on ``load()``.
+
+    Spooled, since ``llm_scanner`` loads every ``MaterializedTranscriptHandle``.
+    """
+    message_list = messages or []
+
+    class _NoLoadHandle(SpooledTranscriptHandle):
+        async def messages(self) -> AsyncIterator[ChatMessage]:
+            for m in message_list:
+                yield m
+
+        async def events(self) -> AsyncIterator[Event]:
+            for e in events:
+                yield e
+
+        async def load(self) -> Transcript:
+            raise AssertionError("streaming interleave must not materialize")
+
+    async def parse() -> StreamParseResult:
+        raise AssertionError("not called")
+
+    async def fallback() -> Transcript:
+        raise AssertionError("not called")
+
+    return _NoLoadHandle(info or TranscriptInfo(transcript_id="t"), parse, fallback)
+
+
+def _timeline_scorers_flat_events() -> list[Event]:
+    """A "main" agent span plus a top-level "scorers" span with a grader call.
+
+    Timeline-shaped (span-structured) flat events, distinct from
+    `_spanless_two_agent_flat_events()`: exercises `stream_timeline_messages`'s
+    per-span walk/prune, not the flat `interleave_events` reconstruction
+    already covered by `test_grader_model_event_in_scorers_span_excluded`.
+    Real `ModelEvent(...)` construction auto-generates a uuid, required for
+    streaming pass-2 substitution.
+    """
+    out_main = ModelOutput.from_content(model="mockllm", content="answer")
+    model_event = ModelEvent(
+        span_id="span-main",
+        model="mockllm",
+        input=[ChatMessageUser(content="2+2?")],
+        output=out_main,
+        role="assistant",
+        tools=[],
+        tool_choice="auto",
+        config=GenerateConfig(),
+    )
+    grader_out = ModelOutput.from_content(model="mockllm", content="grader assessment")
+    grader_event = ModelEvent(
+        span_id="span-scorers",
+        model="mockllm",
+        input=[ChatMessageUser(content="grade this")],
+        output=grader_out,
+        role="assistant",
+        tools=[],
+        tool_choice="auto",
+        config=GenerateConfig(),
+    )
+    score_event = ScoreEvent(
+        span_id="span-scorers", scorer="match", score=Score(value="C")
+    )
+    return [
+        SpanBeginEvent(
+            id="solvers",
+            parent_id=None,
+            type="solvers",
+            name="solvers",
+            span_id="solvers",
+        ),
+        SpanBeginEvent(
+            id="span-main",
+            parent_id="solvers",
+            type="agent",
+            name="main",
+            span_id="span-main",
+        ),
+        model_event,
+        SpanEndEvent(id="span-main", span_id="span-main"),
+        SpanEndEvent(id="solvers", span_id="solvers"),
+        SpanBeginEvent(
+            id="span-scorers",
+            parent_id=None,
+            type="scorers",
+            name="scorers",
+            span_id="span-scorers",
+        ),
+        grader_event,
+        score_event,
+        SpanEndEvent(id="span-scorers", span_id="span-scorers"),
+    ]
+
+
+@pytest.mark.anyio
+async def test_stream_timeline_scorers_span_excluded_matches_materialized() -> None:
+    """A scorers span's grader thread must be excluded on BOTH scan paths.
+
+    Regression test for the streaming/materialized divergence:
+    `stream_timeline_messages` never pruned `scorers` spans, so a
+    handle-based (streaming) scan of this exact fixture saw the grader's
+    "grader assessment" text in its judge prompt while a Transcript-based
+    (materialized) scan of the same events did not -- answer/rubric
+    leakage into the judge's context. Both paths must exclude the grader
+    thread and render the scorer's own `ScoreEvent` exactly once.
+    """
+    flat_events = _timeline_scorers_flat_events()
+
+    transcript = Transcript(transcript_id="t", messages=[], events=flat_events)
+    captured_transcript: list[str] = []
+    scan_t = llm_scanner(
+        question="Right?",
+        answer="boolean",
+        model=_mock_model(captured_transcript),
+        events=["score"],
+    )
+    await scan_t(transcript)
+
+    handle = _no_load_handle(flat_events)
+
+    captured_handle: list[str] = []
+    scan_h = llm_scanner(
+        question="Right?",
+        answer="boolean",
+        model=_mock_model(captured_handle),
+        events=["score"],
+    )
+    await scan_h(cast(Transcript, handle))
+
+    for label, captured in (
+        ("transcript", captured_transcript),
+        ("handle", captured_handle),
+    ):
+        combined = "\n".join(captured)
+        assert "grader assessment" not in combined, label
+        assert "grade this" not in combined, label
+        assert combined.count("SCORE (match)") == 1, label
+
+
 @pytest.mark.anyio
 async def test_stream_interleave_no_events_passthrough() -> None:
     transcript = Transcript(
@@ -615,3 +762,90 @@ async def test_stream_interleave_no_events_passthrough() -> None:
     )
     streamed = [m async for m in stream_interleave_events(_handle_for(transcript))]
     assert [m.id for m in streamed] == ["u1"]
+
+
+@pytest.mark.anyio
+async def test_llm_scanner_handle_scan_interleaves_without_load() -> None:
+    # A handle input with events= streams: same prompt as the Transcript
+    # input, and load() (full materialization) is never called.
+    out = ModelOutput.from_content(model="mockllm", content="4")
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[ChatMessageUser(content="2+2?"), out.choices[0].message],
+        events=[
+            _model_event("2+2?", out),
+            ScoreEvent(score=Score(value="C"), target="C", scorer="match"),
+        ],
+    )
+    handle = _no_load_handle(
+        list(transcript.events),
+        messages=list(transcript.messages),
+        info=TranscriptInfo(
+            **transcript.model_dump(exclude={"messages", "events", "timelines"})
+        ),
+    )
+
+    captured_handle: list[str] = []
+    captured_transcript: list[str] = []
+
+    scan_h = llm_scanner(
+        question="Right?",
+        answer="boolean",
+        model=_mock_model(captured_handle),
+        events=["score"],
+    )
+    await scan_h(cast(Transcript, handle))
+
+    scan_t = llm_scanner(
+        question="Right?",
+        answer="boolean",
+        model=_mock_model(captured_transcript),
+        events=["score"],
+    )
+    await scan_t(transcript)
+
+    assert captured_handle == captured_transcript
+    assert "[E1] SCORE" in captured_handle[0]
+
+
+@pytest.mark.anyio
+async def test_llm_scanner_handle_events_content_interleaves_without_load() -> None:
+    # The transcript-tab-with-spans shape on a handle: content requests
+    # events="all" (timeline-shaped streaming) and events=["score"] asks for
+    # per-span score interleaving. Conversation and score must both render,
+    # and load() (full materialization) must never be called.
+    out = ModelOutput.from_content(model="mockllm", content="4")
+    model_event = ModelEvent(
+        span_id="main",
+        model="mockllm",
+        input=[ChatMessageUser(content="2+2?")],
+        output=out,
+        role="assistant",
+        tools=[],
+        tool_choice="auto",
+        config=GenerateConfig(),
+    )
+    score_event = ScoreEvent(span_id="main", scorer="match", score=Score(value="C"))
+    flat_events: list[Event] = [
+        SpanBeginEvent(
+            id="main", parent_id=None, type="agent", name="main", span_id="main"
+        ),
+        model_event,
+        score_event,
+        SpanEndEvent(id="main", span_id="main"),
+    ]
+
+    handle = _no_load_handle(flat_events)
+
+    captured: list[str] = []
+    scan = llm_scanner(
+        question="Right?",
+        answer="boolean",
+        model=_mock_model(captured),
+        content=TranscriptContent(events="all"),
+        events=["score"],
+    )
+    await scan(cast(Transcript, handle))
+
+    assert any("2+2?" in c for c in captured)
+    assert any("[E1] SCORE" in c for c in captured)

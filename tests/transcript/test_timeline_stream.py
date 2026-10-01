@@ -2,20 +2,61 @@
 
 from __future__ import annotations
 
+import io
+from functools import partial
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Callable, Iterable, Literal
 
 import pytest
-from inspect_ai.event import Event, ModelEvent, TimelineEvent, timeline_build
+from inspect_ai.event import (
+    BranchEvent,
+    Event,
+    ModelEvent,
+    SpanBeginEvent,
+    SpanEndEvent,
+    TimelineEvent,
+    timeline_build,
+)
 from inspect_ai.event._timeline import (
     _get_system_prompt_for_event,
     _has_tool_calls,
 )
-from inspect_ai.model import ChatMessageSystem
-from inspect_scout._transcript.timeline import TimelineSpan, _walk_spans
+from inspect_ai.log import read_eval_log_samples
+from inspect_ai.model import (
+    ChatMessageSystem,
+    ChatMessageUser,
+    GenerateConfig,
+    ModelOutput,
+)
+from inspect_scout._transcript.interleave import (
+    InterleavedEvent,
+    _AnchorWalk,
+    _model_output_id,
+    output_only_projection,
+)
+from inspect_scout._transcript.json.stream_parse import (
+    replay_events,
+    stream_parse_to_spool,
+)
+from inspect_scout._transcript.timeline import (
+    TimelineMessages,
+    TimelineSpan,
+    walk_owned_spans,
+)
+from inspect_scout._transcript.timeline_stream import (
+    _output_only_model_event,
+    _PromptInterner,
+    stub_event,
+    stub_projection,
+)
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
 
-from tests.transcript.fixtures_agentic import agentic_events, agentic_transcript
+from tests.transcript.fixtures_agentic import (
+    agentic_events,
+    agentic_events_with_warmup,
+    agentic_transcript,
+)
+from tests.transcript.stream_parity import both_paths, sample_json
 
 
 def _collect_utility(span: TimelineSpan) -> list[TimelineSpan]:
@@ -64,8 +105,8 @@ def test_stub_tree_matches_full_tree_structure() -> None:
     full_tree = timeline_build(events)
     stub_tree = timeline_build(stubbed_events)
 
-    full_spans = list(_walk_spans(full_tree.root, depth=None))
-    stub_spans = list(_walk_spans(stub_tree.root, depth=None))
+    full_spans = [o.span for o in walk_owned_spans(full_tree.root)]
+    stub_spans = [o.span for o in walk_owned_spans(stub_tree.root)]
 
     full_names = [s.name for s in full_spans]
     stub_names = [s.name for s in stub_spans]
@@ -158,7 +199,9 @@ def test_selection_uuidless_raises() -> None:
     events = [e.model_copy(update={"uuid": None}) if e is target else e for e in events]
     tree = timeline_build(events)
     with pytest.raises(_StubSkeletonUnsupported):
-        needed_model_event_uuids(tree.root, compaction="last", depth=None)
+        needed_model_event_uuids(
+            tree.root, compaction="last", depth=None, include_scorers=False
+        )
 
 
 def _info(transcript: Transcript) -> TranscriptInfo:
@@ -252,9 +295,10 @@ assert LOGS, f"no .eval fixtures found in {LOGS_DIR}"
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("include_scorers", [False, True])
 @pytest.mark.parametrize("log", LOGS, ids=[log.name for log in LOGS])
 async def test_stream_equals_materialized_segments_eval_logs(
-    log: Path, monkeypatch: pytest.MonkeyPatch
+    log: Path, include_scorers: bool, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Fidelity over real `.eval` fixtures, forced through the spooled path.
 
@@ -295,6 +339,7 @@ async def test_stream_equals_materialized_segments_eval_logs(
                     model="mockllm/model",
                     compaction="all",
                     depth=None,
+                    include_scorers=include_scorers,
                 )
             ]
         materialized_segments: list[TimelineMessages] = []
@@ -304,6 +349,7 @@ async def test_stream_equals_materialized_segments_eval_logs(
             model="mockllm/model",
             compaction="all",
             depth=None,
+            include_scorers=include_scorers,
         ):
             assert isinstance(seg, TimelineMessages)
             materialized_segments.append(seg)
@@ -313,5 +359,184 @@ async def test_stream_equals_materialized_segments_eval_logs(
         ]
         assert streamed  # non-vacuous: the fixture must yield >=1 segment
         assert streamed == materialized_tuples
+        for s_seg, m_seg in zip(streamed_segments, materialized_segments, strict=True):
+            assert _scrub_agent_result(s_seg.span.model_dump()) == _scrub_agent_result(
+                m_seg.span.model_dump()
+            )
     finally:
         await view.disconnect()
+
+
+def _input_anchor_branch_events() -> list[Event]:
+    """Owner thread [q(id='IN'), a1]; branch anchored to the INPUT id."""
+    q = ChatMessageUser(content="task")
+    q.id = "IN"
+    out = ModelOutput.from_content(model="mockllm", content="a1")
+    out.choices[0].message.id = "OUT"
+    alt = ModelOutput.from_content(model="mockllm", content="BRANCH-ALT")
+    return [
+        SpanBeginEvent.model_construct(
+            event="span_begin",
+            uuid="u-b1",
+            id="main",
+            span_id=None,
+            parent_id=None,
+            type="agent",
+            name="main",
+        ),
+        ModelEvent.model_construct(
+            event="model",
+            uuid="u-main",
+            span_id="main",
+            model="mockllm",
+            input=[q],
+            output=out,
+            role="assistant",
+            config=GenerateConfig(),
+        ),
+        SpanBeginEvent.model_construct(
+            event="span_begin",
+            uuid="u-b2",
+            id="br",
+            span_id="main",
+            parent_id="main",
+            type="branch",
+            name="fork",
+        ),
+        BranchEvent.model_construct(
+            event="branch",
+            uuid="u-be",
+            span_id="br",
+            from_anchor="IN",
+        ),
+        ModelEvent.model_construct(
+            event="model",
+            uuid="u-alt",
+            span_id="br",
+            model="mockllm",
+            input=[ChatMessageUser(content="bq")],
+            output=alt,
+            role="assistant",
+            config=GenerateConfig(),
+        ),
+        SpanEndEvent.model_construct(
+            event="span_end",
+            uuid="u-e2",
+            id="br",
+            span_id="main",
+        ),
+        SpanEndEvent.model_construct(
+            event="span_end",
+            uuid="u-e1",
+            id="main",
+            span_id=None,
+        ),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_branch_resolution_never_uses_input_ids() -> None:
+    """A branch anchored only to an input message id is appended, on both paths.
+
+    The streaming stub strips input ids, so neither path may resolve a
+    branch against one.
+    """
+    streamed, materialized = await both_paths(_input_anchor_branch_events())
+    assert streamed == materialized
+    _, text = streamed[0]
+    assert "BRANCH-ALT" in text
+    assert text.index("BRANCH-ALT") > text.index("a1")  # appended, not spliced
+
+
+def _log_sample(log: Path) -> tuple[list[Event], dict[str, str]]:
+    sample = next(iter(read_eval_log_samples(str(log), all_samples_required=False)))
+    return sample.events, sample.attachments
+
+
+_PROJECTION_SOURCES: dict[str, Callable[[], tuple[list[Event], dict[str, str]]]] = {
+    **{log.name: partial(_log_sample, log) for log in LOGS},
+    "agentic-with-warmup": lambda: (agentic_events_with_warmup(), {}),
+}
+
+
+def _input_count(events: Iterable[Event]) -> int:
+    return sum(len(e.input) for e in events if isinstance(e, ModelEvent))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("pooled", [False, True], ids=["inline", "pooled"])
+@pytest.mark.parametrize("source", list(_PROJECTION_SOURCES))
+async def test_projections_keep_everything_their_readers_read(
+    source: str, pooled: bool, tmp_path: Path
+) -> None:
+    """A projected replay reads the same as a full one wherever its readers look.
+
+    Fails if a projection and the fields `stub_event`, `_output_only_model_event`
+    or `_AnchorWalk` read drift apart.
+    """
+    events, attachments = _PROJECTION_SOURCES[source]()
+    result = await stream_parse_to_spool(
+        io.BytesIO(sample_json(events, attachments=attachments, pooled=pooled)),
+        None,
+        "all",
+        tmp_path,
+    )
+    try:
+        assert bool(result.blobs.pool_len("message_pool")) is pooled
+        full = list(replay_events(result))
+        interner = _PromptInterner()
+
+        def stubs(events: Iterable[Event]) -> list[dict[str, Any]]:
+            return [stub_event(e, interner).model_dump() for e in events]
+
+        stub_replay = list(replay_events(result, stub_projection()))
+        assert stubs(stub_replay) == stubs(full)
+        assert _input_count(stub_replay) < _input_count(full)  # projects something
+
+        def output_only(events: Iterable[Event]) -> list[dict[str, Any]]:
+            return [
+                (
+                    _output_only_model_event(e) if isinstance(e, ModelEvent) else e
+                ).model_dump()
+                for e in events
+            ]
+
+        output_replay = list(replay_events(result, output_only_projection()))
+        assert output_only(output_replay) == output_only(full)
+        assert _input_count(output_replay) == 0
+
+        # Odd-numbered outputs are on the thread, so the walk anchors on those
+        # and renders the rest as branches.
+        model_events = [e for e in full if isinstance(e, ModelEvent)]
+        thread = [m for e in model_events[1::2] if (m := _model_output_id(e))]
+
+        def walked(
+            events: Iterable[Event],
+        ) -> list[tuple[int | None, InterleavedEvent]]:
+            walk = _AnchorWalk(thread, "all")
+            for event in events:
+                walk.add(event)
+            return [(None, entry) for entry in walk.leading] + [
+                (index, entry)
+                for index, entries in walk.anchored.items()
+                for entry in entries
+            ]
+
+        assert walked(output_replay) == walked(full)
+        assert any("BRANCH" in entry.text for _, entry in walked(full))
+
+        # Every ModelEvent is exempt, half by uuid and half by position.
+        model_positions = [i for i, e in enumerate(full) if isinstance(e, ModelEvent)]
+        keep_uuids = {u for i in model_positions[::2] if (u := full[i].uuid)}
+        assert len(keep_uuids) == len(model_positions[::2])
+        kept_replay = list(
+            replay_events(
+                result,
+                output_only_projection(keep_uuids, set(model_positions[1::2])),
+            )
+        )
+        assert [kept_replay[i].model_dump() for i in model_positions] == [
+            full[i].model_dump() for i in model_positions
+        ]
+    finally:
+        result.close()

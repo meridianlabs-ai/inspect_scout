@@ -1,7 +1,7 @@
 """Tests for automatic filter inference from type annotations."""
 
 from collections.abc import AsyncIterator, Callable
-from typing import Any
+from typing import Any, Literal
 
 import pytest
 from inspect_ai._util.registry import registry_info
@@ -13,8 +13,9 @@ from inspect_ai.model._chat_message import (
     ChatMessageSystem,
     ChatMessageUser,
 )
-from inspect_scout import Result, Scanner, Transcript, scanner
-from inspect_scout._scanner.scanner import SCANNER_CONFIG
+from inspect_scout import Result, Scanner, Transcript, llm_scanner, scanner
+from inspect_scout._scanner.scanner import SCANNER_CONFIG, config_for_scanner
+from inspect_scout._transcript.types import TranscriptContent
 
 
 def test_infer_single_message_type() -> None:
@@ -343,3 +344,55 @@ def test_metadata_kwarg_lands_on_config_without_disabling_inference() -> None:
     content = registry_info(instance).metadata[SCANNER_CONFIG].content
     assert content.messages == ["user"]
     assert content.metadata is False
+
+
+def test_unmapped_event_type_raises() -> None:
+    """An Event with no filter mapping must fail loudly, not scan zero events."""
+    from inspect_ai.event._subtask import SubtaskEvent
+
+    with pytest.raises(TypeError, match="no corresponding events filter"):
+
+        @scanner()
+        def subtask_scanner() -> Scanner[SubtaskEvent]:
+            async def scan(event: SubtaskEvent) -> Result:
+                return Result(value={"name": event.name})
+
+            return scan
+
+        subtask_scanner()
+
+
+@pytest.mark.parametrize(
+    ("scanner_timeline", "content_timeline"),
+    [
+        pytest.param(True, None, id="scanner-timeline"),
+        pytest.param(None, True, id="content-timeline"),
+    ],
+)
+def test_events_selection_widens_a_timeline_filter(
+    scanner_timeline: Literal[True] | None, content_timeline: Literal[True] | None
+) -> None:
+    """Unwidened, the `timeline=True` default set (no `score`) renders no `[E#]`."""
+
+    @scanner(messages="all", timeline=scanner_timeline)
+    def scores_visible() -> Scanner[Transcript]:
+        return llm_scanner(
+            question="q",
+            answer="boolean",
+            events=["score"],
+            content=TranscriptContent(timeline=content_timeline),
+        )
+
+    timeline = config_for_scanner(scores_visible()).content.timeline
+    assert isinstance(timeline, list)
+    assert {"score", "model"} <= set(timeline)
+
+
+def test_events_selection_does_not_force_a_timeline_on_message_scanners() -> None:
+    """Widening must not drag a messages-only scanner onto the timeline path."""
+
+    @scanner(messages="all")
+    def flat() -> Scanner[Transcript]:
+        return llm_scanner(question="q", answer="boolean", events=["score"])
+
+    assert config_for_scanner(flat()).content.timeline is None

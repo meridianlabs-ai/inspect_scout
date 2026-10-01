@@ -19,7 +19,7 @@ import io
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import IO, Any, AsyncIterable, Iterator
+from typing import IO, Any, AsyncIterable, Callable, Iterator
 
 import ijson
 from inspect_ai._util.async_bytes_reader import adapt_to_reader
@@ -28,7 +28,7 @@ from inspect_ai.model._chat_message import ChatMessage
 from pydantic import TypeAdapter
 
 from ..types import EventFilter, MessageFilter
-from .hydrate import hydrate_nested_tool_events
+from .hydrate import DESERIALIZING_CONTEXT, hydrate_nested_tool_events
 from .pool import slice_positions
 from .reducer import (
     ATTACHMENT_PREFIX,
@@ -561,15 +561,27 @@ def replay_messages(result: StreamParseResult) -> Iterator[ChatMessage]:
     """Replay spooled messages, resolving attachments and validating each."""
     for item in result.messages.items():
         yield _CHAT_MESSAGE_ADAPTER.validate_python(
-            resolve_item_dict(item, result.blobs)
+            resolve_item_dict(item, result.blobs), context=DESERIALIZING_CONTEXT
         )
 
 
-def replay_events(result: StreamParseResult) -> Iterator[Event]:
-    """Replay spooled events, resolving attachments/pools and validating each."""
+EventProjection = Callable[[dict[str, Any], BlobSpool], None]
+"""Edits a raw spooled event in place before ``replay_events`` decodes it."""
+
+
+def replay_events(
+    result: StreamParseResult, project: EventProjection | None = None
+) -> Iterator[Event]:
+    """Replay spooled events, resolving attachments/pools and validating each.
+
+    ``project``, if given, edits each raw event first, so whatever it drops
+    is never fetched from a pool, resolved, or validated.
+    """
     for item in result.events.items():
+        if project is not None:
+            project(item, result.blobs)
         resolved = resolve_item_dict(item, result.blobs)
         hydrate_nested_tool_events(
             resolved, lambda d: resolve_item_dict(d, result.blobs)
         )
-        yield _EVENT_ADAPTER.validate_python(resolved)
+        yield _EVENT_ADAPTER.validate_python(resolved, context=DESERIALIZING_CONTEXT)

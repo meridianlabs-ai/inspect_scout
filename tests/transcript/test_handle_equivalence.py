@@ -346,6 +346,61 @@ async def test_nested_tool_events_are_hydrated_on_both_paths(
     assert materialized_tool_event.events[0] == streamed_tool_event.events[0]
 
 
+@pytest.mark.asyncio
+async def test_ids_the_log_lacks_stay_none_on_both_paths(tmp_path: Path) -> None:
+    """A message id or event uuid the log never stored reads back as None.
+
+    That is how inspect_ai reads such a log. Minting one instead gives every
+    read, and every replay of the spool, different ids.
+    """
+    sample = {
+        "id": "s1",
+        "messages": [{"role": "user", "content": "hello"}],
+        "events": [
+            {
+                "event": "tool",
+                "timestamp": "2022-01-01T00:00:00+00:00",
+                "working_start": 0,
+                "id": "call1",
+                "function": "run_agent",
+                "arguments": {},
+                "agent": "sub_agent",
+                "events": [
+                    {
+                        "event": "info",
+                        "timestamp": "2022-01-01T00:00:01+00:00",
+                        "working_start": 1,
+                        "data": "nested",
+                    }
+                ],
+            }
+        ],
+    }
+    data = json.dumps(sample).encode()
+    info = TranscriptInfo(transcript_id="t1")
+    materialized = await load_filtered_transcript(io.BytesIO(data), info, "all", "all")
+    parsed = await stream_parse_to_spool(io.BytesIO(data), "all", "all", tmp_path)
+
+    async def parse() -> StreamParseResult:
+        return parsed
+
+    async def fallback() -> Transcript:
+        raise AssertionError("fallback should not be called")
+
+    handle = SpooledTranscriptHandle(info, parse, fallback)
+    try:
+        streamed = await handle.load()
+    finally:
+        await handle.aclose()
+
+    for transcript in (materialized, streamed):
+        tool_event = transcript.events[0]
+        assert isinstance(tool_event, ToolEvent)
+        assert transcript.messages[0].id is None
+        assert tool_event.uuid is None
+        assert tool_event.events[0].uuid is None
+
+
 @pytest.fixture(scope="module")
 def pooled_log(tmp_path_factory: pytest.TempPathFactory) -> Path:
     """A log whose samples carry a machine-generated `events_data` pool.

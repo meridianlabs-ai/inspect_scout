@@ -20,6 +20,8 @@ from typing import IO, Any, Iterator
 
 SpoolKey = tuple[str, int] | str
 
+_WRITE_BATCH_SIZE = 1024 * 1024
+
 
 def _read_at(fd: int, lock: threading.Lock, length: int, offset: int) -> bytearray:
     """Read up to ``length`` bytes from ``offset``.
@@ -54,10 +56,22 @@ def _write_at(
 ) -> None:
     """Write all of ``data`` at ``offset`` (portable ``os.pwrite``)."""
     with lock:
-        os.lseek(fd, offset, os.SEEK_SET)
-        view = memoryview(data)
+        _write_at_locked(fd, data, offset)
+
+
+def _write_at_locked(
+    fd: int, data: bytes | bytearray | memoryview, offset: int
+) -> None:
+    """``_write_at`` for a caller already holding the spool's lock."""
+    os.lseek(fd, offset, os.SEEK_SET)
+    view = memoryview(data)
+    try:
         while view:
             view = view[os.write(fd, view) :]
+    finally:
+        # A failed write's traceback keeps this frame, and so the view, alive;
+        # while it lives, `data` (ByteSpool's batch) cannot be resized.
+        view.release()
 
 
 def _open_spool_file(dir: Path, suffix: str) -> IO[bytes]:
@@ -134,12 +148,35 @@ class ByteSpool:
         self._fd: int | None = self._file.fileno()
         self._lock = threading.Lock()
         self._write_offset = 0
+        # The value's last bytes, not yet on disk; ends at `_write_offset`.
+        # Batches the metadata writer's one-write-per-JSON-token output. Reads
+        # flush it first, under the lock, so no reader sees a partial file.
+        self._pending = bytearray()
 
     def write(self, data: bytes | bytearray | memoryview) -> None:
         if self._fd is None:
             raise ValueError("spool is closed")
-        _write_at(self._fd, self._lock, data, self._write_offset)
-        self._write_offset += len(data)
+        with self._lock:
+            if len(self._pending) + len(data) < _WRITE_BATCH_SIZE:
+                self._pending += data
+            else:
+                # Written straight through rather than appended, so one large
+                # write is never copied into the batch whole.
+                self._flush_locked(self._fd)
+                _write_at_locked(self._fd, data, self._write_offset)
+            self._write_offset += len(data)
+
+    def _flush_locked(self, fd: int) -> None:
+        if self._pending:
+            _write_at_locked(fd, self._pending, self._write_offset - len(self._pending))
+            self._pending.clear()
+
+    def _read_at(self, length: int, offset: int) -> bytearray:
+        if self._fd is None:
+            raise ValueError("spool is closed")
+        with self._lock:
+            self._flush_locked(self._fd)
+        return _read_at(self._fd, self._lock, length, offset)
 
     def __len__(self) -> int:
         return self._write_offset
@@ -153,20 +190,20 @@ class ByteSpool:
         offset = 0
         while offset < self._write_offset:
             read_len = min(chunk_size, self._write_offset - offset)
-            yield _read_at(self._fd, self._lock, read_len, offset)
+            yield self._read_at(read_len, offset)
             offset += read_len
 
     def read(self) -> bytearray:
         """The whole value. Prefer ``chunks()`` when it may be large."""
-        if self._fd is None:
-            raise ValueError("spool is closed")
-        return _read_at(self._fd, self._lock, self._write_offset, 0)
+        return self._read_at(self._write_offset, 0)
 
     def close(self) -> None:
         if self._file is not None:
             self._file.close()
             self._file = None
             self._fd = None
+        # Rebound, not cleared: clearing raises if the buffer is still exported.
+        self._pending = bytearray()
 
 
 class ItemSpool:

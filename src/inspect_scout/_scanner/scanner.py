@@ -53,6 +53,7 @@ from .filter import (
     normalize_events_filter,
     normalize_messages_filter,
     normalize_timeline_filter,
+    widen_timeline_for_events,
 )
 from .loader import Loader
 from .result import Result
@@ -411,15 +412,12 @@ def scanner(
                 temp_messages, temp_events, temp_timeline = infer_filters_from_type(
                     scanner_fn, factory_fn.__globals__
                 )
-                # Cast to proper types (mypy can't infer the string literals)
                 inferred_messages = (
                     cast(list[MessageType] | None, temp_messages)
                     if temp_messages
                     else None
                 )
-                inferred_events = (
-                    cast(list[EventType] | None, temp_events) if temp_events else None
-                )
+                inferred_events = temp_events if temp_events else None
                 if temp_timeline:
                     inferred_timeline = "all"
                     # Timeline implies events="all"
@@ -450,6 +448,12 @@ def scanner(
                     inferred_timeline = override.timeline
                 if override.metadata is not None:
                     inferred_metadata = override.metadata
+                if override.events is not None:
+                    # Widen last, so an explicit timeline override cannot drop
+                    # the events selection.
+                    inferred_timeline = widen_timeline_for_events(
+                        inferred_timeline, override.events
+                    )
 
             # Validate scanner signature matches filters
             # Only validate if we have filters (not just a custom loader)

@@ -21,7 +21,13 @@ import ijson
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 
-from .json.stream_parse import StreamParseResult, replay_events, replay_messages
+from .._util._async import aclosing_iter
+from .json.stream_parse import (
+    EventProjection,
+    StreamParseResult,
+    replay_events,
+    replay_messages,
+)
 from .types import Transcript, TranscriptInfo
 
 _CHECKPOINT_INTERVAL = 64
@@ -197,7 +203,20 @@ class SpooledTranscriptHandle:
                 await anyio.lowlevel.checkpoint()
             yield message
 
-    async def events(self) -> AsyncIterator[Event]:
+    def events(self) -> AsyncIterator[Event]:
+        return self.projected_events()
+
+    async def projected_events(
+        self, project: EventProjection | None = None
+    ) -> AsyncIterator[Event]:
+        """Iterate events, letting ``project`` edit each raw spooled one first.
+
+        For callers that read only part of each event: ``project`` runs before
+        an event's pool refs and attachments are resolved and it is validated,
+        so whatever it drops is never decoded. It must leave every field the
+        caller reads as it was. The JSON-error fallback holds events that are
+        already validated, so ``project`` does not run there.
+        """
         result = await self._ensure_parsed()
         if result is None:
             assert self._fallback_transcript is not None
@@ -206,10 +225,27 @@ class SpooledTranscriptHandle:
                     await anyio.lowlevel.checkpoint()
                 yield event
             return
-        for i, event in enumerate(replay_events(result)):
+        for i, event in enumerate(replay_events(result, project)):
             if i % _CHECKPOINT_INTERVAL == 0:
                 await anyio.lowlevel.checkpoint()
             yield event
+
+    async def has_event_type(self, event_type: str) -> bool:
+        """Whether any event is an ``event_type`` event.
+
+        Reads each spooled event's raw ``event`` discriminator, so no event is
+        resolved or validated.
+        """
+        result = await self._ensure_parsed()
+        if result is None:
+            assert self._fallback_transcript is not None
+            return any(e.event == event_type for e in self._fallback_transcript.events)
+        for i, item in enumerate(result.events.items()):
+            if i % _CHECKPOINT_INTERVAL == 0:
+                await anyio.lowlevel.checkpoint()
+            if item.get("event") == event_type:
+                return True
+        return False
 
     async def load(self) -> Transcript:
         if self._closed:
@@ -275,6 +311,34 @@ def _merge_unthinned(base: dict[str, Any], result: StreamParseResult) -> dict[st
     if result.scores:
         overrides["scores"] = result.scores
     return base.copy() | overrides if overrides else base
+
+
+def projected_events(
+    handle: TranscriptHandle, project: EventProjection
+) -> AsyncIterator[Event]:
+    """``handle.events()``, with ``project`` applied if ``handle`` replays a spool.
+
+    See `SpooledTranscriptHandle.projected_events`. Other handles yield
+    events that are already validated, so there is nothing to save.
+    """
+    if isinstance(handle, SpooledTranscriptHandle):
+        return handle.projected_events(project)
+    return handle.events()
+
+
+async def has_event_type(handle: TranscriptHandle, event_type: str) -> bool:
+    """Whether any of ``handle``'s events is an ``event_type`` event.
+
+    A spooled handle answers without validating its events; see
+    `SpooledTranscriptHandle.has_event_type`.
+    """
+    if isinstance(handle, SpooledTranscriptHandle):
+        return await handle.has_event_type(event_type)
+    async with aclosing_iter(handle.events()) as events:
+        async for event in events:
+            if event.event == event_type:
+                return True
+    return False
 
 
 def is_transcript_handle_type(type_hint: Any) -> bool:

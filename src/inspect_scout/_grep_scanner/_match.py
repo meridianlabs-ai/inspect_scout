@@ -7,7 +7,7 @@ from inspect_ai.model import ChatMessage
 
 from .._scanner.extract import message_as_str
 from .._scanner.util import _event_id, _message_id
-from ._event import event_as_str
+from .._transcript.event_text import event_as_str
 
 MAX_CONTEXT = 50
 

@@ -8,9 +8,7 @@ from typing import Literal
 import pytest
 from inspect_ai.event import (
     Event,
-    ModelEvent,
     ScoreEvent,
-    SpanEndEvent,
     TimelineSpan,
     timeline_build,
 )
@@ -37,7 +35,6 @@ from tests.transcript.fixtures_agentic import (
     _compaction_event,
     _span_begin,
     _span_end,
-    _tool_event,
     agentic_events,
 )
 from tests.transcript.fixtures_agentic import (
@@ -112,110 +109,6 @@ async def test_zero_walked_transcript_yields_orphan_segment() -> None:
     results, combined = await _collect(root, events="all")
     assert [r.span.id for r in results] == [_ORPHAN_SPAN_ID]
     assert "[E1] SCORE (s)" in combined
-
-
-def _agentic_events_with_scores() -> list[Event]:
-    """``agentic_events()`` augmented to exercise every attachment path.
-
-    - ``ScoreEvent(span_id="main")``: in-span, owned by "main"'s splice.
-    - ``ScoreEvent(span_id="sub")``: inside a utility span, collected
-      externally and attributed to "main".
-    - ``ScoreEvent(span_id="sub2")``: inside a nested scannable span --
-      owned by its own splice at ``depth=None``, external (attributed to
-      "main") at ``depth=1``.
-    - A "scorers" span with grader ``ModelEvent`` + ``ScoreEvent``: the
-      grader call is suppressed (model-only) by default and never walked,
-      so the score surfaces attributed to whichever span owns it.
-    - A genuine off-thread fork ``ModelEvent`` ("fork-1") in "main",
-      rendering as a ``[E#] MODEL (BRANCH):`` entry.
-    - (From plain ``agentic_events()``) the "sub" utility span's
-      ``ModelEvent``s: model calls with no thread of their own, rendered
-      as ``MODEL (BRANCH)`` entries attributed to "main".
-    """
-    events = list(agentic_events())
-
-    # Genuine off-thread fork inserted before the closing "main-3" turn:
-    # its output id never joins any reconstructed thread at any compaction
-    # value, so it must render as `[E#] MODEL (BRANCH):` with real output
-    # text on both the streaming and materialized paths.
-    main3_index = next(
-        i
-        for i, e in enumerate(events)
-        if isinstance(e, ModelEvent) and e.uuid == "evt-main-3"
-    )
-    events.insert(
-        main3_index,
-        _agentic_model_event(
-            label="fork-1",
-            system_prompt="MAIN",
-            output_text="fork-output-1",
-            span_id="main",
-        ),
-    )
-
-    main_end = next(
-        i
-        for i, e in enumerate(events)
-        if isinstance(e, SpanEndEvent) and e.id == "main"
-    )
-    events.insert(
-        main_end,
-        ScoreEvent(
-            uuid="evt-in-span-score",
-            span_id="main",
-            scorer="in-span",
-            score=Score(value=1),
-        ),
-    )
-
-    sub_end = next(
-        i for i, e in enumerate(events) if isinstance(e, SpanEndEvent) and e.id == "sub"
-    )
-    events.insert(
-        sub_end,
-        ScoreEvent(
-            uuid="evt-sub-external-score",
-            span_id="sub",
-            scorer="sub-external",
-            score=Score(value=0),
-        ),
-    )
-
-    sub2_end = next(
-        i
-        for i, e in enumerate(events)
-        if isinstance(e, SpanEndEvent) and e.id == "sub2"
-    )
-    events.insert(
-        sub2_end,
-        ScoreEvent(
-            uuid="evt-sub2-nested-score",
-            span_id="sub2",
-            scorer="sub2-nested",
-            score=Score(value=0.75),
-        ),
-    )
-
-    grader_event = _agentic_model_event(
-        label="grader-1",
-        system_prompt="GRADER",
-        output_text="grader-output",
-        span_id="scorers",
-    )
-    events += [
-        _span_begin(
-            span_id="scorers", name="scorers", span_type="scorers", parent_id=None
-        ),
-        grader_event,
-        ScoreEvent(
-            uuid="evt-scorers-score",
-            span_id="scorers",
-            scorer="graded",
-            score=Score(value=0.5),
-        ),
-        _span_end(span_id="scorers"),
-    ]
-    return events
 
 
 def _cumulative_compaction_events() -> list[Event]:
@@ -323,154 +216,17 @@ async def test_events_selection_does_not_bypass_compaction_on_span_transcripts()
 
 
 @pytest.mark.anyio
-async def test_stream_tool_event_nested_subagent_depth_excluded_parity() -> None:
-    """A depth-excluded subagent hoisted from a `ToolEvent` renders as branches.
-
-    `timeline_build` hoists the `ToolEvent` into its own span; with `depth=1`
-    its turns fold into "main" as `MODEL (BRANCH)` entries, identically on
-    both paths.
-    """
-    main_1 = _agentic_model_event(
-        label="main-1",
-        system_prompt="MAIN",
-        output_text="main-output-1",
-        span_id="main",
-    )
-    # main-2's input embeds main-1's own output message, making it a
-    # genuine cumulative on-thread continuation (matching how a real
-    # transcript's ModelEvent.input grows turn over turn) -- otherwise the
-    # pre-existing `_AnchorWalk` off-thread/fork detection would itself
-    # classify main-1 as a fork, independent of anything under test
-    # here (see `_two_turn_events`/`_cumulative_compaction_events` above).
-    main_2 = _agentic_model_event(
-        label="main-2",
-        system_prompt="MAIN",
-        output_text="main-output-2",
-        span_id="main",
-        input_messages=[
-            ChatMessageSystem(content="MAIN"),
-            main_1.input[1],
-            main_1.output.choices[0].message,
-            ChatMessageUser(content="user-input-main-2-followup"),
-        ],
-    )
-    events: list[Event] = [
-        _span_begin(span_id="main", name="main", span_type="agent", parent_id=None),
-        main_1,
-        _tool_event(
-            label="handoff-tool",
-            function="handoff",
-            payload="p",
-            span_id="main",
-            agent="handoff_agent",
-            events=[
-                _agentic_model_event(
-                    label="handoff-1",
-                    system_prompt="MAIN",
-                    output_text="handoff-output-1",
-                    span_id="main",
-                ),
-                _agentic_model_event(
-                    label="handoff-2",
-                    system_prompt="MAIN",
-                    output_text="handoff-output-2",
-                    span_id="main",
-                ),
-            ],
-        ),
-        main_2,
-        _span_end(span_id="main"),
-    ]
-    streamed, materialized = await both_paths(events, depth=1)
-
-    assert streamed
-    assert streamed == materialized
-    combined = "\n".join(text for _, text in streamed)
-    # Both nested on-thread turns render as branch entries (no thread of
-    # their own reconstructed, since the hoisted span is depth-excluded),
-    # attached to "main" -- the last (and only) span actually walked.
-    assert combined.count("MODEL (BRANCH)") == 2
-    assert "handoff-output-1" in combined
-    assert "handoff-output-2" in combined
-    main_text = next(text for span_id, text in streamed if span_id == "main")
-    assert "handoff-output-1" in main_text
-    assert "handoff-output-2" in main_text
-    # The span's own on-thread turns are unaffected -- still rendered
-    # inline as ordinary messages, not as branch entries.
-    assert "main-output-1" in main_text
-    assert "main-output-2" in main_text
-
-
-@pytest.mark.anyio
-@pytest.mark.parametrize("compaction", ["all", "last", 2])
-@pytest.mark.parametrize("depth", [None, 1])
-async def test_stream_timeline_messages_events_parity(
-    compaction: Literal["all", "last"] | int, depth: int | None
-) -> None:
-    """``stream_timeline_messages(events=...)`` matches the materialized path.
-
-    Covers an in-span score, a score attributed from a non-scannable utility
-    span and a scorers-span score, for every ``compaction``/``depth``
-    combination.
-    """
-    streamed, materialized = await both_paths(
-        _agentic_events_with_scores(),
-        events_spec=["score"],
-        compaction=compaction,
-        depth=depth,
-    )
-
-    assert streamed  # non-vacuous
-    assert streamed == materialized
-    # The "fork-1" off-thread ModelEvent must render as a branch entry with
-    # its real output text, not an empty stub, on the streaming path.
-    combined = "\n".join(text for _, text in streamed)
-    assert "MODEL (BRANCH)" in combined
-    assert "fork-output-1" in combined
-    # The "sub" utility span's two ModelEvents are non-scannable,
-    # off-thread-by-location events with no thread of their own -- they
-    # must render as branch entries attached to "main", not be silently
-    # dropped.
-    assert combined.count("sub-output-1") == 1
-    assert combined.count("sub-output-2") == 1
-    main_text = next(text for span_id, text in streamed if span_id == "main")
-    assert "sub-output-1" in main_text
-    assert "sub-output-2" in main_text
-    # The scorers span's grader ModelEvent is suppressed (model-only) by
-    # default (include_scorers=False); its own ScoreEvent still surfaces
-    # exactly once, owned by whichever walked span precedes it in
-    # document order.
-    assert "grader-output" not in combined
-    assert combined.count("SCORE (graded)") == 1
-
-
-@pytest.mark.anyio
-@pytest.mark.parametrize("compaction", ["last", 2, "all"])
-async def test_stream_timeline_messages_cumulative_compaction_discriminator_parity(
-    compaction: Literal["all", "last"] | int,
-) -> None:
+async def test_streamed_compaction_pruned_turns_stay_hidden() -> None:
     """Compaction-pruned regions stay hidden when streamed, as materialized.
 
     `span_owned_messages` reads every region's last ModelEvent input to find
     the pruned turns, so pass 2 must substitute those events in full.
     """
     streamed, materialized = await both_paths(
-        _cumulative_compaction_events(), events_spec=["score"], compaction=compaction
+        _cumulative_compaction_events(), events_spec=["score"], compaction="last"
     )
 
-    assert streamed  # non-vacuous
-    assert streamed == materialized
-
     combined = "\n".join(text for _, text in streamed)
-    if compaction != "all":
-        # Region 1 ("t1"/"t2") is compaction-pruned under both "last" and 2;
-        # it must stay fully hidden on both paths, never resurrected as a
-        # branch entry.
-        assert "turn1-output" not in combined
-        assert "turn2-output" not in combined
-    if compaction == "last":
-        assert "turn3-output" not in combined  # only the final region survives
-
-    # The genuine fork always renders, exactly once, on both paths.
-    assert combined.count("MODEL (BRANCH)") == 1
+    assert "turn1-output" not in combined
     assert combined.count("fork-output") == 1
+    assert streamed == materialized

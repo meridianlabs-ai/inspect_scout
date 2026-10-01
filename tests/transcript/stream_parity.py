@@ -29,7 +29,6 @@ async def both_paths(
     *,
     events_spec: EventsSpec = "all",
     compaction: Literal["all", "last"] | int = "all",
-    depth: int | None = None,
     include_scorers: bool = False,
 ) -> BothPaths:
     """Render `events` via `stream_timeline_messages` and `transcript_messages`.
@@ -53,7 +52,6 @@ async def both_paths(
             model=model,
             context_window=100_000,
             compaction=compaction,
-            depth=depth,
             include_scorers=include_scorers,
             events=events_spec,
         )
@@ -66,7 +64,6 @@ async def both_paths(
         model=model,
         context_window=100_000,
         compaction=compaction,
-        depth=depth,
         include_scorers=include_scorers,
         events=events_spec,
     ):

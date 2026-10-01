@@ -29,17 +29,13 @@ from inspect_ai.model import (
     ModelOutput,
 )
 from inspect_ai.scorer import Score
-from inspect_scout._scanner.extract import message_numbering
-from inspect_scout._transcript.handle import MaterializedTranscriptHandle
 from inspect_scout._transcript.interleave import EventsSpec
-from inspect_scout._transcript.messages import transcript_messages
 from inspect_scout._transcript.timeline import (
     _ORPHAN_SPAN_ID,
     TimelineMessages,
     TimelineSpan,
     walk_owned_spans,
 )
-from inspect_scout._transcript.timeline_stream import stream_timeline_messages
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
 
 from tests.transcript.fixtures_agentic import (
@@ -47,6 +43,7 @@ from tests.transcript.fixtures_agentic import (
     agentic_events,
     agentic_transcript,
 )
+from tests.transcript.stream_parity import both_paths
 
 
 def _collect_utility(span: TimelineSpan) -> list[TimelineSpan]:
@@ -424,51 +421,12 @@ def test_uuidless_offthread_empty_output_does_not_force_fallback() -> None:
     assert offthread == {}
 
 
-async def _both_paths(
-    events_list: list[Event], *, include_scorers: bool = False
-) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
-    """(span.id, messages_str) segments from the streaming and materialized paths.
-
-    Each side gets its own fresh message numbering.
-    """
-    from inspect_ai.model import get_model
-
-    async def _load() -> Transcript:
-        return Transcript(transcript_id="t-both", events=list(events_list))
-
-    handle = MaterializedTranscriptHandle(_load, TranscriptInfo(transcript_id="t-both"))
-    msgs_as_str, _ = message_numbering()
-    streamed = [
-        (seg.span.id, seg.messages_str)
-        async for seg in stream_timeline_messages(
-            handle,
-            messages_as_str=msgs_as_str,
-            model=get_model("mockllm/model"),
-            context_window=100_000,
-            events="all",
-            include_scorers=include_scorers,
-        )
-    ]
-    msgs_as_str2, _ = message_numbering()
-    materialized: list[tuple[str, str]] = []
-    async for seg in transcript_messages(
-        Transcript(transcript_id="t-both-m", events=list(events_list)),
-        messages_as_str=msgs_as_str2,
-        model=get_model("mockllm/model"),
-        context_window=100_000,
-        events="all",
-        include_scorers=include_scorers,
-    ):
-        assert isinstance(seg, TimelineMessages)
-        materialized.append((seg.span.id, seg.messages_str))
-    return streamed, materialized
-
-
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_nested_nonagent_tool_model_event_renders_same_text_both_paths() -> None:
-    """Streaming requirement 3 (design §2): _substitute_full_events must recurse.
+    """A model call nested in a non-agent `ToolEvent` renders its text when streamed.
 
-    Must recurse into ToolEvent.events, or streamed renders empty MODEL (BRANCH).
+    Pass 2 substitutes full events inside `ToolEvent.events` too, so the
+    streamed `MODEL (BRANCH)` entry carries the same text as materialized.
     """
     from tests.transcript.tree_gen import CORPUS_SEEDS, generate
 
@@ -477,7 +435,7 @@ async def test_nested_nonagent_tool_model_event_renders_same_text_both_paths() -
         for s in CORPUS_SEEDS
         if any(isinstance(e, ToolEvent) and e.events for e in generate(s).events)
     )
-    streamed, materialized = await _both_paths(generate(seed).events)
+    streamed, materialized = await both_paths(generate(seed).events)
     # The nested model text must genuinely render (not equal-empty on both).
     assert any("-nested" in text for _, text in streamed)
     assert streamed == materialized
@@ -550,22 +508,21 @@ def _input_anchor_branch_events() -> list[Event]:
     ]
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_branch_resolution_never_uses_input_ids() -> None:
-    """The id-tier narrowing (design §4): branched_from matching only an INPUT id.
+    """A branch anchored only to an input message id is appended, on both paths.
 
-    Resolves unmatched -> appends, identically on both paths (the stub
-    strips input ids; the viewer's input tier is a path streaming cannot
-    reach, so neither path may use it).
+    The streaming stub strips input ids, so neither path may resolve a
+    branch against one.
     """
-    streamed, materialized = await _both_paths(_input_anchor_branch_events())
+    streamed, materialized = await both_paths(_input_anchor_branch_events())
     assert streamed == materialized
     _, text = streamed[0]
     assert "BRANCH-ALT" in text
     assert text.index("BRANCH-ALT") > text.index("a1")  # appended, not spliced
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_orphan_sentinel_id_is_stable_across_paths() -> None:
     score_only: list[Event] = [
         ScoreEvent.model_construct(
@@ -576,12 +533,12 @@ async def test_orphan_sentinel_id_is_stable_across_paths() -> None:
             scorer="s",
         )
     ]
-    streamed, materialized = await _both_paths(score_only)
+    streamed, materialized = await both_paths(score_only)
     assert streamed == materialized
     assert [sid for sid, _ in streamed] == [_ORPHAN_SPAN_ID]
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_branch_splices_at_anchor_event_both_paths() -> None:
     """A branch keyed on an `AnchorEvent` id splices mid-thread on both paths.
 
@@ -619,13 +576,13 @@ async def test_branch_splices_at_anchor_event_both_paths() -> None:
         branch_event.model_copy(update={"from_anchor": "ANC"}),
         *events[4:],
     ]
-    streamed, materialized = await _both_paths(anchored)
+    streamed, materialized = await both_paths(anchored)
     assert streamed == materialized
     _, text = streamed[0]
     assert text.index("a1") < text.index("BRANCH-ALT") < text.index("a2")
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_legacy_raw_dict_tool_subevents_both_paths() -> None:
     """Pre-deprecation `ToolEvent.events` dicts must not crash either path."""
     tool_event = ToolEvent.model_validate(
@@ -642,5 +599,5 @@ async def test_legacy_raw_dict_tool_subevents_both_paths() -> None:
     )
     assert isinstance(tool_event.events[0], dict)
     events = _input_anchor_branch_events()
-    streamed, materialized = await _both_paths([*events[:2], tool_event, *events[2:]])
+    streamed, materialized = await both_paths([*events[:2], tool_event, *events[2:]])
     assert streamed == materialized

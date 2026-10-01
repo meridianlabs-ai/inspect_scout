@@ -279,6 +279,16 @@ def _yes_model() -> Model:
             False,
             id="events-param-messages-and-spans",
         ),
+        pytest.param(
+            lambda: Transcript(
+                transcript_id="t",
+                events=[ScoreEvent(score=Score(value="C"), target="C", scorer="match")],
+            ),
+            {"events": ["score"]},
+            1,
+            False,
+            id="events-param-events-only-spanless",
+        ),
         # Events stored without a uuid replay without one, as inspect_ai reads
         # them, so both stream passes see the same events. A uuid-less event
         # the prompt needs makes the scan load the transcript instead.
@@ -335,6 +345,8 @@ async def test_handle_scan_equivalent_to_transcript_scan(
     else:
         assert not load_calls, "streamed scan materialized the handle"
     assert len(prompts_transcript) >= min_prompts
+    if scanner_kwargs.get("events") == ["score"]:
+        assert "[E1] SCORE" in prompts_transcript[0]  # non-vacuous
     assert prompts_handle == prompts_transcript
     assert result_handle.value == result_transcript.value
     assert result_handle.answer == result_transcript.answer

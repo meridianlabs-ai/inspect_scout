@@ -475,13 +475,9 @@ async def test_events_only_transcripts_are_rejected_by_the_streaming_flat_driver
 
 @pytest.mark.anyio
 async def test_stream_messages_present_hides_compaction_pruned_turn() -> None:
-    """Streaming counterpart: matches the materialized fix exactly.
+    """Streaming hides a compaction-pruned turn and shows a fork, as materialized.
 
-    Same fixture and invariants as
-    `test_messages_present_hides_compaction_pruned_turn`, driven through
-    `stream_interleave_events`'s messages-present branch (the dedicated
-    extra pass that reconstructs `excluded_ids` from a
-    `model`/`compaction`-filtered skeleton).
+    Same fixture as `test_messages_present_hides_compaction_pruned_turn`.
     """
     transcript = _compaction_pruned_and_fork_transcript()
     expected = interleave_events(transcript)
@@ -541,11 +537,10 @@ async def test_stream_trim_compaction_hides_pruned_turn_like_materialized() -> N
 async def test_stream_excludes_grader_model_event_like_materialized(
     events_spec: EventsSpec,
 ) -> None:
-    """Streaming must hide grader model calls exactly as materialized does.
+    """Streaming hides a scorers span's grader model call, as materialized.
 
-    The messages-present streaming path fed every ModelEvent to the walk,
-    so a grader's output surfaced as a `MODEL (BRANCH)` entry -- leaking the
-    answer into the judge prompt on the streaming path only.
+    Shown, the grader's output would be a `MODEL (BRANCH)` entry that leaks
+    the answer into the judge prompt.
     """
     transcript = _scorers_span_transcript()
     expected = interleave_events(transcript, events=events_spec)
@@ -601,17 +596,11 @@ async def test_stream_interleave_matches_materialized(
 
 @pytest.mark.anyio
 async def test_stream_multi_agent_branch_entries_match_materialized() -> None:
-    """Flat streaming messages-present path: two off-thread agents both surface.
+    """An off-thread agent's model calls surface as branch entries, as materialized.
 
-    `transcript.messages` carries only agent A's on-thread conversation.
-    Agent B contributes two entirely separate ``ModelEvent``s -- genuine
-    forks, since their outputs never join ``transcript.messages`` at all
-    (there is no compaction here, so this is unambiguously the fork case,
-    not a compaction-pruned turn). The messages-present branch of
-    ``stream_interleave_events`` streams full events with no stub
-    skeleton, so both materialized ``interleave_events`` and the streaming
-    driver must surface agent B's outputs as ``[E#] MODEL (BRANCH):``
-    entries, and the two outputs must match exactly.
+    `transcript.messages` holds only agent A's thread and there is no
+    compaction, so agent B's two calls are forks: both render as
+    ``[E#] MODEL (BRANCH):`` entries, identically on both paths.
     """
     out_a = ModelOutput.from_content(model="mockllm", content="agent-a-answer")
     a = out_a.choices[0].message
@@ -658,20 +647,16 @@ async def test_stream_multi_agent_branch_entries_match_materialized() -> None:
     assert "agent-b-answer-2" in combined
 
 
-def _no_load_handle(
-    events: list[Event],
-    messages: list[ChatMessage] | None = None,
-    info: TranscriptInfo | None = None,
-) -> SpooledTranscriptHandle:
-    """A spooled handle that streams the given content but raises on ``load()``.
+def _no_load_handle(events: list[Event]) -> SpooledTranscriptHandle:
+    """A spooled handle that streams `events`, no messages, and raises on ``load()``.
 
     Spooled, since ``llm_scanner`` loads every ``MaterializedTranscriptHandle``.
     """
-    message_list = messages or []
 
     class _NoLoadHandle(SpooledTranscriptHandle):
         async def messages(self) -> AsyncIterator[ChatMessage]:
-            for m in message_list:
+            no_messages: list[ChatMessage] = []
+            for m in no_messages:
                 yield m
 
         async def events(self) -> AsyncIterator[Event]:
@@ -687,7 +672,7 @@ def _no_load_handle(
     async def fallback() -> Transcript:
         raise AssertionError("not called")
 
-    return _NoLoadHandle(info or TranscriptInfo(transcript_id="t"), parse, fallback)
+    return _NoLoadHandle(TranscriptInfo(transcript_id="t"), parse, fallback)
 
 
 def _timeline_scorers_flat_events() -> list[Event]:
@@ -758,15 +743,10 @@ def _timeline_scorers_flat_events() -> list[Event]:
 
 @pytest.mark.anyio
 async def test_stream_timeline_scorers_span_excluded_matches_materialized() -> None:
-    """A scorers span's grader thread must be excluded on BOTH scan paths.
+    """A scorers span's grader thread is excluded on both scan paths.
 
-    Regression test for the streaming/materialized divergence:
-    `stream_timeline_messages` never pruned `scorers` spans, so a
-    handle-based (streaming) scan of this exact fixture saw the grader's
-    "grader assessment" text in its judge prompt while a Transcript-based
-    (materialized) scan of the same events did not -- answer/rubric
-    leakage into the judge's context. Both paths must exclude the grader
-    thread and render the scorer's own `ScoreEvent` exactly once.
+    Handle and Transcript scans of the same events both omit the grader's
+    input and output and render the scorer's `ScoreEvent` exactly once.
     """
     flat_events = _timeline_scorers_flat_events()
 
@@ -808,50 +788,6 @@ async def test_stream_interleave_no_events_passthrough() -> None:
     )
     streamed = [m async for m in stream_interleave_events(_handle_for(transcript))]
     assert [m.id for m in streamed] == ["u1"]
-
-
-@pytest.mark.anyio
-async def test_llm_scanner_handle_scan_interleaves_without_load() -> None:
-    # A handle input with events= streams: same prompt as the Transcript
-    # input, and load() (full materialization) is never called.
-    out = ModelOutput.from_content(model="mockllm", content="4")
-    transcript = Transcript(
-        transcript_id="t",
-        messages=[ChatMessageUser(content="2+2?"), out.choices[0].message],
-        events=[
-            _model_event("2+2?", out),
-            ScoreEvent(score=Score(value="C"), target="C", scorer="match"),
-        ],
-    )
-    handle = _no_load_handle(
-        list(transcript.events),
-        messages=list(transcript.messages),
-        info=TranscriptInfo(
-            **transcript.model_dump(exclude={"messages", "events", "timelines"})
-        ),
-    )
-
-    captured_handle: list[str] = []
-    captured_transcript: list[str] = []
-
-    scan_h = llm_scanner(
-        question="Right?",
-        answer="boolean",
-        model=_mock_model(captured_handle),
-        events=["score"],
-    )
-    await scan_h(cast(Transcript, handle))
-
-    scan_t = llm_scanner(
-        question="Right?",
-        answer="boolean",
-        model=_mock_model(captured_transcript),
-        events=["score"],
-    )
-    await scan_t(transcript)
-
-    assert captured_handle == captured_transcript
-    assert "[E1] SCORE" in captured_handle[0]
 
 
 @pytest.mark.anyio

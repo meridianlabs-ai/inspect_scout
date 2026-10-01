@@ -24,7 +24,6 @@ from inspect_ai.model import (
 )
 from inspect_ai.scorer import Score
 from inspect_scout._scanner.extract import message_numbering
-from inspect_scout._transcript.handle import MaterializedTranscriptHandle
 from inspect_scout._transcript.interleave import EventsSpec
 from inspect_scout._transcript.messages import transcript_messages
 from inspect_scout._transcript.timeline import (
@@ -32,8 +31,7 @@ from inspect_scout._transcript.timeline import (
     TimelineMessages,
     timeline_messages,
 )
-from inspect_scout._transcript.timeline_stream import stream_timeline_messages
-from inspect_scout._transcript.types import Transcript, TranscriptInfo
+from inspect_scout._transcript.types import Transcript
 
 from tests.transcript.fixtures_agentic import (
     _compaction_event,
@@ -41,12 +39,12 @@ from tests.transcript.fixtures_agentic import (
     _span_end,
     _tool_event,
     agentic_events,
-    agentic_transcript,
 )
 from tests.transcript.fixtures_agentic import (
     _model_event as _agentic_model_event,
 )
 from tests.transcript.span_builders import _model_event, _span, _span_of
+from tests.transcript.stream_parity import both_paths
 
 
 async def _collect(
@@ -326,22 +324,11 @@ async def test_events_selection_does_not_bypass_compaction_on_span_transcripts()
 
 @pytest.mark.anyio
 async def test_stream_tool_event_nested_subagent_depth_excluded_parity() -> None:
-    """A ``ToolEvent``-hoisted nested subagent's on-thread turns render as branch entries when ``depth``-excluded, with materialized and streaming parity.
+    """A depth-excluded subagent hoisted from a `ToolEvent` renders as branches.
 
-    Pins down the ToolEvent.events investigation for this fix: `timeline_
-    build` (inspect_ai) already hoists a flat `ToolEvent` carrying `agent`/
-    `events` into its own nested `TimelineSpan` (`tool_invoked=True`, never
-    classified utility) via `_event_to_node`; no changes to `timeline_build`
-    are needed. Once hoisted, this nested span is handled identically to
-    any other structurally scannable span: walked directly when within
-    `depth`, or -- as exercised here -- excluded by `depth` and surfaced
-    via ``walk_owned_spans``' foreign-item folding as `MODEL (BRANCH)`
-    entries attached to its parent. The streaming path already recurses
-    into `ToolEvent.events` for both full- and off-thread-event
-    substitution (`_collect_pass2_model_events`, `timeline_stream.py`), so
-    no changes were needed there either. For this fixture shape, the
-    streaming and materialized ownership-traversal-backed paths already
-    agree (verified via `--runxfail`).
+    `timeline_build` hoists the `ToolEvent` into its own span; with `depth=1`
+    its turns fold into "main" as `MODEL (BRANCH)` entries, identically on
+    both paths.
     """
     main_1 = _agentic_model_event(
         label="main-1",
@@ -394,39 +381,7 @@ async def test_stream_tool_event_nested_subagent_depth_excluded_parity() -> None
         main_2,
         _span_end(span_id="main"),
     ]
-    transcript = agentic_transcript(events=events)
-
-    async def load() -> Transcript:
-        return transcript
-
-    handle = MaterializedTranscriptHandle(
-        load, TranscriptInfo(transcript_id=transcript.transcript_id)
-    )
-
-    streamed_numbering, _ = message_numbering()
-    streamed = [
-        (seg.span.id, seg.messages_str)
-        async for seg in stream_timeline_messages(
-            handle,
-            messages_as_str=streamed_numbering,
-            model="mockllm/model",
-            events="all",
-            depth=1,
-        )
-    ]
-
-    materialized_tree = timeline_build(events)
-    materialized_numbering, _ = message_numbering()
-    materialized = [
-        (seg.span.id, seg.messages_str)
-        async for seg in timeline_messages(
-            materialized_tree.root,
-            messages_as_str=materialized_numbering,
-            model="mockllm/model",
-            events="all",
-            depth=1,
-        )
-    ]
+    streamed, materialized = await both_paths(events, depth=1)
 
     assert streamed
     assert streamed == materialized
@@ -454,50 +409,16 @@ async def test_stream_timeline_messages_events_parity(
 ) -> None:
     """``stream_timeline_messages(events=...)`` matches the materialized path.
 
-    Drives a multi-span fixture with an in-span score, a score attributed
-    from a non-scannable utility span, and a scorers-span score through
-    both the streaming and materialized ``timeline_messages`` call and
-    asserts the yielded ``(span.id, messages_str)`` sequences match --
-    across every ``compaction``/``depth`` combination.
+    Covers an in-span score, a score attributed from a non-scannable utility
+    span and a scorers-span score, for every ``compaction``/``depth``
+    combination.
     """
-    events = _agentic_events_with_scores()
-    transcript = agentic_transcript(events=events)
-
-    async def load() -> Transcript:
-        return transcript
-
-    handle = MaterializedTranscriptHandle(
-        load, TranscriptInfo(transcript_id=transcript.transcript_id)
+    streamed, materialized = await both_paths(
+        _agentic_events_with_scores(),
+        events_spec=["score"],
+        compaction=compaction,
+        depth=depth,
     )
-
-    # Fresh message_numbering() per side so [M#]/[E#] ordinals match.
-    streamed_numbering, _ = message_numbering()
-    streamed = [
-        (seg.span.id, seg.messages_str)
-        async for seg in stream_timeline_messages(
-            handle,
-            messages_as_str=streamed_numbering,
-            model="mockllm/model",
-            events=["score"],
-            compaction=compaction,
-            depth=depth,
-        )
-    ]
-
-    materialized_tree = timeline_build(events)
-
-    materialized_numbering, _ = message_numbering()
-    materialized = [
-        (seg.span.id, seg.messages_str)
-        async for seg in timeline_messages(
-            materialized_tree.root,
-            messages_as_str=materialized_numbering,
-            model="mockllm/model",
-            events=["score"],
-            compaction=compaction,
-            depth=depth,
-        )
-    ]
 
     assert streamed  # non-vacuous
     assert streamed == materialized
@@ -508,8 +429,8 @@ async def test_stream_timeline_messages_events_parity(
     assert "fork-output-1" in combined
     # The "sub" utility span's two ModelEvents are non-scannable,
     # off-thread-by-location events with no thread of their own -- they
-    # must render as branch entries attached to "main" (the fix under
-    # test), not be silently dropped.
+    # must render as branch entries attached to "main", not be silently
+    # dropped.
     assert combined.count("sub-output-1") == 1
     assert combined.count("sub-output-2") == 1
     main_text = next(text for span_id, text in streamed if span_id == "main")
@@ -528,54 +449,14 @@ async def test_stream_timeline_messages_events_parity(
 async def test_stream_timeline_messages_cumulative_compaction_discriminator_parity(
     compaction: Literal["all", "last"] | int,
 ) -> None:
-    """Cumulative region-last inputs must not corrupt the streaming discriminator.
+    """Compaction-pruned regions stay hidden when streamed, as materialized.
 
-    Regression test for the bug where pass 2 substituted only the ACTUAL
-    compaction's ``needed`` ModelEvents in full, leaving every other
-    region's last ModelEvent output-only (``input=[]``). Because
-    ``span_owned_messages`` computes ``excluded_ids`` by
-    reconstructing the ``compaction="all"`` thread -- which reads every
-    region-last ModelEvent's ``input`` -- and "t2" (region 1's last event)
-    has a cumulative input embedding "t1"'s output, stripping "t2"'s input
-    made "t1"'s output vanish from the "all" reconstruction. It then missed
-    ``excluded_ids`` and misrendered as a spurious ``[E#] MODEL (BRANCH):``
-    entry under ``compaction in ("last", 2)``. ``compaction="all"`` never
-    prunes anything and is included for completeness/non-regression.
+    `span_owned_messages` reads every region's last ModelEvent input to find
+    the pruned turns, so pass 2 must substitute those events in full.
     """
-    events = _cumulative_compaction_events()
-    transcript = agentic_transcript(events=events)
-
-    async def load() -> Transcript:
-        return transcript
-
-    handle = MaterializedTranscriptHandle(
-        load, TranscriptInfo(transcript_id=transcript.transcript_id)
+    streamed, materialized = await both_paths(
+        _cumulative_compaction_events(), events_spec=["score"], compaction=compaction
     )
-
-    streamed_numbering, _ = message_numbering()
-    streamed = [
-        (seg.span.id, seg.messages_str)
-        async for seg in stream_timeline_messages(
-            handle,
-            messages_as_str=streamed_numbering,
-            model="mockllm/model",
-            events=["score"],
-            compaction=compaction,
-        )
-    ]
-
-    materialized_tree = timeline_build(events)
-    materialized_numbering, _ = message_numbering()
-    materialized = [
-        (seg.span.id, seg.messages_str)
-        async for seg in timeline_messages(
-            materialized_tree.root,
-            messages_as_str=materialized_numbering,
-            model="mockllm/model",
-            events=["score"],
-            compaction=compaction,
-        )
-    ]
 
     assert streamed  # non-vacuous
     assert streamed == materialized

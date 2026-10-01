@@ -57,6 +57,7 @@ from inspect_scout._transcript.timeline import (
     timeline_messages,
     walk_owned_spans,
 )
+from inspect_scout._util._async import aclosing_iter
 
 if TYPE_CHECKING:
     from inspect_scout._scanner.extract import MessagesAsStr
@@ -510,8 +511,9 @@ async def stream_timeline_messages(
 
     full_by_uuid: dict[str, ModelEvent] = {}
     offthread_by_uuid: dict[str, ModelEvent] | None = {} if events is not None else None
-    async for ev in handle.events():
-        _collect_pass2_model_events(ev, needed, full_by_uuid, offthread_by_uuid)
+    async with aclosing_iter(handle.events()) as full_events:
+        async for ev in full_events:
+            _collect_pass2_model_events(ev, needed, full_by_uuid, offthread_by_uuid)
 
     missing = needed - full_by_uuid.keys()
     if missing:

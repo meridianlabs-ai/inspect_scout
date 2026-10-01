@@ -13,6 +13,7 @@ from inspect_ai.event import (
     InterruptEvent,
     LoggerEvent,
     LoggingMessage,
+    ReviewEvent,
     SampleInitEvent,
     SampleLimitEvent,
     SandboxEvent,
@@ -113,6 +114,18 @@ from inspect_scout._transcript.types import EventType
         ),
         pytest.param(BranchEvent(), "BRANCH\n", id="branch"),
         pytest.param(
+            ReviewEvent(
+                message="m",
+                call=ToolCall(id="1", function="bash", arguments={"cmd": "ls"}),
+                reviewer="monitor",
+                decision="terminate",
+                explanation="leaked a secret",
+            ),
+            "REVIEW (terminate):\nMessage: m\nTool: bash\nArgs: cmd=ls\n"
+            "Explanation: leaked a secret\n",
+            id="review",
+        ),
+        pytest.param(
             ScoreEvent(
                 scorer="grader",
                 score=Score(value="C", answer="line one\nline two, with comma"),
@@ -196,6 +209,12 @@ _EVENT_SAMPLES: dict[str, Event] = {
     "interrupt": InterruptEvent(source="limit", interrupted="generate"),
     "logger": LoggerEvent(
         message=LoggingMessage(level="info", message="m", created=0.0)
+    ),
+    "review": ReviewEvent(
+        message="m",
+        call=ToolCall(id="1", function="f", arguments={}),
+        reviewer="monitor",
+        decision="terminate",
     ),
     "sample_init": SampleInitEvent(sample=Sample(input="x"), state={}),
     "sample_limit": SampleLimitEvent(type="token", message="limit", limit=1),

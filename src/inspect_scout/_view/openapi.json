@@ -3868,6 +3868,7 @@
                         "anchor",
                         "checkpoint",
                         "interrupt",
+                        "review",
                         "span_begin",
                         "span_end"
                       ],
@@ -4964,6 +4965,7 @@
                         "anchor",
                         "checkpoint",
                         "interrupt",
+                        "review",
                         "span_begin",
                         "span_end"
                       ],

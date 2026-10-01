@@ -492,6 +492,51 @@ async def test_stream_messages_present_hides_compaction_pruned_turn() -> None:
 
 
 @pytest.mark.anyio
+async def test_stream_trim_compaction_hides_pruned_turn_like_materialized() -> None:
+    """A trim's pruned turn stays hidden when a side call ends the region.
+
+    `span_messages` derives the trimmed prefix from the FIRST ModelEvent after
+    the trim, not from the region's last one (here a side call with an
+    unrelated input).
+    """
+
+    def model_event(input: list[ChatMessage], text: str, id: str) -> ModelEvent:
+        output = ModelOutput.from_content(model="mockllm", content=text)
+        output.choices[0].message.id = id
+        return ModelEvent.model_construct(
+            event="model",
+            model="mockllm",
+            input=input,
+            output=output,
+            role="assistant",
+            config=GenerateConfig(),
+        )
+
+    u1 = ChatMessageUser(content="task", id="u1")
+    a1 = ChatMessageAssistant(content="pruned turn", id="a1")
+    u2 = ChatMessageUser(content="continue", id="u2")
+    a2 = ChatMessageAssistant(content="second", id="a2")
+    u3 = ChatMessageUser(content="more", id="u3")
+    a3 = ChatMessageAssistant(content="third", id="a3")
+    transcript = Transcript(
+        transcript_id="t",
+        messages=[u2, a2, u3, a3],
+        events=[
+            model_event([u1], "pruned turn", "a1"),
+            model_event([u1, a1, u2], "second", "a2"),
+            CompactionEvent(type="trim"),
+            model_event([u2, a2, u3], "third", "a3"),
+            model_event([ChatMessageUser(content="side")], "side answer", "s1"),
+        ],
+    )
+    expected = interleave_events(transcript)
+    streamed = [m async for m in stream_interleave_events(_handle_for(transcript))]
+
+    assert "pruned turn" not in "\n".join(m.text for m in expected)  # non-vacuous
+    assert [(m.id, m.text) for m in streamed] == [(m.id, m.text) for m in expected]
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize("events_spec", ["all", ["score"]])
 async def test_stream_excludes_grader_model_event_like_materialized(
     events_spec: EventsSpec,

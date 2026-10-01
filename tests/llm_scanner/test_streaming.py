@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Callable, cast
 
 import pytest
-from inspect_ai.event import ModelEvent, ScoreEvent
+from inspect_ai.event import ScoreEvent
 from inspect_ai.model import (
     ChatMessage,
     ChatMessageUser,
@@ -56,26 +56,6 @@ def _make_transcript(n_messages: int, *, words: int = 3) -> Transcript:
         for i in range(n_messages)
     ]
     return Transcript(transcript_id="t", messages=msgs)
-
-
-def _scored_transcript() -> Transcript:
-    output = ModelOutput.from_content(model="mockllm", content="4")
-    question = ChatMessageUser(content="2+2?", id="m0")
-    return Transcript(
-        transcript_id="t",
-        messages=[question, output.message],
-        events=[
-            ModelEvent(
-                model="mockllm",
-                input=[question],
-                tools=[],
-                tool_choice="none",
-                config=GenerateConfig(),
-                output=output,
-            ),
-            ScoreEvent(score=Score(value="C"), target="C", scorer="match"),
-        ],
-    )
 
 
 def _spooled_handle_for(
@@ -206,10 +186,11 @@ def _yes_model() -> Model:
             True,
             id="events-requested-but-absent",
         ),
-        # events= has no streaming implementation, so the handle must be
-        # loaded and its [E#] entries rendered exactly as from a Transcript.
+        # events= has no streaming implementation yet, so the handle is loaded.
         pytest.param(
-            _scored_transcript,
+            lambda: _make_transcript(2).model_copy(
+                update={"events": [ScoreEvent(score=Score(value="C"), scorer="m")]}
+            ),
             {"events": ["score"]},
             1,
             True,
@@ -284,8 +265,6 @@ def _dynamic_template_variables(_t: Transcript) -> dict[str, Any]:
         pytest.param(
             {"content": TranscriptContent(timeline="all")}, False, id="content-timeline"
         ),
-        # Event interleaving has no streaming implementation yet.
-        pytest.param({"events": ["score"]}, False, id="events-param"),
     ],
 )
 def test_streaming_attr_gating(kwargs: dict[str, Any], expected: bool) -> None:

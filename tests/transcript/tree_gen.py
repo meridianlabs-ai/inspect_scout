@@ -34,7 +34,6 @@ class GeneratedTranscript(NamedTuple):
     events: list[Event]
     messages: list[ChatMessage]
     flat_comparable: bool
-    seed: int
 
 
 class _Ids:
@@ -153,12 +152,9 @@ def generate(seed: int) -> GeneratedTranscript:
         return thread
 
     def branch(parent_sid: str, anchor: str | None, label: str) -> None:
-        # Mirrors timeline_branch's emitter shape: span whose first event is
-        # a BranchEvent(from_anchor=...). Real emitter uses span_type="branch"
-        # (event/_timeline.py:530-548) -- _process_children/_find_branch_event
-        # only groups EventTreeSpan.type == "branch" runs into .branches
-        # (event/_timeline.py:933-955), so the span_type here must be
-        # "branch", not "agent".
+        # Mirrors timeline_branch's emitter: a span whose first event is a
+        # BranchEvent. timeline_build only groups span_type="branch" spans
+        # into .branches.
         sid = begin(f"branch-{label}", "branch", parent_sid)
         events.append(
             BranchEvent.model_construct(
@@ -201,12 +197,9 @@ def generate(seed: int) -> GeneratedTranscript:
             branch(main_sid, anchor, "b2")
     end(main_sid, root_sid)
 
-    # Independent of `shape`: root-level events appended after main's span
-    # ends but before root's does. timeline_build homes these as orphans
-    # and prepends them ahead of everything else (tier 3), while the flat
-    # driver sees them in raw chronological order, after main's last
-    # message -- the two drivers disagree on placement whenever this
-    # fires, so it also has to gate `flat_comparable` below.
+    # Root-level events after main's span ends: timeline_build homes them as
+    # orphans ahead of everything else, while the flat driver places them
+    # after main's last message, so they also gate `flat_comparable`.
     has_root_level_trailing = rng.random() < 0.5
     if has_root_level_trailing:
         events.append(_score(ids, root_sid))
@@ -223,21 +216,11 @@ def generate(seed: int) -> GeneratedTranscript:
     end(root_sid, None)
 
     if rng.random() < 0.6:
-        # TOP-LEVEL scorers section, as real Inspect logs emit it (a sibling
-        # of solvers, not nested under it — the flat driver's scorer_span_ids
-        # only recognises top-level-by-name scorers, and oracle 2 depends on
-        # both drivers agreeing on grader exclusion for comparable shapes).
-        #
-        # timeline_build fully flattens a top-level scorers span's subtree
-        # via event_sequence() (event/_timeline.py:481-484) -- nested spans
-        # (e.g. a "grader" agent span) do NOT survive as nested TimelineSpans,
-        # they dissolve into flat TimelineEvents alongside their own
-        # span_begin/span_end. So a nested "grader" span with a ModelEvent
-        # still leaves a *direct* ModelEvent on the flattened "scoring" span.
-        # Half the time we build the "double-render" shape via a nested
-        # grader span (still has a direct ModelEvent once flattened); the
-        # other half we skip the ModelEvent entirely so some scorers
-        # sections are genuinely without a direct model event.
+        # Top-level scorers sibling of solvers, as Inspect emits it: the flat
+        # driver only recognises top-level scorers by name. timeline_build
+        # flattens a top-level scorers subtree, so the nested grader's
+        # ModelEvent becomes a direct event of the scorers span; the other
+        # half has no ModelEvent at all.
         sc_sid = begin("scorers", "scorers", None)
         if rng.random() < 0.5:
             grader_sid = begin("grader", "agent", sc_sid)
@@ -252,16 +235,15 @@ def generate(seed: int) -> GeneratedTranscript:
         events.append(_score(ids, sc_sid))
         end(sc_sid, None)
 
-    # Flat-comparable (oracle 2's precondition): main's single linear thread
-    # is the only non-grader conversation — no nested walked span (shape <
-    # 0.25 has one), no branches (0.45 <= shape < 0.6 has them) — and no
-    # root-level trailing events (the two drivers place those differently).
+    # Oracle 2's precondition: main's linear thread is the only non-grader
+    # conversation (no nested walked span, no branches) and no root-level
+    # trailing events.
     flat_comparable = 0.25 <= shape < 0.45 and not has_root_level_trailing
     messages: list[ChatMessage] = list(main_thread) if flat_comparable else []
-    return GeneratedTranscript(events, messages, flat_comparable, seed)
+    return GeneratedTranscript(events, messages, flat_comparable)
 
 
-# --- brute-force ownership reference (design Oracle 3) ----------------------
+# --- brute-force ownership reference (oracle 3) -----------------------------
 
 
 def _walked_pre_order(
@@ -272,7 +254,7 @@ def _walked_pre_order(
     _in_scorers: bool = False,
     _scannable_depth: int = 0,
 ) -> Iterator[TimelineSpan]:
-    """Pre-order walked spans, never entering .branches (design §1)."""
+    """Pre-order walked spans, never entering .branches."""
     if depth is not None and depth <= 0:
         return
     in_scorers = _in_scorers or span.span_type == "scorers"
@@ -303,18 +285,9 @@ def _document_events(
 ) -> Iterator[tuple[Event, tuple[str, ...], bool, bool]]:
     """(event, ancestor-chain innermost-last, is_branch, is_direct) in doc order.
 
-    ``is_direct`` is True for an event that is itself a direct
-    ``TimelineEvent`` child of ``span.content`` -- as opposed to nested
-    inside a ``ToolEvent``'s ``.events`` closure (decision 6) -- used by
-    ``expected_anchor_message_ids`` to tell a span's own on-thread model
-    turns from tool-spawned sub-agent output.
-
-    Recurses into the ToolEvent.events closure (decision 6) and .branches.
-    Inside a scorers subtree with include_scorers=False, ModelEvents are
-    suppressed by non-existence (design §2); every other event in the
-    subtree still renders into the orphan/owner segment (design §3's orphan
-    table, Decision 2's pruned-ScoreEvent rationale) -- the scorers rule is
-    model-events-only suppression, not whole-subtree exclusion.
+    Recurses into ``ToolEvent.events`` (yielded with ``is_direct=False``) and
+    ``.branches``. With include_scorers=False only the scorers subtree's
+    ModelEvents are dropped; its other events still render.
     """
     in_scorers = _in_scorers or span.span_type == "scorers"
     suppress_models = in_scorers and not include_scorers
@@ -327,18 +300,12 @@ def _document_events(
             for nested in event.events:
                 yield from flat(nested, direct=False)
 
-    # Branches are yielded BEFORE content, mirroring walk_owned_spans' visit()
-    # (timeline.py): branch_sink is captured from the tier-2 `latest` in
-    # force at span ENTRY, before the content loop below can recurse into a
-    # nested walked descendant and advance it. Yielding content first would
-    # let a carrier's own branch events pick up a `latest` that only became
-    # true partway through the carrier's content -- wrong, since a span's
-    # (and its branches') owner is "the owner an event at its start position
-    # would get" (design §1, "Spans are owned too").
+    # Branches before content: a span's branches take the owner in force at
+    # the span's start, before its content can start a nested walked span
+    # and move tier-2 `latest` (mirrors walk_owned_spans).
     for b in span.branches:
-        # Same replay-cut CONTRACT as walk_owned_spans (design §4), different
-        # mechanism: splice from the first direct BranchEvent onward; a
-        # branch with none contributes everything.
+        # Replay cut: from the first direct BranchEvent on; a branch with none
+        # contributes everything.
         cut = next(
             (
                 i
@@ -394,58 +361,32 @@ def expected_owners(
     for event, chain, _is_branch, _is_direct in _document_events(
         root, include_scorers=include_scorers
     ):
-        # Tier 1: nearest enclosing walked ancestor (innermost wins). For a
-        # branch event the chain passes through the span CARRYING .branches,
-        # so this also implements §4's carriage rule.
+        # Tier 1: nearest enclosing walked ancestor. A branch event's chain
+        # passes through the span carrying .branches, so branches ride it.
         enclosing = [sid for sid in chain if sid in walked_ids]
         owner = enclosing[-1] if enclosing else latest  # tier 2 (or "" = tier 3)
-        # `latest` tracks the latest-STARTING walked span, not "the most
-        # recent tier-1 owner" -- those diverge once a walked span nests
-        # inside another walked span and control returns to the outer one:
-        # the outer span's later events are still tier-1-owned by itself,
-        # but the nested span started more recently and must stay `latest`
-        # for the next tier-2 (no-ancestor) event. So this only updates on
-        # first touch (chain order is outermost-first, so a simultaneous
-        # first touch of nested spans leaves the deepest one `latest`), never
-        # on a later tier-1 attribution to an already-started span.
+        # `latest` moves on first touch only: after a nested walked span ends,
+        # the outer span tier-1-owns its later events, but the nested span is
+        # still the latest to have started.
         for sid in chain:
             if sid in walked_ids and sid not in started:
                 started.add(sid)
                 latest = sid
         if event.uuid is not None:
             owners[event.uuid] = owner
-    # Tier-3 orphans preceding the first walked span lead it (design §1/§3).
+    # Tier-3 orphans preceding the first walked span lead it.
     if walked_ids:
         owners = {u: (walked_ids[0] if o == "" else o) for u, o in owners.items()}
     return owners
 
 
-def _model_output_id(event: ModelEvent) -> str | None:
-    """Independent of ``interleave``'s output-id lookup.
-
-    Kept a separate, obviously-correct read so the reference never imports
-    the code under test. Every generated ModelEvent has exactly one choice
-    with an explicit ``.id`` (see ``_model_event``), so no text-hash
-    fallback is needed here.
-    """
-    if event.output.choices and event.output.choices[0].message is not None:
-        return event.output.choices[0].message.id
-    return None
-
-
 def expected_anchor_message_ids(
     root: TimelineSpan, *, depth: int | None, include_scorers: bool
 ) -> dict[str, str | None]:
-    """Map each rendered event to its expected anchor message id.
+    """Uuid -> output id of the owner's last preceding own ModelEvent.
 
-    Rendered-event uuid -> output message id of the last preceding OWN
-    ModelEvent of its owner in document order, or None when the event leads
-    the owner's thread. "Own" means the ModelEvent is a direct TimelineEvent
-    of the owner span itself (chain[-1] == owner) -- a tier-1-attributed
-    ModelEvent of a non-walked descendant span is foreign and never advances
-    the owner's anchor. Branch-subtree events are absent (they position by
-    branched_from, not by anchor). Only sound for compaction-free trees (the
-    generated corpus).
+    None when the event leads the owner's thread. Branch events are absent
+    (they position by branched_from). Only sound for compaction-free trees.
     """
     owners = expected_owners(root, depth=depth, include_scorers=include_scorers)
     walked_ids = {
@@ -459,24 +400,13 @@ def expected_anchor_message_ids(
     ):
         if is_branch or event.uuid is None:
             continue
-        owner = owners.get(event.uuid)
-        anchors[event.uuid] = (
-            last_model_output.get(owner) if owner is not None else None
-        )
-        # Own vs. foreign (design's own/foreign rule): a direct ModelEvent
-        # only advances its OWNER's anchor when the span it is directly in
-        # (chain[-1]) IS that owner. A tier-1-attributed ModelEvent of a
-        # non-walked descendant span (e.g. a nested "sub" span collapsed
-        # into "main" at depth=1) is foreign -- its output id can never be
-        # on the owner's own thread, so it must not advance last_model_output.
-        if (
-            is_direct
-            and owner is not None
-            and chain
-            and chain[-1] == owner
-            and isinstance(event, ModelEvent)
-        ):
-            mid = _model_output_id(event)
+        owner = owners[event.uuid]
+        anchors[event.uuid] = last_model_output.get(owner)
+        # Only a ModelEvent directly in the owner span is own. One from a
+        # non-walked descendant (e.g. "sub" collapsed into "main" at depth=1)
+        # is foreign: its output is never on the owner's thread.
+        if is_direct and chain[-1] == owner and isinstance(event, ModelEvent):
+            mid = event.output.choices[0].message.id
             if mid is not None:
                 last_model_output[owner] = mid
     return anchors

@@ -287,6 +287,25 @@ async def test_resolve_round_trips_what_the_scanner_saw() -> None:
 
 
 @pytest.mark.asyncio
+async def test_resolve_from_explicit_transcripts_location() -> None:
+    """`transcripts=` overrides a stale/unreadable `transcript_source_uri`."""
+    from inspect_scout import resolve_input_reference
+
+    logs_dir = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
+    async with transcripts_from(logs_dir).reader() as reader:
+        info = [i async for i in reader.index()][0]
+    row = {
+        "input_storage": "reference",
+        "transcript_source_uri": "langsmith://moved-or-not-a-path",
+        "transcript_id": info.transcript_id,
+        "input_content": TranscriptContent(messages="all").to_json(),
+    }
+    resolved = await resolve_input_reference(row, transcripts=str(logs_dir))
+    assert resolved.transcript_id == info.transcript_id
+    assert resolved.messages
+
+
+@pytest.mark.asyncio
 async def test_resolve_treats_nan_input_content_as_absent() -> None:
     """A pandas row's NULL `input_content` surfaces as `float('nan')`, not `None`.
 

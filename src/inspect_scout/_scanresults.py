@@ -30,7 +30,9 @@ from ._validation.validate import is_positive_value
 logger = getLogger(__name__)
 
 
-async def resolve_input_reference(row: Mapping[str, Any]) -> Transcript:
+async def resolve_input_reference(
+    row: Mapping[str, Any], transcripts: str | None = None
+) -> Transcript:
     """Resolve a reference result row back into the transcript the scanner saw.
 
     Rows with `input_storage == "reference"` carry no transcript content;
@@ -43,6 +45,15 @@ async def resolve_input_reference(row: Mapping[str, Any]) -> Transcript:
     reproduces a scan that requested no content and resolves to an empty
     transcript -- it does not fall back to full content.
 
+    Args:
+        row: A result row (any mapping of column name to value).
+        transcripts: Transcripts location to resolve from instead of the
+            row's `transcript_source_uri`. Pass the scan's transcripts
+            database location when the scan read a transcript database:
+            there `transcript_source_uri` is the transcript's original
+            source (e.g. the `.eval` it was imported from), which may have
+            moved or not be readable as a transcripts location at all.
+
     Raises:
         ValueError: If `row` is not a reference row (`input_storage !=
             "reference"`), the row has no `transcript_id` or
@@ -53,7 +64,7 @@ async def resolve_input_reference(row: Mapping[str, Any]) -> Transcript:
     """
     if row.get("input_storage") != "reference":
         raise ValueError("row is not a reference (input_storage != 'reference')")
-    source_uri = row.get("transcript_source_uri")
+    source_uri = transcripts or row.get("transcript_source_uri")
     if not source_uri:
         raise ValueError("reference row has no transcript_source_uri to resolve from")
     transcript_id = row.get("transcript_id")

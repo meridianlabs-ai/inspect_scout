@@ -1165,12 +1165,8 @@ async def _scan_one(
     if set, is awaited exactly once in a finally block to close the shared
     handle after the last job.
 
-    `record_input="reference"` short-circuits the record path: a handle
-    input never serializes (it's recorded via `_reference_for_record`
-    instead of `_transcript_for_record`), and a materialized `Transcript`
-    loader input is recorded as a `ReferenceTranscript` too. Both carry the
-    scanner's own content filters.
-    Non-transcript loader inputs (events/messages) are unaffected.
+    `record_input="reference"` records transcript inputs (handle or
+    materialized) as references without serializing them.
     """
     from inspect_ai.log._transcript import (
         Transcript as InspectTranscript,
@@ -1400,10 +1396,8 @@ async def _scan_one(
             elif record_input == "reference" and isinstance(loader_input, Transcript):
                 report_input = _reference_for_record(loader_input, job.scanner)
             else:
-                # A cast, not `assert loader_input is not None`: a loader
-                # yielding None is contained above (`type_and_ids` stays None,
-                # so this value goes unused) and must not become an
-                # AssertionError escaping this function's containment.
+                # Not an assert: a loader yielding None is contained above and
+                # this value goes unused, so it must not raise here.
                 report_input = cast(ScannerInput, loader_result)
 
             # always append a result (success or error) if we have type_and_ids

@@ -124,6 +124,16 @@ class TranscriptContent:
             }
         )
 
+    @classmethod
+    def from_json(cls, s: str) -> "TranscriptContent":
+        d = json.loads(s)
+        return cls(
+            messages=d.get("messages"),
+            events=d.get("events"),
+            timeline=d.get("timeline"),
+            metadata=d.get("metadata"),
+        )
+
 
 class BytesContextManager:
     """Wraps raw bytes as AsyncContextManager[AsyncIterable[bytes]].

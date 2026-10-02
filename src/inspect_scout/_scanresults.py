@@ -35,15 +35,10 @@ async def resolve_input_reference(
 ) -> Transcript:
     """Resolve a reference result row back into the transcript the scanner saw.
 
-    Rows with `input_storage == "reference"` carry no transcript content;
-    this re-reads it from the source named by `transcript_source_uri`,
-    selecting the sample by `transcript_id` (the sample uuid) and applying
-    the content filters recorded in `input_content`. A NULL/absent
-    `input_content` means the filters were unavailable when the row was
-    recorded, so it resolves to full content (`messages="all",
-    events="all"`). An `input_content` whose filters are all `null`
-    reproduces a scan that requested no content and resolves to an empty
-    transcript -- it does not fall back to full content.
+    Re-reads the transcript from `transcript_source_uri`, selecting the sample
+    by `transcript_id` (the sample uuid) and applying the content filters in
+    `input_content`. A NULL `input_content` resolves to full content; filters
+    that are all `null` resolve to an empty transcript, as the scan saw it.
 
     Args:
         row: A result row (any mapping of column name to value).
@@ -71,6 +66,7 @@ async def resolve_input_reference(
     if not transcript_id:
         raise ValueError("reference row has no transcript_id to resolve from")
     content_json = row.get("input_content")
+    # A DataFrame row surfaces NULL as NaN, which is truthy.
     content = (
         TranscriptContent.from_json(content_json)
         if isinstance(content_json, str) and content_json

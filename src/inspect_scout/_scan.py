@@ -1321,10 +1321,11 @@ async def _scan_one(
                 except PrerequisiteError:
                     raise
                 except TranscriptTooLargeToRecordError as ex:
-                    if fail_on_error:
-                        raise
                     # Readable, just over the parquet cell cap: record a
                     # reference to the source rather than failing the row.
+                    # Not a failure, so fail_on_error does not apply --
+                    # matching the parent-side backstop in
+                    # `ResultReport.to_df_columns`, which cannot raise.
                     logger.warning(
                         "Transcript %s: serialized '%s' is %d bytes, over the "
                         "parquet cell cap; recording a reference to the source "

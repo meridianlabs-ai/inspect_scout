@@ -87,8 +87,9 @@ def _mock_yes_responses(n: int) -> list[ModelOutput]:
     ]
 
 
+@pytest.mark.parametrize("fail_on_error", [False, True])
 def test_oversized_transcript_records_reference_and_scan_completes(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, fail_on_error: bool
 ) -> None:
     """A real scan over an oversized transcript must complete, not abort.
 
@@ -97,6 +98,8 @@ def test_oversized_transcript_records_reference_and_scan_completes(
     location. With the cap monkeypatched so every cell is "oversized", the
     scan must complete, the scanner's real result must be preserved, and
     the row must degrade to a `reference` input row instead of an inline one.
+    Oversize is a degrade, not a failure, so this holds under fail_on_error
+    too (the materialized-path backstop can't raise either).
 
     The scanner must be handle-capable (`llm_scanner`) so the job is
     streaming-eligible and runs the spool-side guard
@@ -128,6 +131,7 @@ def test_oversized_transcript_records_reference_and_scan_completes(
             max_processes=1,  # in-process so the monkeypatched constants apply
             model="mockllm/model",
             model_args={"custom_outputs": _mock_yes_responses(40)},
+            fail_on_error=fail_on_error,
             display="none",
         )
         assert status.complete, "oversized input must not prevent completion"

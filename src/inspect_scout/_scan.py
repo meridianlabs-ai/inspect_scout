@@ -19,6 +19,7 @@ from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.json import jsonable_python
 from inspect_ai._util.path import pretty_path
 from inspect_ai._util.platform import platform_init as init_platform
+from inspect_ai._util.registry import is_registry_object
 from inspect_ai._util.rich import clean_control_characters
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.model._model import (
@@ -1107,11 +1108,26 @@ async def _transcript_for_record(handle: TranscriptHandle) -> ReportInput:
     return await handle.load()
 
 
-def _reference_for_record(handle: TranscriptHandle) -> ReferenceTranscript:
+def _reference_for_record(
+    handle: TranscriptHandle, scanner: Scanner[Any]
+) -> ReferenceTranscript:
+    """Reference to `handle`'s transcript carrying the content filters `scanner` saw.
+
+    The scanner's own filters, not the shared handle's union, so resolution
+    reproduces exactly that scanner's input.
+    """
+    config = config_for_scanner(scanner)
+    # An unregistered (non-@loader) custom loader has no loader config; fall
+    # back to the scanner's declared filters rather than failing the record.
+    content = (
+        config_for_loader(config.loader).content
+        if is_registry_object(config.loader)
+        else config.content
+    )
     return ReferenceTranscript(
         source_uri=handle.info.source_uri,
         transcript_id=handle.info.transcript_id,
-        content_json=handle.content.to_json(),
+        content_json=content.to_json(),
     )
 
 
@@ -1334,7 +1350,7 @@ async def _scan_one(
                         ex.cell,
                         ex.size,
                     )
-                    report_input = _reference_for_record(handle_input)
+                    report_input = _reference_for_record(handle_input, job.scanner)
                 except Exception as ex:  # pylint: disable=W0718
                     if fail_on_error:
                         raise
@@ -1343,7 +1359,7 @@ async def _scan_one(
                     # reference to the source (identity plus content filters),
                     # and surface the read failure as this row's error --
                     # never a clean result over unreadable content.
-                    report_input = _reference_for_record(handle_input)
+                    report_input = _reference_for_record(handle_input, job.scanner)
                     logger.warning(
                         "Unable to read transcript %s for the result record; "
                         "recording a reference to the source instead.",

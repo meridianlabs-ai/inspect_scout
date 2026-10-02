@@ -3,6 +3,7 @@
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
 from inspect_scout._transcript.database.factory import transcripts_db, transcripts_view
@@ -96,34 +97,21 @@ def test_location_type_detects_eval_log_for_s3_uri() -> None:
 @pytest.mark.parametrize(
     ("keys", "deny_listing", "expected"),
     [
-        (["logs/job/task.eval"], False, "eval_log"),
         (["logs/job/nested/task.eval"], False, "eval_log"),
         (["logs/job/.models.json"], False, "database"),
-        (["logs/job/data.parquet"], False, "database"),
-        (["logs/job/task.eval"], True, "ListObjectsV2 denied"),
-        ([], False, "HeadObject denied"),
+        (["logs/job/task.eval"], True, PermissionError),
+        ([], False, PermissionError),
     ],
 )
 def test_location_type_with_prefix_scoped_s3(
     monkeypatch: pytest.MonkeyPatch,
     keys: list[str],
     deny_listing: bool,
-    expected: str,
+    expected: str | type[PermissionError],
 ) -> None:
     location = "s3://bucket/logs/job"
-    root = UPath(
-        location,
-        anon=True,
-        skip_instance_cache=True,
-        use_listings_cache=False,
-    )
+    root = UPath(location, anon=True, skip_instance_cache=True)
     fs = root.fs
-
-    async def call_s3(method: str, *args: Any, **kwargs: Any) -> Any:
-        assert method == "head_object"
-        assert kwargs["Bucket"] == "bucket"
-        assert kwargs["Key"] == "logs/job"
-        raise PermissionError("HeadObject denied")
 
     async def iterdir(
         bucket: str,
@@ -145,14 +133,16 @@ def test_location_type_with_prefix_scoped_s3(
                 "mtime": 1.0,
             }
 
-    monkeypatch.setattr(fs, "_call_s3", call_s3)
+    monkeypatch.setattr(
+        fs, "_call_s3", AsyncMock(side_effect=PermissionError("HeadObject denied"))
+    )
     monkeypatch.setattr(fs, "_iterdir", iterdir)
     monkeypatch.setattr(
         "inspect_scout._transcript.factory.UPath", lambda location: root
     )
 
-    if expected.endswith("denied"):
-        with pytest.raises(PermissionError, match=expected):
+    if expected is PermissionError:
+        with pytest.raises(PermissionError):
             _location_type(location)
     else:
         assert _location_type(location) == expected

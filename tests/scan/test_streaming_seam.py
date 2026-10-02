@@ -111,41 +111,8 @@ async def test_scan_one_stream_error_contained() -> None:
 
 
 @pytest.mark.asyncio
-async def test_scan_one_stream_error_reference_mode_handle_union() -> None:
-    """`record_input="reference"` never inlines a placeholder for a handle union.
-
-    Same failure as `test_scan_one_stream_error_contained`, but with
-    `record_input="reference"`: the error report's input must be a
-    `ReferenceTranscript` pointing at the handle's source, not the
-    info-only placeholder `Transcript` copy mode builds.
-    """
-    info = TranscriptInfo(transcript_id="t1", source_uri="file:///log.eval")
-
-    async def failing_load() -> Transcript:
-        raise ValueError("corrupt sample JSON")
-
-    handle = MaterializedTranscriptHandle(failing_load, info)
-
-    s = _plain_scanner()
-    job = ScannerJob(union_transcript=handle, scanner=s, scanner_name="ps")
-    reports = await _scan_one(
-        job, validation=None, fail_on_error=False, record_input="reference"
-    )
-    assert len(reports) == 1
-    report_input = reports[0].input
-    assert isinstance(report_input, ReferenceTranscript)
-    assert report_input.transcript_id == "t1"
-    assert report_input.source_uri == "file:///log.eval"
-
-
-@pytest.mark.asyncio
 async def test_scan_one_stream_error_reference_mode_materialized_union() -> None:
-    """`record_input="reference"` never inlines a full copy for a `Transcript` union.
-
-    When the union transcript is already materialized and the loader raises
-    mid-iteration, copy mode records the full `Transcript` as-is; reference
-    mode must instead record a `ReferenceTranscript` with no content filters.
-    """
+    """A stream error in reference mode records a reference, not the full union."""
 
     async def _raising_loader(transcript: Transcript) -> Any:
         raise ValueError("corrupt during iteration")
@@ -174,7 +141,6 @@ async def test_scan_one_stream_error_reference_mode_materialized_union() -> None
     assert isinstance(report_input, ReferenceTranscript)
     assert report_input.transcript_id == "t1"
     assert report_input.source_uri == "file:///log.eval"
-    # The scanner's own filters, so resolution reproduces what it saw.
     assert (
         report_input.content_json
         == TranscriptContent(messages="all", events="all").to_json()

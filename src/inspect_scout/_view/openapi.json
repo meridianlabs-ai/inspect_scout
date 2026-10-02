@@ -8833,6 +8833,9 @@
                   "$ref": "#/components/schemas/Timeline"
                 },
                 "type": "array"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Input"
@@ -8862,8 +8865,7 @@
           }
         },
         "required": [
-          "input_type",
-          "input"
+          "input_type"
         ],
         "title": "ScannerInputResponse",
         "type": "object"

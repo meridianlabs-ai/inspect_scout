@@ -1124,10 +1124,11 @@ async def _transcript_for_record(handle: TranscriptHandle) -> ReportInput:
 
 
 def _reference_for_record(
-    handle: TranscriptHandle, scanner: Scanner[Any]
+    transcript: TranscriptHandle | Transcript, scanner: Scanner[Any]
 ) -> ReferenceTranscript:
     # The scanner's own filters, not the shared handle's union, so resolving
     # the reference reproduces exactly what this scanner saw.
+    info = transcript if isinstance(transcript, Transcript) else transcript.info
     config = config_for_scanner(scanner)
     # An unregistered (non-@loader) custom loader has no loader config; fall
     # back to the scanner's declared filters rather than failing the record.
@@ -1137,8 +1138,8 @@ def _reference_for_record(
         else config.content
     )
     return ReferenceTranscript(
-        source_uri=handle.info.source_uri,
-        transcript_id=handle.info.transcript_id,
+        source_uri=info.source_uri,
+        transcript_id=info.transcript_id,
         content_json=content.to_json(),
     )
 
@@ -1167,7 +1168,8 @@ async def _scan_one(
     `record_input="reference"` short-circuits the record path: a handle
     input never serializes (it's recorded via `_reference_for_record`
     instead of `_transcript_for_record`), and a materialized `Transcript`
-    loader input is recorded as a `ReferenceTranscript` with no content_json.
+    loader input is recorded as a `ReferenceTranscript` too. Both carry the
+    scanner's own content filters.
     Non-transcript loader inputs (events/messages) are unaffected.
     """
     from inspect_ai.log._transcript import (
@@ -1201,16 +1203,7 @@ async def _scan_one(
         union = job.union_transcript
         report_input: ReportInput
         if record_input == "reference":
-            # No content filters exist for a materialized union; content_json
-            # None makes resolution default to full content.
-            if isinstance(union, Transcript):
-                report_input = ReferenceTranscript(
-                    source_uri=union.source_uri,
-                    transcript_id=union.transcript_id,
-                    content_json=None,
-                )
-            else:
-                report_input = _reference_for_record(union)
+            report_input = _reference_for_record(union, job.scanner)
         elif isinstance(union, Transcript):
             report_input = union
         else:
@@ -1405,11 +1398,7 @@ async def _scan_one(
                                 refusal=False,
                             )
             elif record_input == "reference" and isinstance(loader_input, Transcript):
-                report_input = ReferenceTranscript(
-                    source_uri=loader_input.source_uri,
-                    transcript_id=loader_input.transcript_id,
-                    content_json=None,
-                )
+                report_input = _reference_for_record(loader_input, job.scanner)
             else:
                 # A cast, not `assert loader_input is not None`: a loader
                 # yielding None is contained above (`type_and_ids` stays None,

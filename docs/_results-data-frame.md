@@ -68,6 +68,7 @@ Note that the heavy JSON columns (`input` and `scan_events`) are excluded by def
 | `input_type` | transcript \| message \| messages \| event \| events | Input type received by scanner. |
 | `input_ids` | list\[str\]<br/><small>JSON</small> | Unique ids of scanner input. |
 | `input` | ScannerInput<br/><small>JSON</small> | Scanner input value (excluded by default). |
+| `input_storage` | inline \| reference | Whether `input` is a self-contained copy or a reference to the source transcript (see [Referenced Input](#referenced-input)). |
 | `uuid` | str | Globally unique id for scan result. |
 | `label` | str | Label for the origin of the result (optional). |
 | `value` | JsonValue<br/><small>JSON</small> | Value returned by scanner. |
@@ -89,3 +90,40 @@ Note that the heavy JSON columns (`input` and `scan_events`) are excluded by def
 | `scan_model_usage` | dict \[str, ModelUsage\]<br/><small>JSON</small> | Token usage by model for scan (only included when `rows = "transcripts"`). |
 
 : {tbl-colwidths=\[20,20,60\]}
+
+#### Referenced Input
+
+By default (`record_input="copy"`, the default `scan()` option) each result row is a self-contained copy of the scanner's input. Passing `record_input="reference"` instead records a pointer back to the source transcript, which keeps result files small when scanning large transcripts:
+
+``` python
+status = scan(
+    transcripts=transcripts_from("./logs"),
+    scanners=[ctf_environment(), java_tool_calls()],
+    record_input="reference",
+)
+```
+
+Whether a row is a copy or a reference is visible in the `input_storage` column, and the two other input columns are populated accordingly:
+
+| Column | Inline row (`input_storage = "inline"`) | Reference row (`input_storage = "reference"`) |
+|---|---|---|
+| `input` | Serialized scanner input | NULL |
+| `input_data` | Pools/attachments, or NULL | NULL |
+| `input_content` | NULL | Content filters used to produce the input, as one JSON string (e.g. `{"messages": "all", "events": ["model"], "timeline": null}`), or NULL |
+
+A NULL `input_content` on a reference row means the filters weren't available when the row was recorded, and resolving the reference falls back to full content (`messages="all", events="all"`).
+
+Even a `record_input="copy"` scan can produce reference rows: when a transcript's serialized input is too large to store inline, or otherwise can't be read, Scout degrades that row to a reference rather than failing the scan. Filter by `input_storage == "reference"` to find these rows regardless of the scan's `record_input` setting.
+
+Use `resolve_input_reference()` to turn a reference row back into the `Transcript` the scanner saw. It re-reads the source named by `transcript_source_uri`, selects the sample by `transcript_id`, and applies the recorded `input_content` filters. It's an `async` function, and it accepts any mapping of column name to value — for example a row obtained from the `duckdb` connection returned by `scan_results_db()`, or from a record batch returned by `scan_results_arrow()`:
+
+``` python
+from inspect_scout import resolve_input_reference
+
+if row.get("input_storage") == "reference":
+    transcript = await resolve_input_reference(row)
+```
+
+If the scan read a transcript database, `transcript_source_uri` is each transcript's original source (e.g. the `.eval` it was imported from) rather than the database. Pass the database location instead with `resolve_input_reference(row, transcripts="<database location>")`.
+
+Result files written before these columns existed have no `input_storage` column at all; reading such a file, rows are treated as non-references.

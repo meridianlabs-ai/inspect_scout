@@ -46,7 +46,7 @@ def _failing_handle(
 
 @pytest.mark.asyncio
 async def test_record_failure_degrades_to_reference() -> None:
-    content = TranscriptContent(messages="all", events=None, timeline=None)
+    content = TranscriptContent(messages="all", events="all", timeline=None)
     handle = _failing_handle(RuntimeError("boom"), content)
     job = ScannerJob(
         union_transcript=handle, scanner=_streaming_scanner(), scanner_name="s"

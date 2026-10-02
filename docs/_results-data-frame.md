@@ -124,4 +124,6 @@ if row.get("input_storage") == "reference":
     transcript = await resolve_input_reference(row)
 ```
 
+If the scan read a transcript database, `transcript_source_uri` is each transcript's original source (e.g. the `.eval` it was imported from) rather than the database. Pass the database location instead with `resolve_input_reference(row, transcripts="<database location>")`.
+
 Result files written before these columns existed have no `input_storage` column at all; reading such a file, rows are treated as non-references.

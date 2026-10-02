@@ -416,7 +416,7 @@ def scanner_table(
     # 1. Pin columns with a known type (`fixed_types`): the first file may hold
     #    them as all-null, which would otherwise demote them to string, or lack
     #    them entirely (written by an older version), which would drop them
-    # 2. Promote other null-type columns to string (unknown type)
+    # 2. Promote other null-type columns to large_string (unknown type)
     # 3. Force 'value' and 'transcript_score' columns to string since they can have
     #    mixed types across different result reports / transcripts
     fixed_types: dict[str, pa.DataType] = {
@@ -430,10 +430,8 @@ def scanner_table(
                 pa.field(field.name, fixed_types[field.name], nullable=True)
             )
         elif pa.types.is_null(field.type):
-            # Promote null type to large_string: every string column
-            # `_records_to_arrow` writes is large_string, and a plain
-            # `pa.string()` here would force later casts of large inline
-            # fragments to overflow 2 GiB offsets.
+            # Not pa.string(): casting a later fragment's large inline cells to
+            # 32-bit offsets overflows at 2 GiB.
             corrected_fields.append(
                 pa.field(field.name, pa.large_string(), nullable=True)
             )

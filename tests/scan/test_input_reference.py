@@ -188,8 +188,8 @@ def test_reference_mode_materialized_path_records_reference() -> None:
     """`record_input="reference"` also covers a materialized `Transcript` input.
 
     A plain `Transcript`-typed scanner is not streaming-eligible, so this
-    exercises the record site's materialized branch, which has no content
-    filters available and records `input_content=None`.
+    exercises the record site's materialized branch, which records the
+    scanner's own content filters so resolution reproduces its input.
     """
     from inspect_scout._scanner.result import Result
 
@@ -234,7 +234,7 @@ def test_reference_mode_materialized_path_records_reference() -> None:
         input_cell, storage, content = rows[0]
         assert input_cell is None
         assert storage == "reference"
-        assert content is None
+        assert content == TranscriptContent(messages="all").to_json()
 
 
 def test_reference_report_pickles_small() -> None:

@@ -174,7 +174,11 @@ async def test_scan_one_stream_error_reference_mode_materialized_union() -> None
     assert isinstance(report_input, ReferenceTranscript)
     assert report_input.transcript_id == "t1"
     assert report_input.source_uri == "file:///log.eval"
-    assert report_input.content_json is None
+    # The scanner's own filters, so resolution reproduces what it saw.
+    assert (
+        report_input.content_json
+        == TranscriptContent(messages="all", events="all").to_json()
+    )
 
 
 def _scanner_with(

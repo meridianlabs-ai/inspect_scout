@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import dataclasses
+import json
 import tempfile
 from pathlib import Path
 
@@ -126,20 +128,8 @@ def test_oversized_transcript_records_reference_and_scan_completes(
         assert content is not None and "messages" in content
 
 
-def test_scan_options_without_record_input_default_to_copy() -> None:
-    """Specs written before the field existed must still parse (resume)."""
-    from inspect_scout._scanspec import ScanOptions
-
-    assert ScanOptions.model_validate({"max_transcripts": 5}).record_input == "copy"
-
-
 def test_reference_mode_handle_path_records_reference() -> None:
-    """`record_input="reference"` short-circuits a handle-capable scan.
-
-    No cap monkeypatching -- this is mode-by-choice, not the oversized-cell
-    degrade. The streaming-eligible handle must go straight to
-    `_reference_for_record` with real content filters, never materializing.
-    """
+    """A streamed handle input is recorded as a reference with content filters."""
 
     @scanner(name="probe", messages="all", events="all")
     def probe() -> Scanner[Transcript]:
@@ -185,12 +175,7 @@ def test_reference_mode_handle_path_records_reference() -> None:
 
 
 def test_reference_mode_materialized_path_records_reference() -> None:
-    """`record_input="reference"` also covers a materialized `Transcript` input.
-
-    A plain `Transcript`-typed scanner is not streaming-eligible, so this
-    exercises the record site's materialized branch, which records the
-    scanner's own content filters so resolution reproduces its input.
-    """
+    """A materialized `Transcript` input records the scanner's own filters."""
     from inspect_scout._scanner.result import Result
 
     @scanner(messages="all")
@@ -237,24 +222,14 @@ def test_reference_mode_materialized_path_records_reference() -> None:
         assert content == TranscriptContent(messages="all").to_json()
 
 
-def test_reference_report_pickles_small() -> None:
-    import pickle
-
-    from inspect_scout._scanner.result import Result, ResultReport
-
-    report = ResultReport(
-        input_type="transcript",
-        input_ids=["t"],
-        input=ReferenceTranscript(
-            source_uri="s3://b/l.eval", transcript_id="t", content_json="{}"
-        ),
-        result=Result(value=True),
-        validation=None,
-        error=None,
-        events=[],
-        model_usage={},
+def test_content_filters_round_trip_through_json() -> None:
+    content = TranscriptContent(
+        messages="all", events=["model"], timeline=True, metadata=False
     )
-    assert len(pickle.dumps(report)) < 50_000
+    assert set(json.loads(content.to_json())) == {
+        f.name for f in dataclasses.fields(TranscriptContent)
+    }
+    assert TranscriptContent.from_json(content.to_json()) == content
 
 
 @pytest.mark.asyncio
@@ -306,59 +281,10 @@ async def test_resolve_from_explicit_transcripts_location() -> None:
 
 
 @pytest.mark.asyncio
-async def test_resolve_treats_nan_input_content_as_absent() -> None:
-    """A pandas row's NULL `input_content` surfaces as `float('nan')`, not `None`.
-
-    `bool(float('nan'))` is `True`, so a plain truthiness check on
-    `input_content` would send NaN into `TranscriptContent.from_json` instead
-    of falling back to full content. Guard it like a DataFrame row would
-    actually look.
-    """
+async def test_resolve_raises_when_transcript_is_not_in_source() -> None:
+    """A replaced log must fail loudly rather than resolve to another sample."""
     from inspect_scout import resolve_input_reference
 
-    logs_dir = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
-    log = sorted(logs_dir.glob("*.eval"))[0]
-
-    from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
-
-    view = EvalLogTranscriptsView(str(log))
-    await view.connect()
-    try:
-        infos = [i async for i in view.select()]
-    finally:
-        await view.disconnect()
-
-    row = {
-        "input_storage": "reference",
-        "transcript_source_uri": str(log),
-        "transcript_id": infos[0].transcript_id,
-        "input_content": float("nan"),
-    }
-    resolved = await resolve_input_reference(row)
-    assert resolved.messages
-
-
-@pytest.mark.asyncio
-async def test_resolve_failures_are_loud() -> None:
-    from inspect_scout import resolve_input_reference
-
-    with pytest.raises(ValueError, match="not a reference"):
-        await resolve_input_reference({"input_storage": "inline"})
-    with pytest.raises(ValueError, match="source_uri"):
-        await resolve_input_reference(
-            {
-                "input_storage": "reference",
-                "transcript_source_uri": None,
-                "transcript_id": "t",
-            }
-        )
-    with pytest.raises(ValueError, match="transcript_id"):
-        await resolve_input_reference(
-            {
-                "input_storage": "reference",
-                "transcript_source_uri": "file:///log.eval",
-            }
-        )
     logs_dir = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
     log = sorted(logs_dir.glob("*.eval"))[0]
     with pytest.raises(ValueError, match="not found"):

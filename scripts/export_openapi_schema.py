@@ -49,7 +49,7 @@ def main() -> None:
         """Schema-only type for scanner input column values."""
 
         input_type: ScannerInputNames
-        input: ScannerInput
+        input: ScannerInput | None = None
         input_data: EventsData | None = None
 
     # Create the real app, then add stub endpoints for scout-specific types.

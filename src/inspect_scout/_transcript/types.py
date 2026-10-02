@@ -45,11 +45,7 @@ class TranscriptTooLargeError(Exception):
 
 
 class TranscriptTooLargeToRecordError(Exception):
-    """A serialized input cell exceeds what a parquet cell can store.
-
-    Raised at record-value construction; callers degrade the row to a
-    reference rather than treating this as a scan failure.
-    """
+    """A serialized input cell is too big for a parquet cell; the row degrades to a reference."""
 
     def __init__(self, transcript_id: str, cell: str, size: int):
         from .._util import constants
@@ -126,16 +122,6 @@ class TranscriptContent:
                 "timeline": self.timeline,
                 "metadata": self.metadata,
             }
-        )
-
-    @classmethod
-    def from_json(cls, s: str) -> "TranscriptContent":
-        d = json.loads(s)
-        return cls(
-            messages=d.get("messages"),
-            events=d.get("events"),
-            timeline=d.get("timeline"),
-            metadata=d.get("metadata"),
         )
 
 

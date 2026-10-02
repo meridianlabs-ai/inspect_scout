@@ -49,9 +49,8 @@ def _spy_spooled_handles(
         info: TranscriptInfo,
         parse: Callable[[], Awaitable[StreamParseResult]],
         load_fallback: Callable[[], Awaitable[Transcript]],
-        content: TranscriptContent,
     ) -> None:
-        real_init(self, info, parse, load_fallback, content)
+        real_init(self, info, parse, load_fallback)
         created.append(self)
         close_counts[id(self)] = 0
 

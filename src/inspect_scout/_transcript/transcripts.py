@@ -67,7 +67,7 @@ class TranscriptsReader(abc.ABC):
         async def load_fn() -> Transcript:
             return await self.read(transcript, content)
 
-        return MaterializedTranscriptHandle(load_fn, transcript, content)
+        return MaterializedTranscriptHandle(load_fn, transcript)
 
     @abc.abstractmethod
     async def snapshot(self) -> ScanTranscripts: ...

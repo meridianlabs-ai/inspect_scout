@@ -1111,11 +1111,8 @@ async def _transcript_for_record(handle: TranscriptHandle) -> ReportInput:
 def _reference_for_record(
     handle: TranscriptHandle, scanner: Scanner[Any]
 ) -> ReferenceTranscript:
-    """Reference to `handle`'s transcript carrying the content filters `scanner` saw.
-
-    The scanner's own filters, not the shared handle's union, so resolution
-    reproduces exactly that scanner's input.
-    """
+    # The scanner's own filters, not the shared handle's union, so resolving
+    # the reference reproduces exactly what this scanner saw.
     config = config_for_scanner(scanner)
     # An unregistered (non-@loader) custom loader has no loader config; fall
     # back to the scanner's declared filters rather than failing the record.
@@ -1337,11 +1334,9 @@ async def _scan_one(
                 except PrerequisiteError:
                     raise
                 except TranscriptTooLargeToRecordError as ex:
-                    # Readable, just over the parquet cell cap: record a
-                    # reference to the source rather than failing the row.
-                    # Not a failure, so fail_on_error does not apply --
-                    # matching the parent-side backstop in
-                    # `ResultReport.to_df_columns`, which cannot raise.
+                    # A storage limit, not a scan failure, so fail_on_error does
+                    # not apply (the parent-side backstop in
+                    # `ResultReport.to_df_columns` cannot raise either).
                     logger.warning(
                         "Transcript %s: serialized '%s' is %d bytes, over the "
                         "parquet cell cap; recording a reference to the source "
@@ -1355,10 +1350,9 @@ async def _scan_one(
                     if fail_on_error:
                         raise
                     # The scan ran, but its transcript can't be read back for
-                    # the record. Keep whatever the scan produced, record a
-                    # reference to the source (identity plus content filters),
-                    # and surface the read failure as this row's error --
-                    # never a clean result over unreadable content.
+                    # the record. Keep whatever the scan produced and surface
+                    # the read failure as this row's error -- never a clean
+                    # result over a reference to unreadable content.
                     report_input = _reference_for_record(handle_input, job.scanner)
                     logger.warning(
                         "Unable to read transcript %s for the result record; "

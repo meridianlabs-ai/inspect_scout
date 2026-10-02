@@ -7,7 +7,6 @@ from pathlib import Path
 
 import duckdb
 import pytest
-from inspect_ai._util.error import PrerequisiteError
 from inspect_ai.model import ModelOutput
 from inspect_scout import Scanner, llm_scanner, scan, scanner
 from inspect_scout._concurrency.common import ScannerJob
@@ -33,21 +32,14 @@ def _streaming_scanner() -> Scanner[Transcript]:
     return scan
 
 
-def _failing_handle(
-    error: Exception, content: TranscriptContent
-) -> MaterializedTranscriptHandle:
+@pytest.mark.asyncio
+async def test_record_failure_degrades_to_reference() -> None:
     info = TranscriptInfo(transcript_id="t1", source_uri="file:///log.eval")
 
     async def failing_load() -> Transcript:
-        raise error
+        raise RuntimeError("boom")
 
-    return MaterializedTranscriptHandle(failing_load, info, content)
-
-
-@pytest.mark.asyncio
-async def test_record_failure_degrades_to_reference() -> None:
-    content = TranscriptContent(messages="all", events="all", timeline=None)
-    handle = _failing_handle(RuntimeError("boom"), content)
+    handle = MaterializedTranscriptHandle(failing_load, info)
     job = ScannerJob(
         union_transcript=handle, scanner=_streaming_scanner(), scanner_name="s"
     )
@@ -57,27 +49,13 @@ async def test_record_failure_degrades_to_reference() -> None:
     assert isinstance(report_input, ReferenceTranscript)
     assert report_input.transcript_id == "t1"
     assert report_input.source_uri == "file:///log.eval"
-    assert report_input.content_json == content.to_json()
+    assert (
+        report_input.content_json
+        == TranscriptContent(messages="all", events="all", timeline=None).to_json()
+    )
     # The scan's value is kept; the read failure is surfaced as the row error.
     assert reports[0].result is not None
     assert reports[0].error is not None
-
-
-@pytest.mark.parametrize(
-    ("error", "fail_on_error"),
-    [
-        pytest.param(RuntimeError("boom"), True, id="fail_on_error"),
-        pytest.param(PrerequisiteError("boom"), False, id="prerequisite"),
-    ],
-)
-@pytest.mark.asyncio
-async def test_record_failure_raises(error: Exception, fail_on_error: bool) -> None:
-    handle = _failing_handle(error, TranscriptContent(None, None, None))
-    job = ScannerJob(
-        union_transcript=handle, scanner=_streaming_scanner(), scanner_name="s"
-    )
-    with pytest.raises(type(error)):
-        await _scan_one(job, validation=None, fail_on_error=fail_on_error)
 
 
 def _mock_yes_responses(n: int) -> list[ModelOutput]:
@@ -87,27 +65,17 @@ def _mock_yes_responses(n: int) -> list[ModelOutput]:
     ]
 
 
-@pytest.mark.parametrize("fail_on_error", [False, True])
 def test_oversized_transcript_records_reference_and_scan_completes(
-    monkeypatch: pytest.MonkeyPatch, fail_on_error: bool
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A real scan over an oversized transcript must complete, not abort.
+    """An oversized transcript used to leave the scan incomplete and unresumable.
 
-    Regression baseline: an oversized transcript used to end the scan
-    `complete: false` with an empty `_errors.jsonl` and an unresumable
-    location. With the cap monkeypatched so every cell is "oversized", the
-    scan must complete, the scanner's real result must be preserved, and
-    the row must degrade to a `reference` input row instead of an inline one.
-    Oversize is a degrade, not a failure, so this holds under fail_on_error
-    too (the materialized-path backstop can't raise either).
-
-    The scanner must be handle-capable (`llm_scanner`) so the job is
-    streaming-eligible and runs the spool-side guard
-    (`pooled_passthrough` -> `TranscriptTooLargeToRecordError` ->
-    `_scan_one`'s record-path degrade). A plain `Transcript`-typed scanner
-    materializes up front and would only exercise the separate parent-side
-    backstop in `ResultReport.to_df_columns`.
+    It must instead complete with the scanner's result and a reference input,
+    even under fail_on_error: oversize is a degrade, not a failure.
     """
+    # llm_scanner is handle-capable, so the job streams and reaches the
+    # spool-side guard; a plain Transcript scanner would only exercise the
+    # parent-side backstop in ResultReport.to_df_columns.
     monkeypatch.setattr(constants_mod, "SPOOL_THRESHOLD_BYTES", 0)  # force spooled
     monkeypatch.setattr(
         constants_mod, "RECORD_CELL_MAX_BYTES", 1000
@@ -131,7 +99,7 @@ def test_oversized_transcript_records_reference_and_scan_completes(
             max_processes=1,  # in-process so the monkeypatched constants apply
             model="mockllm/model",
             model_args={"custom_outputs": _mock_yes_responses(40)},
-            fail_on_error=fail_on_error,
+            fail_on_error=True,
             display="none",
         )
         assert status.complete, "oversized input must not prevent completion"

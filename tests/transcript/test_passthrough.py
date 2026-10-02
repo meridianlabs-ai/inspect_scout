@@ -282,61 +282,31 @@ def test_pool_entries_collect_only_whole_value_attachment_refs(
     assert data["messages"][0]["content"] == _embedded(embedded_id)
 
 
-def test_oversized_envelope_raises_before_read_back(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("cell", ["input", "input_data"])
+def test_oversized_cell_raises_before_read_back(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cell: str
 ) -> None:
-    """The guard fires on spool length, before the cell exists in RAM."""
-    from inspect_scout._transcript.types import TranscriptTooLargeToRecordError
-    from inspect_scout._util import constants as constants_mod
-
-    # The fixture's envelope serializes to ~115 bytes; the cap must sit
-    # below that for the guard to fire.
-    monkeypatch.setattr(constants_mod, "RECORD_CELL_MAX_BYTES", 100)
-    result = _result(tmp_path, [{"event": "model", "input_refs": [[0, 3]]}])
-    try:
-        with pytest.raises(TranscriptTooLargeToRecordError) as exc_info:
-            pooled_passthrough(TranscriptInfo(transcript_id="t1"), result)
-        assert exc_info.value.transcript_id == "t1"
-        assert exc_info.value.cell == "input"
-        assert exc_info.value.size > 100
-    finally:
-        result.close()
-
-
-def test_oversized_input_data_raises_before_read_back(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """The `input_data` guard fires independently of the envelope one.
-
-    A cap between the two cells' real sizes lets the envelope clear the
-    check and isolates the guard inside `_emit_input_data`.
-    """
+    """Each guard fires on spool length, before the cell exists in RAM."""
     from inspect_scout._transcript.types import TranscriptTooLargeToRecordError
     from inspect_scout._util import constants as constants_mod
 
     result = _result(tmp_path, [{"event": "model", "input_refs": [[0, 3]]}])
     try:
-        # Probe the real sizes at the unpatched (2 GB) cap rather than
-        # hardcoding numbers, so this can't silently go vacuous if the
-        # fixture changes.
-        envelope_json, input_data_json = pooled_passthrough(
+        envelope, input_data = pooled_passthrough(
             TranscriptInfo(transcript_id="t1"), result
         )
-        envelope_len, data_len = len(envelope_json), len(input_data_json)
-        assert envelope_len < data_len, (
-            "fixture must make input_data strictly bigger than the envelope "
-            "for a cap between them to isolate the input_data guard"
+        # The envelope is checked first, so isolating the input_data guard
+        # needs a cap the envelope clears (`>` is strict) and input_data does not.
+        assert len(envelope) < len(input_data)
+        cap, size = (
+            (len(envelope) - 1, len(envelope))
+            if cell == "input"
+            else (len(envelope), len(input_data))
         )
-
-        # A cap the envelope clears (equality doesn't trip `>`) but
-        # input_data does not.
-        cap = envelope_len
         monkeypatch.setattr(constants_mod, "RECORD_CELL_MAX_BYTES", cap)
 
         with pytest.raises(TranscriptTooLargeToRecordError) as exc_info:
             pooled_passthrough(TranscriptInfo(transcript_id="t1"), result)
-        assert exc_info.value.transcript_id == "t1"
-        assert exc_info.value.cell == "input_data"
-        assert exc_info.value.size == data_len
+        assert (exc_info.value.cell, exc_info.value.size) == (cell, size)
     finally:
         result.close()

@@ -141,13 +141,10 @@ class SerializedTranscript(BaseModel):
 
 
 class ReferenceTranscript(BaseModel):
-    """Recorder column values for a transcript stored by reference.
+    """A transcript recorded by reference instead of copied into the row.
 
-    The row carries identity in existing columns (`transcript_id`,
-    `transcript_source_uri`); this adds only the content filters needed to
-    reproduce what the scanner saw. `content_json` None means the filters
-    were unavailable (parent-side degrade) and resolution defaults to full
-    content.
+    `content_json` is the scanner's content filters; None means they were
+    unavailable and resolving the reference reads full content.
     """
 
     source_uri: str | None
@@ -156,8 +153,8 @@ class ReferenceTranscript(BaseModel):
 
 
 ReportInput = ScannerInput | SerializedTranscript | ReferenceTranscript
-"""What a `ResultReport` may carry: a live scanner input, or -- for spooled
-transcript handles -- pre-serialized column values.
+"""What a `ResultReport` may carry: a live scanner input, pre-serialized column
+values (spooled transcript handles), or a reference recorded instead of a copy.
 
 Deliberately NOT part of `ScannerInput`: that alias is public API, bounds
 `Loader[T]` and the `@scanner` type parameter, and drives the OpenAPI schema.
@@ -209,8 +206,8 @@ class ResultReport(BaseModel):
                 self.input, Transcript
             ):
                 # Serialized in the parent (materialized sources), so the
-                # spool-side guard never saw it. Content filters are not
-                # available here; resolution defaults to full content.
+                # spool-side guard never saw it, and no content filters are
+                # available here.
                 logger.warning(
                     "Transcript %s: serialized input is %d bytes, over the "
                     "parquet cell cap; recording a reference to the source.",

@@ -280,3 +280,33 @@ def test_pool_entries_collect_only_whole_value_attachment_refs(
     data = json.loads(input_data_json)
     assert data["attachments"] == {whole_id: "REFERENCED"}
     assert data["messages"][0]["content"] == _embedded(embedded_id)
+
+
+@pytest.mark.parametrize("cell", ["input", "input_data"])
+def test_oversized_cell_raises_before_read_back(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cell: str
+) -> None:
+    """Each guard fires on spool length, before the cell exists in RAM."""
+    from inspect_scout._transcript.types import TranscriptTooLargeToRecordError
+    from inspect_scout._util import constants as constants_mod
+
+    result = _result(tmp_path, [{"event": "model", "input_refs": [[0, 3]]}])
+    try:
+        envelope, input_data = pooled_passthrough(
+            TranscriptInfo(transcript_id="t1"), result
+        )
+        # The envelope is checked first, so isolating the input_data guard
+        # needs a cap the envelope clears (`>` is strict) and input_data does not.
+        assert len(envelope) < len(input_data)
+        cap, size = (
+            (len(envelope) - 1, len(envelope))
+            if cell == "input"
+            else (len(envelope), len(input_data))
+        )
+        monkeypatch.setattr(constants_mod, "RECORD_CELL_MAX_BYTES", cap)
+
+        with pytest.raises(TranscriptTooLargeToRecordError) as exc_info:
+            pooled_passthrough(TranscriptInfo(transcript_id="t1"), result)
+        assert (exc_info.value.cell, exc_info.value.size) == (cell, size)
+    finally:
+        result.close()

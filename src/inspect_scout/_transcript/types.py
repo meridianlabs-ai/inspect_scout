@@ -1,3 +1,4 @@
+import json
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from os import PathLike
@@ -41,6 +42,21 @@ class TranscriptTooLargeError(Exception):
         self.size = size
         self.max_size = max_size
         super().__init__(f"Transcript {transcript_id}: {size} bytes exceeds {max_size}")
+
+
+class TranscriptTooLargeToRecordError(Exception):
+    """A serialized input cell is too big for a parquet cell; the row degrades to a reference."""
+
+    def __init__(self, transcript_id: str, cell: str, size: int):
+        from .._util import constants
+
+        self.transcript_id = transcript_id
+        self.cell = cell
+        self.size = size
+        super().__init__(
+            f"Transcript {transcript_id}: serialized '{cell}' is {size} bytes, "
+            f"over the {constants.RECORD_CELL_MAX_BYTES} byte parquet cell cap"
+        )
 
 
 EventType = Literal[
@@ -96,6 +112,17 @@ class TranscriptContent:
     honored when every scanner in the scan declines; a scanner sharing a
     read with one that wants metadata receives it anyway.
     """
+
+    def to_json(self) -> str:
+        """Filters as JSON, for the results `input_content` column."""
+        return json.dumps(
+            {
+                "messages": self.messages,
+                "events": self.events,
+                "timeline": self.timeline,
+                "metadata": self.metadata,
+            }
+        )
 
 
 class BytesContextManager:

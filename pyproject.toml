@@ -21,7 +21,7 @@ dependencies = [
     "fastapi>=0.128.1",
     "ijson>=3.2.0",
     "importlib-metadata",
-    "inspect-ai>=0.3.263",
+    "inspect-ai>=0.3.268",
     "inspect-swe>=0.2.56",
     "jinja2>=3.0.0",
     "jsonlines>=3.0.0",
@@ -68,7 +68,9 @@ dev = [
     "harbor>=0.6.0; python_version >= '3.12'",
     "huggingface_hub",
     "langsmith",
-    "logfire>=3",
+    # >=3.23.0: first release with logfire.query_client, which the logfire
+    # source imports (earlier releases only have logfire.experimental.query_client)
+    "logfire>=3.23.0",
     # >=3.0.0: openai 3.x types its exceptions against httpx2, which the
     # tests construct directly (httpx2 arrives transitively via openai)
     "openai>=3.0.0",

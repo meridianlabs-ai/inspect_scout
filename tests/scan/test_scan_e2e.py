@@ -85,6 +85,30 @@ def multi_item_model_usage_scanner_factory() -> Scanner[ChatMessageUser]:
     return scan_message
 
 
+@loader(name="per_item_events_loader", messages=["user"])
+def per_item_events_loader_factory() -> Loader[ChatMessageUser]:
+    """Create a loader that makes one model call before yielding each message."""
+
+    async def load(transcript: Transcript) -> AsyncIterator[ChatMessageUser]:
+        for message in transcript.messages:
+            if isinstance(message, ChatMessageUser):
+                await get_model().generate([message])
+                yield message
+
+    return load
+
+
+@scanner(name="per_item_events_scanner", loader=per_item_events_loader_factory())
+def per_item_events_scanner_factory() -> Scanner[ChatMessageUser]:
+    """Create a scanner that makes exactly one model call per loader item."""
+
+    async def scan_message(message: ChatMessageUser) -> Result:
+        await get_model().generate([message])
+        return Result(value=message.text)
+
+    return scan_message
+
+
 @scanner(name="llm_dynamic_question_scanner", messages="all")
 def llm_dynamic_question_scanner_factory() -> Scanner[Transcript]:
     """LLM scanner with dynamic question based on transcript."""
@@ -373,6 +397,75 @@ def test_scan_model_usage_not_cumulative(tmp_path: Path) -> None:
         assert usage == first_usage, (
             f"scan_model_usage for scan {i} differs from scan 0: {usage} != {first_usage}"
         )
+
+
+def test_scan_events_are_per_loader_item(tmp_path: Path) -> None:
+    """Each report's events cover only its own item's invocation.
+
+    Regression test for reports built from one Inspect transcript shared
+    across every item a loader yields: item k recorded the events of items
+    0..k, so the stored `scan_events` grew quadratically in the item count
+    and attributed earlier items' model calls to later reports. The loader
+    call that produces an item and the scan of that item both belong to
+    that item's report.
+    """
+    db_path = tmp_path / "transcript_db"
+    scans_path = tmp_path / "scans"
+    db_path.mkdir()
+    scans_path.mkdir()
+    item_count = 5
+    transcript = Transcript(
+        transcript_id="per-item-events",
+        source_type="test",
+        source_id="source-0",
+        source_uri="test://per-item-events",
+        messages=[
+            ChatMessageUser(content=f"Item {i} message") for i in range(item_count)
+        ],
+        events=[],
+    )
+
+    import asyncio
+
+    async def insert_transcript() -> None:
+        async with transcripts_db(str(db_path)) as db:
+            await db.insert([transcript])
+
+    asyncio.run(insert_transcript())
+    status = scan(
+        scanners=[per_item_events_scanner_factory()],
+        transcripts=transcripts_from(str(db_path)),
+        scans=str(scans_path),
+        max_processes=1,
+        model="mockllm/model",
+        model_args={
+            "custom_outputs": [
+                ModelOutput.from_content(model="mockllm", content="ok")
+                for _ in range(2 * item_count)
+            ]
+        },
+        display="none",
+    )
+    assert status.complete
+    assert status.location is not None
+    # scan_events is a heavy column, excluded unless asked for
+    df = scan_results_df(
+        status.location, scanner="per_item_events_scanner", exclude_columns=[]
+    ).scanners["per_item_events_scanner"]
+    assert len(df) == item_count
+
+    for i in range(item_count):
+        events = json.loads(df["scan_events"].iloc[i])
+        model_events = [e for e in events if e["event"] == "model"]
+        # The loader's call for this item and the scan's call, and nothing
+        # from items 0..i-1.
+        assert len(model_events) == 2, (
+            f"report {i} carries {len(model_events)} model events, expected 2"
+        )
+        for event in model_events:
+            assert event["input"][0]["content"] == f"Item {i} message"
+        # The scan span is recorded once per item alongside the calls.
+        assert [e["event"] for e in events].count("span_begin") == 1
 
 
 def test_scan_model_usage_is_per_loader_item(tmp_path: Path) -> None:

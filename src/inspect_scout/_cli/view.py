@@ -14,11 +14,39 @@ from inspect_scout._cli.common import (
 )
 
 from .._view.view import view
+from .bundle import bundle_command
 
 logger = getLogger(__name__)
 
 
-@click.command("view")
+class ViewGroup(click.Group):
+    """Custom group letting an optional PROJECT_DIR coexist with subcommands.
+
+    Without this:
+      - ``scout view bundle`` would consume ``bundle`` as PROJECT_DIR and
+        then fail to find a subcommand.
+      - ``scout view PATH --port 8080`` would stop parsing options at
+        PATH (click.Group sets ``allow_interspersed_args=False``).
+    """
+
+    # Let options appear anywhere on the command line — `scout view PATH
+    # --port 8080` is the documented form.
+    allow_interspersed_args = True
+
+    def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
+        for i, a in enumerate(args):
+            if a in self.commands:
+                rest = super().parse_args(ctx, args[:i])
+                ctx._protected_args = args[i:]
+                return rest
+        return super().parse_args(ctx, args)
+
+
+@click.group(
+    name="view",
+    cls=ViewGroup,
+    invoke_without_command=True,
+)
 @click.argument("project_dir", required=False, default=None)
 @click.option(
     "-T",
@@ -55,6 +83,10 @@ def view_command(
     **common: Unpack[CommonOptions],
 ) -> None:
     """View scan results."""
+    if ctx.invoked_subcommand is not None:
+        # A subcommand (e.g. `scout view bundle`) handles its own options.
+        return
+
     # chdir to correctly resolve log level based on the relevant project_dir
     with chdir(project_dir or "."):
         process_common_options(ctx, common, init_logging=False)
@@ -71,3 +103,6 @@ def view_command(
         log_level=common["log_level"],
         root_path=root_path,
     )
+
+
+view_command.add_command(bundle_command)

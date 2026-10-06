@@ -7,6 +7,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Wait a week after a release before proposing it, so a compromised
+    # release has time to be caught. Security updates skip the cooldown.
+    cooldown:
+      default-days: 7
     # One PR per week for all actions, not one per action.
     groups:
       github-actions:

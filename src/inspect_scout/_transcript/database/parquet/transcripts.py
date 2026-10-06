@@ -1328,7 +1328,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
             output_path = Path(self._location) / filename
             output_path.parent.mkdir(parents=True, exist_ok=True)
             parquet_path = output_path.as_posix()
-            self._write_parquet_file(table, parquet_path)
+            # Keep incomplete fragments outside the reader's *.parquet glob.
+            local_tmp_path = output_path.parent / f".tmp_{uuid.uuid4().hex}"
+            try:
+                self._write_parquet_file(table, str(local_tmp_path))
+                os.rename(local_tmp_path, output_path)
+            finally:
+                local_tmp_path.unlink(missing_ok=True)
 
         return parquet_path
 

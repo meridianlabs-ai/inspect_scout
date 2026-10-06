@@ -22,16 +22,29 @@ agy 1.1.14–1.1.19:
   is a session preamble, not compaction; later checkpoints are real
   compaction boundaries.
 - ``ERROR_MESSAGE``/``SYSTEM_MESSAGE`` are model-visible system text.
+- ``step_index`` increments per step, but a step that produced no record
+  leaves a hole: in the corpus every hole follows a planner step whose call
+  was declined or whose turn was interrupted (the result is never written),
+  and an unparseable line leaves the same hole. agy 1.1.5 also skipped one
+  index per tool-using session (specstory's format doc). See
+  `ToolCallPairer` for how holes are handled.
+
+Events follow claude_code: a ModelEvent per planner step, a tool span per
+tool call (built in transcripts.py), and an InfoEvent per system text step,
+so timeline consumers see what happens after a conversation's final planner
+step as well.
 """
 
 from __future__ import annotations
 
 import re
 from collections import deque
+from dataclasses import dataclass, field
+from datetime import datetime
 from logging import getLogger
 from typing import Any
 
-from inspect_ai.event import CompactionEvent, ModelEvent
+from inspect_ai.event import CompactionEvent, InfoEvent, ModelEvent
 from inspect_ai.model import (
     ChatCompletionChoice,
     ChatMessage,
@@ -91,7 +104,8 @@ def parse_steps(raw_steps: list[dict[str, Any]]) -> list[Step]:
     steps complete, so a fast tool result can land in the file before its
     planner step — and positional tool pairing depends on step order.
     (``step_index`` never resets across resume seams, so a global sort is
-    safe.)
+    safe.) A skipped step leaves a gap in the sequence, which
+    `ToolCallPairer` treats as a lost turn boundary.
     """
     steps: list[Step] = []
     for raw_step in raw_steps:
@@ -152,6 +166,23 @@ def is_tool_result_step(step: Step) -> bool:
     return step.source == "MODEL" and step.type != "PLANNER_RESPONSE"
 
 
+@dataclass
+class Pairing:
+    """What `ToolCallPairer.advance` resolved for one step."""
+
+    call: ToolCall | None = None
+    """The call a tool-result step pairs with (None when nothing is pending)."""
+
+    abandoned: list[ToolCall] = field(default_factory=list)
+    """Calls that can no longer receive a result."""
+
+    started: datetime | None = None
+    """When the planner turn that issued ``call``/``abandoned`` began."""
+
+    gap: bool = False
+    """``step_index`` jumped: at least one step before this one was dropped."""
+
+
 class ToolCallPairer:
     """Pairs tool-result steps with pending planner tool calls.
 
@@ -160,19 +191,49 @@ class ToolCallPairer:
     positional/FIFO. A call still pending when the next planner step arrives
     never got a result (interrupted turn, failed tool) and is abandoned there,
     so it can't claim a later turn's result.
+
+    A jump in ``step_index`` means a step left no record: a declined call or
+    interrupted turn (its result is never written) or an unparseable line.
+    Whether that step was a planner or a result is unknowable, so pending
+    calls are abandoned there too: the results that follow get unknown
+    attribution rather than a wrong call. For the common declined-call case
+    this is exactly right (the call had no result), and a jump with nothing
+    pending costs nothing.
     """
 
     def __init__(self) -> None:
         self._pending: deque[ToolCall] = deque()
+        self._last_index: int | None = None
+        self._started: datetime | None = None
 
-    def push(self, calls: list[ToolCall]) -> None:
-        self._pending.extend(calls)
+    def advance(self, step: Step, tool_calls: list[ToolCall]) -> Pairing:
+        """Update pairing state for ``step``.
 
-    def pop(self) -> ToolCall | None:
-        return self._pending.popleft() if self._pending else None
+        Steps must arrive sorted by ``step_index`` (see `parse_steps`).
+        ``tool_calls`` are the step's own calls when it is a planner step.
+        """
+        pairing = Pairing(started=self._started)
+        if self._last_index is not None and step.step_index > self._last_index + 1:
+            pairing.gap = True
+            pairing.abandoned.extend(self._abandon())
+        self._last_index = step.step_index
 
-    def abandon(self) -> None:
+        if step.type == "PLANNER_RESPONSE":
+            pairing.abandoned.extend(self._abandon())
+            self._pending.extend(tool_calls)
+            self._started = parse_timestamp(step.created_at)
+        elif is_tool_result_step(step) and self._pending:
+            pairing.call = self._pending.popleft()
+        return pairing
+
+    def finish(self) -> Pairing:
+        """Abandon whatever is still pending when the steps run out."""
+        return Pairing(abandoned=self._abandon(), started=self._started)
+
+    def _abandon(self) -> list[ToolCall]:
+        abandoned = list(self._pending)
         self._pending.clear()
+        return abandoned
 
 
 def step_tool_calls(step: Step) -> list[ToolCall]:
@@ -187,6 +248,13 @@ def step_tool_calls(step: Step) -> list[ToolCall]:
         )
         for i, tc in enumerate(step.tool_calls)
     ]
+
+
+def unknown_tool_call(step: Step) -> ToolCall:
+    """The placeholder call for a result step that pairs with nothing."""
+    return ToolCall(
+        id=f"antigravity_cli_{step.step_index}_0", function="unknown", arguments={}
+    )
 
 
 def to_model_event(
@@ -226,6 +294,21 @@ def to_model_event(
     )
 
 
+def to_info_event(step: Step) -> InfoEvent:
+    """Convert a ``SYSTEM_MESSAGE``/``ERROR_MESSAGE`` step to an `InfoEvent`.
+
+    The text also enters the message stream as a ChatMessageSystem; the
+    event keeps it in the timeline when it follows a conversation's final
+    planner step (and so appears in no ModelEvent's input).
+    """
+    return InfoEvent(
+        source="antigravity_cli",
+        data=step.content or "",
+        metadata={"step_type": step.type},
+        timestamp=parse_timestamp(step.created_at) or utcnow(),
+    )
+
+
 def to_compaction_event(step: Step) -> CompactionEvent:
     """Convert a mid-conversation ``CHECKPOINT`` step to a `CompactionEvent`.
 
@@ -244,7 +327,7 @@ def to_compaction_event(step: Step) -> CompactionEvent:
 def step_to_messages(
     step: Step,
     tool_calls: list[ToolCall],
-    pairer: ToolCallPairer,
+    call: ToolCall | None,
 ) -> list[ChatMessage]:
     """Convert one step to ChatMessages.
 
@@ -252,7 +335,9 @@ def step_to_messages(
         step: The step to convert.
         tool_calls: Pre-converted tool calls when `step` is a planner step
             (from `step_tool_calls`; empty otherwise).
-        pairer: Positional pairing state for tool results.
+        call: The call a tool-result step pairs with (from
+            `ToolCallPairer.advance`); None when nothing is pending, in which
+            case the result is attributed to an unknown call.
     """
     if step.type == "USER_INPUT":
         return [ChatMessageUser(content=parse_user_request(step.content or ""))]
@@ -274,13 +359,11 @@ def step_to_messages(
             )
         ]
     elif is_tool_result_step(step):
-        call = pairer.pop()
+        call = call or unknown_tool_call(step)
         return [
             ChatMessageTool(
-                tool_call_id=call.id
-                if call
-                else f"antigravity_cli_{step.step_index}_0",
-                function=call.function if call else "unknown",
+                tool_call_id=call.id,
+                function=call.function,
                 content=step.content or "",
             )
         ]

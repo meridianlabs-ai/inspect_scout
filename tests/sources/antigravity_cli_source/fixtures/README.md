@@ -19,7 +19,9 @@ embed prompts, paths, and account details.
   spawn result carrying the child `conversationId`, subagent message).
 - `dddddddd-…0004` — the spawned sub-agent: chrome-wrapped prompt (subagent
   prompts carry `<USER_REQUEST>` chrome like top-level ones), parallel tool
-  calls, `send_message` report.
+  calls, `send_message` report, and — after the final planner step — the
+  `send_message` result and a stream-error `ERROR_MESSAGE` (exercises
+  trailing-step preservation inside the agent span).
 - `eeeeeeee-…0005` — typed tool results (`RUN_COMMAND`, `VIEW_FILE`,
   `INVOKE_SUBAGENT`), which third-party parsers document for agy versions
   outside the corpus (the corpus records every result as `GENERIC`); the

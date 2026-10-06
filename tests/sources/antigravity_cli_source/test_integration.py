@@ -11,10 +11,13 @@ from pathlib import Path
 import pytest
 from inspect_ai.event import (
     CompactionEvent,
+    Event,
     EventTreeSpan,
+    InfoEvent,
     ModelEvent,
     SpanBeginEvent,
     SpanEndEvent,
+    ToolEvent,
     event_tree,
 )
 from inspect_ai.model import (
@@ -44,6 +47,10 @@ TOP_LEVEL_IDS = {SIMPLE_ID, COMPACTION_ID, PARENT_ID, TYPED_ID}
 def fixtures_dir() -> Path:
     """Get the fixture data root (mirrors the on-disk Antigravity layout)."""
     return Path(__file__).parent / "fixtures" / "root"
+
+
+def _agent_spans(events: list[Event]) -> list[SpanBeginEvent]:
+    return [e for e in events if isinstance(e, SpanBeginEvent) and e.type == "agent"]
 
 
 def _transcript_path(root: Path, conversation_id: str) -> Path:
@@ -199,17 +206,17 @@ async def test_subagent_inlined_as_agent_span(fixtures_dir: Path) -> None:
     assert len(transcripts) == 1
     transcript = transcripts[0]
 
-    span_begins = [e for e in transcript.events if isinstance(e, SpanBeginEvent)]
+    span_begins = _agent_spans(transcript.events)
     assert len(span_begins) == 1
-    assert span_begins[0].type == "agent"
     assert span_begins[0].name == "Test researcher"
-    assert sum(1 for e in transcript.events if isinstance(e, SpanEndEvent)) == 1
     assert transcript.metadata["subagent_conversation_ids"] == [CHILD_ID]
 
     # the child's model events are inlined between the span boundaries
     begin_index = transcript.events.index(span_begins[0])
     end_index = next(
-        i for i, e in enumerate(transcript.events) if isinstance(e, SpanEndEvent)
+        i
+        for i, e in enumerate(transcript.events)
+        if isinstance(e, SpanEndEvent) and e.id == span_begins[0].id
     )
     inlined = [
         e
@@ -221,13 +228,55 @@ async def test_subagent_inlined_as_agent_span(fixtures_dir: Path) -> None:
     # ...and nest under the span in the event tree (span_id re-parenting),
     # leaving only the parent's own two model calls at the root
     tree = event_tree(transcript.events)
-    [span] = [n for n in tree if isinstance(n, EventTreeSpan)]
+    [span] = [n for n in tree if isinstance(n, EventTreeSpan) and n.type == "agent"]
     assert span.name == "Test researcher"
     assert [n for n in span.children if isinstance(n, ModelEvent)] == inlined
     assert len([n for n in tree if isinstance(n, ModelEvent)]) == 2
 
     # child messages do not merge into the parent's message thread
     assert not any("Report sent." in (m.text or "") for m in transcript.messages)
+
+
+@pytest.mark.asyncio
+async def test_subagent_steps_after_final_planner_survive(fixtures_dir: Path) -> None:
+    """A child's trailing tool result and error reach the timeline.
+
+    They follow the child's last planner step, so no ModelEvent input holds
+    them and the child's own message list is not kept — the tool span and
+    InfoEvent inside the agent span are their only representation.
+    """
+    transcripts = [
+        t async for t in antigravity_cli(path=fixtures_dir, conversation_id=PARENT_ID)
+    ]
+    assert len(transcripts) == 1
+    tree = event_tree(transcripts[0].events)
+    [agent] = [n for n in tree if isinstance(n, EventTreeSpan) and n.type == "agent"]
+
+    tool_spans = [n for n in agent.children if isinstance(n, EventTreeSpan)]
+    assert [s.type for s in tool_spans] == ["tool", "tool", "tool"]
+    tool_events = [
+        e for s in tool_spans for e in s.children if isinstance(e, ToolEvent)
+    ]
+    assert [e.function for e in tool_events] == [
+        "list_dir",
+        "grep_search",
+        "send_message",
+    ]
+    assert isinstance(tool_events[-1].result, str)
+    assert tool_events[-1].result.endswith("Message delivered")
+    assert tool_events[-1].completed is not None
+    assert tool_events[-1].completed.isoformat() == "2026-08-23T13:04:01+00:00"
+
+    [error] = [n for n in agent.children if isinstance(n, InfoEvent)]
+    assert error.data == (
+        "Error: The stream was interrupted. Please continue the task you were "
+        "working on."
+    )
+
+    # the parent's own spawn call is a tool span at the root, before the agent span
+    [spawn] = [n for n in tree if isinstance(n, EventTreeSpan) and n.type == "tool"]
+    assert spawn.name == "invoke_subagent"
+    assert tree.index(spawn) < tree.index(agent)
 
 
 @pytest.mark.asyncio
@@ -248,8 +297,7 @@ async def test_typed_tool_results(fixtures_dir: Path) -> None:
     assert tool_messages[1].text == "# Repo\nTwo packages."
     assert not any(isinstance(m, ChatMessageSystem) for m in transcript.messages)
 
-    span_begins = [e for e in transcript.events if isinstance(e, SpanBeginEvent)]
-    assert [s.name for s in span_begins] == ["Summarizer"]
+    assert [s.name for s in _agent_spans(transcript.events)] == ["Summarizer"]
     assert transcript.metadata["subagent_conversation_ids"] == [TYPED_CHILD_ID]
 
 
@@ -290,9 +338,114 @@ async def test_spawn_cycle_is_skipped(
         ]
 
     assert [t.transcript_id for t in transcripts] == [parent_id]
-    span_begins = [e for e in transcripts[0].events if isinstance(e, SpanBeginEvent)]
-    assert [s.id for s in span_begins] == [f"agent-{child_id}"]
+    assert [s.id for s in _agent_spans(transcripts[0].events)] == [f"agent-{child_id}"]
     assert any("spawns an ancestor" in r.message for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_ordinary_tool_output_does_not_reparent(tmp_path: Path) -> None:
+    """A tool result that merely quotes a spawn result does not inline anything."""
+    quoter_id = "33333333-0000-0000-0000-000000000003"
+    quoted_id = "44444444-0000-0000-0000-000000000004"
+    root = tmp_path / "root"
+    # e.g. a run_command that greps these very logs
+    _write_transcript(
+        root,
+        quoter_id,
+        [
+            '{"step_index":0,"source":"USER_EXPLICIT","type":"USER_INPUT",'
+            '"created_at":"2026-08-25T10:00:00Z","content":"grep the logs"}',
+            '{"step_index":1,"source":"MODEL","type":"PLANNER_RESPONSE",'
+            '"created_at":"2026-08-25T10:00:01Z","tool_calls":[{"name":'
+            '"run_command","args":{"CommandLine":"grep -r conversationId logs"}}]}',
+            '{"step_index":2,"source":"MODEL","type":"GENERIC",'
+            '"created_at":"2026-08-25T10:00:02Z","content":"Created the following '
+            f'subagents:\\n{{\\"conversationId\\": \\"{quoted_id}\\"}}"}}',
+        ],
+    )
+    _write_transcript(
+        root,
+        quoted_id,
+        [
+            '{"step_index":0,"source":"USER_EXPLICIT","type":"USER_INPUT",'
+            '"created_at":"2026-08-25T11:00:00Z","content":"hi"}',
+            '{"step_index":1,"source":"MODEL","type":"PLANNER_RESPONSE",'
+            '"created_at":"2026-08-25T11:00:01Z","content":"hello"}',
+        ],
+    )
+
+    transcripts = [t async for t in antigravity_cli(path=root)]
+
+    assert {t.transcript_id for t in transcripts} == {quoter_id, quoted_id}
+    quoter = next(t for t in transcripts if t.transcript_id == quoter_id)
+    assert "subagent_conversation_ids" not in quoter.metadata
+    assert _agent_spans(quoter.events) == []
+
+
+def _rewrite_step(root: Path, conversation_id: str, step_index: int, line: str) -> None:
+    """Replace the JSONL line for ``step_index`` with ``line``."""
+    path = _transcript_path(root, conversation_id)
+    marker = f'{{"step_index":{step_index},'
+    lines = [
+        line if raw.startswith(marker) else raw
+        for raw in path.read_text(encoding="utf-8").splitlines()
+    ]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+@pytest.mark.asyncio
+async def test_corrupt_planner_step_leaves_attribution_unknown(
+    fixtures_dir: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A result following an unparseable planner step is kept, unattributed."""
+    root = _copy_fixtures(fixtures_dir, tmp_path)
+    _rewrite_step(root, SIMPLE_ID, 2, '{"step_index":2,"source":"MODEL",')
+
+    with caplog.at_level(logging.WARNING):
+        transcripts = [
+            t async for t in antigravity_cli(path=root, conversation_id=SIMPLE_ID)
+        ]
+
+    assert len(transcripts) == 1
+    transcript = transcripts[0]
+    # user, tool result (unknown call), assistant "hello"
+    assert [type(m) for m in transcript.messages] == [
+        ChatMessageUser,
+        ChatMessageTool,
+        ChatMessageAssistant,
+    ]
+    tool_message = transcript.messages[1]
+    assert isinstance(tool_message, ChatMessageTool)
+    assert tool_message.function == "unknown"
+    assert tool_message.tool_call_id == "antigravity_cli_3_0"
+    [tool_event] = [e for e in transcript.events if isinstance(e, ToolEvent)]
+    assert tool_event.function == "unknown"
+    assert isinstance(tool_event.result, str)
+    assert tool_event.result.endswith("/tmp")
+    # nothing was pending at the gap, so nothing is lost and nothing is logged
+    assert not any("missing before" in r.message for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_corrupt_tool_result_abandons_its_call(
+    fixtures_dir: Path, tmp_path: Path
+) -> None:
+    """A call whose result line is unparseable is abandoned, not paired later."""
+    root = _copy_fixtures(fixtures_dir, tmp_path)
+    _rewrite_step(root, SIMPLE_ID, 3, '{"step_index":3,"source":"MODEL",')
+
+    transcripts = [
+        t async for t in antigravity_cli(path=root, conversation_id=SIMPLE_ID)
+    ]
+
+    assert len(transcripts) == 1
+    transcript = transcripts[0]
+    assert not any(isinstance(m, ChatMessageTool) for m in transcript.messages)
+    [tool_event] = [e for e in transcript.events if isinstance(e, ToolEvent)]
+    assert tool_event.function == "run_command"
+    assert tool_event.result == ""
+    model_events = [e for e in transcript.events if isinstance(e, ModelEvent)]
+    assert len(model_events) == 2
 
 
 @pytest.mark.asyncio
@@ -360,8 +513,7 @@ async def test_time_window_does_not_split_subagents(
     assert {t.transcript_id for t in transcripts} == expected_ids
     parent = next((t for t in transcripts if t.transcript_id == PARENT_ID), None)
     if parent is not None:
-        span_begins = [e for e in parent.events if isinstance(e, SpanBeginEvent)]
-        assert [s.name for s in span_begins] == ["Test researcher"]
+        assert [s.name for s in _agent_spans(parent.events)] == ["Test researcher"]
 
 
 @pytest.mark.asyncio

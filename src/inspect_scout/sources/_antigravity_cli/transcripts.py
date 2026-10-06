@@ -27,6 +27,7 @@ from inspect_ai.event import (
     ModelEvent,
     SpanBeginEvent,
     SpanEndEvent,
+    ToolEvent,
     timeline_build,
 )
 from inspect_ai.model import (
@@ -35,6 +36,7 @@ from inspect_ai.model import (
     ChatMessageSystem,
     stable_message_ids,
 )
+from inspect_ai.tool import ToolCall
 
 from .._util import apply_working_start, parse_timestamp, utcnow
 from .client import (
@@ -56,7 +58,9 @@ from .events import (
     step_to_messages,
     step_tool_calls,
     to_compaction_event,
+    to_info_event,
     to_model_event,
+    unknown_tool_call,
 )
 
 if TYPE_CHECKING:
@@ -159,13 +163,21 @@ def _read_steps(record: ConversationRecord) -> list[Step]:
     return parse_steps(raw_steps)
 
 
-def _spawn_result_content(step: Step) -> str | None:
-    """The content of an ``invoke_subagent`` tool result, or None for any other step."""
-    if (
-        is_tool_result_step(step)
-        and step.content
-        and _SPAWN_RESULT_MARKER in step.content
-    ):
+def _spawn_result_content(step: Step, call: ToolCall | None) -> str | None:
+    """The content of an ``invoke_subagent`` result, or None for any other step.
+
+    The marker text alone is not evidence of a spawn: ordinary tool output
+    (a command that greps these very logs) can quote it, and acting on that
+    would hide an unrelated conversation from the top level and inline it
+    under the wrong parent. The step must be a typed ``INVOKE_SUBAGENT``
+    result or pair positionally with an ``invoke_subagent`` call.
+    """
+    if not is_tool_result_step(step):
+        return None
+    spawned = step.type == "INVOKE_SUBAGENT" or (
+        call is not None and call.function == "invoke_subagent"
+    )
+    if spawned and step.content and _SPAWN_RESULT_MARKER in step.content:
         return step.content
     return None
 
@@ -173,29 +185,33 @@ def _spawn_result_content(step: Step) -> str | None:
 def _extract_child_conversation_ids(steps: list[Step]) -> list[str]:
     """Extract child conversation ids from invoke_subagent result steps."""
     ids: list[str] = []
+    pairer = ToolCallPairer()
     for step in steps:
-        content = _spawn_result_content(step)
+        tool_calls = step_tool_calls(step) if step.type == "PLANNER_RESPONSE" else []
+        pairing = pairer.advance(step, tool_calls)
+        content = _spawn_result_content(step, pairing.call)
         if content:
             ids.extend(_CONVERSATION_ID_RE.findall(content))
     return ids
 
 
-def _extract_subagent_role_names(step: Step) -> list[str | None]:
-    """Extract subagent role names from a planner step's spawn calls.
+def _extract_subagent_role_names(call: ToolCall | None) -> list[str | None]:
+    """Extract subagent role names from an ``invoke_subagent`` call.
 
-    ``invoke_subagent`` args carry ``Subagents: [{"Role", "Prompt", …}]``,
-    ordered to match the ``conversationId`` order in the spawn result (the
-    same FIFO design as tool-result pairing). Entries without a ``Role``
-    yield None to keep that alignment.
+    Its args carry ``Subagents: [{"Role", "Prompt", …}]``, ordered to match
+    the ``conversationId`` order in the spawn result. Entries without a
+    ``Role`` yield None to keep that alignment. A typed spawn result that
+    paired with no call (``call`` None) yields no names.
     """
+    if call is None or call.function != "invoke_subagent":
+        return []
+    subagents = call.arguments.get("Subagents")
+    if not isinstance(subagents, list):
+        return []
     roles: list[str | None] = []
-    for tc in step.tool_calls or []:
-        if tc.name == "invoke_subagent":
-            subagents = tc.args.get("Subagents")
-            if isinstance(subagents, list):
-                for sub in subagents:
-                    role = sub.get("Role") if isinstance(sub, dict) else None
-                    roles.append(role if isinstance(role, str) else None)
+    for sa in subagents:
+        role = sa.get("Role") if isinstance(sa, dict) else None
+        roles.append(role if isinstance(role, str) else None)
     return roles
 
 
@@ -215,6 +231,7 @@ def _create_transcript(
     messages, events, info = _convert_steps(
         steps,
         generations,
+        conversation_id=record.conversation_id,
         records_by_id=records_by_id,
         roles=roles,
         depth=0,
@@ -282,6 +299,8 @@ def _create_transcript(
 @dataclass
 class _ConversionInfo:
     settings_model: str | None = None
+    """The first `Model Selection` (the transcript-level model fallback)."""
+
     compaction_count: int = 0
     child_ids: list[str] = field(default_factory=list)
     first_timestamp: str | None = None
@@ -291,6 +310,7 @@ def _convert_steps(
     steps: list[Step],
     generations: list[GenerationInfo],
     *,
+    conversation_id: str,
     records_by_id: dict[str, ConversationRecord],
     roles: dict[str, str],
     depth: int,
@@ -313,12 +333,50 @@ def _convert_steps(
     events: list[Event] = []
     info = _ConversionInfo()
     pairer = ToolCallPairer()
-    pending_roles: deque[str | None] = deque()
+    # The most recent `Model Selection`: the per-event model fallback when
+    # generation metadata is unavailable (info.settings_model keeps the first)
+    current_model: str | None = None
+
+    # gen_metadata has one row per planner step, matched by ordinal. A
+    # dropped planner step (unparseable line) shifts every later row onto
+    # the wrong step, and a step_index gap is the only evidence of where.
+    # When the counts agree no planner step is missing, so gaps are result
+    # steps and the ordinals stay valid.
     generation_ordinal = 0
+    planner_count = sum(1 for step in steps if step.type == "PLANNER_RESPONSE")
+    generations_aligned = len(generations) == planner_count
+    trusted_generations = generations
 
     for step in steps:
         if info.first_timestamp is None and step.created_at:
             info.first_timestamp = step.created_at
+
+        tool_calls = step_tool_calls(step) if step.type == "PLANNER_RESPONSE" else []
+        pairing = pairer.advance(step, tool_calls)
+        if pairing.gap:
+            # Routine when a declined call or interrupted turn left no result
+            # step (see ToolCallPairer); the parse sites already warn when a
+            # line was actually dropped.
+            if pairing.abandoned:
+                logger.debug(
+                    "Step(s) missing before step %d of %s; %d pending tool call(s) "
+                    "left unattributed",
+                    step.step_index,
+                    conversation_id,
+                    len(pairing.abandoned),
+                )
+            if trusted_generations and not generations_aligned:
+                logger.warning(
+                    "Step(s) missing before step %d of %s; generation metadata "
+                    "no longer aligned from here",
+                    step.step_index,
+                    conversation_id,
+                )
+                trusted_generations = []
+        for call in pairing.abandoned:
+            events.extend(
+                _create_tool_span_events(call, None, pairing.started, conversation_id)
+            )
 
         if step.type == "CHECKPOINT":
             # `{{ CHECKPOINT 0 }}` opens every conversation (a session-start
@@ -344,16 +402,18 @@ def _convert_steps(
 
         if step.type == "USER_INPUT" and step.content:
             settings = parse_settings_change(step.content)
-            if settings and info.settings_model is None:
-                info.settings_model = model_from_settings(settings)
+            selected = model_from_settings(settings) if settings else None
+            if selected:
+                current_model = selected
+                if info.settings_model is None:
+                    info.settings_model = selected
 
-        tool_calls = step_tool_calls(step) if step.type == "PLANNER_RESPONSE" else []
-        new_messages = step_to_messages(step, tool_calls, pairer)
+        new_messages = step_to_messages(step, tool_calls, pairing.call)
 
         if step.type == "PLANNER_RESPONSE":
             generation = (
-                generations[generation_ordinal]
-                if generation_ordinal < len(generations)
+                trusted_generations[generation_ordinal]
+                if generation_ordinal < len(trusted_generations)
                 else None
             )
             generation_ordinal += 1
@@ -368,30 +428,37 @@ def _convert_steps(
                         prior_messages=context,
                         assistant_message=assistant,
                         model=(generation.model if generation else None)
-                        or info.settings_model
+                        or current_model
                         or "unknown",
                         usage=generation.usage if generation else None,
                     )
                 )
-            # Results follow their planner step directly, so anything still
-            # pending from an earlier turn never got one.
-            pairer.abandon()
-            pending_roles.clear()
-            pairer.push(tool_calls)
-            pending_roles.extend(_extract_subagent_role_names(step))
+        elif is_tool_result_step(step):
+            call = pairing.call or unknown_tool_call(step)
+            events.extend(
+                _create_tool_span_events(
+                    call,
+                    step,
+                    pairing.started if pairing.call else None,
+                    conversation_id,
+                )
+            )
+        elif step.type in ("SYSTEM_MESSAGE", "ERROR_MESSAGE"):
+            events.append(to_info_event(step))
 
         messages.extend(new_messages)
         context.extend(new_messages)
 
         # Inline spawned sub-agents as agent spans at the spawn result.
-        spawn_result = _spawn_result_content(step)
+        spawn_result = _spawn_result_content(step, pairing.call)
         if spawn_result:
+            role_names = deque(_extract_subagent_role_names(pairing.call))
             for child_id in _CONVERSATION_ID_RE.findall(spawn_result):
                 if child_id in info.child_ids:
                     # Resume seams can duplicate steps verbatim; inlining the
                     # same child twice would emit colliding span ids.
                     continue
-                role = pending_roles.popleft() if pending_roles else None
+                role = role_names.popleft() if role_names else None
                 if role is not None:
                     roles[child_id] = role
                 info.child_ids.append(child_id)
@@ -405,7 +472,51 @@ def _convert_steps(
                     )
                 )
 
+    final = pairer.finish()
+    for call in final.abandoned:
+        events.extend(
+            _create_tool_span_events(call, None, final.started, conversation_id)
+        )
+
     return messages, events, info
+
+
+def _create_tool_span_events(
+    call: ToolCall,
+    result_step: Step | None,
+    started: datetime | None,
+    conversation_id: str,
+) -> list[Event]:
+    """Wrap a tool call and its result in a tool span (matching claude_code).
+
+    Produces ``SpanBeginEvent(type="tool")`` / ``ToolEvent`` / ``SpanEndEvent``.
+    ``started`` is the planner step's timestamp (the JSONL records when a
+    call was issued, not when the tool began). ``result_step`` is None for a
+    call that never received a result; its ToolEvent then has an empty
+    result and ``completed`` equal to its start, so the missing result is
+    visible in the timeline rather than silently absent. Call ids restart
+    per conversation, so the span id is scoped by ``conversation_id`` to stay
+    unique across inlined sub-agents.
+    """
+    completed = parse_timestamp(result_step.created_at) if result_step else None
+    timestamp = started or completed or utcnow()
+    completed = completed or timestamp
+    span_id = f"tool-{conversation_id}-{call.id}"
+    return [
+        SpanBeginEvent(
+            id=span_id, type="tool", name=call.function, timestamp=timestamp
+        ),
+        ToolEvent(
+            id=call.id,
+            function=call.function,
+            arguments=call.arguments,
+            result=(result_step.content or "") if result_step else "",
+            timestamp=timestamp,
+            completed=completed,
+            span_id=span_id,
+        ),
+        SpanEndEvent(id=span_id, timestamp=completed),
+    ]
 
 
 def _conversation_time_bounds(
@@ -457,6 +568,7 @@ def _create_subagent_span_events(
     _, agent_events, _ = _convert_steps(
         child_steps,
         child_generations,
+        conversation_id=child_id,
         records_by_id=records_by_id,
         roles=roles,
         depth=depth + 1,

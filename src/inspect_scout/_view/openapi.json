@@ -212,7 +212,7 @@
       },
       "AppConfig": {
         "additionalProperties": false,
-        "description": "Application configuration returned by GET /config.",
+        "description": "Application configuration returned by GET /config.\n\n`trust_content` is the viewer-wide cap: the lowest of the `scout view`\noption (or `SCOUT_VIEW_TRUST_CONTENT`) and the project's setting.",
         "properties": {
           "filter": {
             "anyOf": [
@@ -463,6 +463,17 @@
                 "type": "null"
               }
             ]
+          },
+          "trust_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Content"
           },
           "validation": {
             "anyOf": [
@@ -6431,6 +6442,17 @@
             ],
             "title": "Transcripts"
           },
+          "trust_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Content"
+          },
           "validation": {
             "anyOf": [
               {
@@ -6727,6 +6749,17 @@
               }
             ],
             "title": "Transcripts"
+          },
+          "trust_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Content"
           },
           "validation": {
             "anyOf": [
@@ -11530,6 +11563,17 @@
           "transcript_id": {
             "title": "Transcript Id",
             "type": "string"
+          },
+          "trust_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Content"
           }
         },
         "required": [
@@ -11787,6 +11831,17 @@
           "transcript_id": {
             "title": "Transcript Id",
             "type": "string"
+          },
+          "trust_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Content"
           }
         },
         "required": [

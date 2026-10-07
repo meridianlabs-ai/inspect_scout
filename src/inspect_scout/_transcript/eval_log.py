@@ -382,6 +382,7 @@ class EvalLogTranscriptsView(TranscriptsView):
             transcript_total_tokens = row_dict.get("total_tokens", None)
             transcript_error = row_dict.get("error", None)
             transcript_limit = row_dict.get("limit", None)
+            transcript_trust_content = row_dict.get("trust_content", None)
 
             # resolve json
             if transcript_agent_args is not None:
@@ -435,6 +436,7 @@ class EvalLogTranscriptsView(TranscriptsView):
                 total_tokens=transcript_total_tokens,
                 error=transcript_error,
                 limit=transcript_limit,
+                trust_content=transcript_trust_content,
                 metadata={},
             )
             object.__setattr__(info, "metadata", lazy_metadata)
@@ -1064,6 +1066,7 @@ TranscriptColumns: list[Column] = (
         SampleColumn("working_time", path="working_time"),
         SampleColumn("error", path="error", default=""),
         SampleColumn("limit", path="limit", default=""),
+        EvalColumn("trust_content", path="eval.viewer.trust_content"),
     ]
 )
 

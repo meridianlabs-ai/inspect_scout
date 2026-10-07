@@ -192,6 +192,7 @@ class RecorderBuffer:
                     "transcript_total_tokens": transcript_total_tokens,
                     "transcript_error": transcript_error,
                     "transcript_limit": transcript_limit,
+                    "transcript_trust_content": transcript.trust_content,
                     "transcript_metadata": transcript.metadata,
                     "scan_id": self._spec.scan_id,
                     "scan_tags": self._spec.tags or [],

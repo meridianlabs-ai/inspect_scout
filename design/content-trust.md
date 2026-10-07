@@ -43,7 +43,7 @@ These settings feed the cap. The effective cap is `false` if any of them is `fal
 - `--trust-content`, like leaving the option unset, defers to the other sources. It never raises trust.
 - `trust_content` is a field on `ProjectConfig` only, not `ScanJobConfig`. It configures the viewer, not scans: `scout scan` and scan jobs don't accept it, and `merge_project_into_scanjob` ignores it.
 - **`scout.local.yaml` merge:** for simple fields `merge_configs` currently lets the local file win. `trust_content` is an exception: the merged value is the stricter of the two, so a local file can lower trust but never raise it.
-- **Serving the cap:** the server computes the effective cap and returns it as `AppConfig.trust_content` from `GET /api/v2/app-config`. The project value is re-read on every request, as the rest of the project config is, so a change takes effect without restarting the viewer.
+- **Serving the cap:** the server computes the effective cap and returns it as `AppConfig.trust_content` from `GET /api/v2/app-config`. The project value is re-read on every request, as the rest of the project config is, so a change never needs a viewer restart. A save from the settings page takes effect immediately (it invalidates the app config). A hand edit to `scout.yaml` takes effect when the page reloads.
 
 ### Per-transcript trust
 
@@ -55,6 +55,7 @@ These settings feed the cap. The effective cap is `false` if any of them is `fal
 
 - **Column:** a scan records each result's transcript trust as a `transcript_trust_content` column, next to the other `transcript_*` columns in `_recorder/buffer.py`. A scanner's output is model output derived from the transcript, so it can't be more trusted than its input.
 - **Why record it:** the scanner result page and the scan results list read from the results data, not the transcript source, so trust has to be stored there.
+- **Type:** compaction pins the column to `bool`. Otherwise a first buffer file whose transcript has no setting (an all-null column) would turn every later value into the strings `"true"`/`"false"`.
 
 ## Data paths
 

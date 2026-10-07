@@ -461,3 +461,48 @@ async def test_record_serializes_path_in_metadata_as_json(
         "eval_file_path": "/home/foo/eval.yaml",
         "nested": {"inner_path": "/home/foo/inner.yaml"},
     }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "transcript_ids",
+    [
+        # the all-null file sorts first, so it seeds the discovered schema
+        {None: "a-unset", False: "b-untrusted", True: "c-trusted"},
+        {None: "c-unset", False: "b-untrusted", True: "a-trusted"},
+    ],
+)
+async def test_compaction_keeps_transcript_trust_content_boolean(
+    recorder_buffer: RecorderBuffer,
+    sample_results: list[ResultReport],
+    tmp_path: Path,
+    transcript_ids: dict[bool | None, str],
+) -> None:
+    scanner_name = "test_scanner"
+    for trust, tid in transcript_ids.items():
+        await recorder_buffer.record(
+            TranscriptInfo(
+                transcript_id=tid,
+                source_type="test",
+                source_id=f"src-{tid}",
+                source_uri=f"/path/{tid}.log",
+                trust_content=trust,
+            ),
+            scanner_name,
+            sample_results,
+            None,
+        )
+
+    out_path = tmp_path / "out.parquet"
+    assert scanner_table(recorder_buffer._buffer_dir, scanner_name, str(out_path))
+
+    table = pq.read_table(str(out_path))
+    assert table.schema.field("transcript_trust_content").type == pa.bool_()
+    by_tid = dict(
+        zip(
+            table.column("transcript_id").to_pylist(),
+            table.column("transcript_trust_content").to_pylist(),
+            strict=True,
+        )
+    )
+    assert by_tid == {tid: trust for trust, tid in transcript_ids.items()}

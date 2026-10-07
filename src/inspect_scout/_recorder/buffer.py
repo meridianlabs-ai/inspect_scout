@@ -408,7 +408,10 @@ def scanner_table(
     # 2. Promote other null-type columns to string (unknown type)
     # 3. Force 'value' and 'transcript_score' columns to string since they can have
     #    mixed types across different result reports / transcripts
-    fixed_types: dict[str, pa.DataType] = {"transcript_success": pa.bool_()}
+    fixed_types: dict[str, pa.DataType] = {
+        "transcript_success": pa.bool_(),
+        "transcript_trust_content": pa.bool_(),
+    }
     corrected_fields = []
     for field in schema:
         if field.name in fixed_types:

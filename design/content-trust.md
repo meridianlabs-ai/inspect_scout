@@ -78,14 +78,15 @@ These settings feed the cap. The effective cap is `false` if any of them is `fal
 - **The ceiling.** A `ContentTrustCeilingProvider` above the router takes `trustContentSetting(appConfig.trust_content)`.
   - The router subtree is keyed on that value, so a change remounts it. Scout already rebuilds its router when the app config changes, but the explicit key keeps the guarantee from depending on that.
   - No renderer caches output across trust levels while policies are all-or-nothing; see ts-mono `content-rendering.md` and the `MarkdownDiv` cache.
-- **The app default** stays `trusted`, under the ceiling. It covers surfaces that aren't model output from a transcript, such as scan specs, project settings and scan info.
+- **No app default.** The root `trusted` provider is removed, so anything outside a nearer provider is untrusted, as in the inspect app. A new surface that renders model output but forgets its provider fails closed (plain text). The lint rule only enforces *which components* render rich content, not *which provider* is above them.
+- **App-owned data** opts in with an explicit `<ContentTrustProvider value="trusted">`, still under the ceiling. Today that's the scan spec (`ScanInfo`) and the scan status JSON panel. Project settings use no rich renderers.
 - **Transcript surfaces** get a nearer `ContentTrustProvider` from the transcript's own trust:
   - The transcript page, from `TranscriptInfo.trust_content`. Untrusted until the info loads.
   - The scanner result page, from the result's `transcript_trust_content`.
   - Each row of the scan results list (`ScannerResultsRow`), from its result's `transcript_trust_content`. Rows from different transcripts can differ.
 - Reference popovers (`MarkdownDivWithReferences` citations) render in portals, so they inherit the trust of the row or page they're opened from.
 
-A nearer `ContentTrustProvider` replaces the app default, and the ceiling still caps the result. A trusted transcript in an untrusted viewer stays plain.
+The nearest `ContentTrustProvider` decides, and the ceiling still caps the result. A trusted transcript in an untrusted viewer stays plain.
 
 ### Settings page
 

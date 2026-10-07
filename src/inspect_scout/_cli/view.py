@@ -34,6 +34,16 @@ logger = getLogger(__name__)
     help="Location of scan results to view.",
 )
 @click.option(
+    "--trust-content/--no-trust-content",
+    default=None,
+    envvar="SCOUT_VIEW_TRUST_CONTENT",
+    help="Whether model output may be rendered richly (markdown, syntax highlighting, "
+    "ANSI colors, media, links). --no-trust-content shows all model output as plain "
+    "text, whatever the project or each transcript's own setting. --trust-content, "
+    "like leaving the option unset, defers to them; it never shows untrusted content "
+    "richly.",
+)
+@click.option(
     "--mode",
     type=click.Choice(("default", "scans")),
     default="default",
@@ -47,6 +57,7 @@ def view_command(
     project_dir: str | None,
     transcripts: str | None,
     scans: str | None,
+    trust_content: bool | None,
     mode: Literal["default", "scans"],
     host: str,
     port: int,
@@ -63,6 +74,7 @@ def view_command(
         project_dir=project_dir,
         transcripts=transcripts,
         scans=scans,
+        trust_content=trust_content,
         host=host,
         port=port,
         browser=browser is True,

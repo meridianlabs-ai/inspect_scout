@@ -23,7 +23,7 @@ This document covers how Scout adopts it. Scout has a project (`scout.yaml`) whe
 
 1. **Lowest trust wins.** Content renders richly only if every applicable setting allows it. No setting can raise trust that another setting has lowered.
 2. **Unset means trusted.** A missing or `null` setting, and data written before this feature existed, render as they do today. Only an explicit `false` lowers trust.
-3. **Unrecognized means untrusted.** A setting that is neither a boolean nor `null` counts as `false`, matching inspect_ai's `ViewerConfig` validator and ts-mono's `trustContentSetting()`.
+3. **Unrecognized means untrusted.** In a log, a setting that is neither a boolean nor `null` counts as `false`, matching inspect_ai's `ViewerConfig` validator and ts-mono's `trustContentSetting()`. In `scout.yaml` such a value fails schema validation, so the viewer doesn't start.
 4. **Loading means untrusted.** If the trust of a piece of content isn't known yet, it renders as plain text.
 
 ## Settings
@@ -48,7 +48,7 @@ These settings feed the cap. The effective cap is `false` if any of them is `fal
 ### Per-transcript trust
 
 - **Field:** `TranscriptInfo` gains `trust_content: bool | None = None`. It's a first-class field, not metadata, so it doesn't depend on any source's metadata conventions and it's reserved in the database schema.
-- **Eval logs:** the eval-log importer reads `eval.viewer.trust_content` as an `EvalColumn` with a string path. Inspect writes this field only from 0.3.275 on, and older versions drop it when parsing. So Scout requires `inspect-ai>=0.3.275`, or untrusted logs would import as trusted.
+- **Eval logs:** the eval-log importer reads `eval.viewer.trust_content` as an `EvalColumn` with a string path. Inspect writes this field only from 0.3.275 on, and older versions drop it when parsing. So Scout must require `inspect-ai>=0.3.275`, or untrusted logs would import as trusted. The current minimum, 0.3.277, already satisfies this; don't lower it.
 - **Other importers** (Claude Code, LangSmith, etc.) leave it `None`. Users who don't trust those sources use the viewer-wide cap.
 
 ### Scan results

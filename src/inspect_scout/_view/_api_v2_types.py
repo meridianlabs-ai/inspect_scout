@@ -177,7 +177,11 @@ class AppDir(BaseModel):
 
 
 class AppConfig(ProjectConfig):
-    """Application configuration returned by GET /config."""
+    """Application configuration returned by GET /config.
+
+    `trust_content` is the viewer-wide cap: the lowest of the `scout view`
+    option (or `SCOUT_VIEW_TRUST_CONTENT`) and the project's setting.
+    """
 
     home_dir: str
     project_dir: str

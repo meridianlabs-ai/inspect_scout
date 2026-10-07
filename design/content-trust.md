@@ -93,7 +93,7 @@ A nearer `ContentTrustProvider` replaces the app default, and the ceiling still 
 - **Turning trust off** saves `trust_content: false`. It needs no confirmation.
 - **Turning trust on** removes the key instead of writing `true`, and requires a confirmation dialog first: "Model output will render as markdown, with media and links. Only enable this for content you trust." Because `scout.yaml` is usually checked in, the dialog also notes that the change applies to everyone using the project.
 - **Overridden setting:** if `AppConfig.trust_content` is `false` but `scout.yaml` doesn't set `false`, then the command line, the environment or `scout.local.yaml` is forcing plain text. The page says so, so nobody confirms a change that has no effect.
-- **Saving:** the settings save uses top-level patch semantics (#687), so a save from a section that doesn't include `trust_content` leaves it alone.
+- **Saving:** `trust_content` is one of the fields the settings page owns, so every save sends its current value: `false`, or `null` to remove the key. It can't be lost to a save from another section.
 
 ## Testing
 

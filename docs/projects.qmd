@@ -53,6 +53,29 @@ When you run `scout view` from a project directory it uses the project settings 
 
 ![](images/project.png){.border}
 
+### Untrusted Content {#untrusted-content}
+
+Scout View renders model output richly by default: markdown, syntax highlighting, ANSI colors, images and other media, and clickable links. When you're looking at transcripts from models you don't trust, you can have it show model output as plain text instead, so hostile output can't load media, link elsewhere, or disguise itself. Plain text also reveals invisible and bidirectional-override characters (e.g. `⟨U+202E⟩`).
+
+There are two kinds of settings, and the lowest trust always wins:
+
+- **Per transcript.** Inspect tasks can mark their logs untrusted with [`ViewerConfig(trust_content=False)`](https://inspect.aisi.org.uk/task-views.html#untrusted-content). Scout reads this from each log, so transcripts from that task (and scan results derived from them) are shown as plain text.
+
+- **Viewer-wide.** Any of the following shows all model output as plain text, whatever each transcript's own setting:
+
+  - `trust_content: false` in `scout.yaml` (or the **Viewer** section of the project settings)
+  - `trust_content: false` in `scout.local.yaml`
+  - `scout view --no-trust-content`
+  - the `SCOUT_VIEW_TRUST_CONTENT=false` environment variable
+
+  `--trust-content` and `trust_content: true` never show untrusted content richly; they defer to the other settings.
+
+Note that:
+
+- Transcript databases and scan results only record a log's setting when they're created. Re-import a database (or re-run a scan) created with an earlier version of Scout to pick it up.
+- Transcripts imported from other sources (e.g. Claude Code or LangSmith) have no setting of their own, so use the viewer-wide setting for them.
+- Scan results written by scanners that run inside an Inspect eval don't yet record the log's setting.
+
 ## Project Settings
 
 Project files support all of the same options available to [scan jobs](#scan-jobs). The table below describes the available configuration fields:
@@ -78,6 +101,7 @@ Project files support all of the same options available to [scan jobs](#scan-job
 | `scanners` | list \| dict | Scanner specifications to include in all scans. |
 | `worklist` | list | Transcript IDs to process for each scanner. |
 | `validation` | dict | Validation sets to apply for specific scanners. |
+| `trust_content` | bool | Set to `false` to show model output in Scout View as plain text (see [Untrusted Content](#untrusted-content)). Applies to the viewer only. |
 
 : {tbl-colwidths="[20,18,62]"}
 

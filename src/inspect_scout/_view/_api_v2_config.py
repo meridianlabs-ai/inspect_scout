@@ -104,7 +104,12 @@ def create_config_router(
             description="ETag from GET request (optional, omit to force save)",
         ),
     ) -> Response:
-        """Update project configuration with comment preservation."""
+        """Update project configuration with comment preservation.
+
+        The body is a patch: keys it omits are left unchanged in scout.yaml,
+        and a key sent as null (or an empty list/dict) is removed. See
+        `write_project_config`.
+        """
         # Parse the If-Match header (may be quoted), None means force save
         expected_etag = if_match.strip('"') if if_match else None
 

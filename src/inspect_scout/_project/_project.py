@@ -22,7 +22,7 @@ from inspect_scout._util.constants import (
 
 from .merge import merge_configs
 from .types import ProjectConfig
-from .yaml_merge import apply_config_update
+from .yaml_merge import apply_config_patch
 
 # Local project override filename
 LOCAL_PROJECT_FILENAME = "scout.local.yaml"
@@ -212,8 +212,15 @@ def write_project_config(
 ) -> tuple[ProjectConfig, str]:
     """Write project configuration, preserving YAML comments.
 
+    When scout.yaml exists, `config` is applied as a patch: only the fields
+    that were explicitly set on it (`model_fields_set`) are written, so any
+    key the caller didn't mention is left untouched. An explicitly set field
+    whose value is None or an empty list/dict removes that key. A set field
+    with a nested value (e.g. `generate_config`, `metadata`) replaces the
+    existing value as a whole rather than being deep-merged into it.
+
     Args:
-        config: The new configuration to write.
+        config: The configuration fields to write.
         expected_etag: The expected ETag of the current file (for optimistic locking).
             If None, skips etag verification (force save).
 
@@ -240,11 +247,12 @@ def write_project_config(
         # Load with ruamel.yaml to preserve comments
         original_data = yaml.load(current_content)
 
-        # Convert config to dict for merging, excluding None values and empty collections
-        config_dict: dict[str, Any] = _clean_empty_values(config.model_dump())
-
-        # Apply updates preserving comments
-        apply_config_update(original_data, config_dict)
+        updates = _config_patch(config)
+        if "scans" in updates:
+            # `results` is the deprecated alias for `scans`; keeping it beside
+            # a newly written `scans` would make the file invalid.
+            original_data.pop("results", None)
+        apply_config_patch(original_data, updates)
 
         # Write to string
         output = StringIO()
@@ -253,7 +261,7 @@ def write_project_config(
     else:
         # File doesn't exist - create new config
         # Convert config to dict, excluding None values and empty collections
-        config_dict = _clean_empty_values(config.model_dump())
+        config_dict = _clean_empty_values(_config_patch(config))
 
         # Write to string
         output = StringIO()
@@ -283,6 +291,20 @@ def write_project_config(
     updated_config = _load_single_config(project_file)
 
     return updated_config, new_etag
+
+
+def _config_patch(config: ProjectConfig) -> dict[str, Any]:
+    """The fields explicitly set on `config`, as a patch for `apply_config_patch`.
+
+    None values and empty collections are stripped from within nested values.
+    A top-level field that is (or cleans to) None/empty is kept as None, the
+    marker for removing that key. `results` is dropped because the
+    `results` -> `scans` validator has already copied it to `scans`.
+    """
+    patch = config.model_dump(exclude_unset=True)
+    patch.pop("results", None)
+    cleaned = _clean_empty_values(patch)
+    return {key: cleaned.get(key) for key in patch}
 
 
 def _clean_empty_values(data: dict[str, Any]) -> dict[str, Any]:

@@ -115,6 +115,6 @@ The nearest `ContentTrustProvider` decides, and the ceiling still caps the resul
 
 - **In-eval scanning.** inspect_ai's `scan_eval_sample` builds transcripts with Scout's `transcript_info_from_eval_sample` / `transcript_from_eval_sample`. Until it passes the eval's trust, its scan results record none and render as trusted in Scout. Inspect's own scans sidebar is unaffected because it uses the log's trust.
   - Scout side (done): both functions accept an optional, keyword-only `trust_content` (default `None`, so existing callers are unchanged).
-  - inspect_ai side, once a Scout release includes it: pass `trust_content=eval_spec.viewer.trust_content` (guarding `eval_spec`/`viewer` being `None`) at every call site, including the resume path, and raise `_REQUIRED_SCOUT_VERSION` to that release.
+  - inspect_ai side, once a Scout release includes it: pass `trust_content=eval_spec.viewer.trust_content` (guarding `eval_spec`/`viewer` being `None`) in `scan_eval_sample` (its only call site), and raise `_REQUIRED_SCOUT_VERSION` to that release.
 - **Importer-supplied trust.** Importers (or `db.insert`) could mark non-eval transcripts untrusted. `TranscriptInfo.trust_content` makes this possible, but no importer sets it yet.
 - **Granular permissions.** `ContentRenderingPolicy` has per-renderer permissions, but only all-or-nothing policies are configurable. Partial policies would need the policy-keyed caches that ts-mono#713 removed (see `content-rendering.md`).

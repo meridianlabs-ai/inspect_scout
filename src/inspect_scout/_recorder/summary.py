@@ -21,6 +21,9 @@ class ScannerSummary(BaseModel):
     results: int = Field(default=0)
     """Scans which returned truthy results."""
 
+    unscored: int = Field(default=0)
+    """Scans which returned a result with no value (`value` is `None`)."""
+
     errors: int = Field(default=0)
     """Scans which resulted in errors."""
 
@@ -96,11 +99,14 @@ class Summary(BaseModel):
         # Collect validation entries from results
         new_entries: list[ValidationEntry] = []
         agg_results = 0
+        agg_unscored = 0
         agg_errors = 0
         agg_tokens = 0
         agg_model_usage: dict[str, ModelUsage] = {}
 
         for result in results:
+            if result.result is not None and result.result.value is None:
+                agg_unscored += 1
             if result.result and result.result.value:
                 if result.result.type == "resultset" and isinstance(
                     result.result.value, list
@@ -148,6 +154,7 @@ class Summary(BaseModel):
         tot_results = self.scanners[scanner]
         tot_results.scans += 1
         tot_results.results += agg_results
+        tot_results.unscored += agg_unscored
         tot_results.metrics = metrics
         tot_results.errors += agg_errors
         tot_results.tokens += agg_tokens

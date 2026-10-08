@@ -30,6 +30,7 @@ def merge_configs(base: ConfigT, override: ScanJobConfig) -> ConfigT:
     Override values take precedence for simple fields when explicitly set.
     Union fields are combined (override wins on conflicts).
     Model fields are treated as atomic unit.
+    Trust fields take the lower trust: an override can lower it, never raise it.
 
     Args:
         base: The base configuration providing defaults.

@@ -78,7 +78,7 @@ Note that:
 
 ## Project Settings
 
-Project files support all of the same options available to [scan jobs](#scan-jobs). The table below describes the available configuration fields:
+Project files support all of the same options available to [scan jobs](#scan-jobs), plus `trust_content`, which configures Scout View rather than scans. The table below describes the available configuration fields:
 
 | Field | Type | Description |
 |-------|------|-------------|

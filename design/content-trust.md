@@ -23,7 +23,7 @@ This document covers how Scout adopts it. Scout has a project (`scout.yaml`) whe
 
 1. **Lowest trust wins.** Content renders richly only if every applicable setting allows it. No setting can raise trust that another setting has lowered.
 2. **Unset means trusted.** A missing or `null` setting, and data written before this feature existed, render as they do today. Only an explicit `false` lowers trust.
-3. **Unrecognized means untrusted.** In a log, a setting that is neither a boolean nor `null` counts as `false`, matching inspect_ai's `ViewerConfig` validator and ts-mono's `trustContentSetting()`. In `scout.yaml` such a value fails schema validation, so the viewer doesn't start.
+3. **Unrecognized means untrusted.** In a log, a setting that is neither a boolean nor `null` counts as `false`. inspect_ai's `ViewerConfig` validator enforces this when the log is read, before Scout sees the value; ts-mono's `trustContentSetting()` and the scan-results parser apply the same rule in the viewer. In `scout.yaml` such a value fails schema validation, so the viewer doesn't start.
 4. **Loading means untrusted.** If the trust of a piece of content isn't known yet, it renders as plain text.
 
 ## Settings
@@ -101,7 +101,7 @@ The nearest `ContentTrustProvider` decides, and the ceiling still caps the resul
 - **Python:**
   - The CLI and environment combinations, and their effect on `/app-config`.
   - The project / local / CLI combination rules.
-  - Non-boolean values are untrusted.
+  - Non-boolean values in `scout.yaml` are rejected.
   - The eval-log importer reads `eval.viewer.trust_content` from a real `.eval` written with `ViewerConfig(trust_content=False)`.
   - The field round-trips every read path (via `test_read_preserves_info.py`) and the parquet database.
   - The recorder writes `transcript_trust_content`.

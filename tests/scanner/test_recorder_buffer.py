@@ -506,3 +506,58 @@ async def test_compaction_keeps_transcript_trust_content_boolean(
         )
     )
     assert by_tid == {tid: trust for trust, tid in transcript_ids.items()}
+
+
+@pytest.mark.asyncio
+async def test_compaction_keeps_transcript_trust_content_from_older_buffer_files(
+    recorder_buffer: RecorderBuffer,
+    sample_results: list[ResultReport],
+    tmp_path: Path,
+) -> None:
+    """A buffer file without the column (an older Scout) can't drop it.
+
+    Buffer files are read before `extra_inputs`, so the older file reliably
+    seeds the discovered schema here.
+    """
+    from upath import UPath
+
+    scanner_name = "test_scanner"
+    await recorder_buffer.record(
+        TranscriptInfo(transcript_id="untrusted", trust_content=False),
+        scanner_name,
+        sample_results,
+        None,
+    )
+    prior_path = tmp_path / "prior.parquet"
+    assert scanner_table(recorder_buffer._buffer_dir, scanner_name, str(prior_path))
+
+    sdir = recorder_buffer._buffer_dir / f"scanner={scanner_name}"
+    for f in sdir.glob("*.parquet"):
+        f.unlink()
+    await recorder_buffer.record(
+        TranscriptInfo(transcript_id="old"), scanner_name, sample_results, None
+    )
+    old_file = sdir / "old.parquet"
+    pq.write_table(
+        pq.read_table(str(old_file)).drop_columns(["transcript_trust_content"]),
+        str(old_file),
+    )
+
+    out_path = tmp_path / "out.parquet"
+    assert scanner_table(
+        recorder_buffer._buffer_dir,
+        scanner_name,
+        str(out_path),
+        extra_inputs=[UPath(prior_path)],
+    )
+
+    table = pq.read_table(str(out_path))
+    assert table.schema.field("transcript_trust_content").type == pa.bool_()
+    by_tid = dict(
+        zip(
+            table.column("transcript_id").to_pylist(),
+            table.column("transcript_trust_content").to_pylist(),
+            strict=True,
+        )
+    )
+    assert by_tid == {"old": None, "untrusted": False}

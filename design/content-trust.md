@@ -67,7 +67,7 @@ These settings feed the cap. The effective cap is `false` if any of them is `fal
 | Full transcript reads | Every hand copy of `TranscriptInfo` fields (`load_filtered.py`, `transcript_no_content`, `filter_transcript`, etc.). `tests/transcript/test_read_preserves_info.py` enumerates `TranscriptInfo.model_fields` and fails on a missed copy site. |
 | Parquet transcript database | `SchemaField` in `TRANSCRIPT_SCHEMA_FIELDS`, written by `_transcript_to_row`, read by `ParquetTranscriptsDB.select`. Databases built before the field existed read it as NULL (trusted) until they're re-imported. |
 | Scan results | `transcript_trust_content` written by the recorder. Results written earlier have no column and read as trusted. |
-| inspect_ai in-eval scanning | **Follow-up.** `transcript_info_from_eval_sample` doesn't receive the eval's `ViewerConfig`. See Follow-ups. |
+| inspect_ai in-eval scanning | `transcript_info_from_eval_sample` / `transcript_from_eval_sample` take an optional `trust_content`. **Follow-up:** inspect_ai must pass it. See Follow-ups. |
 
 ## Frontend
 
@@ -113,8 +113,8 @@ The nearest `ContentTrustProvider` decides, and the ceiling still caps the resul
 
 ## Follow-ups
 
-- **In-eval scanning.** inspect_ai's `scan_eval_sample` builds transcripts with Scout's `transcript_info_from_eval_sample`, which takes no viewer configuration. Its scan results record no trust and render as trusted in Scout. Inspect's own scans sidebar is unaffected because it uses the log's trust. Fixing this takes two coordinated changes:
-  - Scout accepts the trust value as an optional parameter.
-  - inspect_ai passes `eval_spec.viewer.trust_content` and raises its required Scout version.
+- **In-eval scanning.** inspect_ai's `scan_eval_sample` builds transcripts with Scout's `transcript_info_from_eval_sample` / `transcript_from_eval_sample`. Until it passes the eval's trust, its scan results record none and render as trusted in Scout. Inspect's own scans sidebar is unaffected because it uses the log's trust.
+  - Scout side (done): both functions accept an optional, keyword-only `trust_content` (default `None`, so existing callers are unchanged).
+  - inspect_ai side, once a Scout release includes it: pass `trust_content=eval_spec.viewer.trust_content` (guarding `eval_spec`/`viewer` being `None`) at every call site, including the resume path, and raise `_REQUIRED_SCOUT_VERSION` to that release.
 - **Importer-supplied trust.** Importers (or `db.insert`) could mark non-eval transcripts untrusted. `TranscriptInfo.trust_content` makes this possible, but no importer sets it yet.
 - **Granular permissions.** `ContentRenderingPolicy` has per-renderer permissions, but only all-or-nothing policies are configurable. Partial policies would need the policy-keyed caches that ts-mono#713 removed (see `content-rendering.md`).

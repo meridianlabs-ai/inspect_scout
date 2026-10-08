@@ -402,12 +402,19 @@ def scanner_table(
         ) from e
 
     # Correct schema to handle type inconsistencies across files:
-    # 1. Promote null-type columns to string (unknown type)
-    # 2. Force 'value' and 'transcript_score' columns to string since they can have
+    # 1. Pin columns with a known type (`fixed_types`): the first file may hold
+    #    them as all-null, which would otherwise demote them to string
+    # 2. Promote other null-type columns to string (unknown type)
+    # 3. Force 'value' and 'transcript_score' columns to string since they can have
     #    mixed types across different result reports / transcripts
+    fixed_types: dict[str, pa.DataType] = {"transcript_success": pa.bool_()}
     corrected_fields = []
     for field in schema:
-        if pa.types.is_null(field.type):
+        if field.name in fixed_types:
+            corrected_fields.append(
+                pa.field(field.name, fixed_types[field.name], nullable=True)
+            )
+        elif pa.types.is_null(field.type):
             # Promote null type to string
             corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))
         elif field.name in {"value", "transcript_score"}:

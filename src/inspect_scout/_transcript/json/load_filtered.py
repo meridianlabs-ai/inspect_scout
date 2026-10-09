@@ -154,8 +154,8 @@ async def load_filtered_transcript(
         Transcript with filtered messages/events and resolved attachments.
         Unless ``metadata=False``, metadata includes sample_metadata, target,
         and scores from the body. Stored timelines are returned only when
-        ``events`` is not ``None``: they resolve against the loaded events, so
-        excluding events yields no timelines. ``input`` is not unthinned:
+        ``events`` is ``"all"``: they reference every event in the sample by
+        UUID, so a partial load cannot resolve them. ``input`` is not unthinned:
         resolving its refs requires the attachments section, which follows
         events and would defeat the early-exit optimization.
     """
@@ -315,7 +315,9 @@ async def _parse_and_filter(
         message_item_coroutine(state, messages_config) if messages_config else None
     )
     events_coro = event_item_coroutine(state, events_config) if events_config else None
-    timelines_coro = timeline_item_coroutine(state)
+    # stored timelines reference events by UUID across the whole sample, so
+    # they are only read when every event is
+    timelines_coro = timeline_item_coroutine(state) if events_filter == "all" else None
     attachments_coro = attachments_coroutine(state, events_coro is not None)
     # With `metadata=False` nothing is overlaid, so `_merge_unthinned` hands
     # back `t.metadata` itself -- the index's LazyJSONDict, uncopied.
@@ -469,7 +471,7 @@ async def _parse_and_filter(
                 target_coro.send((prefix, event, value))
             except StopIteration:
                 target_coro = None
-        elif current_section == _SECTION_TIMELINES and events_coro:
+        elif current_section == _SECTION_TIMELINES and timelines_coro:
             timelines_coro.send((prefix, event, value))
         elif current_section == _SECTION_SCORES and scores_coro:
             scores_coro.send((prefix, event, value))

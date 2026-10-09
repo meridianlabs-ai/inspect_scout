@@ -18,7 +18,14 @@ if TYPE_CHECKING:
 from inspect_ai._util.async_bytes_reader import adapt_to_reader
 from inspect_ai._util.async_zip import AsyncZipReader
 from inspect_ai._util.asyncfiles import AsyncFilesystem
-from inspect_ai.event import InfoEvent, Timeline, TimelineEvent, TimelineSpan, ToolEvent
+from inspect_ai.event import (
+    InfoEvent,
+    StateEvent,
+    Timeline,
+    TimelineEvent,
+    TimelineSpan,
+    ToolEvent,
+)
 from inspect_ai.event._model import ModelEvent
 from inspect_scout import Transcript, TranscriptInfo
 from inspect_scout._transcript.json.load_filtered import (
@@ -891,19 +898,20 @@ async def test_messages_after_events_resolve_attachments() -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("events_filter", [None, "all"])
+@pytest.mark.parametrize("events_filter", [None, "all", ["info"]])
 async def test_timelines_without_scores_and_filtered_events(
     events_filter: EventFilter,
 ) -> None:
     timestamp = datetime(2026, 9, 11, tzinfo=timezone.utc)
-    event = InfoEvent(data="example", uuid="example-event", timestamp=timestamp)
+    info = InfoEvent(data="example", uuid="info-event", timestamp=timestamp)
+    state = StateEvent(changes=[], uuid="state-event", timestamp=timestamp)
     timeline = Timeline(
         name="Custom",
         description="",
         root=TimelineSpan(
             id="root",
             name="root",
-            content=[TimelineEvent(event=event)],
+            content=[TimelineEvent(event=info), TimelineEvent(event=state)],
         ),
     )
     # No "scores" key forces the reader past "events" to reach "timelines".
@@ -912,7 +920,7 @@ async def test_timelines_without_scores_and_filtered_events(
         "target": "",
         "messages": [{"role": "user", "content": "Hello"}],
         "metadata": {},
-        "events": [event.model_dump(mode="json")],
+        "events": [info.model_dump(mode="json"), state.model_dump(mode="json")],
         "timelines": [timeline.model_dump(mode="json")],
     }
     result = await load_filtered_transcript(
@@ -925,9 +933,14 @@ async def test_timelines_without_scores_and_filtered_events(
     if events_filter is None:
         assert result.events == []
         assert result.timelines == []
-    else:
-        assert result.events == [event]
+    elif events_filter == "all":
+        assert result.events == [info, state]
         assert result.timelines == [timeline]
+    else:
+        # the stored timeline references the excluded state event, so it is
+        # dropped rather than failing to resolve
+        assert result.events == [info]
+        assert result.timelines == []
 
 
 @pytest.mark.asyncio

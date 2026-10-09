@@ -116,6 +116,7 @@ class RawTranscript:
     total_tokens: int | None
     error: str | None
     limit: str | None
+    trust_content: bool | None
     metadata: dict[str, Any]
     messages: list[dict[str, Any]]
     events: list[dict[str, Any]]
@@ -217,6 +218,7 @@ async def _load_with_json5_fallback(
                 total_tokens=t.total_tokens,
                 error=t.error,
                 limit=t.limit,
+                trust_content=t.trust_content,
                 metadata=_merge_unthinned_from_dict(t.metadata, data)
                 if metadata
                 else t.metadata,
@@ -502,6 +504,7 @@ async def _parse_and_filter(
             total_tokens=t.total_tokens,
             error=t.error,
             limit=t.limit,
+            trust_content=t.trust_content,
             metadata=_merge_unthinned(t.metadata, state),
             messages=state.messages,
             events=state.events,
@@ -575,6 +578,7 @@ def _resolve_attachments(
         "total_tokens": transcript.total_tokens,
         "error": transcript.error,
         "limit": transcript.limit,
+        "trust_content": transcript.trust_content,
         "metadata": {},  # Placeholder to avoid validation
         "messages": resolved_messages,
         "events": resolved_events,

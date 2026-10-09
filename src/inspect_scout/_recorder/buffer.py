@@ -192,6 +192,8 @@ class RecorderBuffer:
                     "transcript_total_tokens": transcript_total_tokens,
                     "transcript_error": transcript_error,
                     "transcript_limit": transcript_limit,
+                    # no metadata fallback: trust only ever comes from the field
+                    "transcript_trust_content": transcript.trust_content,
                     "transcript_metadata": transcript.metadata,
                     "scan_id": self._spec.scan_id,
                     "scan_tags": self._spec.tags or [],
@@ -403,11 +405,15 @@ def scanner_table(
 
     # Correct schema to handle type inconsistencies across files:
     # 1. Pin columns with a known type (`fixed_types`): the first file may hold
-    #    them as all-null, which would otherwise demote them to string
+    #    them as all-null, which would otherwise demote them to string, or lack
+    #    them entirely (written by an older version), which would drop them
     # 2. Promote other null-type columns to string (unknown type)
     # 3. Force 'value' and 'transcript_score' columns to string since they can have
     #    mixed types across different result reports / transcripts
-    fixed_types: dict[str, pa.DataType] = {"transcript_success": pa.bool_()}
+    fixed_types: dict[str, pa.DataType] = {
+        "transcript_success": pa.bool_(),
+        "transcript_trust_content": pa.bool_(),
+    }
     corrected_fields = []
     for field in schema:
         if field.name in fixed_types:
@@ -422,6 +428,11 @@ def scanner_table(
             corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))
         else:
             corrected_fields.append(field)
+    corrected_fields.extend(
+        pa.field(name, type, nullable=True)
+        for name, type in fixed_types.items()
+        if name not in schema.names
+    )
     schema = pa.schema(corrected_fields)
 
     # state for bounded accumulation -> large-ish row groups

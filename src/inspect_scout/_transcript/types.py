@@ -226,6 +226,12 @@ class TranscriptInfo(BaseModel):
     limit: str | None = Field(default=None)
     """Limit that caused the task to exit (e.g. "tokens", "messages, etc.)."""
 
+    trust_content: bool | None = Field(default=None)
+    """Whether the viewer may render this transcript's model output richly (markdown, syntax highlighting, ANSI colors, media, links).
+
+    `False` shows it as plain text. `None` (the default) and `True` are trusted, subject to the viewer-wide `trust_content` setting. For eval logs this is the task's `ViewerConfig(trust_content=...)`.
+    """
+
     metadata: dict[str, Any] = Field(default_factory=dict)
     """Transcript source specific metadata."""
 

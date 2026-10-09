@@ -17,56 +17,69 @@ LIST_MATCH_KEYS: dict[str, str | None] = {
 }
 
 
+def apply_config_patch(original: CommentedMap, updates: dict[str, Any]) -> None:
+    """Apply a top-level patch to a CommentedMap, preserving comments.
+
+    Only keys present in `updates` are touched; keys omitted from `updates`
+    are left as they are. A key whose value is None, `[]` or `{}` is removed.
+    Any other value replaces the original value via `apply_config_update`,
+    so a nested dict or list is replaced as a whole (keys missing from it are
+    removed) while comments on its unchanged parts are kept.
+
+    Args:
+        original: The ruamel.yaml CommentedMap to update in place.
+        updates: Plain dict of top-level keys to set or remove.
+    """
+    for key, new_value in updates.items():
+        _apply_value(original, key, new_value, key)
+
+
 def apply_config_update(
     original: CommentedMap,
     updates: dict[str, Any],
     path: str = "",
 ) -> None:
-    """Recursively update original CommentedMap with new values.
+    """Recursively update original CommentedMap so it matches `updates`.
 
-    Preserves comments on unchanged structure by updating in place rather
-    than replacing objects.
+    Keys of `original` that are not in `updates` are removed. Preserves
+    comments on unchanged structure by updating in place rather than
+    replacing objects.
 
     Args:
         original: The ruamel.yaml CommentedMap to update in place.
         updates: Plain dict with new values.
         path: Current path for determining list matching strategy.
     """
-    # Handle keys in updates
     for key, new_value in updates.items():
         current_path = f"{path}.{key}" if path else key
-        field_name = key  # The immediate field name for list matching
-
-        if new_value is None or new_value == [] or new_value == {}:
-            # None/empty means "unset" - remove the key if it exists
-            if key in original:
-                del original[key]
-        elif key not in original:
-            # New key - just add it
-            original[key] = new_value
-        elif isinstance(original[key], CommentedMap) and isinstance(new_value, dict):
-            # Recursively update nested dict
-            apply_config_update(original[key], new_value, current_path)
-        elif isinstance(original[key], CommentedSeq) and isinstance(new_value, list):
-            # Update list with comment preservation
-            _update_list(original[key], new_value, field_name)
-        elif isinstance(original[key], list) and isinstance(new_value, list):
-            # Plain list (no comments) - just replace
-            original[key] = new_value
-        elif isinstance(original[key], dict) and isinstance(new_value, dict):
-            # Plain dict - convert to recursive update if possible
-            if isinstance(original[key], CommentedMap):
-                apply_config_update(original[key], new_value, current_path)
-            else:
-                original[key] = new_value
-        else:
-            # Scalar or type change - just replace
-            original[key] = new_value
+        _apply_value(original, key, new_value, current_path)
 
     # Remove keys not in updates
     keys_to_remove = [key for key in original if key not in updates]
     for key in keys_to_remove:
         del original[key]
+
+
+def _apply_value(
+    original: CommentedMap, key: str, new_value: Any, current_path: str
+) -> None:
+    """Set (or, for None/empty values, remove) one key of a CommentedMap."""
+    if new_value is None or new_value == [] or new_value == {}:
+        # None/empty means "unset" - remove the key if it exists
+        if key in original:
+            del original[key]
+    elif key not in original:
+        # New key - just add it
+        original[key] = new_value
+    elif isinstance(original[key], CommentedMap) and isinstance(new_value, dict):
+        # Recursively update nested dict
+        apply_config_update(original[key], new_value, current_path)
+    elif isinstance(original[key], CommentedSeq) and isinstance(new_value, list):
+        # Update list with comment preservation
+        _update_list(original[key], new_value, key)
+    else:
+        # Scalar, plain (comment-less) collection, or type change - replace
+        original[key] = new_value
 
 
 def _update_list(

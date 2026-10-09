@@ -119,6 +119,23 @@ class LazyJSONDict(dict[str, Any]):
         # Not a candidate for parsing, return as-is
         return value
 
+    def copy(self) -> "LazyJSONDict":
+        """Copy preserving lazy-parse state.
+
+        ``dict.copy()`` returns a plain ``dict``, which strands every key nobody
+        has read yet as its raw JSON string for the life of the copy.
+        """
+        clone = LazyJSONDict(dict(self), json_keys=self._json_keys)
+        clone._parsed = set(self._parsed)
+        return clone
+
+    def mark_parsed(self, keys: Iterable[str]) -> None:
+        """Record ``keys`` as final, so they are never parsed on read.
+
+        Used when merging in values that are already real objects.
+        """
+        self._parsed |= set(keys)
+
     def _should_parse_value(self, key: str, value: Any) -> bool:
         """Determine if a value should be parsed as JSON.
 
@@ -195,6 +212,24 @@ class LazyJSONDict(dict[str, Any]):
             parts.append(f"{encoded_key}:{encoded_value}")
 
         return "{" + ",".join(parts) + "}"
+
+
+def merge_metadata(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
+    """Merge ``overrides`` over ``base`` without stranding unread JSON keys.
+
+    ``base.copy() | overrides`` cannot be used: ``dict.copy()`` and
+    ``dict.__or__`` both return a plain ``dict`` even for a subclass, so every
+    :class:`LazyJSONDict` key nobody had read yet would stay a raw JSON string
+    for the life of the result.
+    """
+    if not overrides:
+        return base
+    if isinstance(base, LazyJSONDict):
+        merged = base.copy()
+        merged.update(overrides)
+        merged.mark_parsed(overrides.keys())
+        return merged
+    return base | overrides
 
 
 def union_transcript_contents(

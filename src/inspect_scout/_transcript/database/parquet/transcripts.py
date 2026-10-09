@@ -76,6 +76,27 @@ PARQUET_TRANSCRIPTS_GLOB = "*.parquet"
 CHUNK_SIZE = 64 * 1024  # 64KB chunks for streaming
 
 
+def _absolute_location(location: str) -> str:
+    """Resolve relative local locations to absolute paths.
+
+    File discovery returns absolute paths (which seed DuckDB's read-only
+    path allowlist), while `_full_parquet_path()` joins `self._location`
+    with index filenames. A relative location (e.g. './transcripts') would
+    produce paths like './transcripts/file.parquet' that DuckDB rejects
+    against the absolute allowlist, so normalize local paths up front.
+    URI locations (s3://, hf://, file://) are returned unchanged.
+
+    Args:
+        location: Directory path (local or URI).
+
+    Returns:
+        Absolute path for local locations, the original string for URIs.
+    """
+    if "://" in location:
+        return location
+    return str(Path(location).absolute())
+
+
 class _ParquetStreamContextManager:
     """Streams messages/events JSON from parquet using its own DuckDB connection.
 
@@ -258,7 +279,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             read_only: Restrict DuckDB external access after intended sources
                 are registered.
         """
-        self._location = location
+        self._location = _absolute_location(location)
         self._target_file_size_mb = target_file_size_mb
         self._row_group_size = row_group_size
         self._query = query

@@ -50,6 +50,9 @@ class MessageFormatOptions:
     exclude_tool_usage: bool = False
     """Exclude tool usage (defaults to `False`)"""
 
+    exclude_role_label: bool = False
+    """Exclude the role label, e.g. `USER:` (defaults to `False`)"""
+
 
 @dataclass(frozen=True)
 class MessagesPreprocessor(MessageFormatOptions, Generic[T]):
@@ -304,13 +307,14 @@ def message_as_str(
     )
 
     role_label = _role_label(message, upper_fallback=True)
+    role_prefix = "" if preprocessor.exclude_role_label else f"{role_label}:\n"
 
     if (
         not preprocessor.exclude_tool_usage
         and isinstance(message, ChatMessageAssistant)
         and message.tool_calls
     ):
-        entry = f"{role_label}:\n{content}\n"
+        entry = f"{role_prefix}{content}\n"
 
         for tool in message.tool_calls:
             func_name = tool.function
@@ -331,10 +335,10 @@ def message_as_str(
             if message.error
             else ""
         )
-        return f"{role_label}:\n{content}{error_part}\n"
+        return f"{role_prefix}{content}{error_part}\n"
 
     else:
-        entry = f"{role_label}:\n{content}\n"
+        entry = f"{role_prefix}{content}\n"
 
     if (
         message.role == "assistant"

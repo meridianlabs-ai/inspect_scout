@@ -34,8 +34,7 @@ from shortuuid import uuid
 
 from ...._query.sql import quote_identifier
 from ...._util.duckdb import (
-    create_parquet_view,
-    drop_view,
+    generated_identifier,
     parquet_view,
     relation_columns,
 )
@@ -612,33 +611,29 @@ def _read_and_deduplicate_index_files(
                 f"SELECT * FROM {quote_identifier(source_view)}"
             ).fetch_arrow_table()
 
-    # Read each file with an order tag. Higher order = newer file.
-    # The idx_files list is sorted with older files first, so we use
-    # the list index as the order (newer files have higher indices).
-    source_views: list[str] = []
-    try:
-        subqueries = []
-        for i, path in enumerate(sorted(idx_files)):
-            source_view = create_parquet_view(conn, path)
-            source_views.append(source_view)
-            subqueries.append(
-                f"SELECT *, {i} AS _file_order FROM {quote_identifier(source_view)}"
-            )
-
-        union_query = " UNION ALL BY NAME ".join(subqueries)
-
-        # Deduplicate: keep entry from newest file (highest _file_order)
-        return conn.execute(f"""
-            SELECT * EXCLUDE (_file_order, _rn) FROM (
-                SELECT *,
+    # One reader reconciles all schemas without a deep SQL union tree.
+    source_filename = generated_identifier("index_source")
+    quoted_filename = quote_identifier(source_filename)
+    ordered_files = sorted(idx_files)
+    # Discovered index files share a directory and have unique basenames.
+    # Match basenames because remote readers can normalize URL prefixes.
+    filenames = [path.replace("\\", "/").rsplit("/", 1)[-1] for path in ordered_files]
+    with parquet_view(
+        conn, ordered_files, union_by_name=True, filename=source_filename
+    ) as source_view:
+        return conn.execute(
+            f"""
+            SELECT * EXCLUDE ({quoted_filename}, _rn) FROM (
+                SELECT source_data.*,
                        ROW_NUMBER() OVER (
-                           PARTITION BY transcript_id
-                           ORDER BY _file_order DESC
+                           PARTITION BY source_data.transcript_id
+                           ORDER BY file_ranks.file_order DESC
                        ) as _rn
-                FROM ({union_query})
+                FROM {quote_identifier(source_view)} AS source_data
+                JOIN UNNEST(?) WITH ORDINALITY AS file_ranks(filename, file_order)
+                    ON parse_filename(source_data.{quoted_filename}) = file_ranks.filename
             )
             WHERE _rn = 1
-        """).fetch_arrow_table()
-    finally:
-        for source_view in source_views:
-            drop_view(conn, source_view)
+            """,
+            [filenames],
+        ).fetch_arrow_table()

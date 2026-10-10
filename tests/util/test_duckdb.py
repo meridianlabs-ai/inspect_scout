@@ -7,6 +7,7 @@ import pytest
 from inspect_scout._query.sql import quote_identifier
 from inspect_scout._util.duckdb import (
     create_parquet_view,
+    parquet_view,
     restrict_external_access,
 )
 
@@ -31,3 +32,16 @@ def test_discovered_parquet_paths_are_not_globs(tmp_path: Path) -> None:
             ).fetchall()
     finally:
         conn.close()
+
+
+def test_custom_source_filename_preserves_stored_filename(tmp_path: Path) -> None:
+    literal = tmp_path / "literal*[x]?.parquet"
+    pq.write_table(pa.table({"filename": ["data.parquet"]}), literal)
+    source_column = "source'file"
+    with duckdb.connect(":memory:") as conn:
+        with parquet_view(conn, str(literal), filename=source_column) as view:
+            rows = conn.execute(
+                f"SELECT filename, {quote_identifier(source_column)} "
+                f"FROM {quote_identifier(view)}"
+            ).fetchall()
+            assert rows == [("data.parquet", str(literal))]

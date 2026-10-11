@@ -184,6 +184,7 @@ References use `[M1]`, `[M2]` for messages and `[E1]`, `[E2]` for events.
 | `info` | Data field (JSON stringified if object) |
 | `logger` | Log message text |
 | `approval` | Message, tool call, and decision |
+| `sentinel` | Monitor/protocol report: factory, decision, suspicion, message, and explanation |
 
 
 ## Examples

@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.5](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.4...0.5.5) (2026-10-11)
+
+
+### Features
+
+* show untrusted model output as plain text in Scout View ([#690](https://github.com/meridianlabs-ai/inspect_scout/issues/690)) ([b0133f4](https://github.com/meridianlabs-ai/inspect_scout/commit/b0133f48bf269283dd6e416318d2a15515a04b31))
+* support inspect_ai sentinel events in scanners and grep_scanner ([#697](https://github.com/meridianlabs-ai/inspect_scout/issues/697)) ([bb56a40](https://github.com/meridianlabs-ai/inspect_scout/commit/bb56a402510d4566eca439c4c4cf721dc52b441c))
+
+
+### Bug Fixes
+
+* scan results record transcript_success as text when the first transcript has no score ([#689](https://github.com/meridianlabs-ai/inspect_scout/issues/689)) ([5f2881d](https://github.com/meridianlabs-ai/inspect_scout/commit/5f2881d1c0217829653e6bdb60c7430d3670569d))
+* scanners and transcript databases lose the scorer's explanation ([d746d2a](https://github.com/meridianlabs-ai/inspect_scout/commit/d746d2a323b96307705a918505ccf303b56547da))
+
 ## [0.5.4](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.3...0.5.4) (2026-10-06)
 
 

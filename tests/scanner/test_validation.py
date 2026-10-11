@@ -397,6 +397,7 @@ def test_all_supported_event_types() -> None:
         "state",
         "store",
         "approval",
+        "sentinel",
         "input",
         "score",
         "error",

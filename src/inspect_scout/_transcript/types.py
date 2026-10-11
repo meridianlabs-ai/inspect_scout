@@ -49,6 +49,7 @@ EventType = Literal[
     "compaction",
     "branch",
     "approval",
+    "sentinel",
     "sandbox",
     "info",
     "store",

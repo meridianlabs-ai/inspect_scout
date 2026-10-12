@@ -9793,7 +9793,7 @@
             "anyOf": [
               {
                 "enum": [
-                  "continue",
+                  "proceed",
                   "modify",
                   "reject",
                   "terminate",

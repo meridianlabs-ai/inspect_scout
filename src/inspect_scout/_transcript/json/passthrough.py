@@ -276,9 +276,8 @@ def _referenced_positions(
     end, and a huge one walks the whole span that slicing would truncate.
 
     Top-level events only, deliberately: refs nested in `ToolEvent.events`
-    are dereferenced by nobody -- neither `resolve_model_event_inputs` (the
-    read path) nor `pool._resolve_events_pools` (the materialized load) walks
-    them. Pruning around top-level refs leaves a nested ref pointing at the
+    are dereferenced by nobody -- `resolve_model_event_inputs`, which both the
+    read path and the materialized load use, does not walk them. Pruning around top-level refs leaves a nested ref pointing at the
     unpruned positions, which is the same stale shape the materialized path
     records from the source log's own pool.
     """

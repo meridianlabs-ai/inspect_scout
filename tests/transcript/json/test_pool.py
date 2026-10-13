@@ -130,6 +130,49 @@ class TestLoadResolvesPools:
         ]
 
     @pytest.mark.asyncio
+    async def test_attachment_ref_in_call_pool_entry_resolves(self) -> None:
+        att = "a" * 32
+        transcript = await _load(
+            {
+                "events": [_model_event(call={"request": {}, "call_refs": [[0, 1]]})],
+                "attachments": {att: "POOLED CALL CONTENT"},
+                "events_data": {
+                    "messages": [],
+                    "calls": [{"role": "user", "content": f"attachment://{att}"}],
+                },
+            }
+        )
+        (event,) = _model_events(transcript)
+        assert event.call is not None
+        assert event.call.request["messages"] == [
+            {"role": "user", "content": "POOLED CALL CONTENT"}
+        ]
+
+    @pytest.mark.asyncio
+    async def test_unreferenced_pool_is_not_validated(self) -> None:
+        """An events filter that keeps no model events never touches the pool."""
+        sample = {
+            "events": [
+                _model_event(input_refs=[[0, 1]]),
+                {
+                    "span_id": "s1",
+                    "timestamp": "2022-01-01T00:00:00+00:00",
+                    "working_start": 0,
+                    "event": "info",
+                    "data": "kept",
+                },
+            ],
+            "events_data": {"messages": [{"role": "bogus"}], "calls": []},
+        }
+        transcript = await load_filtered_transcript(
+            io.BytesIO(json.dumps(sample).encode()),
+            TranscriptInfo(transcript_id="t1"),
+            None,
+            ["info"],
+        )
+        assert [e.event for e in transcript.events] == ["info"]
+
+    @pytest.mark.asyncio
     async def test_legacy_top_level_pools(self) -> None:
         transcript = await _load(
             {

@@ -277,9 +277,10 @@ def _referenced_positions(
 
     Top-level events only, deliberately: refs nested in `ToolEvent.events`
     are dereferenced by nobody -- `resolve_model_event_inputs`, which both the
-    read path and the materialized load use, does not walk them. Pruning around top-level refs leaves a nested ref pointing at the
-    unpruned positions, which is the same stale shape the materialized path
-    records from the source log's own pool.
+    read path and the materialized load use, does not walk them. Pruning
+    around top-level refs leaves a nested ref pointing at the unpruned
+    positions, which is the same stale shape the materialized path records
+    from the source log's own pool.
     """
     # Walks POOL_REF_FIELDS so a new upstream `*_refs` field is picked up.
     referenced: dict[str, set[int]] = {pool: set() for pool in _POOLS}

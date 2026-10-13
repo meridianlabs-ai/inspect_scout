@@ -40,6 +40,7 @@ from .reducer import (
     ParseState,
     attachments_coroutine,
     call_pool_item_coroutine,
+    event_has_pool_refs,
     event_item_coroutine,
     message_item_coroutine,
     message_pool_item_coroutine,
@@ -259,8 +260,8 @@ def _pools_from_dict(data: dict[str, Any]) -> tuple[list[Any], list[Any]]:
         message_pool = events_data.get("messages") or []
         call_pool = events_data.get("calls") or []
     else:
-        message_pool = data.get("message_pool", [])
-        call_pool = data.get("call_pool", [])
+        message_pool = data.get("message_pool") or []
+        call_pool = data.get("call_pool") or []
     return message_pool, call_pool
 
 
@@ -592,8 +593,11 @@ def _resolve_attachments(
     # Expand pool refs only after validation, against pool entries validated
     # once: every event then shares the same message objects. Expanding the
     # raw dicts first would validate (and attachment-walk) one copy per ref,
-    # which is quadratic in conversation length.
-    if transcript.message_pool or transcript.call_pool:
+    # which is quadratic in conversation length. Pools are skipped when no
+    # retained event references them (e.g. an events filter without "model").
+    if (transcript.message_pool or transcript.call_pool) and any(
+        event_has_pool_refs(event) for event in transcript.events
+    ):
         validated.events = expand_events(
             validated.events,
             EventsData(

@@ -1,12 +1,14 @@
 import io
 import json
 from collections.abc import AsyncIterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import IO, Any, Callable
 
 import ijson
 from inspect_ai._util.async_bytes_reader import AsyncBytesReader, adapt_to_reader
 from inspect_ai.event import timeline_load
+from inspect_ai.event._validate import validate_chat_messages
+from inspect_ai.log import EventsData, expand_events
 from pydantic import JsonValue
 
 from ..types import (
@@ -18,7 +20,6 @@ from ..types import (
 )
 from ..util import filter_transcript
 from .hydrate import hydrate_nested_tool_events
-from .pool import resolve_pools
 from .reducer import (
     ATTACHMENT_PREFIX,
     ATTACHMENT_PREFIX_LEN,
@@ -39,6 +40,7 @@ from .reducer import (
     ParseState,
     attachments_coroutine,
     call_pool_item_coroutine,
+    event_has_pool_refs,
     event_item_coroutine,
     message_item_coroutine,
     message_pool_item_coroutine,
@@ -121,6 +123,8 @@ class RawTranscript:
     messages: list[dict[str, Any]]
     events: list[dict[str, Any]]
     timelines: list[dict[str, Any]] | None = None
+    message_pool: list[dict[str, Any]] = field(default_factory=list)
+    call_pool: list[Any] = field(default_factory=list)
 
 
 async def load_filtered_transcript(
@@ -193,7 +197,7 @@ async def _load_with_json5_fallback(
         io_source = sample_bytes
     io_source.seek(0)
     data = json.load(io.TextIOWrapper(io_source, encoding="utf-8"))
-    _resolve_pools_from_dict(data)
+    message_pool, call_pool = _pools_from_dict(data)
 
     return filter_transcript(
         _resolve_attachments(
@@ -225,6 +229,8 @@ async def _load_with_json5_fallback(
                 messages=data.get("messages", []),
                 events=data.get("events", []),
                 timelines=data.get("timelines"),
+                message_pool=message_pool,
+                call_pool=call_pool,
             ),
             data.get("attachments", {}),
         ),
@@ -244,21 +250,19 @@ def _merge_unthinned(base: dict[str, Any], state: ParseState) -> dict[str, Any]:
     return base.copy() | overrides if overrides else base
 
 
-def _resolve_pools_from_dict(data: dict[str, Any]) -> None:
-    """Resolve v3 pools in a fully-parsed sample dict (mutates in-place).
+def _pools_from_dict(data: dict[str, Any]) -> tuple[list[Any], list[Any]]:
+    """Message and call pools from a fully-parsed sample dict.
 
-    Accepts either pool shape (see reducer.py); no-op if neither present.
+    Accepts either pool shape (see reducer.py); empty if neither present.
     """
-    from .pool import _resolve_events_pools
-
     events_data = data.get("events_data")
     if isinstance(events_data, dict):
         message_pool = events_data.get("messages") or []
         call_pool = events_data.get("calls") or []
     else:
-        message_pool = data.get("message_pool", [])
-        call_pool = data.get("call_pool", [])
-    _resolve_events_pools(data.get("events", []), message_pool, call_pool)
+        message_pool = data.get("message_pool") or []
+        call_pool = data.get("call_pool") or []
+    return message_pool, call_pool
 
 
 def _merge_unthinned_from_dict(
@@ -480,8 +484,6 @@ async def _parse_and_filter(
             for coro in call_pool_coros:
                 coro.send((prefix, event, value))
 
-    resolve_pools(state)
-
     return (
         RawTranscript(
             id=t.transcript_id,
@@ -509,6 +511,8 @@ async def _parse_and_filter(
             messages=state.messages,
             events=state.events,
             timelines=state.timelines if state.timelines else None,
+            message_pool=state.message_pool,
+            call_pool=state.call_pool,
         ),
         state.attachments,
     )
@@ -585,6 +589,30 @@ def _resolve_attachments(
     }
 
     validated = Transcript.model_validate(transcript_data)
+
+    # Expand pool refs only after validation, against pool entries validated
+    # once: every event then shares the same message objects. Expanding the
+    # raw dicts first would validate (and attachment-walk) one copy per ref,
+    # which is quadratic in conversation length. Pools are skipped when no
+    # retained event references them (e.g. an events filter without "model").
+    if (transcript.message_pool or transcript.call_pool) and any(
+        event_has_pool_refs(event) for event in transcript.events
+    ):
+        validated.events = expand_events(
+            validated.events,
+            EventsData(
+                messages=validate_chat_messages(
+                    [
+                        _resolve_dict_attachments(message, resolve_string)
+                        for message in transcript.message_pool
+                    ]
+                ),
+                calls=[
+                    _resolve_dict_attachments(call, resolve_string)
+                    for call in transcript.call_pool
+                ],
+            ),
+        )
 
     # Resolve timelines with event UUID context (events must be validated first)
     if transcript.timelines:

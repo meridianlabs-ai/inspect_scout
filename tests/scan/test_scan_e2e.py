@@ -5,6 +5,8 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 
 import pytest
+from inspect_ai.event import timeline_build
+from inspect_ai.log import read_eval_log, write_eval_log
 from inspect_ai.model import ModelOutput, get_model
 from inspect_ai.model._chat_message import ChatMessageUser
 from inspect_scout import (
@@ -519,3 +521,46 @@ def test_scan_model_usage_is_per_loader_item(tmp_path: Path) -> None:
     assert status.summary.scanners["multi_item_model_usage_scanner"].tokens == (
         3 * first_tokens
     )
+
+
+@scanner(name="model_events_scanner", events=["model"])
+def model_events_scanner_factory() -> Scanner[Transcript]:
+    """Scanner that reads only model events."""
+
+    async def scan_transcript(transcript: Transcript) -> Result:
+        return Result(value=len(transcript.events))
+
+    return scan_transcript
+
+
+def test_scan_event_filter_on_log_with_stored_timelines(tmp_path: Path) -> None:
+    """An event-filtered scanner scans samples that store timelines.
+
+    Petri stores timelines referencing every event type. Loading them against a
+    filtered event list failed validation, and since scanners share one read per
+    transcript, the messages scanner failed alongside the event-filtered one.
+    """
+    log = read_eval_log(str(sorted(LOGS_DIR.glob("*.eval"))[0]))
+    log.samples = (log.samples or [])[:2]
+    for sample in log.samples:
+        sample.timelines = [timeline_build(sample.events)]
+    logs_dir = tmp_path / "logs"
+    logs_dir.mkdir()
+    write_eval_log(log, str(logs_dir / "timelines.eval"))
+
+    status = scan(
+        scanners=[model_events_scanner_factory(), simple_scanner_factory()],
+        transcripts=transcripts_from(str(logs_dir)),
+        scans=str(tmp_path / "scans"),
+        max_processes=1,
+        display="none",
+    )
+
+    assert status.complete
+    assert status.location is not None
+    results = scan_results_df(status.location).scanners
+    for name in ["model_events_scanner", "simple_scanner"]:
+        df = results[name]
+        assert len(df) == 2
+        assert df["scan_error"].isna().all(), df["scan_error"].tolist()
+    assert all(value > 0 for value in results["model_events_scanner"]["value"])

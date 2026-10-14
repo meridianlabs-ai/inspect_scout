@@ -40,7 +40,7 @@ jobs:
     strategy:
       matrix:
         # rationale: test the supported floor and the latest release
-        python-version: &python-versions ["3.11", "3.15"]
+        python-version: &python-versions ["3.11", "3.14"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Lint with Ruff

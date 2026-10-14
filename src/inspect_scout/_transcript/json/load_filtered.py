@@ -158,10 +158,11 @@ async def load_filtered_transcript(
         Transcript with filtered messages/events and resolved attachments.
         Unless ``metadata=False``, metadata includes sample_metadata, target,
         and scores from the body. Stored timelines are returned only when
-        ``events`` is not ``None``: they resolve against the loaded events, so
-        excluding events yields no timelines. ``input`` is not unthinned:
-        resolving its refs requires the attachments section, which follows
-        events and would defeat the early-exit optimization.
+        ``events`` is ``"all"``: they resolve against the loaded events and may
+        reference any of them, so a partial event list yields no timelines.
+        ``input`` is not unthinned: resolving its refs requires the attachments
+        section, which follows events and would defeat the early-exit
+        optimization.
     """
     try:
         async with adapt_to_reader(sample_bytes) as reader:
@@ -198,6 +199,7 @@ async def _load_with_json5_fallback(
     io_source.seek(0)
     data = json.load(io.TextIOWrapper(io_source, encoding="utf-8"))
     message_pool, call_pool = _pools_from_dict(data)
+    keep_timelines = events == "all"
 
     return filter_transcript(
         _resolve_attachments(
@@ -228,13 +230,13 @@ async def _load_with_json5_fallback(
                 else t.metadata,
                 messages=data.get("messages", []),
                 events=data.get("events", []),
-                timelines=data.get("timelines"),
+                timelines=data.get("timelines") if keep_timelines else None,
                 message_pool=message_pool,
                 call_pool=call_pool,
             ),
             data.get("attachments", {}),
         ),
-        TranscriptContent(messages, events),
+        TranscriptContent(messages, events, timeline="all" if keep_timelines else None),
     )
 
 
@@ -319,7 +321,7 @@ async def _parse_and_filter(
         message_item_coroutine(state, messages_config) if messages_config else None
     )
     events_coro = event_item_coroutine(state, events_config) if events_config else None
-    timelines_coro = timeline_item_coroutine(state)
+    timelines_coro = timeline_item_coroutine(state) if events_filter == "all" else None
     attachments_coro = attachments_coroutine(state, events_coro is not None)
     # With `metadata=False` nothing is overlaid, so `_merge_unthinned` hands
     # back `t.metadata` itself -- the index's LazyJSONDict, uncopied.
@@ -473,7 +475,7 @@ async def _parse_and_filter(
                 target_coro.send((prefix, event, value))
             except StopIteration:
                 target_coro = None
-        elif current_section == _SECTION_TIMELINES and events_coro:
+        elif current_section == _SECTION_TIMELINES and timelines_coro:
             timelines_coro.send((prefix, event, value))
         elif current_section == _SECTION_SCORES and scores_coro:
             scores_coro.send((prefix, event, value))

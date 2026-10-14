@@ -593,7 +593,8 @@ class EvalLogTranscriptsView(TranscriptsView):
             raise ValueError("source_uri must be set")
 
         async def load() -> Transcript:
-            # `read()` returns whatever the sample stores. The handle contract
+            # `read()` returns stored timelines whenever it loads all events,
+            # requested or not. The handle contract
             # is "content is whatever the handle was opened for", and the
             # spooled path never carries timelines, so an unrequested stored
             # timeline is dropped here -- otherwise the same scan records

@@ -382,6 +382,7 @@ class EvalLogTranscriptsView(TranscriptsView):
             transcript_total_tokens = row_dict.get("total_tokens", None)
             transcript_error = row_dict.get("error", None)
             transcript_limit = row_dict.get("limit", None)
+            transcript_trust_content = row_dict.get("trust_content", None)
 
             # resolve json
             if transcript_agent_args is not None:
@@ -435,6 +436,7 @@ class EvalLogTranscriptsView(TranscriptsView):
                 total_tokens=transcript_total_tokens,
                 error=transcript_error,
                 limit=transcript_limit,
+                trust_content=transcript_trust_content,
                 metadata={},
             )
             object.__setattr__(info, "metadata", lazy_metadata)
@@ -591,7 +593,8 @@ class EvalLogTranscriptsView(TranscriptsView):
             raise ValueError("source_uri must be set")
 
         async def load() -> Transcript:
-            # `read()` returns whatever the sample stores. The handle contract
+            # `read()` returns stored timelines whenever it loads all events,
+            # requested or not. The handle contract
             # is "content is whatever the handle was opened for", and the
             # spooled path never carries timelines, so an unrequested stored
             # timeline is dropped here -- otherwise the same scan records
@@ -918,6 +921,7 @@ def transcript_info_from_eval_sample(
     eval_id: str,
     log_location: str | None,
     model: str | None,
+    trust_content: bool | None = None,
 ) -> TranscriptInfo:
     """Build a `TranscriptInfo` from a completed `EvalSample`.
 
@@ -930,7 +934,8 @@ def transcript_info_from_eval_sample(
     `log_location` is the absolute or relative path the parent eval log
     will be written to; `eval_id` is the parent eval's id; `model` is
     the *eval* model (scanners run with their own model via
-    `init_scan_model_context`).
+    `init_scan_model_context`); `trust_content` is the parent eval's
+    `ViewerConfig.trust_content`, recorded with the scan results.
     """
     from inspect_ai.analysis._dataframe.samples.extract import auto_sample_id
 
@@ -949,6 +954,7 @@ def transcript_info_from_eval_sample(
         message_count=len(eval_sample.messages),
         total_time=eval_sample.total_time,
         error=eval_sample.error.message if eval_sample.error is not None else None,
+        trust_content=trust_content,
         metadata=dict(eval_sample.metadata),
     )
 
@@ -959,6 +965,7 @@ def transcript_from_eval_sample(
     eval_id: str,
     log_location: str | None,
     model: str | None,
+    trust_content: bool | None = None,
 ) -> Transcript:
     """Build a `Transcript` from a completed `EvalSample`.
 
@@ -973,6 +980,7 @@ def transcript_from_eval_sample(
         eval_id=eval_id,
         log_location=log_location,
         model=model,
+        trust_content=trust_content,
     )
 
     timelines: list[Timeline] = list(eval_sample.timelines or [])
@@ -1064,6 +1072,7 @@ TranscriptColumns: list[Column] = (
         SampleColumn("working_time", path="working_time"),
         SampleColumn("error", path="error", default=""),
         SampleColumn("limit", path="limit", default=""),
+        EvalColumn("trust_content", path="eval.viewer.trust_content"),
     ]
 )
 

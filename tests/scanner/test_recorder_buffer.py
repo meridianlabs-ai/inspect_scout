@@ -321,6 +321,94 @@ async def test_scanner_table_keeps_extra_inputs_for_transcripts_not_in_buffer(
     assert set(tbl.column("transcript_id").to_pylist()) == {"tid-old", "tid-new"}
 
 
+def _success_by_tid(table: pa.Table) -> dict[str, bool | None]:
+    tids = table.column("transcript_id").to_pylist()
+    values = table.column("transcript_success").to_pylist()
+    return {str(tid): value for tid, value in zip(tids, values, strict=True)}
+
+
+# under any fixed file listing order, rotating the no-success transcript
+# across the three ids lists it first in exactly one case
+@pytest.mark.parametrize("unscored_tid", ["tid-0", "tid-1", "tid-2"])
+@pytest.mark.asyncio
+async def test_scanner_table_keeps_transcript_success_boolean(
+    recorder_buffer: RecorderBuffer,
+    sample_results: list[ResultReport],
+    tmp_path: Path,
+    unscored_tid: str,
+) -> None:
+    scored_tids = [t for t in ("tid-0", "tid-1", "tid-2") if t != unscored_tid]
+    success_by_tid: dict[str, bool | None] = {
+        unscored_tid: None,
+        scored_tids[0]: True,
+        scored_tids[1]: False,
+    }
+    for tid, success in success_by_tid.items():
+        await recorder_buffer.record(
+            TranscriptInfo(transcript_id=tid, success=success),
+            "test_scanner",
+            sample_results,
+            None,
+        )
+
+    out_path = tmp_path / "out.parquet"
+    assert scanner_table(recorder_buffer._buffer_dir, "test_scanner", str(out_path))
+
+    table = pq.read_table(out_path)
+    assert table.schema.field("transcript_success").type == pa.bool_()
+    assert _success_by_tid(table) == success_by_tid
+
+
+@pytest.mark.asyncio
+async def test_scanner_table_restores_boolean_transcript_success_from_text(
+    recorder_buffer: RecorderBuffer,
+    sample_results: list[ResultReport],
+    tmp_path: Path,
+) -> None:
+    """A prior compacted output holding `transcript_success` as text is re-typed."""
+    from upath import UPath
+
+    scanner_name = "test_scanner"
+    await recorder_buffer.record(
+        TranscriptInfo(transcript_id="tid-old", success=False),
+        scanner_name,
+        sample_results,
+        None,
+    )
+    compacted_path = tmp_path / "compacted.parquet"
+    assert scanner_table(recorder_buffer._buffer_dir, scanner_name, str(compacted_path))
+
+    # rewrite the prior output as earlier versions could compact it
+    compacted = pq.read_table(compacted_path)
+    index = compacted.schema.get_field_index("transcript_success")
+    compacted = compacted.set_column(
+        index,
+        "transcript_success",
+        compacted.column("transcript_success").cast(pa.string()),
+    )
+    prior_path = tmp_path / "prior.parquet"
+    pq.write_table(compacted, prior_path)
+
+    sdir = recorder_buffer._buffer_dir / f"scanner={scanner_name}"
+    for f in sdir.glob("*.parquet"):
+        f.unlink()
+    await recorder_buffer.record(
+        TranscriptInfo(transcript_id="tid-new"), scanner_name, sample_results, None
+    )
+
+    out_path = tmp_path / "out.parquet"
+    assert scanner_table(
+        recorder_buffer._buffer_dir,
+        scanner_name,
+        str(out_path),
+        extra_inputs=[UPath(prior_path)],
+    )
+
+    table = pq.read_table(out_path)
+    assert table.schema.field("transcript_success").type == pa.bool_()
+    assert _success_by_tid(table) == {"tid-old": False, "tid-new": None}
+
+
 def test_buffer_dir_expands_tilde(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -373,3 +461,103 @@ async def test_record_serializes_path_in_metadata_as_json(
         "eval_file_path": "/home/foo/eval.yaml",
         "nested": {"inner_path": "/home/foo/inner.yaml"},
     }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "transcript_ids",
+    [
+        # the all-null file sorts first, so it seeds the discovered schema
+        {None: "a-unset", False: "b-untrusted", True: "c-trusted"},
+        {None: "c-unset", False: "b-untrusted", True: "a-trusted"},
+    ],
+)
+async def test_compaction_keeps_transcript_trust_content_boolean(
+    recorder_buffer: RecorderBuffer,
+    sample_results: list[ResultReport],
+    tmp_path: Path,
+    transcript_ids: dict[bool | None, str],
+) -> None:
+    scanner_name = "test_scanner"
+    for trust, tid in transcript_ids.items():
+        await recorder_buffer.record(
+            TranscriptInfo(
+                transcript_id=tid,
+                source_type="test",
+                source_id=f"src-{tid}",
+                source_uri=f"/path/{tid}.log",
+                trust_content=trust,
+            ),
+            scanner_name,
+            sample_results,
+            None,
+        )
+
+    out_path = tmp_path / "out.parquet"
+    assert scanner_table(recorder_buffer._buffer_dir, scanner_name, str(out_path))
+
+    table = pq.read_table(str(out_path))
+    assert table.schema.field("transcript_trust_content").type == pa.bool_()
+    by_tid = dict(
+        zip(
+            table.column("transcript_id").to_pylist(),
+            table.column("transcript_trust_content").to_pylist(),
+            strict=True,
+        )
+    )
+    assert by_tid == {tid: trust for trust, tid in transcript_ids.items()}
+
+
+@pytest.mark.asyncio
+async def test_compaction_keeps_transcript_trust_content_from_older_buffer_files(
+    recorder_buffer: RecorderBuffer,
+    sample_results: list[ResultReport],
+    tmp_path: Path,
+) -> None:
+    """A buffer file without the column (an older Scout) can't drop it.
+
+    Buffer files are read before `extra_inputs`, so the older file reliably
+    seeds the discovered schema here.
+    """
+    from upath import UPath
+
+    scanner_name = "test_scanner"
+    await recorder_buffer.record(
+        TranscriptInfo(transcript_id="untrusted", trust_content=False),
+        scanner_name,
+        sample_results,
+        None,
+    )
+    prior_path = tmp_path / "prior.parquet"
+    assert scanner_table(recorder_buffer._buffer_dir, scanner_name, str(prior_path))
+
+    sdir = recorder_buffer._buffer_dir / f"scanner={scanner_name}"
+    for f in sdir.glob("*.parquet"):
+        f.unlink()
+    await recorder_buffer.record(
+        TranscriptInfo(transcript_id="old"), scanner_name, sample_results, None
+    )
+    old_file = sdir / "old.parquet"
+    pq.write_table(
+        pq.read_table(str(old_file)).drop_columns(["transcript_trust_content"]),
+        str(old_file),
+    )
+
+    out_path = tmp_path / "out.parquet"
+    assert scanner_table(
+        recorder_buffer._buffer_dir,
+        scanner_name,
+        str(out_path),
+        extra_inputs=[UPath(prior_path)],
+    )
+
+    table = pq.read_table(str(out_path))
+    assert table.schema.field("transcript_trust_content").type == pa.bool_()
+    by_tid = dict(
+        zip(
+            table.column("transcript_id").to_pylist(),
+            table.column("transcript_trust_content").to_pylist(),
+            strict=True,
+        )
+    )
+    assert by_tid == {"old": None, "untrusted": False}

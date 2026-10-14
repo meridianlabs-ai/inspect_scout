@@ -16,4 +16,10 @@ jobs:
       # workflows, each with its own environment gate — so each posts its own
       # approval ping from there (deep-linking to the paused run), not here.
       approval-ping: false
-    secrets: inherit
+    # Only the secrets the reusable workflow uses, not `secrets: inherit`: the
+    # rest of this repo's secrets stay out of an external workflow. Its
+    # optional SLACK_APPROVALS_WEBHOOK_URL is used only when approval-ping is
+    # true, so it is not passed.
+    secrets:
+      RELEASE_PLEASE_APP_ID: ${{ secrets.RELEASE_PLEASE_APP_ID }}
+      RELEASE_PLEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}

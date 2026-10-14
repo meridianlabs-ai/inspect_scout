@@ -5,6 +5,8 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 
 import pytest
+from inspect_ai.event import timeline_build
+from inspect_ai.log import read_eval_log, write_eval_log
 from inspect_ai.model import ModelOutput, get_model
 from inspect_ai.model._chat_message import ChatMessageUser
 from inspect_scout import (
@@ -81,6 +83,30 @@ def multi_item_model_usage_scanner_factory() -> Scanner[ChatMessageUser]:
 
     async def scan_message(message: ChatMessageUser) -> Result:
         return Result(value=bool(message.text))
+
+    return scan_message
+
+
+@loader(name="per_item_events_loader", messages=["user"])
+def per_item_events_loader_factory() -> Loader[ChatMessageUser]:
+    """Create a loader that makes one model call before yielding each message."""
+
+    async def load(transcript: Transcript) -> AsyncIterator[ChatMessageUser]:
+        for message in transcript.messages:
+            if isinstance(message, ChatMessageUser):
+                await get_model().generate([message])
+                yield message
+
+    return load
+
+
+@scanner(name="per_item_events_scanner", loader=per_item_events_loader_factory())
+def per_item_events_scanner_factory() -> Scanner[ChatMessageUser]:
+    """Create a scanner that makes exactly one model call per loader item."""
+
+    async def scan_message(message: ChatMessageUser) -> Result:
+        await get_model().generate([message])
+        return Result(value=message.text)
 
     return scan_message
 
@@ -375,6 +401,75 @@ def test_scan_model_usage_not_cumulative(tmp_path: Path) -> None:
         )
 
 
+def test_scan_events_are_per_loader_item(tmp_path: Path) -> None:
+    """Each report's events cover only its own item's invocation.
+
+    Regression test for reports built from one Inspect transcript shared
+    across every item a loader yields: item k recorded the events of items
+    0..k, so the stored `scan_events` grew quadratically in the item count
+    and attributed earlier items' model calls to later reports. The loader
+    call that produces an item and the scan of that item both belong to
+    that item's report.
+    """
+    db_path = tmp_path / "transcript_db"
+    scans_path = tmp_path / "scans"
+    db_path.mkdir()
+    scans_path.mkdir()
+    item_count = 5
+    transcript = Transcript(
+        transcript_id="per-item-events",
+        source_type="test",
+        source_id="source-0",
+        source_uri="test://per-item-events",
+        messages=[
+            ChatMessageUser(content=f"Item {i} message") for i in range(item_count)
+        ],
+        events=[],
+    )
+
+    import asyncio
+
+    async def insert_transcript() -> None:
+        async with transcripts_db(str(db_path)) as db:
+            await db.insert([transcript])
+
+    asyncio.run(insert_transcript())
+    status = scan(
+        scanners=[per_item_events_scanner_factory()],
+        transcripts=transcripts_from(str(db_path)),
+        scans=str(scans_path),
+        max_processes=1,
+        model="mockllm/model",
+        model_args={
+            "custom_outputs": [
+                ModelOutput.from_content(model="mockllm", content="ok")
+                for _ in range(2 * item_count)
+            ]
+        },
+        display="none",
+    )
+    assert status.complete
+    assert status.location is not None
+    # scan_events is a heavy column, excluded unless asked for
+    df = scan_results_df(
+        status.location, scanner="per_item_events_scanner", exclude_columns=[]
+    ).scanners["per_item_events_scanner"]
+    assert len(df) == item_count
+
+    for i in range(item_count):
+        events = json.loads(df["scan_events"].iloc[i])
+        model_events = [e for e in events if e["event"] == "model"]
+        # The loader's call for this item and the scan's call, and nothing
+        # from items 0..i-1.
+        assert len(model_events) == 2, (
+            f"report {i} carries {len(model_events)} model events, expected 2"
+        )
+        for event in model_events:
+            assert event["input"][0]["content"] == f"Item {i} message"
+        # The scan span is recorded once per item alongside the calls.
+        assert [e["event"] for e in events].count("span_begin") == 1
+
+
 def test_scan_model_usage_is_per_loader_item(tmp_path: Path) -> None:
     """Each report includes the loader call made immediately before its item."""
     db_path = tmp_path / "transcript_db"
@@ -426,3 +521,46 @@ def test_scan_model_usage_is_per_loader_item(tmp_path: Path) -> None:
     assert status.summary.scanners["multi_item_model_usage_scanner"].tokens == (
         3 * first_tokens
     )
+
+
+@scanner(name="model_events_scanner", events=["model"])
+def model_events_scanner_factory() -> Scanner[Transcript]:
+    """Scanner that reads only model events."""
+
+    async def scan_transcript(transcript: Transcript) -> Result:
+        return Result(value=len(transcript.events))
+
+    return scan_transcript
+
+
+def test_scan_event_filter_on_log_with_stored_timelines(tmp_path: Path) -> None:
+    """An event-filtered scanner scans samples that store timelines.
+
+    Petri stores timelines referencing every event type. Loading them against a
+    filtered event list failed validation, and since scanners share one read per
+    transcript, the messages scanner failed alongside the event-filtered one.
+    """
+    log = read_eval_log(str(sorted(LOGS_DIR.glob("*.eval"))[0]))
+    log.samples = (log.samples or [])[:2]
+    for sample in log.samples:
+        sample.timelines = [timeline_build(sample.events)]
+    logs_dir = tmp_path / "logs"
+    logs_dir.mkdir()
+    write_eval_log(log, str(logs_dir / "timelines.eval"))
+
+    status = scan(
+        scanners=[model_events_scanner_factory(), simple_scanner_factory()],
+        transcripts=transcripts_from(str(logs_dir)),
+        scans=str(tmp_path / "scans"),
+        max_processes=1,
+        display="none",
+    )
+
+    assert status.complete
+    assert status.location is not None
+    results = scan_results_df(status.location).scanners
+    for name in ["model_events_scanner", "simple_scanner"]:
+        df = results[name]
+        assert len(df) == 2
+        assert df["scan_error"].isna().all(), df["scan_error"].tolist()
+    assert all(value > 0 for value in results["model_events_scanner"]["value"])

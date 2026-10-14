@@ -52,6 +52,7 @@ Note that the heavy JSON columns (`input` and `scan_events`) are excluded by def
 | `transcript_total_tokens` | number | Tokens spent in execution of task. |
 | `transcript_error` | str | Error message that terminated the task. |
 | `transcript_limit` | str | Limit that caused the task to exit (e.g. "tokens", "messages, etc.) |
+| `transcript_trust_content` | bool | Whether the transcript's model output may be rendered richly (`False` shows it as plain text). |
 | `transcript_metadata` | dict <br/><small>JSON</small> | Source specific metadata. |
 | `scan_id` | str | Globally unique identifier for scan. |
 | `scan_tags` | list\[str\]</br><small>JSON</small> | Tags associated with the scan. |

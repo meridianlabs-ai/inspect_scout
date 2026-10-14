@@ -1,5 +1,54 @@
 # Changelog
 
+## [0.5.5](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.4...0.5.5) (2026-10-11)
+
+
+### Features
+
+* show untrusted model output as plain text in Scout View ([#690](https://github.com/meridianlabs-ai/inspect_scout/issues/690)) ([b0133f4](https://github.com/meridianlabs-ai/inspect_scout/commit/b0133f48bf269283dd6e416318d2a15515a04b31))
+* support inspect_ai sentinel events in scanners and grep_scanner ([#697](https://github.com/meridianlabs-ai/inspect_scout/issues/697)) ([bb56a40](https://github.com/meridianlabs-ai/inspect_scout/commit/bb56a402510d4566eca439c4c4cf721dc52b441c))
+
+
+### Bug Fixes
+
+* scan results record transcript_success as text when the first transcript has no score ([#689](https://github.com/meridianlabs-ai/inspect_scout/issues/689)) ([5f2881d](https://github.com/meridianlabs-ai/inspect_scout/commit/5f2881d1c0217829653e6bdb60c7430d3670569d))
+* scanners and transcript databases lose the scorer's explanation ([d746d2a](https://github.com/meridianlabs-ai/inspect_scout/commit/d746d2a323b96307705a918505ccf303b56547da))
+
+## [0.5.4](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.3...0.5.4) (2026-10-06)
+
+
+### Bug Fixes
+
+* allow scanners with postponed annotations ([#617](https://github.com/meridianlabs-ai/inspect_scout/issues/617)) ([8660a28](https://github.com/meridianlabs-ai/inspect_scout/commit/8660a28217ff8934d3aa9b719642bf9a302151db))
+* record each loader item's own events on its ResultReport ([#663](https://github.com/meridianlabs-ai/inspect_scout/issues/663)) ([1d5f774](https://github.com/meridianlabs-ai/inspect_scout/commit/1d5f77402c7b4e24bfaccb3259ddc677870c7523))
+
+
+### Performance Improvements
+
+* **examples/openclaw_telemetry_hal:** assign message ids once per lane, not per model event ([#652](https://github.com/meridianlabs-ai/inspect_scout/issues/652)) ([b8ff1bc](https://github.com/meridianlabs-ai/inspect_scout/commit/b8ff1bcaa29a4e0dd9b1e3868bbc1e46dbc8adae))
+
+## [0.5.3](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.2...0.5.3) (2026-09-16)
+
+
+### Features
+
+* scans stream large transcripts, and scanners can opt into streaming ([#608](https://github.com/meridianlabs-ai/inspect_scout/issues/608)) ([59ac7aa](https://github.com/meridianlabs-ai/inspect_scout/commit/59ac7aa095be7c69f80003e57ecbcdf211ab503d))
+
+
+### Bug Fixes
+
+* an erroring scan item no longer reports the previous item's ([419a190](https://github.com/meridianlabs-ai/inspect_scout/commit/419a190311270a240bdd489092377888b2f4661c))
+* attachment contents no longer come back as dangling attachment:// hashes ([#603](https://github.com/meridianlabs-ai/inspect_scout/issues/603)) ([419a190](https://github.com/meridianlabs-ai/inspect_scout/commit/419a190311270a240bdd489092377888b2f4661c))
+* preserve provider error details in multi-process scans ([#632](https://github.com/meridianlabs-ai/inspect_scout/issues/632)) ([d2e2e3b](https://github.com/meridianlabs-ai/inspect_scout/commit/d2e2e3b112f38d000ee380c90f7414ca598f1a03))
+
+
+### Performance Improvements
+
+* bound the segments an llm_scanner holds and scans at once ([#604](https://github.com/meridianlabs-ai/inspect_scout/issues/604)) ([2063b5b](https://github.com/meridianlabs-ai/inspect_scout/commit/2063b5bc650d50cec1c4de0765951daf2eac3847))
+* parse large eval-log samples into a disk spool instead of memory ([#606](https://github.com/meridianlabs-ai/inspect_scout/issues/606)) ([afdbcd1](https://github.com/meridianlabs-ai/inspect_scout/commit/afdbcd1b009b0238831f8effb96b8e744a4509bd))
+* viewer LLM search no longer loads the whole transcript into memory ([#607](https://github.com/meridianlabs-ai/inspect_scout/issues/607)) ([30b3f9f](https://github.com/meridianlabs-ai/inspect_scout/commit/30b3f9ffc5629498b3c81ee32f759973eabbee59))
+* write recorded transcript columns as UTF-8 bytes instead of str ([#605](https://github.com/meridianlabs-ai/inspect_scout/issues/605)) ([8446bd9](https://github.com/meridianlabs-ai/inspect_scout/commit/8446bd90bfc906c717a5696fa331f12dbbb72f1e))
+
 ## [0.5.2](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.1...0.5.2) (2026-09-07)
 
 

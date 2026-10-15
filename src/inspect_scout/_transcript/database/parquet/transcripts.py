@@ -715,8 +715,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
         ):
             # Determine which columns we need to read
             need_messages = content.messages is not None
-            need_events = content.events is not None
             need_timelines = content.timeline is not None
+            # Stored timelines reference events by UUID, so resolving them
+            # needs the events even when none were requested.
+            need_events = content.events is not None or need_timelines
 
             if not need_messages and not need_events and not need_timelines:
                 # No content needed - use model_construct to preserve LazyJSONDict

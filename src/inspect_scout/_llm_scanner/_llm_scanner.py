@@ -22,6 +22,7 @@ from .._scanner.result import Result
 from .._scanner.scanner import (
     SCANNER_CONTENT_ATTR,
     SCANNER_NAME_ATTR,
+    SCANNER_TIMELINE_NEEDED_ATTR,
     Scanner,
     mark_streaming_support,
     scanner,
@@ -259,9 +260,13 @@ def llm_scanner(
         context_window: Override the model's context window size for chunking.
             When set, transcripts exceeding this limit are split into multiple
             segments, each scanned independently.
-        timeline: Name of the timeline to extract messages from. ``None``
-            (default) uses the transcript's first timeline. Raises
-            ``ValueError`` if no timeline with the given name exists.
+        timeline: Name of the timeline to extract messages from (e.g. a
+            stored ``"target"`` timeline). Setting it loads timelines, so no
+            ``content`` override is needed. ``None`` (default) uses the
+            transcript's first timeline (or one built from its events) when
+            the scanner's content includes timelines or events, and
+            otherwise its messages. Raises ``ValueError`` if no timeline
+            with the given name exists.
         compaction: How to handle compaction boundaries when extracting
             messages from events. ``"all"`` (default) scans all compaction
             segments; ``"last"`` scans only the most recent.
@@ -520,6 +525,11 @@ def llm_scanner(
     # set content override for @scanner to merge into ScannerConfig
     if content is not None:
         setattr(scan, SCANNER_CONTENT_ATTR, content)
+
+    # Readers only return stored timelines when the content requests them, so
+    # a named timeline would otherwise never be found.
+    if timeline is not None:
+        setattr(scan, SCANNER_TIMELINE_NEEDED_ATTR, True)
 
     # Vouch either way: a callable template or a timeline request needs the
     # whole transcript, and "unsafe" must be a recorded verdict, not silence.

@@ -523,6 +523,19 @@ def test_scan_model_usage_is_per_loader_item(tmp_path: Path) -> None:
     )
 
 
+def _write_log_with_stored_timelines(tmp_path: Path, names: list[str]) -> Path:
+    """Write a two-sample log whose samples store timelines with the given names."""
+    log = read_eval_log(str(sorted(LOGS_DIR.glob("*.eval"))[0]))
+    log.samples = (log.samples or [])[:2]
+    for sample in log.samples:
+        built = timeline_build(sample.events)
+        sample.timelines = [built.model_copy(update={"name": n}) for n in names]
+    logs_dir = tmp_path / "logs"
+    logs_dir.mkdir()
+    write_eval_log(log, str(logs_dir / "timelines.eval"))
+    return logs_dir
+
+
 @scanner(name="model_events_scanner", events=["model"])
 def model_events_scanner_factory() -> Scanner[Transcript]:
     """Scanner that reads only model events."""
@@ -540,13 +553,7 @@ def test_scan_event_filter_on_log_with_stored_timelines(tmp_path: Path) -> None:
     filtered event list failed validation, and since scanners share one read per
     transcript, the messages scanner failed alongside the event-filtered one.
     """
-    log = read_eval_log(str(sorted(LOGS_DIR.glob("*.eval"))[0]))
-    log.samples = (log.samples or [])[:2]
-    for sample in log.samples:
-        sample.timelines = [timeline_build(sample.events)]
-    logs_dir = tmp_path / "logs"
-    logs_dir.mkdir()
-    write_eval_log(log, str(logs_dir / "timelines.eval"))
+    logs_dir = _write_log_with_stored_timelines(tmp_path, ["Default"])
 
     status = scan(
         scanners=[model_events_scanner_factory(), simple_scanner_factory()],
@@ -564,3 +571,61 @@ def test_scan_event_filter_on_log_with_stored_timelines(tmp_path: Path) -> None:
         assert len(df) == 2
         assert df["scan_error"].isna().all(), df["scan_error"].tolist()
     assert all(value > 0 for value in results["model_events_scanner"]["value"])
+
+
+@pytest.mark.parametrize("source", ["log", "db"])
+@pytest.mark.parametrize(
+    ("timeline", "expected_error"),
+    [
+        pytest.param("target", None, id="stored-name"),
+        pytest.param(
+            "missing",
+            "Timeline 'missing' not found in transcript",
+            id="unknown-name",
+        ),
+    ],
+)
+def test_llm_scanner_selects_stored_timeline_by_name(
+    tmp_path: Path, source: str, timeline: str, expected_error: str | None
+) -> None:
+    """`llm_scanner(timeline=...)` finds a stored timeline without `content=`.
+
+    Petri stores "target" and "auditor" timelines on every sample. Readers return
+    stored timelines only when the content requests them, so naming one used to
+    fail with "Transcript has no timelines".
+    """
+    import asyncio
+
+    transcripts_path = _write_log_with_stored_timelines(tmp_path, ["target", "auditor"])
+    if source == "db":
+        db_path = tmp_path / "db"
+
+        async def insert_transcripts() -> None:
+            async with transcripts_db(str(db_path)) as db:
+                await db.insert(transcripts_from(str(transcripts_path)))
+
+        asyncio.run(insert_transcripts())
+        transcripts_path = db_path
+
+    status = scan(
+        scanners={
+            "judge": llm_scanner(
+                question="Did the target refuse?", answer="boolean", timeline=timeline
+            )
+        },
+        transcripts=transcripts_from(str(transcripts_path)),
+        scans=str(tmp_path / "scans"),
+        model="mockllm/model",
+        max_processes=1,
+        display="none",
+    )
+
+    assert status.location is not None
+    df = scan_results_df(status.location).scanners["judge"]
+    assert len(df) == 2
+    errors = df["scan_error"].tolist()
+    if expected_error is None:
+        assert df["scan_error"].isna().all(), errors
+    else:
+        assert all(expected_error in e for e in errors), errors
+        assert all("'target', 'auditor'" in e for e in errors), errors

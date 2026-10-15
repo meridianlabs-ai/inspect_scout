@@ -3,7 +3,7 @@
 ## [0.6.0](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.5...0.6.0) (2026-10-15)
 
 
-### ⚠ BREAKING CHANGES
+### Breaking Changes
 
 * require Python 3.11 and test on Python 3.14 ([#703](https://github.com/meridianlabs-ai/inspect_scout/issues/703))
 

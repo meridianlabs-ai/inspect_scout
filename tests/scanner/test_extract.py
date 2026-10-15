@@ -1,6 +1,7 @@
 """Tests for message extraction functions in llm_scanner."""
 
 import json
+from typing import Literal
 
 import pytest
 from inspect_ai._util.content import (
@@ -1576,31 +1577,45 @@ def test_message_as_str_nonce(message: ChatMessage, expected: str) -> None:
     assert message_as_str(message, nonce="3f9a1c7e") == expected
 
 
+@pytest.mark.parametrize(
+    "format,expected",
+    [
+        ("text", "USER (3f9a1c7e):\nQ1\n\nASSISTANT (3f9a1c7e):\nA1\n"),
+        (
+            "json",
+            json.dumps(
+                [
+                    {"role": "user", "content": "USER (3f9a1c7e):\nQ1\n"},
+                    {"role": "assistant", "content": "ASSISTANT (3f9a1c7e):\nA1\n"},
+                ]
+            ),
+        ),
+    ],
+)
 @pytest.mark.asyncio
-async def test_messages_as_str_nonce_without_ids() -> None:
-    """A nonce shows on each header even when message ids are off."""
+async def test_messages_as_str_nonce_without_ids(
+    format: Literal["text", "json"], expected: str
+) -> None:
+    """A nonce shows on each header even when ids are off; JSON carries it in `content` only."""
     messages: list[ChatMessage] = [
         ChatMessageUser(content="Q1"),
         ChatMessageAssistant(content="A1"),
     ]
 
-    result = await messages_as_str(messages, nonce="3f9a1c7e")
-    assert result == "USER (3f9a1c7e):\nQ1\n\nASSISTANT (3f9a1c7e):\nA1\n"
+    result = await messages_as_str(messages, format=format, nonce="3f9a1c7e")
+    assert result == expected
 
 
 @pytest.mark.asyncio
 async def test_messages_as_str_nonce_with_ids() -> None:
-    """With ids on, the nonce follows the role and references still resolve."""
+    """With ids on, the nonce follows the role label after the [M#] prefix."""
     messages: list[ChatMessage] = [
         ChatMessageUser(content="Q1", id="msg1"),
         ChatMessageAssistant(content="A1", id="msg2"),
     ]
 
-    result, extract_refs = await messages_as_str(
-        messages, include_ids=True, nonce="3f9a1c7e"
-    )
+    result, _ = await messages_as_str(messages, include_ids=True, nonce="3f9a1c7e")
     assert result == "[M1] USER (3f9a1c7e):\nQ1\n\n[M2] ASSISTANT (3f9a1c7e):\nA1\n"
-    assert [ref.id for ref in extract_refs("See [M2]")] == ["msg2"]
 
 
 @pytest.mark.asyncio

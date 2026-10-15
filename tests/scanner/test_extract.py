@@ -1620,7 +1620,12 @@ async def test_message_numbering_nonce() -> None:
 
 
 @pytest.mark.parametrize("nonce", ["", "3f9a1c7"])
-def test_message_as_str_nonce_too_short(nonce: str) -> None:
-    """A nonce shorter than 8 characters raises."""
+@pytest.mark.asyncio
+async def test_nonce_too_short(nonce: str) -> None:
+    """Each entry point raises for a nonce shorter than 8 characters, even with no messages."""
     with pytest.raises(ValueError, match="at least 8 characters"):
         message_as_str(ChatMessageUser(content="Hello"), nonce=nonce)
+    with pytest.raises(ValueError, match="at least 8 characters"):
+        await messages_as_str([], nonce=nonce)
+    with pytest.raises(ValueError, match="at least 8 characters"):
+        message_numbering(nonce=nonce)

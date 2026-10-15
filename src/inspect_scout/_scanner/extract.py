@@ -150,7 +150,12 @@ async def messages_as_str(
        If include_ids is True: Tuple of (formatted output, function that takes text
           and returns list of Reference objects for any [M1], [M2], etc. references
           found in the text).
+
+    Raises:
+       ValueError: If `nonce` is shorter than 8 characters.
     """
+    check_nonce(nonce)
+
     # handle deprecated as_json parameter
     if "as_json" in deprecated:
         warn_once(logger, "'as_json' is deprecated, please use 'format' instead")
@@ -262,7 +267,12 @@ def message_numbering(
             - messages_as_str: takes list[ChatMessage], returns formatted string with globally unique [M1], [M2], etc. prefixes.
             - extract_refs: takes text, returns list of Reference objects for any [M1], [M2], etc. references found across all prior calls.
             - label_for_id (when requested): takes a real message ID, returns its label (e.g. ``"M3"``) or None if not yet seen.
+
+    Raises:
+        ValueError: If `nonce` is shorter than 8 characters.
     """
+    check_nonce(nonce)
+
     counter = [0]
     id_map: dict[str, str] = {}
     reverse_map: dict[str, str] = {}

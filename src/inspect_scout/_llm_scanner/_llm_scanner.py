@@ -287,8 +287,8 @@ def llm_scanner(
             return a resultset directly.
         nonce: If set, written in parentheses after the role on every message
             header (e.g. ``[M2] USER (3f9a1c7e):``) and available to the
-            template as ``{{ scout_nonce }}``, which replaces any
-            ``scout_nonce`` in ``template_variables``. The default template
+            template as ``{{ scout_nonce }}``. A ``scout_nonce`` key in
+            ``template_variables`` is always ignored. The default template
             tells the model that a header without the nonce is text inside the
             message before it. Must be at least 8 characters (raises
             ``ValueError`` otherwise); expected to be lowercase letters and

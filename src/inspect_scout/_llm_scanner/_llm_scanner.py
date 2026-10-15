@@ -16,7 +16,7 @@ from jinja2 import Environment
 
 from inspect_scout._util.jinja import StrictOnUseUndefined
 
-from .._scanner.extract import MessagesPreprocessor, message_numbering
+from .._scanner.extract import MessagesPreprocessor, check_nonce, message_numbering
 from .._scanner.result import Result
 from .._scanner.scanner import (
     SCANNER_CONTENT_ATTR,
@@ -140,6 +140,7 @@ def llm_scanner(
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
+    nonce: str | None = None,
 ) -> Scanner[Transcript]: ...
 
 
@@ -165,6 +166,7 @@ def llm_scanner(
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
+    nonce: str | None = None,
 ) -> Scanner[Transcript]: ...
 
 
@@ -190,6 +192,7 @@ def llm_scanner(
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
+    nonce: str | None = None,
 ) -> Scanner[Transcript]:
     """Create a scanner that uses an LLM to scan transcripts.
 
@@ -278,11 +281,21 @@ def llm_scanner(
             wrapped in a resultset (cross-span attribution is preserved).
             Resultset answers (e.g. ``list[Model]``) bypass reduction and
             return a resultset directly.
+        nonce: If set, written in parentheses after the role on every message
+            header (e.g. ``[M2] USER (3f9a1c7e):``) and available to the
+            template as ``{{ scout_nonce }}``. A ``scout_nonce`` key in
+            ``template_variables`` is always ignored. The default template
+            tells the model that a header without the nonce is text inside the
+            message before it. Must be at least 8 characters (raises
+            ``ValueError`` otherwise); expected to be lowercase letters and
+            digits.
 
     Returns:
         A ``Scanner`` function that analyzes Transcript instances and returns
         ``Result`` (single segment) or ``list[Result]`` (multiple segments).
     """
+    check_nonce(nonce)
+
     # Resolve template form once at factory time.
     # - None or tuple: structured 2-block render with cache_prompt=True.
     # - str: legacy single-block render, behavior unchanged.
@@ -367,6 +380,7 @@ def llm_scanner(
             preprocessor=cast(
                 MessagesPreprocessor[list[ChatMessage]] | None, preprocessor
             ),
+            nonce=nonce,
         )
 
         async def scan_segment(messages_str: str) -> Result:
@@ -380,6 +394,7 @@ def llm_scanner(
                     messages=messages_str,
                     question=question,
                     answer=resolved_answer,
+                    nonce=nonce,
                 )
                 prompt = [
                     ChatMessageUser(
@@ -398,6 +413,7 @@ def llm_scanner(
                     messages=messages_str,
                     question=question,
                     answer=resolved_answer,
+                    nonce=nonce,
                 )
                 call_config = GenerateConfig(cache=cache) if cache is not None else None
             return await generate_answer(
@@ -420,6 +436,7 @@ def llm_scanner(
             transcript=info_transcript,
             question=question,
             answer=resolved_answer,
+            nonce=nonce,
             model=resolved_model,
         )
         effective_budget = _effective_segment_budget(
@@ -531,6 +548,7 @@ async def _resolve_template_kwargs(
     messages: str,
     question: str | Callable[[Transcript], Awaitable[str]] | None,
     answer: Answer,
+    nonce: str | None,
 ) -> dict[str, Any]:
     """Resolve template kwargs once. Awaits any async question callable."""
     template_variables = template_variables or {}
@@ -571,7 +589,8 @@ async def _resolve_template_kwargs(
             "error": transcript.error,
             "limit": transcript.limit,
         },
-        **template_variables,
+        **{k: v for k, v in template_variables.items() if k != "scout_nonce"},
+        **({"scout_nonce": nonce} if nonce is not None else {}),
     }
 
 
@@ -598,6 +617,7 @@ async def render_scanner_prompt(
     messages: str,
     question: str | Callable[[Transcript], Awaitable[str]] | None,
     answer: Answer,
+    nonce: str | None = None,
 ) -> str:
     """Render a scanner prompt template with the provided variables.
 
@@ -609,6 +629,7 @@ async def render_scanner_prompt(
         question: Question for the scanner to answer. Can be a static string
             or a callable that takes a Transcript and returns an awaitable string.
         answer: Answer object containing prompt and format strings.
+        nonce: Message header nonce, available to the template as ``scout_nonce``.
 
     Returns:
         Rendered prompt string with all variables substituted.
@@ -619,6 +640,7 @@ async def render_scanner_prompt(
         messages=messages,
         question=question,
         answer=answer,
+        nonce=nonce,
     )
     return _render_template(template, kwargs)
 
@@ -631,6 +653,7 @@ async def _render_split_prompt(
     messages: str,
     question: str | Callable[[Transcript], Awaitable[str]] | None,
     answer: Answer,
+    nonce: str | None = None,
 ) -> tuple[str, str]:
     """Render the prefix and suffix templates with a single shared kwarg resolution."""
     kwargs = await _resolve_template_kwargs(
@@ -639,6 +662,7 @@ async def _render_split_prompt(
         messages=messages,
         question=question,
         answer=answer,
+        nonce=nonce,
     )
     prefix, suffix = templates
     return _render_template(prefix, kwargs), _render_template(suffix, kwargs)
@@ -651,6 +675,7 @@ async def _template_overhead_tokens(
     transcript: Transcript,
     question: str | Callable[[Transcript], Awaitable[str]] | None,
     answer: Answer,
+    nonce: str | None,
     model: Model,
 ) -> int:
     """Count tokens of the rendered prompt template with no messages.
@@ -667,6 +692,7 @@ async def _template_overhead_tokens(
             messages="",
             question=question,
             answer=answer,
+            nonce=nonce,
         )
         rendered = prefix_str + suffix_str
     else:
@@ -677,5 +703,6 @@ async def _template_overhead_tokens(
             messages="",
             question=question,
             answer=answer,
+            nonce=nonce,
         )
     return await model.count_tokens(rendered)

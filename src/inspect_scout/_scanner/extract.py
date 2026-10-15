@@ -77,6 +77,7 @@ async def messages_as_str(
     *,
     preprocessor: MessagesPreprocessor[T] | None = None,
     format: Literal["text", "json"] = "text",
+    nonce: str | None = None,
     **deprecated: Unpack[DeprecatedArgs],
 ) -> str: ...
 
@@ -87,6 +88,7 @@ async def messages_as_str(
     *,
     preprocessor: MessagesPreprocessor[T] | None = None,
     format: Literal["list"],
+    nonce: str | None = None,
     **deprecated: Unpack[DeprecatedArgs],
 ) -> list[str]: ...
 
@@ -98,6 +100,7 @@ async def messages_as_str(
     preprocessor: MessagesPreprocessor[T] | None = None,
     include_ids: Literal[True],
     format: Literal["text", "json"] = "text",
+    nonce: str | None = None,
     **deprecated: Unpack[DeprecatedArgs],
 ) -> tuple[str, Callable[[str], list[Reference]]]: ...
 
@@ -109,6 +112,7 @@ async def messages_as_str(
     preprocessor: MessagesPreprocessor[T] | None = None,
     include_ids: Literal[True],
     format: Literal["list"],
+    nonce: str | None = None,
     **deprecated: Unpack[DeprecatedArgs],
 ) -> tuple[list[str], Callable[[str], list[Reference]]]: ...
 
@@ -119,6 +123,7 @@ async def messages_as_str(
     preprocessor: MessagesPreprocessor[T] | None = None,
     include_ids: Literal[True] | None = None,
     format: Literal["text", "json", "list"] = "text",
+    nonce: str | None = None,
     **deprecated: Unpack[DeprecatedArgs],
 ) -> str | list[str] | tuple[str | list[str], Callable[[str], list[Reference]]]:
     """Concatenate list of chat messages into a string.
@@ -132,6 +137,10 @@ async def messages_as_str(
        format: Output format. `"text"` (default) joins messages with newlines,
           `"json"` returns a JSON string, `"list"` returns individual
           formatted strings as a list.
+       nonce: If set, written in parentheses after the role on every message
+          header (e.g. `USER (3f9a1c7e):`), so a reader that knows the nonce
+          can tell real headers from text in a message that imitates one.
+          Expected to be short lowercase letters and digits; not checked.
 
     Returns:
        If include_ids is None: Messages as `str` (text/json) or `list[str]` (list).
@@ -157,7 +166,7 @@ async def messages_as_str(
         acc: tuple[list[dict[str, str]], dict[str, str]], message: ChatMessage
     ) -> tuple[list[dict[str, str]], dict[str, str]]:
         items, id_map = acc
-        if (content := message_as_str(message, preprocessor)) is not None:
+        if (content := message_as_str(message, preprocessor, nonce=nonce)) is not None:
             item: dict[str, str] = {
                 "role": _role_label(message, upper_fallback=False),
                 "content": content,
@@ -201,6 +210,8 @@ LabelForId: TypeAlias = Callable[[str], str | None]
 @overload
 def message_numbering(
     preprocessor: MessagesPreprocessor[list[ChatMessage]] | None = None,
+    *,
+    nonce: str | None = None,
 ) -> tuple[MessagesAsStr, ExtractReferences]: ...
 
 
@@ -209,6 +220,7 @@ def message_numbering(
     preprocessor: MessagesPreprocessor[list[ChatMessage]] | None = None,
     *,
     label_for_id: Literal[True],
+    nonce: str | None = None,
 ) -> tuple[MessagesAsStr, ExtractReferences, LabelForId]: ...
 
 
@@ -216,6 +228,7 @@ def message_numbering(
     preprocessor: MessagesPreprocessor[list[ChatMessage]] | None = None,
     *,
     label_for_id: bool = False,
+    nonce: str | None = None,
 ) -> (
     tuple[MessagesAsStr, ExtractReferences]
     | tuple[MessagesAsStr, ExtractReferences, LabelForId]
@@ -235,6 +248,11 @@ def message_numbering(
             system messages when no preprocessor is provided.
         label_for_id: When True, return a third function that maps real
             message IDs to their assigned labels (e.g. ``"M3"``).
+        nonce: If set, written in parentheses after the role on every message
+            header (e.g. ``[M2] USER (3f9a1c7e):``), so a reader that knows
+            the nonce can tell real headers from text in a message that
+            imitates one. Expected to be short lowercase letters and digits;
+            not checked.
 
     Returns:
         Tuple of:
@@ -252,7 +270,7 @@ def message_numbering(
 
         items: list[str] = []
         for message in messages:
-            content = message_as_str(message, preprocessor)
+            content = message_as_str(message, preprocessor, nonce=nonce)
             if content is not None:
                 counter[0] += 1
                 ordinal = f"M{counter[0]}"
@@ -278,6 +296,8 @@ def message_numbering(
 def message_as_str(
     message: ChatMessage,
     preprocessor: MessageFormatOptions | None = None,
+    *,
+    nonce: str | None = None,
 ) -> str | None:
     """Convert a ChatMessage to a formatted string representation.
 
@@ -289,6 +309,10 @@ def message_as_str(
     Args:
         message: The `ChatMessage` to convert.
         preprocessor: Content filter for messages. Defaults to removing system messages.
+        nonce: If set, written in parentheses after the role (e.g.
+            ``USER (3f9a1c7e):``), so a reader that knows the nonce can tell
+            real headers from text in a message that imitates one. Expected
+            to be short lowercase letters and digits; not checked.
 
     Returns:
         A formatted string with the message role and content, or None if the message
@@ -303,7 +327,9 @@ def message_as_str(
         message.content, preprocessor.exclude_tool_usage, preprocessor.exclude_reasoning
     )
 
-    role_label = _role_label(message, upper_fallback=True)
+    role_label = _role_label(message, upper_fallback=True) + (
+        f" ({nonce})" if nonce is not None else ""
+    )
 
     if (
         not preprocessor.exclude_tool_usage

@@ -18,7 +18,7 @@ from ..types import (
     TranscriptContent,
     TranscriptInfo,
 )
-from ..util import filter_transcript
+from ..util import filter_transcript, merge_metadata
 from .hydrate import hydrate_nested_tool_events
 from .reducer import (
     ATTACHMENT_PREFIX,
@@ -249,7 +249,7 @@ def _merge_unthinned(base: dict[str, Any], state: ParseState) -> dict[str, Any]:
         overrides["target"] = state.target
     if state.scores:
         overrides["scores"] = state.scores
-    return base.copy() | overrides if overrides else base
+    return merge_metadata(base, overrides)
 
 
 def _pools_from_dict(data: dict[str, Any]) -> tuple[list[Any], list[Any]]:
@@ -278,7 +278,7 @@ def _merge_unthinned_from_dict(
         overrides["target"] = data["target"]
     if data.get("scores"):
         overrides["scores"] = data["scores"]
-    return base.copy() | overrides if overrides else base
+    return merge_metadata(base, overrides)
 
 
 async def _parse_and_filter(

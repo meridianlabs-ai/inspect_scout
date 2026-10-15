@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Iterable, TypeVar
 
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage, ChatMessageBase
-from pydantic_core import to_json
+from pydantic_core import from_json, to_json
 
 from .types import (
     EventFilter,
@@ -144,7 +144,7 @@ class LazyJSONDict(dict[str, Any]):
         if not (self._should_parse_value(key, value) and value[:1] in ("{", "[")):
             return False
         try:
-            json.loads(value)
+            from_json(value)
         except ValueError:
             return False
         return True

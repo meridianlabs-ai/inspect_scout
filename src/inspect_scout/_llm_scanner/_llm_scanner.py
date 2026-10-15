@@ -1,4 +1,3 @@
-import sys
 from logging import getLogger
 from typing import Any, AsyncIterator, Awaitable, Callable, Literal, cast, overload
 
@@ -51,9 +50,6 @@ from .prompt import (
     DEFAULT_SCANNER_TEMPLATE_SUFFIX,
 )
 from .types import AnswerSpec
-
-if sys.version_info < (3, 11):
-    from exceptiongroup import ExceptionGroup
 
 logger = getLogger(__name__)
 

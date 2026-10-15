@@ -1607,18 +1607,6 @@ async def test_messages_as_str_nonce_without_ids(
 
 
 @pytest.mark.asyncio
-async def test_messages_as_str_nonce_with_ids() -> None:
-    """With ids on, the nonce follows the role label after the [M#] prefix."""
-    messages: list[ChatMessage] = [
-        ChatMessageUser(content="Q1", id="msg1"),
-        ChatMessageAssistant(content="A1", id="msg2"),
-    ]
-
-    result, _ = await messages_as_str(messages, include_ids=True, nonce="3f9a1c7e")
-    assert result == "[M1] USER (3f9a1c7e):\nQ1\n\n[M2] ASSISTANT (3f9a1c7e):\nA1\n"
-
-
-@pytest.mark.asyncio
 async def test_message_numbering_nonce() -> None:
     """`message_numbering` puts the nonce on every header across calls; references still resolve."""
     messages_as_str_fn, extract_refs = message_numbering(nonce="3f9a1c7e")

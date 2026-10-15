@@ -15,13 +15,15 @@ from inspect_scout import (
     Scanner,
     llm_scanner,
     loader,
+    message_numbering,
     scan,
     scanner,
+    transcript_messages,
     transcripts_db,
 )
 from inspect_scout._scanresults import scan_results_df
 from inspect_scout._transcript.factory import transcripts_from
-from inspect_scout._transcript.types import Transcript
+from inspect_scout._transcript.types import Transcript, TranscriptContent
 
 # Test data location
 LOGS_DIR = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
@@ -629,3 +631,41 @@ def test_llm_scanner_selects_stored_timeline_by_name(
     else:
         assert all(expected_error in e for e in errors), errors
         assert all("'target', 'auditor'" in e for e in errors), errors
+
+
+@pytest.mark.asyncio
+async def test_stored_timelines_read_the_same_from_log_and_db(tmp_path: Path) -> None:
+    """A parquet DB yields the same judge input from stored timelines as the log.
+
+    The DB stores model inputs in a pool. Stored timelines used to bind to the
+    events before the pool was expanded, so their model events had empty inputs
+    and a timeline scan of a DB showed the judge almost nothing.
+    """
+    logs_dir = _write_log_with_stored_timelines(tmp_path, ["target", "auditor"])
+    db_path = tmp_path / "db"
+    async with transcripts_db(str(db_path)) as db:
+        await db.insert(transcripts_from(str(logs_dir)))
+
+    async def judge_inputs(location: Path) -> dict[tuple[str, str], list[str]]:
+        content = TranscriptContent(messages="all", timeline=True)
+        rendered: dict[tuple[str, str], list[str]] = {}
+        async with transcripts_from(str(location)).reader() as reader:
+            async for info in reader.index():
+                transcript = await reader.read(info, content)
+                for name in ["target", "auditor"]:
+                    messages_as_str, _ = message_numbering()
+                    rendered[(info.transcript_id, name)] = [
+                        segment.messages_str
+                        async for segment in transcript_messages(
+                            transcript,
+                            messages_as_str=messages_as_str,
+                            model="mockllm/model",
+                            timeline=name,
+                        )
+                    ]
+        return rendered
+
+    from_log = await judge_inputs(logs_dir)
+    assert len(from_log) == 4
+    assert all(segments for segments in from_log.values())
+    assert await judge_inputs(db_path) == from_log

@@ -1,5 +1,9 @@
 """Tests for LazyJSONDict and SelectiveLazyJSONDict."""
 
+from datetime import datetime
+from typing import Any
+
+import pytest
 from inspect_scout._transcript.util import LazyJSONDict, merge_metadata
 
 
@@ -404,3 +408,37 @@ def test_merge_metadata_marks_overrides_as_final() -> None:
 def test_merge_metadata_falls_back_for_a_plain_dict_base() -> None:
     merged = merge_metadata({"a": 1}, {"b": 2})
     assert merged == {"a": 1, "b": 2}
+
+
+def _with_added_datetime() -> LazyJSONDict:
+    data = LazyJSONDict({"config": "{}"})
+    data["when"] = datetime(2025, 1, 1)
+    return data
+
+
+def _with_datetime_in_parsed_value() -> LazyJSONDict:
+    data = LazyJSONDict({"config": "{}"})
+    data["config"]["when"] = datetime(2025, 1, 1)
+    return data
+
+
+@pytest.mark.parametrize(
+    ("data", "expected"),
+    [
+        (LazyJSONDict({"prompt": "[not JSON"}), {"prompt": "[not JSON"}),
+        (
+            LazyJSONDict({"input": "[1, 2] is my prompt"}, json_keys=["input"]),
+            {"input": "[1, 2] is my prompt"},
+        ),
+        (LazyJSONDict({"input": "42"}, json_keys=["input"]), {"input": "42"}),
+        (_with_added_datetime(), {"config": {}, "when": "2025-01-01T00:00:00"}),
+        (_with_datetime_in_parsed_value(), {"config": {"when": "2025-01-01T00:00:00"}}),
+    ],
+)
+def test_to_json_string_writes_valid_json(
+    data: LazyJSONDict, expected: dict[str, Any]
+) -> None:
+    """Text that only looks like JSON and non-JSON values still give valid JSON."""
+    import json
+
+    assert json.loads(data.to_json_string()) == expected

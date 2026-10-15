@@ -16,10 +16,6 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-class ProviderDiagnosticMismatch(Exception):
-    """Provider details are missing while output matches the #5399 signature."""
-
-
 def _provider_details(provider: str, status_code: int) -> tuple[str, ...]:
     return (
         f"{provider}.APIStatusError",
@@ -53,41 +49,12 @@ def _missing_provider_details(
     ]
 
 
-def _has_issue_5399_signature(diagnostic: str) -> bool:
-    compact = _compact(diagnostic)
-    return all(
-        _compact(fragment) in compact
-        for fragment in (
-            "RuntimeError: no running event loop",
-            "inspect_ai/_util/_async.py",
-            "in run_coroutine",
-        )
-    )
-
-
 def _assert_mandatory_provider_invariants(report: dict[str, Any]) -> str:
     assert not report["complete"], report
     assert not report["persisted_complete"], report
     diagnostic = cast(str, report["parent_display"])
     assert "APIStatusError.__init__()" not in diagnostic, diagnostic
     return diagnostic
-
-
-def _check_sync_provider_diagnostic(
-    diagnostic: str, provider: str, status_code: int
-) -> None:
-    missing = _missing_provider_details(diagnostic, provider, status_code)
-    if not missing:
-        return
-    if _has_issue_5399_signature(diagnostic):
-        raise ProviderDiagnosticMismatch(
-            "provider details are missing and output matches the #5399 signature; "
-            f"missing={missing}\n{diagnostic}"
-        )
-    assert not missing, (
-        "provider details disappeared without the #5399 signature; "
-        f"missing={missing}\n{diagnostic}"
-    )
 
 
 def _run_scan(
@@ -175,34 +142,13 @@ def test_fatal_provider_error_reaches_parent(
         tmp_path, provider=provider, fail_on_error=True, max_processes=2, api=api
     )
     diagnostic = _assert_mandatory_provider_invariants(report)
+    # The sync details are asserted by test_sync_fatal_provider_error_diagnostic.
     if api == "async":
         missing = _missing_provider_details(diagnostic, provider, status_code)
         assert not missing, f"missing={missing}\n{diagnostic}"
 
 
-@pytest.mark.parametrize(
-    "provider,status_code",
-    [
-        pytest.param(
-            "anthropic",
-            529,
-            marks=pytest.mark.xfail(
-                strict=False,
-                raises=ProviderDiagnosticMismatch,
-                reason=("https://github.com/UKGovernmentBEIS/inspect_ai/issues/5399"),
-            ),
-        ),
-        pytest.param(
-            "openai",
-            429,
-            marks=pytest.mark.xfail(
-                strict=False,
-                raises=ProviderDiagnosticMismatch,
-                reason=("https://github.com/UKGovernmentBEIS/inspect_ai/issues/5399"),
-            ),
-        ),
-    ],
-)
+@pytest.mark.parametrize("provider,status_code", [("anthropic", 529), ("openai", 429)])
 def test_sync_fatal_provider_error_diagnostic(
     tmp_path: Path, provider: str, status_code: int
 ) -> None:
@@ -214,7 +160,8 @@ def test_sync_fatal_provider_error_diagnostic(
         api="sync",
     )
     diagnostic = _assert_mandatory_provider_invariants(report)
-    _check_sync_provider_diagnostic(diagnostic, provider, status_code)
+    missing = _missing_provider_details(diagnostic, provider, status_code)
+    assert not missing, f"missing={missing}\n{diagnostic}"
 
 
 @pytest.mark.parametrize("provider", ["anthropic", "openai"])

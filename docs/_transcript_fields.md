@@ -15,6 +15,7 @@ Here are the available `Transcript` fields:
 | `model` | str | Main model used by agent. |
 | `model_options` | dict </br><small>JSON</small> | Generation options for main model.  |
 | `score` | JsonValue<br/><small>JSON</small> | Value indicating score on task. |
+| `score_explanation` | str | Scorer's account of how it reached `score`, where it gave one. |
 | `success` | bool |  Boolean reduction of `score` to succeeded/failed. |
 | `message_count` | int | Total messages in conversation. |
 | `total_time` | number | Time required to execute task (seconds) |

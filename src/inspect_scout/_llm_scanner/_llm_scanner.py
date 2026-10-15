@@ -17,7 +17,7 @@ from jinja2 import Environment
 
 from inspect_scout._util.jinja import StrictOnUseUndefined
 
-from .._scanner.extract import MessagesPreprocessor, message_numbering
+from .._scanner.extract import MessagesPreprocessor, check_nonce, message_numbering
 from .._scanner.result import Result
 from .._scanner.scanner import (
     SCANNER_CONTENT_ATTR,
@@ -287,14 +287,19 @@ def llm_scanner(
             return a resultset directly.
         nonce: If set, written in parentheses after the role on every message
             header (e.g. ``[M2] USER (3f9a1c7e):``) and available to the
-            template as ``{{ nonce }}``. The default template tells the model
-            that a header without the nonce is text inside the message before
-            it. Expected to be short lowercase letters and digits; not checked.
+            template as ``{{ scout_nonce }}``, which replaces any
+            ``scout_nonce`` in ``template_variables``. The default template
+            tells the model that a header without the nonce is text inside the
+            message before it. Must be at least 8 characters (raises
+            ``ValueError`` otherwise); expected to be lowercase letters and
+            digits.
 
     Returns:
         A ``Scanner`` function that analyzes Transcript instances and returns
         ``Result`` (single segment) or ``list[Result]`` (multiple segments).
     """
+    check_nonce(nonce)
+
     # Resolve template form once at factory time.
     # - None or tuple: structured 2-block render with cache_prompt=True.
     # - str: legacy single-block render, behavior unchanged.
@@ -561,7 +566,6 @@ async def _resolve_template_kwargs(
         else await question(transcript),
         "answer_prompt": answer.prompt,
         "answer_format": answer.format,
-        **({"nonce": nonce} if nonce is not None else {}),
         "date": transcript.date,
         "task_set": transcript.task_set,
         "task_id": transcript.task_id,
@@ -589,7 +593,8 @@ async def _resolve_template_kwargs(
             "error": transcript.error,
             "limit": transcript.limit,
         },
-        **template_variables,
+        **{k: v for k, v in template_variables.items() if k != "scout_nonce"},
+        **({"scout_nonce": nonce} if nonce is not None else {}),
     }
 
 
@@ -628,7 +633,7 @@ async def render_scanner_prompt(
         question: Question for the scanner to answer. Can be a static string
             or a callable that takes a Transcript and returns an awaitable string.
         answer: Answer object containing prompt and format strings.
-        nonce: Message header nonce, available to the template as ``nonce``.
+        nonce: Message header nonce, available to the template as ``scout_nonce``.
 
     Returns:
         Rendered prompt string with all variables substituted.

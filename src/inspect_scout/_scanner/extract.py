@@ -32,6 +32,8 @@ logger = getLogger(__name__)
 
 T = TypeVar("T", Transcript, list[ChatMessage])
 
+MIN_NONCE_LENGTH = 8
+
 
 @dataclass(frozen=True)
 class MessageFormatOptions:
@@ -140,7 +142,8 @@ async def messages_as_str(
        nonce: If set, written in parentheses after the role on every message
           header (e.g. `USER (3f9a1c7e):`), so a reader that knows the nonce
           can tell real headers from text in a message that imitates one.
-          Expected to be short lowercase letters and digits; not checked.
+          Must be at least 8 characters; expected to be lowercase letters and
+          digits.
 
     Returns:
        If include_ids is None: Messages as `str` (text/json) or `list[str]` (list).
@@ -251,8 +254,8 @@ def message_numbering(
         nonce: If set, written in parentheses after the role on every message
             header (e.g. ``[M2] USER (3f9a1c7e):``), so a reader that knows
             the nonce can tell real headers from text in a message that
-            imitates one. Expected to be short lowercase letters and digits;
-            not checked.
+            imitates one. Must be at least 8 characters; expected to be
+            lowercase letters and digits.
 
     Returns:
         Tuple of:
@@ -311,13 +314,17 @@ def message_as_str(
         preprocessor: Content filter for messages. Defaults to removing system messages.
         nonce: If set, written in parentheses after the role (e.g.
             ``USER (3f9a1c7e):``), so a reader that knows the nonce can tell
-            real headers from text in a message that imitates one. Expected
-            to be short lowercase letters and digits; not checked.
+            real headers from text in a message that imitates one. Must be
+            at least 8 characters; expected to be lowercase letters and digits.
 
     Returns:
         A formatted string with the message role and content, or None if the message
         should be excluded based on the provided flags.
+
+    Raises:
+        ValueError: If `nonce` is shorter than 8 characters.
     """
+    check_nonce(nonce)
     preprocessor = preprocessor or MessageFormatOptions()
 
     if preprocessor.exclude_system and message.role == "system":
@@ -370,6 +377,14 @@ def message_as_str(
         entry = f"<prefill>\n{entry}</prefill>"
 
     return entry
+
+
+def check_nonce(nonce: str | None) -> None:
+    """Raise `ValueError` if `nonce` is set and shorter than `MIN_NONCE_LENGTH`."""
+    if nonce is not None and len(nonce) < MIN_NONCE_LENGTH:
+        raise ValueError(
+            f"nonce must be at least {MIN_NONCE_LENGTH} characters, got {nonce!r}"
+        )
 
 
 def _role_label(message: ChatMessage, *, upper_fallback: bool) -> str:

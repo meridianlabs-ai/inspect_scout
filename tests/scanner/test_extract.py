@@ -1617,3 +1617,10 @@ async def test_message_numbering_nonce() -> None:
     assert first == "[M1] USER (3f9a1c7e):\nQ1\n"
     assert second == "[M2] ASSISTANT (3f9a1c7e):\nA1\n"
     assert [ref.id for ref in extract_refs("See [M2]")] == ["msg2"]
+
+
+@pytest.mark.parametrize("nonce", ["", "3f9a1c7"])
+def test_message_as_str_nonce_too_short(nonce: str) -> None:
+    """A nonce shorter than 8 characters raises."""
+    with pytest.raises(ValueError, match="at least 8 characters"):
+        message_as_str(ChatMessageUser(content="Hello"), nonce=nonce)

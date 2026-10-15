@@ -22,7 +22,11 @@ class ScannerSummary(BaseModel):
     """Scans which returned truthy results."""
 
     unscored: int = Field(default=0)
-    """Scans which returned a result with no value (`value` is `None`)."""
+    """Top-level results whose `value` is `None` (excluded from metrics).
+
+    Not a count of scans or metric inputs: a scan can report several results,
+    and `None` members of a result set are not counted.
+    """
 
     errors: int = Field(default=0)
     """Scans which resulted in errors."""

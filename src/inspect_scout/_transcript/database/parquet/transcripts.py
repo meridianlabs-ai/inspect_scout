@@ -514,6 +514,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             transcript_total_tokens = row_dict.get("total_tokens")
             transcript_error = row_dict.get("error")
             transcript_limit = row_dict.get("limit")
+            transcript_trust_content = row_dict.get("trust_content")
 
             # resolve json
             if transcript_agent_args is not None:
@@ -557,6 +558,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 total_tokens=transcript_total_tokens,
                 error=transcript_error,
                 limit=transcript_limit,
+                trust_content=transcript_trust_content,
                 metadata={},
                 filename=transcript_filename,
             )
@@ -704,6 +706,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 total_tokens=t.total_tokens,
                 error=t.error,
                 limit=t.limit,
+                trust_content=t.trust_content,
                 metadata=t.metadata,
             )
 
@@ -1086,6 +1089,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
             "total_tokens": transcript.total_tokens,
             "error": transcript.error,
             "limit": transcript.limit,
+            "trust_content": transcript.trust_content,
             "messages": json.dumps(messages_array),
             "events": events_json,
             "timelines": (

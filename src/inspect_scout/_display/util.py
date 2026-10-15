@@ -1,4 +1,5 @@
 import shlex
+import sys
 
 from inspect_ai._display.core.rich import rich_theme
 from inspect_ai._util.constants import DEFAULT_MAX_CONNECTIONS_BATCH
@@ -11,6 +12,9 @@ from rich.text import Text
 
 from inspect_scout._recorder.recorder import Status
 from inspect_scout._scanspec import ScanSpec
+
+if sys.version_info < (3, 11):
+    from exceptiongroup import ExceptionGroup, format_exception
 
 
 def terminal_path(path: str) -> str:
@@ -126,6 +130,11 @@ def scan_config_str(spec: ScanSpec) -> str:
 
 
 def exception_to_rich_traceback(ex: Exception) -> RenderableType:
+    # Rich only expands built-in exception groups on Python 3.11+. On 3.10,
+    # retain every nested diagnostic using the existing backport's formatter.
+    if sys.version_info < (3, 11) and isinstance(ex, ExceptionGroup):
+        return Text(clean_control_characters("".join(format_exception(ex))))
+
     rich_tb = rich_traceback(type(ex), ex, ex.__traceback__)
 
     return rich_tb

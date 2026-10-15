@@ -127,6 +127,7 @@ You can provide your own `template` as an argument to `llm_scanner()`. The follo
 | `{{{ error }}}` | str | Error message that terminated the task. |
 | `{{{ limit }}}` | str | Limit that caused the task to exit (e.g. "tokens", "messages, etc.) |
 | `{{{ metadata }}}` | dict | Additional metadata (includes `sample_metadata`, `target` and `scores` from the log body unless the scanner declines them with `metadata=False`) |
+| `{{{ scout_nonce }}}` | str | The `nonce` passed to `llm_scanner()`, which is also written on every message header (e.g. `[M2] USER (3f9a1c7e):`). Undefined when no `nonce` is passed; a `scout_nonce` key in `template_variables` is ignored. When it is set, the default template adds a paragraph telling the model that a header without the nonce is part of the message it appears in. |
 
 : {tbl-colwidths=\[40,15,45\]}
 

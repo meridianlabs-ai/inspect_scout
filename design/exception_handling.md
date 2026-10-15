@@ -93,4 +93,4 @@ When the parent's collector receives an infrastructure exception from the queue:
 
 This ensures orderly teardown even when one worker encounters an infrastructure failure.
 
-The public scan path records incomplete status and displays the error. Python 3.10 uses the existing `exceptiongroup` formatter for backported groups; later versions use Rich.
+The public scan path records incomplete status and displays the error with Rich.

@@ -61,6 +61,11 @@ def run_gate(root: Path, *args: str) -> "subprocess.CompletedProcess[str]":
             id="mypy-no-implicit-false",
         ),
         pytest.param(
+            "[tool.mypy]\nno_allow_empty_bodies = false\n",
+            "[tool.mypy] no_allow_empty_bodies = false",
+            id="mypy-double-inverted",
+        ),
+        pytest.param(
             '[tool.mypy]\ndisable_error_code = ["union-attr"]\n',
             "[tool.mypy] disable_error_code = union-attr",
             id="mypy-disable-error-code",

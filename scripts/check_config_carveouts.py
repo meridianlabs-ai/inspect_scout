@@ -95,7 +95,7 @@ def _mypy_bool_relaxes(key: str, value: object) -> bool:
         return False
     if key.startswith("no_"):
         key, flag = key[3:], not flag
-    elif key.startswith("allow_") and key not in _MYPY_RELAX_WHEN_TRUE:
+    if key.startswith("allow_") and key not in _MYPY_RELAX_WHEN_TRUE:
         key, flag = "dis" + key, not flag
     return (
         key in _MYPY_RELAX_WHEN_TRUE

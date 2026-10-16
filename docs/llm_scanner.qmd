@@ -503,4 +503,4 @@ Container and utility spans (such as the synthetic top-level wrapper inserted ar
 
 ### Timeline Selection
 
-Transcripts can carry multiple named timelines (e.g. a default agent-centric view alongside alternative groupings). Use the `timeline` parameter to scan a specific one by name — by default the transcript's first timeline is used. Naming a timeline that doesn't exist on the transcript raises an error.
+Transcripts can carry multiple named timelines (e.g. a default agent-centric view alongside alternative groupings). Use the `timeline` parameter to scan a specific one by name — by default the transcript's first timeline is used. Passing `timeline` requests timeline content on its own, so `llm_scanner(timeline="target", ...)` works without `@scanner(timeline=True)` or a `content` override. Naming a timeline that doesn't exist on the transcript raises an error.

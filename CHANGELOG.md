@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.1](https://github.com/meridianlabs-ai/inspect_scout/compare/0.6.0...0.6.1) (2026-10-16)
+
+
+### Bug Fixes
+
+* llm_scanner fails on Petri logs when scanning a named timeline ([#708](https://github.com/meridianlabs-ai/inspect_scout/issues/708)) ([8c8e789](https://github.com/meridianlabs-ai/inspect_scout/commit/8c8e789593d14db0788f92831a1dd08c64aaabe6))
+* timeline scans of transcript databases gave the judge nearly empty ([8c8e789](https://github.com/meridianlabs-ai/inspect_scout/commit/8c8e789593d14db0788f92831a1dd08c64aaabe6))
+
 ## [0.6.0](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.5...0.6.0) (2026-10-15)
 
 

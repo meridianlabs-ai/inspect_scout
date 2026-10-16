@@ -49,6 +49,7 @@ EventType = Literal[
     "compaction",
     "branch",
     "approval",
+    "sentinel",
     "sandbox",
     "info",
     "store",
@@ -62,6 +63,7 @@ EventType = Literal[
 MessageFilter: TypeAlias = Literal["all"] | Sequence[MessageType] | None
 EventFilter: TypeAlias = Literal["all"] | Sequence[EventType | str] | None
 TimelineFilter: TypeAlias = Literal[True] | Literal["all"] | Sequence[EventType] | None
+MetadataFilter: TypeAlias = bool | None
 
 LogPaths: TypeAlias = (
     PathLike[str] | str | EvalLogInfo | Sequence[PathLike[str] | str | EvalLogInfo]
@@ -72,8 +74,9 @@ LogPaths: TypeAlias = (
 class TranscriptContent:
     """Content filters for transcript loading.
 
-    Specifies which messages, events, and timeline data to include
-    when loading transcript content for scanning.
+    Specifies which messages, events, and timeline data to include when loading
+    transcript content for scanning, and whether to read the sample's metadata,
+    target and scores from the log body.
     """
 
     messages: MessageFilter = field(default=None)
@@ -84,6 +87,16 @@ class TranscriptContent:
 
     timeline: TimelineFilter = field(default=None)
     """Filter for which timeline events to include."""
+
+    metadata: MetadataFilter = field(default=None)
+    """Read the sample's full metadata, target and scores from the log body.
+
+    None and True (the default) read them. False leaves the log's summary
+    values in place: metadata thinned to about 1 KB per key, target as a
+    single string, and scores as ``score_*`` values only. Declining is
+    honored when every scanner in the scan declines; a scanner sharing a
+    read with one that wants metadata receives it anyway.
+    """
 
 
 class BytesContextManager:
@@ -185,6 +198,17 @@ class TranscriptInfo(BaseModel):
     score: JsonValue | None = Field(default=None)
     """Value indicating score on task."""
 
+    score_explanation: str | None = Field(default=None)
+    """Scorer's account of how it reached `score`, where it gave one.
+
+    The value alone says what the verdict was; this says why. For a scorer that
+    runs a test suite it is the suite's own output — which tests were required,
+    which passed, which are missing — and that is frequently the only evidence
+    that distinguishes a task the agent genuinely failed from one where the
+    grading itself misfired. A scanner asked to judge whether a score can be
+    trusted cannot answer from the number.
+    """
+
     success: bool | None = Field(default=None)
     """Boolean reduction of score to succeeded/failed."""
 
@@ -202,6 +226,12 @@ class TranscriptInfo(BaseModel):
 
     limit: str | None = Field(default=None)
     """Limit that caused the task to exit (e.g. "tokens", "messages, etc.)."""
+
+    trust_content: bool | None = Field(default=None)
+    """Whether the viewer may render this transcript's model output richly (markdown, syntax highlighting, ANSI colors, media, links).
+
+    `False` shows it as plain text. `None` (the default) and `True` are trusted, subject to the viewer-wide `trust_content` setting. For eval logs this is the task's `ViewerConfig(trust_content=...)`.
+    """
 
     metadata: dict[str, Any] = Field(default_factory=dict)
     """Transcript source specific metadata."""

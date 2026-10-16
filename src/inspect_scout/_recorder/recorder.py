@@ -1,5 +1,6 @@
 import abc
 from collections.abc import Iterator
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Literal, Mapping, Sequence
@@ -306,6 +307,18 @@ class ScanRecorder(abc.ABC):
 
     @abc.abstractmethod
     async def summary(self) -> Summary: ...
+
+    @abc.abstractmethod
+    def run_scope(self) -> AbstractContextManager[None]:
+        """Scope a scan run driven by this process.
+
+        Resources a recorder may hold across syncs of one run (e.g. a
+        downloaded remote prior) are released on exit, whether or not the
+        run completed. Per location, not per instance; one scope per
+        location at a time, with its syncs run one after another.
+        Requires `init`, `resume`, or `attach` first.
+        """
+        ...
 
     @staticmethod
     @abc.abstractmethod

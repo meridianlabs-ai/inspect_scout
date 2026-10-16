@@ -121,6 +121,11 @@ class Columns:
         return Column("score")
 
     @property
+    def score_explanation(self) -> Column:
+        """Scorer's account of how it reached the headline score."""
+        return Column("score_explanation")
+
+    @property
     def success(self) -> Column:
         """Reduction of 'score' to True/False sucess."""
         return Column("success")
@@ -144,6 +149,11 @@ class Columns:
     def limit(self) -> Column:
         """Limit that halted execution."""
         return Column("limit")
+
+    @property
+    def trust_content(self) -> Column:
+        """Whether model output may be rendered richly (False shows it as plain text)."""
+        return Column("trust_content")
 
     def __getattr__(self, name: str) -> Column:
         """Access columns using dot notation."""

@@ -254,11 +254,11 @@ async def generate_answer(
             ``temperature``). For :class:`AnswerStructured` answers,
             ``parallel_tool_calls`` is always forced to ``False``.
         context_tools: Additional tool definitions to declare in the
-            request. These are never invoked — ``tool_choice`` forces the
-            answer tool for :class:`AnswerStructured` and is set to
-            ``"none"`` for textual answers. They exist so a ``prompt``
-            containing prior ``tool_use`` blocks remains a valid API
-            request, e.g. when asking a follow-up question about an
+            request. For :class:`AnswerStructured`, calls to these tools are
+            handled by stubs that redirect the model to the answer tool. For
+            textual answers, ``tool_choice`` is set to ``"none"``. They exist
+            so a ``prompt`` containing prior ``tool_use`` blocks remains a
+            valid API request, e.g. when asking a follow-up question about an
             existing transcript.
         retry_refusals: Number of times to retry on model refusals
             (``stop_reason == "content_filter"``).

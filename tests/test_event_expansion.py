@@ -221,3 +221,26 @@ def test_expand_events_no_input_column() -> None:
     result = _expand_events_in_df(df)
     assert "input_data" not in result.columns
     assert "input" not in result.columns
+
+
+def test_unexpandable_row_does_not_poison_the_frame() -> None:
+    """An event the installed inspect_ai cannot validate degrades one row only."""
+    good = json.dumps(
+        {"events": [{"event": "info", "timestamp": "2026-01-01T00:00:00", "data": "x"}]}
+    )
+    unknown_kind = json.dumps(
+        {"events": [{"event": "not_a_known_event", "timestamp": 1.0}]}
+    )
+    df = pd.DataFrame(
+        {
+            "input": [good, unknown_kind],
+            "input_data": ['{"messages":[],"calls":[]}'] * 2,
+            "input_type": ["transcript"] * 2,
+        }
+    )
+
+    result = _expand_events_in_df(df)
+
+    assert "input_data" not in result.columns
+    assert json.loads(result["input"].iloc[0])["events"][0]["data"] == "x"
+    assert json.loads(result["input"].iloc[1]) == json.loads(unknown_kind)

@@ -117,7 +117,7 @@ async def test_generate_structured_context_tools() -> None:
     tools = mock_gen.call_args.kwargs["tools"]
     tool_names = [getattr(t, "name", None) for t in tools]
     assert tool_names == ["bash", "answer"]
-    assert mock_gen.call_args.kwargs["tool_choice"].name == "answer"
+    assert mock_gen.call_args.kwargs["tool_choice"] == "auto"
 
 
 @pytest.mark.anyio

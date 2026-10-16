@@ -114,7 +114,7 @@ def scout_dumps(obj: Any) -> bytes:
 
 
 class DillCallable:
-    """Wrapper for callables that uses dill for pickling.
+    """Wrapper for callables that uses cloudpickle for pickling.
 
     This allows closures and other complex callables to be serialized
     for use with spawn multiprocessing context.
@@ -206,6 +206,18 @@ class WorkerComplete:
 
 
 @dataclass(frozen=True)
+class WorkerError:
+    """Detached diagnostics for a fatal worker exception."""
+
+    worker_id: int
+    type_name: str
+    message: str
+    traceback: str
+    status_code: int | None = None
+    request_id: str | None = None
+
+
+@dataclass(frozen=True)
 class ShutdownSentinel:
     """Emergency shutdown signal injected by parent during forced termination."""
 
@@ -220,7 +232,7 @@ UpstreamQueueItem: TypeAlias = (
     | WorkerReady
     | WorkerComplete
     | ShutdownSentinel
-    | Exception
+    | WorkerError
 )
 
 

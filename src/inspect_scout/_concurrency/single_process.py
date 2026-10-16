@@ -1,3 +1,4 @@
+import contextlib
 import time
 from collections import deque
 from typing import AsyncIterator, Awaitable, Callable, Literal
@@ -134,7 +135,8 @@ def single_process_strategy(
                 )
 
         def _scanner_job_info(item: ScannerJob) -> str:
-            return f"{item.union_transcript.transcript_id, item.scanner_name}"
+            transcript_id = item.transcript_info.transcript_id
+            return f"{transcript_id, item.scanner_name}"
 
         # the finally at the end of the_func delivers the final zeroed update
         # itself, and sets this so a trailing-edge fire still pending in the
@@ -262,7 +264,7 @@ def single_process_strategy(
 
             try:
                 await record_results(
-                    scanner_job.union_transcript,
+                    scanner_job.transcript_info,
                     scanner_job.scanner_name,
                     await scan_function(scanner_job),
                 )
@@ -363,5 +365,31 @@ def single_process_strategy(
             # suppresses any such fire that is still pending
             _update_metrics_now()
             final_metrics_delivered = True
+
+            # A worker pool torn down early (exception, cancellation) can
+            # strand jobs still sitting in scanner_job_deque -- most commonly
+            # a follower whose lead already ran, or a lead whose followers
+            # were never released. Each carries a share of a refcounted
+            # TranscriptHandle (see ScannerJob.on_complete); undispatched, its
+            # on_complete never fires and the handle never closes. Shielded:
+            # the ambient scope may already be cancelled here, and an
+            # unshielded await would raise before closing anything. Runs after
+            # reader_cm_factory's context manager has exited -- safe today
+            # because on_complete only touches the handle, not the reader, but
+            # an unstated coupling worth knowing about.
+            with anyio.CancelScope(shield=True):
+                pending = list(scanner_job_deque)
+                scanner_job_deque.clear()
+                while pending:
+                    job = pending.pop()
+                    pending.extend(job.followers)
+                    if job.on_complete is not None:
+                        # One job's on_complete raising must not stop the
+                        # rest from draining -- each still holds a real share
+                        # of the refcount, and swallowing this exception (not
+                        # letting it replace whatever's already propagating)
+                        # is strictly better than leaking the handle.
+                        with contextlib.suppress(Exception):
+                            await job.on_complete()
 
     return the_func

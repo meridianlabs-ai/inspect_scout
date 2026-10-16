@@ -507,12 +507,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
             transcript_model = row_dict.get("model")
             transcript_model_options = row_dict.get("model_options")
             transcript_score = row_dict.get("score")
+            transcript_score_explanation = row_dict.get("score_explanation")
             transcript_success = row_dict.get("success")
             transcript_message_count = row_dict.get("message_count")
             transcript_total_time = row_dict.get("total_time")
             transcript_total_tokens = row_dict.get("total_tokens")
             transcript_error = row_dict.get("error")
             transcript_limit = row_dict.get("limit")
+            transcript_trust_content = row_dict.get("trust_content")
 
             # resolve json
             if transcript_agent_args is not None:
@@ -549,12 +551,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 model=transcript_model,
                 model_options=transcript_model_options,
                 score=transcript_score,
+                score_explanation=transcript_score_explanation,
                 success=transcript_success,
                 message_count=transcript_message_count,
                 total_time=transcript_total_time,
                 total_tokens=transcript_total_tokens,
                 error=transcript_error,
                 limit=transcript_limit,
+                trust_content=transcript_trust_content,
                 metadata={},
                 filename=transcript_filename,
             )
@@ -695,12 +699,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 model=t.model,
                 model_options=t.model_options,
                 score=t.score,
+                score_explanation=t.score_explanation,
                 success=t.success,
                 message_count=t.message_count,
                 total_time=t.total_time,
                 total_tokens=t.total_tokens,
                 error=t.error,
                 limit=t.limit,
+                trust_content=t.trust_content,
                 metadata=t.metadata,
             )
 
@@ -847,6 +853,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 t,
                 content.messages,
                 events_filter,
+                metadata=content.metadata is not False,
             )
 
             # Resolve pool references back to full messages/calls
@@ -1075,12 +1082,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 if isinstance(transcript.score, (dict, list))
                 else (str(transcript.score) if transcript.score is not None else None)
             ),
+            "score_explanation": transcript.score_explanation,
             "success": transcript.success,
             "message_count": transcript.message_count,
             "total_time": transcript.total_time,
             "total_tokens": transcript.total_tokens,
             "error": transcript.error,
             "limit": transcript.limit,
+            "trust_content": transcript.trust_content,
             "messages": json.dumps(messages_array),
             "events": events_json,
             "timelines": (

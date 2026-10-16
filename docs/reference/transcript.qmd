@@ -9,6 +9,7 @@ reference: "inspect_scout"
 ### transcripts_from
 ### Transcript
 ### TranscriptInfo
+### TranscriptHandle
 ### Transcripts
 ### TranscriptsReader
 ### SampleMetadata

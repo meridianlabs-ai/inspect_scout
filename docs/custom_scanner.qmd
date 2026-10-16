@@ -121,13 +121,14 @@ def assistant_swearing() -> Scanner[Transcript]:
 
 With this filter, only assistant messages (and no events at all) will be loaded from transcripts during scanning.
 
-Note that by default, no filters are active, so if you don't specify values for `messages`, `events`, and/or `timeline` your scanner will not be called!
+Note that by default, no filters are active, so if you don't specify values for `messages`, `events`, and/or `timeline` your scanner will not be called! (`metadata` does not count as a filter here: it controls what is read alongside the content, not whether the scanner runs.)
 
 The available filter parameters are:
 
 -   `messages` --- Filter for message types: `"all"` or a list like `["user", "assistant"]`.
 -   `events` --- Filter for event types: `"all"` or a list like `["model", "tool"]`.
 -   `timeline` --- Enable timeline loading: `True` for all event types, `"all"`, or a list like `["model", "tool"]`.
+-   `metadata` --- Whether to read the sample's full metadata, target and scores from the log body (default `True`). Pass `False` if your scanner never reads `transcript.metadata["sample_metadata"]`, `["target"]` or `["scores"]`; the log's summary values are kept instead, and a log with gigabytes of sample metadata is not held in memory while scanning.
 
 You can also provide a `version` parameter to track scanner versions. When the version is incremented, previously scanned transcripts will be re-scanned with the updated scanner.
 
@@ -161,6 +162,8 @@ This scanner will see only assistant messages:
 @scanner(messages=["assistant"])
 def my_scanner() -> Scanner[Transcript]: ...
 ```
+
+Sample metadata, target and scores are merged into `transcript.metadata` from the log body by default. A scanner that does not read them can decline with `metadata=False`, which leaves the index's summary values in place: metadata thinned to about 1 KB per key, target as a single string, and scores as `score_*` values only. Declining takes effect when every scanner in a scan declines; a scanner that shares a read with one that wants metadata receives it anyway.
 
 ### Presenting Messages
 
@@ -316,6 +319,44 @@ def assistant_refusals() -> Scanner[list[ChatMessage]]:
 
     return scan
 ```
+
+## Streaming Large Transcripts {#streaming}
+
+By default a scanner receives a fully materialized `Transcript`. A scanner that declares streaming support receives a `TranscriptHandle` for every eligible job (a sub-threshold, JSON-format or database-backed transcript arrives as a materialized handle that loads on first use). For `.eval`-format samples larger than 64 MiB the handle is *spooled*: it replays messages and events one at a time from an on-disk spool, so peak memory no longer scales with the largest sample.
+
+Streaming is opt-in and off by default, because a scanner written against `Transcript` misbehaves silently on a handle: `handle.messages` is an async method, not a list, so `if not transcript.messages:` is never true. A scanner that reads its input only through the handle's iterators declares that on the decorator, and annotates its parameter to accept either shape:
+
+``` python
+from inspect_scout import Result, Scanner, Transcript, TranscriptHandle, scanner
+
+@scanner(messages="all", supports_streaming=True)
+def long_answers() -> Scanner[Transcript]:
+    async def scan(transcript: Transcript | TranscriptHandle) -> Result:
+        long = 0
+        if isinstance(transcript, Transcript):
+            for m in transcript.messages:
+                long += len(m.text) > 2000
+        else:
+            async for m in transcript.messages():
+                long += len(m.text) > 2000
+        return Result(value=long)
+
+    return scan
+```
+
+Rules worth knowing:
+
+-   A scan streams a transcript only when **every** scanner sharing it in the job is permitted to; one scanner without the declaration keeps the whole job on the materialized path.
+
+-   `llm_scanner()` decides for itself per instance --- it streams unless `question` or `template_variables` is a callable or a timeline is requested --- so wrapping it as shown in [LLM Scanner](llm_scanner.qmd) needs no declaration.
+
+-   A scanner that requests a `timeline` always receives a materialized transcript.
+
+-   Declaring `supports_streaming=True` on a scan function whose parameter is annotated plain `Transcript` raises a `TypeError` when the scanner is constructed.
+
+-   String annotations (`from __future__ import annotations`) are resolved against the scan function's own module, so the shape above works there too.
+
+-   `supports_streaming=False` forbids streaming for that scanner even when the function it returns would otherwise permit it.
 
 ## Packaging {#packaging}
 

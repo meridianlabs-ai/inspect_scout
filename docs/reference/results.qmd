@@ -20,11 +20,11 @@ reference: inspect_scout
 ## Validation
 
 ### validation_set
+### validation_predicate
 ### ValidationSet
 ### ValidationCase
 ### PredicateType
 ### PredicateFn
 ### ValidationPredicate
-
 
 

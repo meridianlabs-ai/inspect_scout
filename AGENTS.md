@@ -18,6 +18,15 @@ Development setup (editable install, inspect_ai tracked from `main`, frontend/Gi
 - Respect existing patterns
 - Before committing, run the appropriate checks for code you touched (lint, typecheck, test)
 
+### Suppression gate
+
+- Do NOT suppress lint or type errors (`# noqa`, `# type: ignore`, `# pyright: ignore`, or the file-wide `# ruff: noqa` / `# mypy: ignore-errors`). Fix the code. A deterministic gate enforces this (`make suppressions-check` against `suppressions.json`); maintainers reject suppressions that just make an error go away.
+- In the rare case a suppression is correct, it requires both: a reason in a trailing hash comment segment on the same line, the only style mypy accepts (e.g. `x = f()  # type: ignore[assignment]  # stub is wrong upstream`), and `make suppressions-update` to record it in `suppressions.json`. Always suppress the specific code (`# noqa: E501`, `# type: ignore[assignment]`), never the bare code-less form.
+- Every new suppression requires human maintainer approval; when it changes aggregate counts, that approval includes the `suppressions.json` diff. Expect the PR to be blocked until then, and say in the PR description why no fix is possible.
+- The ledger tracks aggregate counts by file and rule, not individual source locations. Moving or replacing the same rule within one file does not alter the ledger, so reviewers must still inspect suppression changes in the source diff.
+- If the `suppressions` CI check fails, never hand-edit the ledger to make it pass. Run `make suppressions-update` so the change shows in the ledger diff. `--update` refuses to grow any rule's repo-wide reason-less total (the ratchet): new suppressions must carry a reason, and the baselined reason-less ones burn down over time.
+- Code imported wholesale from another repo is the one allowed ratchet exception: when a sync brings in new reason-less suppressions on lines we shouldn't rewrite (editing them creates permanent merge drift), run `python3 scripts/check_suppressions.py --update --allow-growth` to record them; it prints each rule that grew, and the growth still shows in the ledger diff for maintainer review.
+
 ### Testing
 - Test observable behavior, not internal implementation details
 - Do not test things that are enforced by the type system
@@ -69,7 +78,7 @@ Never change the ts-mono submodule gitlink (`src/inspect_scout/_view/ts-mono`) u
 - **No gitlink change** (the diff is empty; only the local submodule worktree is stale): run `git submodule update`.
 - **Gitlink changed** (the recorded pointer was bumped incidentally): reset it and commit: `git checkout origin/main -- src/inspect_scout/_view/ts-mono`. `git submodule update` will NOT fix this—it syncs the working tree to the already-recorded pointer, not the reverse. Never `git add` the submodule path in this state—that stages the wrong pointer.
 
-When a change legitimately requires a coordinated ts-mono update (e.g. regenerated types), follow [.claude/skills/land-ts-mono/SKILL.md](.claude/skills/land-ts-mono/SKILL.md).
+When a change legitimately requires a coordinated ts-mono update (e.g. regenerated types), follow [.agents/skills/land-ts-mono/SKILL.md](.agents/skills/land-ts-mono/SKILL.md).
 
 ## Documentation
 
@@ -88,6 +97,7 @@ Architecture and design decisions in `/design/`.
 - [Async generator semantics](design/generator-iterator.md)
 - [Multi-process concurrency](design/mp.md)
 - [Validation data structures](design/validation.md)
+- [Content trust (plain-text rendering of untrusted model output)](design/content-trust.md)
 - [React Query patterns](src/inspect_scout/_view/ts-mono/apps/scout/design/react-query.md)
 - [Frontend specific testing](src/inspect_scout/_view/ts-mono/apps/scout/design/front-end-testing.md)
 
@@ -176,6 +186,10 @@ Pipeline: Pydantic models → openapi.json → generated.ts
 After Python API changes:
 1. `.venv/bin/python scripts/export_openapi_schema.py`—regenerates `src/inspect_scout/_view/openapi.json`
 2. In the submodule's `apps/scout`: `pnpm types:generate`—regenerates `apps/scout/src/types/generated.ts` (`pnpm build` does NOT regenerate types)
-3. Commit both: `openapi.json` in this repo, `generated.ts` in the submodule. Landing a submodule change requires the coordinated flow in [.claude/skills/land-ts-mono/SKILL.md](.claude/skills/land-ts-mono/SKILL.md)
+3. Commit both: `openapi.json` in this repo, `generated.ts` in the submodule. Landing a submodule change requires the coordinated flow in [.agents/skills/land-ts-mono/SKILL.md](.agents/skills/land-ts-mono/SKILL.md)
 
 CI validates sync.
+
+## Repository skills
+
+Shared skills live in `.agents/skills`. `.claude/skills` links to that directory. Use `$skill-name` in Codex or `/skill-name` in Claude Code.

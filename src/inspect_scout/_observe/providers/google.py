@@ -38,7 +38,7 @@ class GoogleProvider:
                 "Install it with: pip install google-genai"
             ) from None
 
-        from wrapt import wrap_function_wrapper  # type: ignore[import-untyped]
+        from wrapt import wrap_function_wrapper
 
         # Check if response is a stream (generator)
         def is_sync_stream(response: Any) -> bool:

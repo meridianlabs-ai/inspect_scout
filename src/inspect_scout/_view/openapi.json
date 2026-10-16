@@ -212,7 +212,7 @@
       },
       "AppConfig": {
         "additionalProperties": false,
-        "description": "Application configuration returned by GET /config.",
+        "description": "Application configuration returned by GET /config.\n\n`trust_content` is the viewer-wide cap: the lowest of the `scout view`\noption (or `SCOUT_VIEW_TRUST_CONTENT`) and the project's setting.",
         "properties": {
           "filter": {
             "anyOf": [
@@ -464,6 +464,17 @@
               }
             ]
           },
+          "trust_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Content"
+          },
           "validation": {
             "anyOf": [
               {
@@ -473,7 +484,7 @@
                       "type": "string"
                     },
                     {
-                      "$ref": "#/components/schemas/ValidationSet-Output"
+                      "$ref": "#/components/schemas/ValidationSet"
                     }
                   ]
                 },
@@ -2177,6 +2188,17 @@
       "ContentText": {
         "description": "Text content.",
         "properties": {
+          "cache_breakpoint": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Breakpoint"
+          },
           "citations": {
             "anyOf": [
               {
@@ -2844,6 +2866,17 @@
             ],
             "title": "Extra Headers"
           },
+          "fail_on_refusal": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fail On Refusal"
+          },
           "fallback_models": {
             "anyOf": [
               {
@@ -3130,6 +3163,17 @@
             ],
             "title": "Stop Seqs"
           },
+          "stream_idle_timeout": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stream Idle Timeout"
+          },
           "system_message": {
             "anyOf": [
               {
@@ -3347,6 +3391,17 @@
               }
             ],
             "title": "Extra Headers"
+          },
+          "fail_on_refusal": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fail On Refusal"
           },
           "fallback_models": {
             "anyOf": [
@@ -3634,6 +3689,17 @@
             ],
             "title": "Stop Seqs"
           },
+          "stream_idle_timeout": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stream Idle Timeout"
+          },
           "system_message": {
             "anyOf": [
               {
@@ -3787,6 +3853,7 @@
                         "compaction",
                         "branch",
                         "approval",
+                        "sentinel",
                         "sandbox",
                         "info",
                         "store",
@@ -4873,6 +4940,7 @@
                         "compaction",
                         "branch",
                         "approval",
+                        "sentinel",
                         "sandbox",
                         "info",
                         "store",
@@ -5241,6 +5309,12 @@
                 },
                 {
                   "$ref": "#/components/schemas/ApprovalEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/ReviewEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/SentinelEvent"
                 },
                 {
                   "$ref": "#/components/schemas/BranchEvent"
@@ -5626,6 +5700,31 @@
             ],
             "title": "Pending"
           },
+          "request_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ModelRequestId"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Ids"
+          },
+          "requested_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Model"
+          },
           "retries": {
             "anyOf": [
               {
@@ -5839,6 +5938,17 @@
             "title": "Model",
             "type": "string"
           },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
           "time": {
             "anyOf": [
               {
@@ -5867,6 +5977,30 @@
           "completion"
         ],
         "title": "ModelOutput",
+        "type": "object"
+      },
+      "ModelRequestId": {
+        "description": "Provider request id from an HTTP response.",
+        "properties": {
+          "header": {
+            "title": "Header",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "header",
+          "status"
+        ],
+        "title": "ModelRequestId",
         "type": "object"
       },
       "ModelUsage": {
@@ -6313,6 +6447,17 @@
             ],
             "title": "Transcripts"
           },
+          "trust_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Content"
+          },
           "validation": {
             "anyOf": [
               {
@@ -6322,7 +6467,7 @@
                       "type": "string"
                     },
                     {
-                      "$ref": "#/components/schemas/ValidationSet-Input"
+                      "$ref": "#/components/schemas/ValidationSet"
                     }
                   ]
                 },
@@ -6610,6 +6755,17 @@
             ],
             "title": "Transcripts"
           },
+          "trust_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Content"
+          },
           "validation": {
             "anyOf": [
               {
@@ -6619,7 +6775,7 @@
                       "type": "string"
                     },
                     {
-                      "$ref": "#/components/schemas/ValidationSet-Output"
+                      "$ref": "#/components/schemas/ValidationSet"
                     }
                   ]
                 },
@@ -6695,7 +6851,7 @@
         "type": "string"
       },
       "Reference": {
-        "description": "Reference to scanned content.",
+        "description": "Reference from a score to content in the scored transcript.\n\nReferences are stored as a list of dicts under a score's\n`metadata[\"scanner_references\"]` key. Inspect View identifies scanner\nscores by the presence of that key and renders cites in the score's\nexplanation (e.g. `[M22]`) as links to the referenced content.",
         "properties": {
           "cite": {
             "anyOf": [
@@ -6726,6 +6882,57 @@
           "id"
         ],
         "title": "Reference",
+        "type": "object"
+      },
+      "RegisteredPredicateSpec": {
+        "description": "Portable reference to a custom predicate registered with `@validation_predicate`.\n\nOnly the registered name and creation arguments are stored; the predicate\nis recreated from the registry when the scan is resumed.",
+        "properties": {
+          "args": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Args",
+            "type": "object"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          },
+          "kind": {
+            "const": "registered",
+            "default": "registered",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "package_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Package Version"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "args"
+        ],
+        "title": "RegisteredPredicateSpec",
         "type": "object"
       },
       "RenameValidationSetRequest": {
@@ -6926,6 +7133,112 @@
         "title": "Result",
         "type": "object"
       },
+      "ReviewEvent": {
+        "description": "Tool result review.",
+        "properties": {
+          "call": {
+            "$ref": "#/components/schemas/ToolCall"
+          },
+          "decision": {
+            "enum": [
+              "continue",
+              "terminate",
+              "escalate"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "event": {
+            "const": "review",
+            "default": "review",
+            "title": "Event",
+            "type": "string"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "reviewer": {
+            "title": "Reviewer",
+            "type": "string"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "timestamp",
+          "working_start",
+          "event",
+          "message",
+          "call",
+          "reviewer",
+          "decision"
+        ],
+        "title": "ReviewEvent",
+        "type": "object"
+      },
       "Sample": {
         "description": "Sample for an evaluation task.",
         "properties": {
@@ -6952,6 +7265,17 @@
               }
             ],
             "title": "Choices"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
           },
           "files": {
             "anyOf": [
@@ -7733,7 +8057,7 @@
                       "type": "string"
                     },
                     {
-                      "$ref": "#/components/schemas/ValidationSet-Input"
+                      "$ref": "#/components/schemas/ValidationSet"
                     }
                   ]
                 },
@@ -8247,7 +8571,7 @@
             "anyOf": [
               {
                 "additionalProperties": {
-                  "$ref": "#/components/schemas/ValidationSet-Output"
+                  "$ref": "#/components/schemas/ValidationSetSpec"
                 },
                 "type": "object"
               },
@@ -8477,6 +8801,12 @@
                 "$ref": "#/components/schemas/ApprovalEvent"
               },
               {
+                "$ref": "#/components/schemas/ReviewEvent"
+              },
+              {
+                "$ref": "#/components/schemas/SentinelEvent"
+              },
+              {
                 "$ref": "#/components/schemas/BranchEvent"
               },
               {
@@ -8547,6 +8877,12 @@
                     },
                     {
                       "$ref": "#/components/schemas/ApprovalEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ReviewEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SentinelEvent"
                     },
                     {
                       "$ref": "#/components/schemas/BranchEvent"
@@ -9448,6 +9784,233 @@
           "result"
         ],
         "title": "SearchResponse",
+        "type": "object"
+      },
+      "SentinelEvent": {
+        "description": "Report from a sentinel monitor or protocol about one step.\n\nA report's metadata is recorded in the event's `metadata` field.\n\nExperimental: not yet a stable API; may change without notice.",
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "enum": [
+                  "proceed",
+                  "modify",
+                  "reject",
+                  "terminate",
+                  "escalate"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "audit": {
+            "default": false,
+            "title": "Audit",
+            "type": "boolean"
+          },
+          "conversation": {
+            "title": "Conversation",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "event": {
+            "const": "sentinel",
+            "default": "sentinel",
+            "title": "Event",
+            "type": "string"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "factory": {
+            "title": "Factory",
+            "type": "string"
+          },
+          "function": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Function"
+          },
+          "kind": {
+            "enum": [
+              "observation",
+              "decision"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "modified": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolCall"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/Reference"
+            },
+            "title": "References",
+            "type": "array"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "stage": {
+            "enum": [
+              "model_input",
+              "model_output",
+              "tool_call",
+              "tool_result"
+            ],
+            "title": "Stage",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "reported",
+              "cancelled",
+              "bypassed",
+              "superseded",
+              "error"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "step_id": {
+            "title": "Step Id",
+            "type": "string"
+          },
+          "suspicion": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "minProperties": 1,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suspicion"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "timestamp",
+          "working_start",
+          "event",
+          "factory",
+          "path",
+          "step_id",
+          "conversation",
+          "stage",
+          "kind",
+          "status",
+          "audit",
+          "references"
+        ],
+        "title": "SentinelEvent",
         "type": "object"
       },
       "SnapshotDetails": {
@@ -11000,6 +11563,12 @@
                   "$ref": "#/components/schemas/ApprovalEvent"
                 },
                 {
+                  "$ref": "#/components/schemas/ReviewEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/SentinelEvent"
+                },
+                {
                   "$ref": "#/components/schemas/BranchEvent"
                 },
                 {
@@ -11126,6 +11695,17 @@
               }
             ]
           },
+          "score_explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Explanation"
+          },
           "source_id": {
             "anyOf": [
               {
@@ -11235,6 +11815,17 @@
           "transcript_id": {
             "title": "Transcript Id",
             "type": "string"
+          },
+          "trust_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Content"
           }
         },
         "required": [
@@ -11379,6 +11970,17 @@
               }
             ]
           },
+          "score_explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Explanation"
+          },
           "source_id": {
             "anyOf": [
               {
@@ -11481,6 +12083,17 @@
           "transcript_id": {
             "title": "Transcript Id",
             "type": "string"
+          },
+          "trust_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Content"
           }
         },
         "required": [
@@ -11579,6 +12192,42 @@
           "every"
         ],
         "title": "TurnInterval",
+        "type": "object"
+      },
+      "UnavailablePredicateSpec": {
+        "description": "Inert marker for a custom predicate that cannot be recreated from the scan artifact.\n\nWritten for anonymous callables (not registered with `@validation_predicate`)\nand substituted in memory for legacy serialized predicates. Resuming a scan\nwith an unavailable predicate requires `predicate_overrides`.",
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "kind": {
+            "const": "unavailable",
+            "default": "unavailable",
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "anonymous",
+              "legacy"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "reason"
+        ],
+        "title": "UnavailablePredicateSpec",
         "type": "object"
       },
       "UrlCitation": {
@@ -12076,7 +12725,7 @@
         "title": "ValidationResults",
         "type": "object"
       },
-      "ValidationSet-Input": {
+      "ValidationSet": {
         "description": "Validation set for a scanner.",
         "properties": {
           "cases": {
@@ -12135,8 +12784,8 @@
         "title": "ValidationSet",
         "type": "object"
       },
-      "ValidationSet-Output": {
-        "description": "Validation set for a scanner.",
+      "ValidationSetSpec": {
+        "description": "Data-only validation set stored in portable scan specifications (`_scan.json`).\n\nUnlike `ValidationSet`, the predicate is never a callable: it is a built-in\npredicate name, a `RegisteredPredicateSpec`, or an `UnavailablePredicateSpec`.\nParsing a spec never imports or executes predicate code.",
         "properties": {
           "cases": {
             "items": {
@@ -12148,12 +12797,32 @@
           "predicate": {
             "anyOf": [
               {
+                "enum": [
+                  "gt",
+                  "gte",
+                  "lt",
+                  "lte",
+                  "eq",
+                  "ne",
+                  "contains",
+                  "startswith",
+                  "endswith",
+                  "icontains",
+                  "iequals"
+                ],
                 "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/RegisteredPredicateSpec"
+              },
+              {
+                "$ref": "#/components/schemas/UnavailablePredicateSpec"
               },
               {
                 "type": "null"
               }
             ],
+            "default": "eq",
             "title": "Predicate"
           },
           "split": {
@@ -12177,7 +12846,7 @@
         "required": [
           "cases"
         ],
-        "title": "ValidationSet",
+        "title": "ValidationSetSpec",
         "type": "object"
       },
       "Worklist": {

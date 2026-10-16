@@ -21,8 +21,8 @@ ruff lint.ignore, per-file-ignores, and exclude/extend-exclude; pyright
 report* = false/"none"). Formatting and other benign config is not.
 
 Checker config the gate cannot scan (mypy.ini, [mypy] sections in setup.cfg,
-pyrightconfig.json) fails the gate outright rather than being silently
-ignored.
+pyrightconfig.json, and ruff `extend`, which inherits settings from another
+file) fails the gate outright rather than being silently ignored.
 
 Usage:
   python3 scripts/check_config_carveouts.py            # check (CI)
@@ -36,14 +36,10 @@ import argparse
 import configparser
 import json
 import sys
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterator
-
-try:
-    import tomllib
-except ModuleNotFoundError:  # Python < 3.11
-    sys.exit("check_config_carveouts.py requires Python >= 3.11 (tomllib)")
 
 LEDGER_NAME = "config_carveouts.json"
 UPDATE_HINT = "run `python3 scripts/check_config_carveouts.py --update`"
@@ -172,6 +168,15 @@ def _check_unscannable(root: Path) -> None:
         )
 
 
+def _check_ruff_extend(ruff: dict[str, Any], file: str) -> None:
+    if "extend" in ruff:
+        sys.exit(
+            f"{file} sets ruff `extend = {ruff['extend']!r}`, which inherits"
+            " settings from a file check_config_carveouts.py does not scan."
+            " Move that config into this file or extend the gate."
+        )
+
+
 def _load_toml(path: Path) -> dict[str, Any]:
     try:
         with path.open("rb") as f:
@@ -188,6 +193,7 @@ def scan_config(root: Path) -> list[Carveout]:
         tool = _load_toml(pyproject).get("tool", {})
         found += _scan_mypy(tool.get("mypy", {}), "pyproject.toml")
         ruff = tool.get("ruff", {})
+        _check_ruff_extend(ruff, "pyproject.toml")
         # legacy pre-0.2 layout put lint settings directly under [tool.ruff]
         found += _scan_ruff_lint(ruff, "tool.ruff", "pyproject.toml")
         found += _scan_ruff_lint(
@@ -198,6 +204,7 @@ def scan_config(root: Path) -> list[Carveout]:
         path = root / name
         if path.exists():
             data = _load_toml(path)
+            _check_ruff_extend(data, name)
             found += _scan_ruff_lint(data, "ruff", name)
             found += _scan_ruff_lint(data.get("lint", {}), "lint", name)
     return sorted(set(found))

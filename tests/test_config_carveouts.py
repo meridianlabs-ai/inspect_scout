@@ -7,11 +7,6 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.skipif(
-    sys.version_info < (3, 11),
-    reason="the gate script requires tomllib (Python >= 3.11)",
-)
-
 SCRIPT = (
     Path(__file__).resolve().parent.parent / "scripts" / "check_config_carveouts.py"
 )
@@ -131,12 +126,32 @@ def test_ruff_toml_scanned(tmp_path: Path) -> None:
     assert "ruff.toml: [lint] ignore = E501" in result.stderr
 
 
-def test_unscannable_checker_config_fails(tmp_path: Path) -> None:
-    (tmp_path / "pyproject.toml").write_text("[tool.mypy]\nstrict = true\n")
-    (tmp_path / "mypy.ini").write_text("[mypy]\n")
+@pytest.mark.parametrize(
+    ("filename", "content", "expected"),
+    [
+        pytest.param("mypy.ini", "[mypy]\n", "mypy.ini", id="mypy-ini"),
+        pytest.param(
+            "pyproject.toml",
+            '[tool.ruff]\nextend = "shared.toml"\n',
+            "extend = 'shared.toml'",
+            id="pyproject-ruff-extend",
+        ),
+        pytest.param(
+            "ruff.toml",
+            'extend = "shared.toml"\n',
+            "extend = 'shared.toml'",
+            id="ruff-toml-extend",
+        ),
+    ],
+)
+def test_unscannable_checker_config_fails(
+    tmp_path: Path, filename: str, content: str, expected: str
+) -> None:
+    (tmp_path / "shared.toml").write_text('[lint]\nignore = ["F401"]\n')
+    (tmp_path / filename).write_text(content)
     result = run_gate(tmp_path)
-    assert result.returncode != 0
-    assert "mypy.ini" in result.stderr
+    assert result.returncode == 1
+    assert expected in result.stderr
 
 
 def test_record_and_shrink_flow(tmp_path: Path) -> None:

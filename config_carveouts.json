@@ -8,6 +8,13 @@
   },
   {
     "file": "pyproject.toml",
+    "location": "tool.mypy.overrides[ijson,ijson.*]",
+    "setting": "ignore_missing_imports",
+    "value": "true",
+    "reason": "ijson ships no type stubs or py.typed marker, and typeshed has no types-ijson package"
+  },
+  {
+    "file": "pyproject.toml",
     "location": "tool.ruff",
     "setting": "extend-exclude",
     "value": "docs",

@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.6.0](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.5...0.6.0) (2026-10-15)
+
+
+### Breaking Changes
+
+* require Python 3.11 and test on Python 3.14 ([#703](https://github.com/meridianlabs-ai/inspect_scout/issues/703))
+
+### Features
+
+* optional nonce marks real message headers in transcripts rendered into scanner prompts ([#709](https://github.com/meridianlabs-ai/inspect_scout/issues/709)) ([c7f3486](https://github.com/meridianlabs-ai/inspect_scout/commit/c7f34861c8a305a798cdf1b07a1b8f3ac2ca4683))
+* require Python 3.11 and test on Python 3.14 ([#703](https://github.com/meridianlabs-ai/inspect_scout/issues/703)) ([b9d16f8](https://github.com/meridianlabs-ai/inspect_scout/commit/b9d16f852d84560cb1d38c71f84770d9f723f386))
+
+
+### Bug Fixes
+
+* default transcript read hands scanners raw JSON strings for index metadata ([#645](https://github.com/meridianlabs-ai/inspect_scout/issues/645)) ([59a6171](https://github.com/meridianlabs-ai/inspect_scout/commit/59a6171439064eab646bb0fe8f5c170cc9a586b9))
+* importing eval logs with long agent transcripts runs out of memory ([#700](https://github.com/meridianlabs-ai/inspect_scout/issues/700)) ([2e2332b](https://github.com/meridianlabs-ai/inspect_scout/commit/2e2332bcd06e7a96d213dd321982274ea90e0c48))
+* scan results load under a host Content-Security-Policy without 'unsafe-eval' ([#710](https://github.com/meridianlabs-ai/inspect_scout/issues/710)) ([5d3b3fc](https://github.com/meridianlabs-ai/inspect_scout/commit/5d3b3fcd9df987b8c10c6b71419fb289e6dc14dc))
+* scan results record invalid transcript metadata, or recording fails, for some metadata values ([#706](https://github.com/meridianlabs-ai/inspect_scout/issues/706)) ([228af05](https://github.com/meridianlabs-ai/inspect_scout/commit/228af05c1da0ed67f793360938f628cc6a812ac6))
+* scans fail on Petri logs when a scanner filters events ([#702](https://github.com/meridianlabs-ai/inspect_scout/issues/702)) ([0ff478f](https://github.com/meridianlabs-ai/inspect_scout/commit/0ff478fd4cc8b50962a3b71c424f65274d765a75))
+* scorer explanations are no longer dropped when reading or recording transcripts ([#635](https://github.com/meridianlabs-ai/inspect_scout/issues/635)) ([d2b1376](https://github.com/meridianlabs-ai/inspect_scout/commit/d2b13766e942964d9461170bf9b8afd66c38cba7))
+* show sentinel proceed actions correctly in the transcript view ([#698](https://github.com/meridianlabs-ai/inspect_scout/issues/698)) ([3178de3](https://github.com/meridianlabs-ai/inspect_scout/commit/3178de324b8a42770b99df0213cdfdaa9061c326))
+
 ## [0.5.5](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.4...0.5.5) (2026-10-11)
 
 

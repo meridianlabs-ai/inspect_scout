@@ -79,8 +79,30 @@ _MYPY_RELAX_WHEN_TRUE = {
     "allow_untyped_globals",
     "allow_redefinition",
 }
-_MYPY_RELAX_WHEN_FALSE_PREFIXES = ("disallow_", "warn_", "strict", "no_implicit_")
+_MYPY_RELAX_WHEN_FALSE_PREFIXES = ("disallow_", "warn_", "strict")
 _MYPY_RELAX_WHEN_FALSE = {"check_untyped_defs"}
+
+
+def _mypy_bool_relaxes(key: str, value: object) -> bool:
+    # mypy reads "true"/"off"/1 like TOML booleans, and accepts inverted
+    # spellings: no_<flag> for <flag>, allow_<x> for disallow_<x>
+    flag = (
+        value
+        if isinstance(value, bool)
+        else configparser.RawConfigParser.BOOLEAN_STATES.get(str(value).lower())
+    )
+    if flag is None:
+        return False
+    if key.startswith("no_"):
+        key, flag = key[3:], not flag
+    elif key.startswith("allow_") and key not in _MYPY_RELAX_WHEN_TRUE:
+        key, flag = "dis" + key, not flag
+    return (
+        key in _MYPY_RELAX_WHEN_TRUE
+        if flag
+        else key.startswith(_MYPY_RELAX_WHEN_FALSE_PREFIXES)
+        or key in _MYPY_RELAX_WHEN_FALSE
+    )
 
 
 def _mypy_relaxations(table: dict[str, Any]) -> Iterator[tuple[str, str]]:
@@ -91,13 +113,8 @@ def _mypy_relaxations(table: dict[str, Any]) -> Iterator[tuple[str, str]]:
             yield from (("exclude", str(p)) for p in _listify(value))
         elif key == "follow_imports" and value in ("skip", "silent"):
             yield (key, str(value))
-        elif key in _MYPY_RELAX_WHEN_TRUE and value is True:
-            yield (key, "true")
-        elif value is False and (
-            key.startswith(_MYPY_RELAX_WHEN_FALSE_PREFIXES)
-            or key in _MYPY_RELAX_WHEN_FALSE
-        ):
-            yield (key, "false")
+        elif _mypy_bool_relaxes(key, value):
+            yield (key, _render(value))
 
 
 def _scan_mypy(mypy: dict[str, Any], file: str) -> Iterator[Carveout]:

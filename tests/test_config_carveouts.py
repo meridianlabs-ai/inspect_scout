@@ -41,6 +41,26 @@ def run_gate(root: Path, *args: str) -> "subprocess.CompletedProcess[str]":
             id="mypy-global-disallow-false",
         ),
         pytest.param(
+            '[tool.mypy]\nignore_errors = "true"\n',
+            "[tool.mypy] ignore_errors = true",
+            id="mypy-string-boolean",
+        ),
+        pytest.param(
+            "[tool.mypy]\nallow_untyped_defs = true\n",
+            "[tool.mypy] allow_untyped_defs = true",
+            id="mypy-inverted-allow",
+        ),
+        pytest.param(
+            "[tool.mypy]\nno_warn_return_any = true\n",
+            "[tool.mypy] no_warn_return_any = true",
+            id="mypy-inverted-no",
+        ),
+        pytest.param(
+            "[tool.mypy]\nno_implicit_reexport = false\n",
+            "[tool.mypy] no_implicit_reexport = false",
+            id="mypy-no-implicit-false",
+        ),
+        pytest.param(
             '[tool.mypy]\ndisable_error_code = ["union-attr"]\n',
             "[tool.mypy] disable_error_code = union-attr",
             id="mypy-disable-error-code",
@@ -106,6 +126,10 @@ def test_detects_relaxation(tmp_path: Path, config: str, expected: str) -> None:
         pytest.param(
             '[tool.mypy]\nstrict = true\nmypy_path = "src"\nfiles = ["src"]\n',
             id="mypy-tightening-and-paths",
+        ),
+        pytest.param(
+            "[tool.mypy]\nno_implicit_optional = true\nallow_untyped_globals = false\n",
+            id="mypy-inverted-tightening",
         ),
         pytest.param(
             '[tool.ruff]\nsrc = ["."]\n[tool.ruff.lint]\nselect = ["E", "F"]\n',

@@ -1,7 +1,6 @@
 from logging import getLogger
-from typing import Any, AsyncIterator, Awaitable, Callable, Literal, cast, overload
+from typing import Any, Awaitable, Callable, Literal, cast, overload
 
-import anyio
 from inspect_ai._util.content import ContentText
 from inspect_ai.model import (
     CachePolicy,
@@ -26,24 +25,10 @@ from .._scanner.scanner import (
     mark_streaming_support,
     scanner,
 )
-from .._transcript.handle import (
-    MaterializedTranscriptHandle,
-    SpooledTranscriptHandle,
-    TranscriptHandle,
-)
-from .._transcript.messages import (
-    MessagesSegment,
-    _effective_segment_budget,
-    stream_segment_messages,
-    transcript_messages,
-)
-from .._transcript.timeline import TimelineMessages
-from .._transcript.timeline_stream import (
-    _StubSkeletonUnsupported,
-    stream_timeline_messages,
-)
+from .._transcript.handle import TranscriptHandle
+from .._transcript.messages import _effective_segment_budget
 from .._transcript.types import Transcript, TranscriptContent
-from ._reducer import aggregate_results
+from ._pipeline import resolve_scan_source, scan_transcript_segments
 from .answer import Answer, answer_from_argument
 from .generate import generate_answer
 from .prompt import (
@@ -53,70 +38,6 @@ from .prompt import (
 from .types import AnswerSpec
 
 logger = getLogger(__name__)
-
-# Bounds memory (one rendered segment string per slot), not connections:
-# inspect_ai's own per-model semaphore gates the real generate calls, so a
-# surplus admitted task costs a string and nothing else.
-_SEGMENT_WINDOW_CAP = 16
-
-
-async def _scan_segments_bounded(
-    segments: AsyncIterator[MessagesSegment | TimelineMessages],
-    scan_segment: Callable[[str], Awaitable[Result]],
-) -> list[tuple[str | None, Result]]:
-    """Scan lazily-yielded segments with bounded concurrency, in segment order.
-
-    Each result is paired with its originating span id (None on non-timeline
-    paths) so ``aggregate_results`` can group timeline chunks by span.
-
-    A failing segment aborts the scan and raises its own exception, unwrapped
-    from the task group's ``ExceptionGroup``.
-    """
-    window = anyio.Semaphore(_SEGMENT_WINDOW_CAP)
-    indexed: list[tuple[int, str | None, Result]] = []
-
-    async def scan_bounded(index: int, span_id: str | None, messages_str: str) -> None:
-        try:
-            indexed.append((index, span_id, await scan_segment(messages_str)))
-        finally:
-            window.release()
-
-    try:
-        async with anyio.create_task_group() as tg:
-            index = 0
-            while True:
-                # Admit before pulling: `async for` renders the next segment
-                # while the window is full, holding one string over the cap.
-                await window.acquire()
-                seg = await anext(segments, None)
-                if seg is None:
-                    window.release()
-                    break
-                tg.start_soon(
-                    scan_bounded,
-                    index,
-                    seg.span.id if isinstance(seg, TimelineMessages) else None,
-                    seg.messages_str,
-                )
-                index += 1
-    except ExceptionGroup as ex:
-        # Deliberately not inspect_ai's `inner_exception`: it also walks
-        # `__context__`, and picks from an unordered set -- so an unrelated
-        # chained exception can win over the segment's actual failure.
-        raise ex.exceptions[0] from None
-
-    # Reduction is order-sensitive, so undo the completion-order interleaving.
-    return [(span_id, r) for _, span_id, r in sorted(indexed, key=lambda t: t[0])]
-
-
-def _must_materialize(handle: TranscriptHandle, full_transcript_needed: bool) -> bool:
-    """Whether to load() the handle and take the batch path instead of streaming it.
-
-    Streaming a `MaterializedTranscriptHandle` buys nothing -- it loads the whole
-    transcript on first use -- and costs the serialised per-segment token
-    counting of the streaming path, so only a spooled handle is streamed.
-    """
-    return full_transcript_needed or isinstance(handle, MaterializedTranscriptHandle)
 
 
 @overload
@@ -340,45 +261,15 @@ def llm_scanner(
     )
 
     async def scan(transcript: Transcript | TranscriptHandle) -> Result:
-        # Match the concrete handle classes: TranscriptHandle is a plain
-        # Protocol, and making it runtime-checkable would only test method
-        # presence.
-        handle: TranscriptHandle | None = (
-            transcript
-            if isinstance(
-                transcript,
-                (MaterializedTranscriptHandle, SpooledTranscriptHandle),
-            )
-            else None
+        source = await resolve_scan_source(
+            transcript,
+            full_transcript_needed=full_transcript_needed,
+            scanner_name="llm_scanner",
         )
-
-        if handle is not None and _must_materialize(handle, full_transcript_needed):
-            transcript = await handle.load()
-            handle = None
+        info_transcript = source.transcript
 
         # Resolve the model once — defers role resolution to scan time
         resolved_model = get_model(model, role=model_role)
-
-        # On the streaming path, template rendering only needs TranscriptInfo
-        # fields, so pass a content-empty Transcript where one is required.
-        info_transcript: Transcript
-        if handle is not None:
-            # Transcript subclasses TranscriptInfo, so a handle whose info
-            # *is* a Transcript would collide with the empties below.
-            info_transcript = Transcript.model_construct(
-                **handle.info.model_dump(exclude={"messages", "events", "timelines"}),
-                messages=[],
-                events=[],
-                timelines=[],
-            )
-        elif isinstance(transcript, Transcript):
-            info_transcript = transcript
-        else:
-            raise TypeError(
-                f"llm_scanner cannot scan {type(transcript).__name__}: expected a "
-                "Transcript, a MaterializedTranscriptHandle or a "
-                "SpooledTranscriptHandle."
-            )
 
         # Shared numbering scope across all segments
         messages_as_str_fn, extract_references = message_numbering(
@@ -458,78 +349,20 @@ def llm_scanner(
                 "the scanner template."
             )
 
-        # Factored out so the events-streaming fallback can reuse it after
-        # materializing the handle.
-        async def scan_materialized(source_transcript: Transcript) -> Result:
-            materialized_results = await _scan_segments_bounded(
-                transcript_messages(
-                    source_transcript,
-                    messages_as_str=messages_as_str_fn,
-                    model=resolved_model,
-                    context_window=context_window,
-                    timeline=timeline,
-                    compaction=compaction,
-                    depth=depth,
-                    prompt_reserve=template_tokens,
-                ),
-                scan_segment,
-            )
-            return await aggregate_results(
-                results=materialized_results,
-                timeline=bool(source_transcript.timelines),
-                answer=answer,
-                reducer=reducer,
-            )
-
-        if handle is not None:
-            # The source is picked from the *requested* filter, so it can come
-            # up empty on a transcript the materialized path would still scan
-            # (events="all" over a transcript carrying none). Reducing over
-            # zero segments would answer the question with no transcript
-            # content, so fall back instead.
-            segments: AsyncIterator[MessagesSegment | TimelineMessages]
-            if content_has_events:
-                segments = stream_timeline_messages(
-                    handle,
-                    messages_as_str=messages_as_str_fn,
-                    model=resolved_model,
-                    context_window=context_window,
-                    compaction=compaction,
-                    depth=depth,
-                    prompt_reserve=template_tokens,
-                )
-            else:
-                segments = stream_segment_messages(
-                    handle.messages(),
-                    messages_as_str=messages_as_str_fn,
-                    model=resolved_model,
-                    context_window=context_window,
-                    prompt_reserve=template_tokens,
-                )
-            try:
-                results = await _scan_segments_bounded(segments, scan_segment)
-            except _StubSkeletonUnsupported as ex:
-                # Raised while building the pass-1 stub skeleton, before any
-                # segment is yielded and thus before any LLM call, so the
-                # fallback re-runs from scratch with no duplicated scan work.
-                logger.info(
-                    "Streaming events skeleton unsupported for transcript %s "
-                    "(%s); falling back to materialized scan.",
-                    handle.info.transcript_id,
-                    ex,
-                )
-                results = []
-            if not results:
-                return await scan_materialized(await handle.load())
-            # A handle carries events, not named timelines.
-            return await aggregate_results(
-                results=results,
-                timeline=False,
-                answer=answer,
-                reducer=reducer,
-            )
-
-        return await scan_materialized(info_transcript)
+        return await scan_transcript_segments(
+            source,
+            scan_segment=scan_segment,
+            messages_as_str=messages_as_str_fn,
+            model=resolved_model,
+            context_window=context_window,
+            timeline=timeline,
+            compaction=compaction,
+            depth=depth,
+            prompt_reserve=template_tokens,
+            content_has_events=content_has_events,
+            answer=answer,
+            reducer=reducer,
+        )
 
     # set name for collection by @scanner if specified
     if name is not None:

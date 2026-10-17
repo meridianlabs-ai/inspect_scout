@@ -1,6 +1,14 @@
 from inspect_ai._util.deprecation import relocated_module_attribute
 
 from ._grep_scanner import grep_scanner
+from ._jev_scanner import (
+    EscalateRules,
+    JevOptions,
+    LlmOptions,
+    cascade_scanner,
+    jev_scanner,
+    prob_threshold,
+)
 from ._llm_scanner import (
     Answer,
     AnswerMultiLabel,
@@ -42,6 +50,7 @@ from ._scanner.extract import (
     tool_callers,
 )
 from ._scanner.loader import Loader, loader
+from ._scanner.redact import RedactMode, redact_secrets
 from ._scanner.result import Error, Reference, Result
 from ._scanner.scanner import Scanner, scanner
 from ._scanner.scorer import as_scorer
@@ -188,6 +197,14 @@ __all__ = [
     "tool_callers",
     "RefusalError",
     "llm_scanner",
+    "jev_scanner",
+    "prob_threshold",
+    "cascade_scanner",
+    "JevOptions",
+    "LlmOptions",
+    "EscalateRules",
+    "redact_secrets",
+    "RedactMode",
     "ResultReducer",
     "Answer",
     "AnswerMultiLabel",

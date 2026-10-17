@@ -183,6 +183,28 @@ def _context_tool_stub(
 ST = TypeVar("ST", bound=BaseModel)
 
 
+def get_field_by_name_or_alias(
+    obj: BaseModel, target_name: str
+) -> tuple[str | None, Any]:
+    """Get field value by field name or alias.
+
+    Returns:
+        Tuple of (actual_field_name, field_value) or (None, None) if not found.
+    """
+    model_fields = type(obj).model_fields
+
+    # Check direct field name first
+    if target_name in model_fields:
+        return target_name, getattr(obj, target_name)
+
+    # Check for alias
+    for field_name, field_info in model_fields.items():
+        if field_info.alias == target_name:
+            return field_name, getattr(obj, field_name)
+
+    return None, None
+
+
 def structured_schema(answer: AnswerStructured[Any]) -> JSONSchema:
     # Augment the type with an explanation field if it doesn't have one
     answer_type, result_set = structured_answer_type(answer)
@@ -279,28 +301,6 @@ def structured_result(
     # Whether an explanation field was injected into the generation schema
     # (i.e. the declared type has none of its own)
     augmented = augment_type_with_explanation(answer_type) is not answer_type
-
-    # Helper: Find field value by name or alias
-    def get_field_by_name_or_alias(
-        obj: BaseModel, target_name: str
-    ) -> tuple[str | None, Any]:
-        """Get field value by field name or alias.
-
-        Returns:
-            Tuple of (actual_field_name, field_value) or (None, None) if not found.
-        """
-        model_fields = type(obj).model_fields
-
-        # Check direct field name first
-        if target_name in model_fields:
-            return target_name, getattr(obj, target_name)
-
-        # Check for alias
-        for field_name, field_info in model_fields.items():
-            if field_info.alias == target_name:
-                return field_name, getattr(obj, field_name)
-
-        return None, None
 
     # Helper: Validate one answer object into the declared type.
     def parse_answer_data(data: Any) -> tuple[BaseModel, Any]:

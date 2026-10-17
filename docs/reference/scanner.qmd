@@ -16,6 +16,11 @@ reference: "inspect_scout"
 
 ### llm_scanner
 ### grep_scanner
+### jev_scanner
+### cascade_scanner
+### JevOptions
+### LlmOptions
+### EscalateRules
 
 ## Scanner Tools
 
@@ -37,6 +42,8 @@ reference: "inspect_scout"
 ### messages_as_str
 ### MessageFormatOptions
 ### MessagesPreprocessor
+### redact_secrets
+### RedactMode
 ### tool_callers
 
 ## Types

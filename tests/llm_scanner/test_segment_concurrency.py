@@ -16,7 +16,7 @@ from inspect_ai.model import (
 )
 from inspect_ai.tool import ToolChoice, ToolInfo
 from inspect_scout import llm_scanner
-from inspect_scout._llm_scanner import _llm_scanner as llm_scanner_mod
+from inspect_scout._llm_scanner import _pipeline as pipeline_mod
 from inspect_scout._scanner.result import Result
 from inspect_scout._transcript.messages import MessagesSegment
 from inspect_scout._transcript.types import Transcript
@@ -41,7 +41,7 @@ def _make_transcript(n_messages: int, *, words: int = 3) -> Transcript:
 @pytest.mark.anyio
 async def test_bounded_segment_concurrency(monkeypatch: pytest.MonkeyPatch) -> None:
     """No more than _SEGMENT_WINDOW_CAP segments are scanned concurrently."""
-    monkeypatch.setattr(llm_scanner_mod, "_SEGMENT_WINDOW_CAP", 2)
+    monkeypatch.setattr(pipeline_mod, "_SEGMENT_WINDOW_CAP", 2)
 
     # Count concurrency at _scan_segments_bounded's own admission window, not
     # inside the mock `generate` call: inspect_ai's model-level connection
@@ -49,7 +49,7 @@ async def test_bounded_segment_concurrency(monkeypatch: pytest.MonkeyPatch) -> N
     # mask a window that admits too many segments if measured there instead.
     in_flight = 0
     peak = 0
-    original_bounded = llm_scanner_mod._scan_segments_bounded
+    original_bounded = pipeline_mod._scan_segments_bounded
 
     async def counting_bounded(
         segments: AsyncIterator[MessagesSegment],
@@ -66,7 +66,7 @@ async def test_bounded_segment_concurrency(monkeypatch: pytest.MonkeyPatch) -> N
 
         return await original_bounded(segments, counted_segment)
 
-    monkeypatch.setattr(llm_scanner_mod, "_scan_segments_bounded", counting_bounded)
+    monkeypatch.setattr(pipeline_mod, "_scan_segments_bounded", counting_bounded)
 
     transcript = _make_transcript(12, words=80)
 
@@ -108,7 +108,7 @@ async def test_segment_window_admits_before_pulling(
 
     Pulling first would render (and hold) one segment string beyond the cap.
     """
-    monkeypatch.setattr(llm_scanner_mod, "_SEGMENT_WINDOW_CAP", 2)
+    monkeypatch.setattr(pipeline_mod, "_SEGMENT_WINDOW_CAP", 2)
 
     pulled = 0
     completed = 0
@@ -128,7 +128,7 @@ async def test_segment_window_admits_before_pulling(
         completed += 1
         return Result(value=True)
 
-    await llm_scanner_mod._scan_segments_bounded(segments(), scan_segment)
+    await pipeline_mod._scan_segments_bounded(segments(), scan_segment)
 
     assert pulled == 6
 

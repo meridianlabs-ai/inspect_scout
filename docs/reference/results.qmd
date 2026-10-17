@@ -21,6 +21,7 @@ reference: inspect_scout
 
 ### validation_set
 ### validation_predicate
+### prob_threshold
 ### ValidationSet
 ### ValidationCase
 ### PredicateType

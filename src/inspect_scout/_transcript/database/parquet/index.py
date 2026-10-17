@@ -161,10 +161,7 @@ async def compact_index(
     try:
         merged_table = _read_and_deduplicate_index_files(conn, idx_files)
     except duckdb.IOException as e:
-        error_msg = str(e).lower()
-        if (
-            "could not open file" in error_msg or "no such file" in error_msg
-        ) and _retry_count < MAX_RETRIES:
+        if _is_missing_index_file(e) and _retry_count < MAX_RETRIES:
             # Files changed during operation - retry with fresh discovery
             logger.warning(
                 f"Index file access failed during compaction (attempt {_retry_count + 1}), retrying"
@@ -336,10 +333,7 @@ async def init_index_table(
                 SELECT * FROM {quote_identifier(source_view)}
             """)
     except duckdb.IOException as e:
-        error_msg = str(e).lower()
-        if (
-            "could not open file" in error_msg or "no such file" in error_msg
-        ) and _retry_count < MAX_RETRIES:
+        if _is_missing_index_file(e) and _retry_count < MAX_RETRIES:
             # File was deleted by concurrent operation - rediscover and retry
             logger.warning(
                 f"Index file access failed (attempt {_retry_count + 1}), retrying"
@@ -365,6 +359,20 @@ async def init_index_table(
     migrate_table(conn, table_name)
 
     return row_count
+
+
+def _is_missing_index_file(error: duckdb.IOException) -> bool:
+    """Recognize DuckDB's local and HTTP missing-file errors."""
+    message = str(error).lower()
+    return (
+        "could not open file" in message
+        or "no such file" in message
+        or "no files found that match the pattern" in message
+        or (
+            isinstance(error, duckdb.HTTPException)
+            and re.search(r"[\"']\s*:\s*404\b", message) is not None
+        )
+    )
 
 
 async def _discover_index_files(storage: IndexStorage) -> list[str]:

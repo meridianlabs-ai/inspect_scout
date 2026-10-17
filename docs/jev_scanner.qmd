@@ -11,11 +11,16 @@ Jev answers yes/no questions, picks one of a set of labels, or rates against a r
 
 ## Setup
 
-Install the TypeSafe SDK and set your API key (for example in `.env`):
+Install the TypeSafe SDK:
 
 ```bash
 pip install 'typesafe-sdk[zstd]'
-export TYPESAFE_API_KEY=...
+```
+
+Then add your API key to the [`.env` file](projects.qmd#environment-files) in your project, which Scout loads automatically:
+
+```{.bash filename=".env"}
+TYPESAFE_API_KEY=...
 ```
 
 No generative model or LLM key is needed to use `jev_scanner()`.

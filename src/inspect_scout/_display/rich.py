@@ -294,6 +294,7 @@ def scanners_table(spec: ScanSpec, summary: Summary) -> Table:
     have_metric = any(
         summary[scanner].metrics is not None for scanner in spec.scanners.keys()
     )
+    have_unscored = any(summary[scanner].unscored for scanner in spec.scanners.keys())
 
     table = Table.grid(expand=True)
     table.add_column()  # scanner
@@ -302,6 +303,8 @@ def scanners_table(spec: ScanSpec, summary: Summary) -> Table:
     if have_validation:
         table.add_column(justify="right")  # validation (accuracy)
     table.add_column(justify="right")  # results
+    if have_unscored:
+        table.add_column(justify="right")  # unscored
     table.add_column(justify="right")  # errors
     table.add_column(justify="right")  # tokens/scan
     table.add_column()  # spacer
@@ -315,9 +318,11 @@ def scanners_table(spec: ScanSpec, summary: Summary) -> Table:
         )
     if have_validation:
         rowdef.append("[bold]validation[/bold]")
+    rowdef.append("[bold]results[/bold]")
+    if have_unscored:
+        rowdef.append("[bold]unscored[/bold]")
     rowdef.extend(
         [
-            "[bold]results[/bold]",
             "[bold]errors[/bold]",
             "[bold]tokens/scan[/bold]",
             "",
@@ -335,9 +340,11 @@ def scanners_table(spec: ScanSpec, summary: Summary) -> Table:
             row_data.append(metric)
         if have_validation:
             row_data.append(validation_accuracy or NONE)
+        row_data.append(f"{results.results:,}" if results.results else NONE)
+        if have_unscored:
+            row_data.append(f"{results.unscored:,}" if results.unscored else NONE)
         row_data.extend(
             [
-                f"{results.results:,}" if results.results else NONE,
                 f"{results.errors:,}" if results.errors else NONE,
                 (
                     f"{results.tokens // results.scans:,}"

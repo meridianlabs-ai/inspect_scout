@@ -9102,6 +9102,11 @@
             "title": "Tokens",
             "type": "integer"
           },
+          "unscored": {
+            "default": 0,
+            "title": "Unscored",
+            "type": "integer"
+          },
           "validation": {
             "anyOf": [
               {
@@ -9116,6 +9121,7 @@
         "required": [
           "scans",
           "results",
+          "unscored",
           "errors",
           "tokens",
           "model_usage"

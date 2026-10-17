@@ -543,7 +543,7 @@ async def test_preprocessor_options_as_dict(
 @pytest.mark.parametrize(
     "preprocessor,message",
     [
-        ({"exclude_system": None}, "must be true or false"),
+        ({"exclude_system": None}, "must be booleans"),
         ({"transform": "x"}, "Unknown preprocessor options"),
         ({"exclude_sytem": True}, "Unknown preprocessor options"),
         ("junk", "must be a MessagesPreprocessor"),

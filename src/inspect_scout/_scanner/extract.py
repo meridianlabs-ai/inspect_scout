@@ -95,7 +95,7 @@ def as_messages_preprocessor(value: object) -> MessagesPreprocessor[Any] | None:
             f"Unknown preprocessor options {sorted(unknown)} (expected {sorted(options)})."
         )
     if not_bool := sorted(k for k, v in value.items() if not isinstance(v, bool)):
-        raise TypeError(f"preprocessor options must be true or false: {not_bool}")
+        raise TypeError(f"preprocessor options must be booleans; invalid: {not_bool}")
     return MessagesPreprocessor(**value)
 
 

@@ -89,6 +89,12 @@ def skip_if_no_google(func: F) -> F:
     )
 
 
+def skip_if_no_typesafe(func: F) -> F:
+    return cast(
+        F, pytest.mark.api(skip_if_env_var("TYPESAFE_API_KEY", exists=False)(func))
+    )
+
+
 def skip_if_github_action(func: F) -> F:
     return cast(F, skip_if_env_var("GITHUB_ACTIONS", exists=True)(func))
 

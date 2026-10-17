@@ -22,7 +22,7 @@ from inspect_ai.model import (
 )
 from inspect_ai.tool import ToolChoice, ToolInfo
 from inspect_scout import llm_scanner
-from inspect_scout._llm_scanner._llm_scanner import _must_materialize
+from inspect_scout._llm_scanner._pipeline import _must_materialize
 from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import Scanner, streaming_support_of
 from inspect_scout._transcript.handle import (

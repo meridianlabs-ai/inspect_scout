@@ -25,6 +25,7 @@ inspect-docs:
       menu:
         - href: llm_scanner.qmd
         - href: grep_scanner.qmd
+        - href: jev_scanner.qmd
         - href: custom_scanner.qmd
         - href: scanner_tools.qmd
         - href: multi_agent.qmd

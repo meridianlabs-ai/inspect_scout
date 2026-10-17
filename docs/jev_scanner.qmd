@@ -1,0 +1,185 @@
+---
+title: "Jev Scanner"
+llms-description: "Fast, low-cost probabilistic classification of transcripts with TypeSafe Jev"
+---
+
+## Overview
+
+The `jev_scanner()` classifies transcripts with [TypeSafe](https://typesafe.ai) Jev, a "system one" model that returns probabilities instead of generated text. It works like [LLM Scanner](llm_scanner.qmd): the same segmentation, message numbering, references, and result shapes (see [Answer Types](#answer-types) for the one difference, `value_to_float`).
+
+Jev answers yes/no questions, picks one of a set of labels, or rates against a rubric. It cannot write free text. For explanations, combine it with an LLM using [`cascade_scanner()`](#cascade-scanner).
+
+## Setup
+
+Install the TypeSafe SDK:
+
+```bash
+pip install 'typesafe-sdk[zstd]'
+```
+
+Then add your API key to the [`.env` file](projects.qmd#environment-files) in your project, which Scout loads automatically:
+
+```{.bash filename=".env"}
+TYPESAFE_API_KEY=...
+```
+
+No generative model or LLM key is needed to use `jev_scanner()`.
+
+## Quick Start
+
+Run `jev_scanner` directly from the command line:
+
+```bash
+scout scan inspect_scout/jev_scanner \
+  -S question="Did the agent run a destructive command?" \
+  -S answer=boolean \
+  -T ./logs
+```
+
+Or from a scan job (see [`examples/scanner/jev.yaml`](https://github.com/meridianlabs-ai/inspect_scout/blob/main/examples/scanner/jev.yaml)):
+
+```yaml
+scanners:
+  - name: inspect_scout/jev_scanner
+    params:
+      question: "Did the assistant refuse or decline to answer?"
+      answer: boolean
+      criteria:
+        "true": "The assistant declined, deflected, or said it cannot help"
+        "false": "The assistant attempted an answer"
+
+transcripts: logs
+```
+
+```bash
+scout scan jev.yaml
+```
+
+Results open in `scout view` like any other scan, with cited messages linked. [`examples/scanner/jev.py`](https://github.com/meridianlabs-ai/inspect_scout/blob/main/examples/scanner/jev.py) shows each answer type and a cascade from Python.
+
+## Basic Usage
+
+```python
+from inspect_scout import Scanner, Transcript, jev_scanner, scanner
+
+@scanner(messages="all")
+def destructive_actions() -> Scanner[Transcript]:
+    return jev_scanner(
+        question="Did the agent run a destructive or hard-to-reverse command?",
+        answer="boolean",
+        criteria={
+            "true": "A source file, directory, branch, or table was deleted or overwritten",
+            "false": "Only temporary files, caches, or build output were removed, or nothing",
+        },
+    )
+```
+
+The scanner returns a `Result` with:
+
+- `value`: `True`/`False` (probability at or above `threshold`, default 0.5)
+- `answer`: `"Yes"`/`"No"`
+- `explanation`: the answer, its probability, and the cited evidence messages (e.g. `Yes (p=0.92). ... Evidence: [M1621]`)
+- `references`: links to the cited messages
+- `metadata`: `p`, the cited messages with their probabilities, the exact model version, and input tokens
+
+::: {.callout-tip}
+Explicit `criteria` for what counts as yes and no make answers noticeably sharper. Write them for every scanner.
+:::
+
+## Answer Types {#answer-types}
+
+| `answer` | Jev question | `value` |
+|---|---|---|
+| `"boolean"` | yes/no | `bool` |
+| `["label 1", "label 2", ...]` | one choice (up to 255 labels) | the label's letter (`"A"`, `"B"`, ...), as with `llm_scanner()`; `answer` holds the label |
+| `AnswerMultiLabel(labels=[...])` | one yes/no per label | list of labels at or above `threshold` |
+| `"numeric"` with `rubric=[...]` | rubric score (2-10 levels) | expected score (may fall between levels) |
+| `AnswerStructured(type=Model)` | one question per field: `bool`, `Literal`, enum, or `int` with `json_schema_extra={"rubric": [...]}` | as with `llm_scanner()` |
+
+Label descriptions go in `criteria`:
+
+```python
+jev_scanner(
+    question="Why did the agent fail?",
+    answer=["environment", "misunderstood task", "gave up", "other"],
+    criteria={"environment": "Missing dependency, permission error, or network failure"},
+)
+```
+
+`"string"` answers, list (resultset) structured answers, and free-text structured fields need an LLM and raise an error when the scanner is created.
+
+`value_to_float` is applied to the final value after segments are combined, so reducers such as `any` see the raw answers. This differs from `llm_scanner()`, which converts each segment's value before combining.
+
+## References
+
+- By default each segment cites the single message that best shows the answer.
+- Nothing is cited when there is nothing to show: a boolean "no", a multi-label answer with no labels, a score at the lowest rubric level, or when Jev answers that no message shows it.
+- For booleans the citation question is asked with the answer. For other answer types it is asked in a follow-up request that names the chosen answer (one extra request per segment).
+- `references="all"` cites every separate occurrence: Jev is asked again with the found messages (and their immediate neighbours, usually the same occurrence) removed, up to 8 times per segment.
+- Segments with more than 1,000 messages split the citation question across several requests.
+- Every extra request re-sends the segment and costs input tokens. Use `references=False` to skip citations.
+- With references on, about 8k tokens of each segment's budget are reserved for the citation questions, so a custom `context_window` must be larger than that.
+
+## Long Transcripts
+
+Jev's long-context mode (on by default) accepts about 250k tokens per request. Longer transcripts are split into segments and combined with the same reducers as `llm_scanner()` (`any` for booleans, `majority` for labels, `union` for multi-labels, `mean` for scores). When a transcript is split, per-segment details are kept in `metadata["segments"]`, and `p` (the highest), `evidence`, `input_tokens`, and `seconds` are combined across segments. If Jev still rejects a segment as too long (token counts are estimated), the transcript is re-segmented once at half the size. Pass `long_context=False` to use standard mode (about 28k-token segments).
+
+## Redaction
+
+By default (`redact="keys"`), keys and credentials are removed from messages before they are sent: private keys, provider API keys, JWTs, bearer and basic credentials, credentials in URLs, values assigned to `*KEY`/`*TOKEN`/`*SECRET`/`*PASSWORD`-style names, and values of tool-call arguments with such names. Message text, reasoning, tool-call arguments, tool errors, server-side tool use, and `template_variables` are all covered. Names are matched in any casing (`DB_PASSWORD`, `accessToken`, `--api-key`); values that are variable references (`${VAR}`, `$VAR`, `os.environ[...]`) or plain numbers are kept, as are database or cache keys (`primary_key`, `cache_key`) and names that describe a secret rather than hold it (`token_count`, `password_policy`). Redaction is pattern-based, so treat it as a safeguard rather than a guarantee. Use `redact="all"` to also remove email addresses, or `redact=False` to send messages unchanged. The same redaction is available for any scanner via `MessagesPreprocessor(transform=redact_secrets())`.
+
+## Caching and Determinism
+
+Jev is not exactly deterministic (probabilities can vary by about 0.01 between identical requests). Pass `cache=True` to reuse responses for identical requests, which makes re-runs reproducible and free.
+
+## Choosing Thresholds
+
+Boolean results keep Jev's probability in `metadata["p"]`, so you can validate the same scan at different operating points with the `prob_threshold()` predicate:
+
+```python
+from inspect_scout import prob_threshold, validation_set
+
+validation_set(cases="validation.csv", predicate=prob_threshold(0.7))
+```
+
+To compare thresholds (or compute AUROC) across a labelled scan, read the probabilities from the results:
+
+```python
+import json
+from inspect_scout import scan_results_df
+
+df = scan_results_df("scans/scan_id=...").scanners["destructive_actions"]
+df["p"] = df["metadata"].map(lambda m: json.loads(m)["p"])
+# join with your labels, then e.g. sklearn.metrics.roc_auc_score(labels, df["p"])
+```
+
+## Models and Usage
+
+Jev runs as an Inspect model provider named `typesafe`, so models are written as `typesafe/<model>`. The default is the pinned `typesafe/jev-1.13.0`, so thresholds stay valid across Jev releases. Because it is an Inspect provider, Jev token usage appears in scan results (`scan_model_usage`), retries follow Inspect's retry policy, and concurrent requests are limited by the scan's `--max-connections` (which defaults to `--max-transcripts`). The provider only accepts requests from `jev_scanner()`: Jev cannot generate text. Conversely, `jev_scanner()` refuses non-Jev models before sending anything.
+
+## Cascade Scanner {#cascade-scanner}
+
+`cascade_scanner()` runs Jev on every transcript and re-scans uncertain or positive cases with `llm_scanner()`, whose free-text explanation then becomes the result:
+
+```python
+from inspect_scout import cascade_scanner
+
+cascade_scanner(
+    question="Did the agent run a destructive or hard-to-reverse command?",
+    answer="boolean",
+    jev={"references": True},
+    llm={"model": "anthropic/claude-sonnet-5-5"},
+    escalate={"p_between": [0.2, 0.8], "positive": True},
+)
+```
+
+`jev`, `llm`, and `escalate` are typed dictionaries (`JevOptions`, `LlmOptions`, `EscalateRules`). Escalation rules are plain data, so cascades work from YAML scan jobs and `scout scan resume`:
+
+| Rule | Escalates when |
+|---|---|
+| `p_between: [lo, hi]` | any yes/no probability (in any segment) is in the range |
+| `positive: true` | the answer is yes, or a non-empty multi-label answer |
+| `labels: [...]` | the chosen label is one of these (e.g. `"other"`) |
+| `confidence_below: x` | a choice or score confidence is below `x` |
+
+`metadata["cascade"]` records which stage decided, the escalation reasons, and the Jev result. Both stages use the same preprocessor and redaction, and the LLM stage's question includes the same `criteria` and `rubric`, so both stages answer on the same terms (for example, the same score scale). With `llm=False`, no LLM is called and transcripts that would escalate are flagged with `metadata["needs_review"]`, giving a review queue without an LLM key. The default thresholds are a starting point: tune them against labelled data with [validation](validation.qmd).

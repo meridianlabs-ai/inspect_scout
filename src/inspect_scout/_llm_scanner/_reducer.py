@@ -17,6 +17,13 @@ from .._scanner.result import Reference, Result, as_resultset
 from .generate import generate_answer
 from .types import AnswerMultiLabel, AnswerSpec, AnswerStructured
 
+_USES_DEFAULT_MODEL_ATTR = "___scout_reducer_uses_default_model___"
+
+
+def uses_default_model(reducer: Callable[[list[Result]], Awaitable[Result]]) -> bool:
+    """Whether a reducer generates with the default model (`ResultReducer.llm()` without a model)."""
+    return getattr(reducer, _USES_DEFAULT_MODEL_ATTR, False) is True
+
 
 def _numeric_values(results: list[Result]) -> list[float]:
     """Extract numeric values from results, skipping non-numeric."""
@@ -242,6 +249,7 @@ class ResultReducer:
                 references=_merge_references(results),
             )
 
+        setattr(reducer, _USES_DEFAULT_MODEL_ATTR, model is None)
         return reducer
 
 

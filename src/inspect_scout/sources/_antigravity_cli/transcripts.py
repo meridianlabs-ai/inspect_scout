@@ -60,6 +60,7 @@ from .events import (
     to_compaction_event,
     to_info_event,
     to_model_event,
+    to_unanswered_model_event,
     unknown_tool_call,
 )
 
@@ -476,6 +477,12 @@ def _convert_steps(
     for call in final.abandoned:
         events.extend(
             _create_tool_span_events(call, None, final.started, conversation_id)
+        )
+    # A context that ends on anything but an assistant message stopped where
+    # the next model call would have been made (see to_unanswered_model_event).
+    if context and not isinstance(context[-1], ChatMessageAssistant):
+        events.append(
+            to_unanswered_model_event(steps[-1], context, current_model or "unknown")
         )
 
     return messages, events, info

@@ -18,6 +18,7 @@ from inspect_ai.model import (
 )
 from inspect_scout.sources._antigravity_cli.client import GenerationInfo
 from inspect_scout.sources._antigravity_cli.events import (
+    UNANSWERED_MODEL_CALL_ERROR,
     Step,
     StepToolCall,
     ToolCallPairer,
@@ -645,3 +646,56 @@ class TestConvertSteps:
             "model-0",
             "model-1",
         ]
+
+    def test_trailing_steps_yield_unanswered_model_event(self) -> None:
+        """Messages after the last planner step ride in an errored ModelEvent."""
+        steps = [
+            _planner(
+                1,
+                ("view_file", {"AbsolutePath": "/x"}),
+                content="Looking.",
+                created_at="2026-08-25T10:00:01Z",
+            ),
+            _result(2, "def foo(): ..."),
+            Step(
+                step_index=3,
+                source="SYSTEM",
+                type="ERROR_MESSAGE",
+                content="Error: interrupted",
+            ),
+            Step(
+                step_index=4,
+                type="USER_INPUT",
+                content="Any update?",
+                created_at="2026-08-25T10:00:05Z",
+            ),
+        ]
+        _, events, _ = _convert(steps)
+        model_events = [e for e in events if isinstance(e, ModelEvent)]
+        assert len(model_events) == 2
+        unanswered = model_events[-1]
+        assert events[-1] is unanswered
+        assert unanswered.pending is None
+        assert unanswered.error == UNANSWERED_MODEL_CALL_ERROR
+        assert unanswered.output.choices == []
+        assert unanswered.completed is None
+        # the context the never-completed call would have received
+        assert [m.role for m in unanswered.input] == [
+            "assistant",
+            "tool",
+            "system",
+            "user",
+        ]
+        assert unanswered.input[-1].text == "Any update?"
+        assert unanswered.timestamp.isoformat() == "2026-08-25T10:00:05+00:00"
+
+    def test_no_unanswered_event_when_planner_step_is_last(self) -> None:
+        """A conversation that ends on a completed model call gets no extra event."""
+        steps = [
+            Step(step_index=0, type="USER_INPUT", content="hi"),
+            _planner(1, content="hello"),
+        ]
+        _, events, _ = _convert(steps)
+        model_events = [e for e in events if isinstance(e, ModelEvent)]
+        assert len(model_events) == 1
+        assert model_events[0].error is None

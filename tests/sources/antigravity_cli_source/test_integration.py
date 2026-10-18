@@ -25,9 +25,20 @@ from inspect_ai.model import (
     ChatMessageSystem,
     ChatMessageTool,
     ChatMessageUser,
+    get_model,
 )
-from inspect_scout._transcript.messages import span_messages
+from inspect_scout import MessagesPreprocessor, Transcript
+from inspect_scout._scanner.extract import message_numbering
+from inspect_scout._transcript.messages import (
+    MessagesSegment,
+    span_messages,
+    transcript_messages,
+)
+from inspect_scout._transcript.timeline import TimelineMessages
 from inspect_scout.sources import antigravity_cli
+from inspect_scout.sources._antigravity_cli.events import (
+    UNANSWERED_MODEL_CALL_ERROR,
+)
 
 from tests.sources.antigravity_cli_source.helpers import (
     generation_blob,
@@ -47,6 +58,24 @@ TOP_LEVEL_IDS = {SIMPLE_ID, COMPACTION_ID, PARENT_ID, TYPED_ID}
 def fixtures_dir() -> Path:
     """Get the fixture data root (mirrors the on-disk Antigravity layout)."""
     return Path(__file__).parent / "fixtures" / "root"
+
+
+async def _scanner_segments(transcript: Transcript) -> list[MessagesSegment]:
+    """transcript_messages() over the transcript, as a scanner would read it.
+
+    System messages are kept (the default preprocessor drops them) so that
+    system-text steps such as errors can be asserted.
+    """
+    messages_as_str, _ = message_numbering(MessagesPreprocessor(exclude_system=False))
+    return [
+        seg
+        async for seg in transcript_messages(
+            transcript,
+            messages_as_str=messages_as_str,
+            model=get_model("mockllm/model"),
+            context_window=10_000,
+        )
+    ]
 
 
 def _agent_spans(events: list[Event]) -> list[SpanBeginEvent]:
@@ -211,7 +240,8 @@ async def test_subagent_inlined_as_agent_span(fixtures_dir: Path) -> None:
     assert span_begins[0].name == "Test researcher"
     assert transcript.metadata["subagent_conversation_ids"] == [CHILD_ID]
 
-    # the child's model events are inlined between the span boundaries
+    # the child's model events are inlined between the span boundaries: two
+    # completed calls plus the unanswered one carrying its trailing steps
     begin_index = transcript.events.index(span_begins[0])
     end_index = next(
         i
@@ -223,7 +253,7 @@ async def test_subagent_inlined_as_agent_span(fixtures_dir: Path) -> None:
         for e in transcript.events[begin_index + 1 : end_index]
         if isinstance(e, ModelEvent)
     ]
-    assert len(inlined) == 2
+    assert [e.error for e in inlined] == [None, None, UNANSWERED_MODEL_CALL_ERROR]
 
     # ...and nest under the span in the event tree (span_id re-parenting),
     # leaving only the parent's own two model calls at the root
@@ -241,9 +271,10 @@ async def test_subagent_inlined_as_agent_span(fixtures_dir: Path) -> None:
 async def test_subagent_steps_after_final_planner_survive(fixtures_dir: Path) -> None:
     """A child's trailing tool result and error reach the timeline.
 
-    They follow the child's last planner step, so no ModelEvent input holds
-    them and the child's own message list is not kept — the tool span and
-    InfoEvent inside the agent span are their only representation.
+    They follow the child's last planner step, so no completed ModelEvent's
+    input holds them and the child's own message list is not kept. The tool
+    span and InfoEvent keep them in the timeline; the unanswered ModelEvent
+    that closes the span keeps them reachable as messages.
     """
     transcripts = [
         t async for t in antigravity_cli(path=fixtures_dir, conversation_id=PARENT_ID)
@@ -273,10 +304,57 @@ async def test_subagent_steps_after_final_planner_survive(fixtures_dir: Path) ->
         "working on."
     )
 
+    # the trailing user turn has no event of its own: it, the tool result,
+    # and the error ride in the unanswered ModelEvent that closes the span
+    unanswered = agent.children[-1]
+    assert isinstance(unanswered, ModelEvent)
+    assert unanswered.error == UNANSWERED_MODEL_CALL_ERROR
+    assert [m.role for m in unanswered.input] == [
+        "user",
+        "assistant",
+        "tool",
+        "tool",
+        "assistant",
+        "tool",
+        "system",
+        "user",
+    ]
+    assert unanswered.input[-1].text == "Any update?"
+
     # the parent's own spawn call is a tool span at the root, before the agent span
     [spawn] = [n for n in tree if isinstance(n, EventTreeSpan) and n.type == "tool"]
     assert spawn.name == "invoke_subagent"
     assert tree.index(spawn) < tree.index(agent)
+
+
+@pytest.mark.asyncio
+async def test_subagent_trailing_steps_reach_scanner_input(fixtures_dir: Path) -> None:
+    """transcript_messages() (what scanners read) includes a child's trailing steps.
+
+    span_messages() reconstructs from the last ModelEvent's input, so without
+    the unanswered event the child's segment would stop at "Report sent.".
+    """
+    transcripts = [
+        t async for t in antigravity_cli(path=fixtures_dir, conversation_id=PARENT_ID)
+    ]
+    segments = await _scanner_segments(transcripts[0])
+    # timeline_build() lower-cases span names
+    [child] = [
+        s
+        for s in segments
+        if isinstance(s, TimelineMessages) and s.span.name == "test researcher"
+    ]
+    assert [m.role for m in child.messages] == [
+        "user",
+        "assistant",
+        "tool",
+        "tool",
+        "assistant",
+        "tool",
+        "system",
+        "user",
+    ]
+    assert child.messages[-1].text == "Any update?"
 
 
 @pytest.mark.asyncio
@@ -656,3 +734,30 @@ async def test_token_counting(fixtures_dir: Path, tmp_path: Path) -> None:
     assert usage.input_tokens_cache_read == 30
     assert usage.output_tokens == 20
     assert usage.total_tokens == 1150
+
+
+@pytest.mark.asyncio
+async def test_top_level_trailing_user_turn_reaches_scanner_input(
+    tmp_path: Path,
+) -> None:
+    """A conversation that ends on a user turn keeps it in scanner input too."""
+    cid = "55555555-0000-0000-0000-000000000005"
+    root = tmp_path / "root"
+    _write_transcript(
+        root,
+        cid,
+        [
+            '{"step_index":0,"source":"USER_EXPLICIT","type":"USER_INPUT",'
+            '"created_at":"2026-08-25T10:00:00Z","content":"hi"}',
+            '{"step_index":1,"source":"MODEL","type":"PLANNER_RESPONSE",'
+            '"created_at":"2026-08-25T10:00:01Z","content":"hello"}',
+            '{"step_index":2,"source":"USER_EXPLICIT","type":"USER_INPUT",'
+            '"created_at":"2026-08-25T10:00:02Z","content":"are you there?"}',
+        ],
+    )
+
+    [transcript] = [t async for t in antigravity_cli(path=root)]
+    assert [m.role for m in transcript.messages] == ["user", "assistant", "user"]
+
+    segments = await _scanner_segments(transcript)
+    assert [m.text for m in segments[-1].messages] == ["hi", "hello", "are you there?"]

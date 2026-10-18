@@ -309,6 +309,41 @@ def to_info_event(step: Step) -> InfoEvent:
     )
 
 
+UNANSWERED_MODEL_CALL_ERROR = (
+    "no response recorded: transcript ends before a model reply"
+)
+
+
+def to_unanswered_model_event(
+    step: Step,
+    prior_messages: list[ChatMessage],
+    model: str,
+) -> ModelEvent:
+    """A `ModelEvent` for input after ``step`` that the transcript never answers.
+
+    A transcript that ends with tool results, system text, or a user turn
+    and no further ``PLANNER_RESPONSE`` stops where the next model call
+    would have been made: an interrupted stream, a cancelled sub-agent, a
+    session still live when read. The event carries that context as its
+    input, no output, and ``error`` set, the shape inspect_ai leaves in a
+    finished log for a call cancelled mid-flight (``pending`` is live-run
+    state, cleared on every completion path). Emitting one keeps the
+    trailing messages reachable through ``ModelEvent.input`` for consumers
+    that reconstruct messages from events (``span_messages()``), which
+    otherwise stop at the last completed call.
+    """
+    return ModelEvent(
+        model=model,
+        input=list(prior_messages),
+        tools=[],
+        tool_choice="auto",
+        config=GenerateConfig(),
+        output=ModelOutput(model=model, metadata={"antigravity_cli_synthesized": True}),
+        error=UNANSWERED_MODEL_CALL_ERROR,
+        timestamp=parse_timestamp(step.created_at) or utcnow(),
+    )
+
+
 def to_compaction_event(step: Step) -> CompactionEvent:
     """Convert a mid-conversation ``CHECKPOINT`` step to a `CompactionEvent`.
 

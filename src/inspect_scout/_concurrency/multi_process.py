@@ -48,11 +48,13 @@ from ._mp_common import (
     SemaphoreRequest,
     ShutdownSentinel,
     WorkerComplete,
+    WorkerError,
     WorkerReady,
     get_log_level,
     get_plugin_directory,
     run_sync_on_thread,
 )
+from ._mp_error import WorkerProcessError
 from ._mp_logging import find_inspect_log_handler
 from ._mp_registry import ParentSemaphoreRegistry
 from ._mp_shutdown import shutdown_subprocesses
@@ -318,8 +320,8 @@ def multi_process_strategy(
                                 f"Worker finished ({workers_finished}/{max_processes})",
                             )
 
-                        case Exception():
-                            raise item
+                        case WorkerError():
+                            raise WorkerProcessError(item)
 
                 print_diagnostics("MP Collector", "Finished collecting all items")
 

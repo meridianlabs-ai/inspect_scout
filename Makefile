@@ -7,6 +7,10 @@ ruff:
 mypy:
 	mypy src examples tests
 
+.PHONY: carveouts
+carveouts:
+	python3 scripts/check_config_carveouts.py
+
 .PHONY: suppressions-check
 suppressions-check:
 	python3 scripts/check_suppressions.py
@@ -16,7 +20,7 @@ suppressions-update:
 	python3 scripts/check_suppressions.py --update
 
 .PHONY: check
-check: ruff mypy suppressions-check
+check: ruff mypy carveouts suppressions-check
 
 .PHONY: test
 test:

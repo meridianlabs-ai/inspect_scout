@@ -11,11 +11,11 @@ from datetime import datetime, timezone
 from logging import getLogger
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, AsyncIterator, Iterable
+from typing import TYPE_CHECKING, Any, AsyncIterator, Iterable, Sequence
 
 import anyio.to_thread
-from inspect_ai.event import ModelEvent
-from inspect_ai.model import stable_message_ids
+from inspect_ai.event import Event, ModelEvent
+from inspect_ai.model import ChatMessage, stable_message_ids
 
 from .client import (
     OPENCLAW_TELEMETRY_HAL_SOURCE_TYPE,
@@ -116,14 +116,7 @@ def _create_transcript(
 
     events, messages = build_content(parse)
 
-    # Apply stable message IDs across model events and the message thread.
-    # PERF (O(n²), ~434s — the dominant chunk of the ~10min 1.14GB CRUX1 import):
-    # each ModelEvent re-hashes every message in its growing input.
-    apply_ids = stable_message_ids()
-    for event in events:
-        if isinstance(event, ModelEvent):
-            apply_ids(event)
-    apply_ids(messages)
+    _apply_message_ids(events, messages)
 
     # Timing spans the conversation (user prompts + orchestrator turns).
     timestamps = sorted(
@@ -196,3 +189,33 @@ def _create_transcript(
         events=events,
         metadata=metadata,
     )
+
+
+def _apply_message_ids(
+    events: Sequence[Event], messages: Sequence[ChatMessage]
+) -> None:
+    """Assign stable message ids to the thread and every ``ModelEvent``, once each.
+
+    ``build_content`` threads one growing conversation per lane and every
+    ``ModelEvent.input`` is a snapshot of it (``list(conversation)``), so the
+    message objects are shared rather than copied: an orchestrator event's
+    input and output messages all live in ``messages``, and a sub-agent lane's
+    events form a prefix chain whose last event holds every message of the
+    lane. Applying ids to ``messages`` once and to each lane's last event
+    therefore reaches every message. Applying them per event instead re-hashes
+    the whole conversation for every turn — O(n²) in turns: ~434s of the ~10
+    minute import of the 1.14GB CRUX1 capture; a 100MB, 7,265-turn capture
+    went from ~295s to ~39s end to end once this pass became linear.
+
+    There is no per-event fallback pass: messages carry ids from
+    construction, so an id-is-None check cannot detect a message the
+    stable-id passes missed - the object sharing above is the contract.
+    """
+    apply_ids = stable_message_ids()
+    apply_ids(messages)
+    last_in_lane: dict[str, ModelEvent] = {}
+    for event in events:
+        if isinstance(event, ModelEvent) and event.span_id:
+            last_in_lane[event.span_id] = event
+    for event in last_in_lane.values():
+        apply_ids(event)

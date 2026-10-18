@@ -80,6 +80,7 @@ async def test_default_template_marks_prefix_block_for_anthropic_cache() -> None
         input=[user_msg],
         tools=[],
         config=GenerateConfig(cache_prompt=True),
+        cache_ttl=None,
     )
 
     assert cache_prompt is True
@@ -114,10 +115,16 @@ async def test_two_scanners_produce_byte_identical_prefix_block() -> None:
     )
 
     (_s, _t, _m, params_a, _c) = await api.resolve_chat_input(
-        input=[msg_a], tools=[], config=GenerateConfig(cache_prompt=True)
+        input=[msg_a],
+        tools=[],
+        config=GenerateConfig(cache_prompt=True),
+        cache_ttl=None,
     )
     (_s2, _t2, _m2, params_b, _c2) = await api.resolve_chat_input(
-        input=[msg_b], tools=[], config=GenerateConfig(cache_prompt=True)
+        input=[msg_b],
+        tools=[],
+        config=GenerateConfig(cache_prompt=True),
+        cache_ttl=None,
     )
 
     content_a = params_a[0]["content"]
@@ -153,6 +160,7 @@ async def test_cache_prompt_false_disables_marker() -> None:
         input=[user_msg],
         tools=[],
         config=GenerateConfig(cache_prompt=False),
+        cache_ttl=None,
     )
 
     assert cache_prompt is False

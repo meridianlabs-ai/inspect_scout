@@ -1,4 +1,5 @@
 import inspect
+from functools import partial
 from typing import (
     Any,
     AsyncIterator,
@@ -12,11 +13,27 @@ from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
 from typing_extensions import Literal
 
+from .._transcript.handle import is_transcript_handle_type
 from .._transcript.types import Transcript, TranscriptContent
 from .._transcript.util import filter_list, filter_timelines, filter_transcript
 from .._util.type_hints import is_union_type
 from .loader import Loader, loader
 from .types import ScannerInput
+
+
+def _matches_transcript_or_handle(type_annotation: Any) -> bool:
+    """Whether an annotation is a union of ``Transcript`` and TranscriptHandle types.
+
+    Such a scanner uses the identity loader.
+    """
+    if not is_union_type(type_annotation):
+        return False
+    args = get_args(type_annotation)
+    has_transcript = any(arg is Transcript for arg in args)
+    others_are_handles = all(
+        arg is Transcript or is_transcript_handle_type(arg) for arg in args
+    )
+    return has_transcript and others_are_handles
 
 
 def _IdentityLoader(
@@ -112,11 +129,28 @@ def create_implicit_loader(
     Returns:
         Appropriate loader for the scanner's input type.
     """
-    # Get the first parameter's annotation
+    # Resolve only the annotation that selects the loader. Resolving the full
+    # signature can fail on an unrelated return annotation.
     input_annotation = next(
         iter(inspect.signature(scanner_fn).parameters.values())
     ).annotation
-    if input_annotation is inspect.Parameter.empty or input_annotation == Transcript:
+    if isinstance(input_annotation, str):
+        annotation_source = inspect.unwrap(scanner_fn)
+        while isinstance(annotation_source, partial):
+            annotation_source = inspect.unwrap(annotation_source.func)
+        if not (
+            inspect.isfunction(annotation_source) or inspect.ismethod(annotation_source)
+        ):
+            annotation_source = inspect.unwrap(annotation_source.__call__)
+        input_annotation = eval(input_annotation, annotation_source.__globals__)
+    # A `Transcript | TranscriptHandle` union also takes the identity loader:
+    # a materialized Transcript flows through it, while a handle bypasses the
+    # loader entirely (the pipeline passes it straight to the scanner).
+    if (
+        input_annotation is inspect.Parameter.empty
+        or input_annotation == Transcript
+        or _matches_transcript_or_handle(input_annotation)
+    ):
         return _IdentityLoader(content)
 
     # Check if it's a list type

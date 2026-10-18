@@ -74,6 +74,7 @@ LoaderFactory = Callable[P, Loader[TLoaderResult]]
 def loader(
     *,
     name: str | None = None,
+    metadata: bool | None = None,
     messages: Literal["all"],
     events: None = None,
     content: None = None,
@@ -87,6 +88,7 @@ def loader(
 def loader(
     *,
     name: str | None = None,
+    metadata: bool | None = None,
     messages: list[MessageType],
     events: None = None,
     content: None = None,
@@ -100,6 +102,7 @@ def loader(
 def loader(
     *,
     name: str | None = None,
+    metadata: bool | None = None,
     messages: None = None,
     events: Literal["all"] = ...,
     content: None = None,
@@ -113,6 +116,7 @@ def loader(
 def loader(
     *,
     name: str | None = None,
+    metadata: bool | None = None,
     messages: None = None,
     events: list[EventType] = ...,
     content: None = None,
@@ -126,6 +130,7 @@ def loader(
 def loader(
     *,
     name: str | None = None,
+    metadata: bool | None = None,
     messages: list[MessageType] | Literal["all"],
     events: list[EventType] | Literal["all"],
     content: None = None,
@@ -139,6 +144,7 @@ def loader(
 def loader(
     *,
     name: str | None = None,
+    metadata: bool | None = None,
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
     content: TranscriptContent,
@@ -151,6 +157,7 @@ def loader(
 def loader(
     *,
     name: str | None = None,
+    metadata: bool | None = None,
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
     timeline: Literal[True] | list[EventType] | Literal["all"] | None = None,
@@ -163,6 +170,8 @@ def loader(
        messages: Message types to load from.
        events: Event types to load from.
        timeline: Event types to include in timelines.
+       metadata: Whether to read the sample's metadata, target and scores from
+           the log body (default). False keeps the log's summary values.
        content: Transcript content filter.
 
     Returns:
@@ -179,11 +188,15 @@ def loader(
             timeline=(
                 normalize_timeline_filter(timeline) if timeline is not None else None
             ),
+            metadata=metadata,
         )
     else:
-        assert messages is None and events is None and timeline is None, (
-            "Don't pass messages, events, or timeline if you pass content"
-        )
+        assert (
+            messages is None
+            and events is None
+            and timeline is None
+            and metadata is None
+        ), "Don't pass messages, events, timeline, or metadata if you pass content"
 
     def decorate(
         factory: LoaderFactory[P, TLoaderResult],

@@ -1,6 +1,7 @@
 """Base provider infrastructure for LLM call capture."""
 
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Literal,
@@ -10,6 +11,15 @@ from typing import (
 )
 
 from inspect_ai.event import Event
+from wrapt import ObjectProxy
+
+# wrapt's stubs (shipped since 2.2.0) make ObjectProxy generic, but subscripting
+# it at runtime raises TypeError on the older wrapt versions this package still
+# supports, so only the type checker sees the parameterized base.
+if TYPE_CHECKING:
+    ObjectProxyBase = ObjectProxy[Any]
+else:
+    ObjectProxyBase = ObjectProxy
 
 # Valid built-in provider names
 ObserveProviderName = Literal["inspect", "openai", "anthropic", "google"]

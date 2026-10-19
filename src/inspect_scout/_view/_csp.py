@@ -46,8 +46,7 @@ def read_content_security_policy(
     Args:
         dist_dir: Local directory containing the built viewer (`index.html`).
         extra_script_sources: `script-src` sources for inline scripts the
-            server adds to `index.html` (see `inline_script_source`), placed
-            after the directive's first source.
+            server adds to `index.html` (see `inline_script_source`).
 
     Returns:
         The policy string (directives in file order, each name followed by
@@ -104,7 +103,7 @@ def _policy_string(data: Any, extra_script_sources: tuple[str, ...]) -> str:
         for source in sources:
             _validate_token(source, f"source in directive {name!r}")
         if folded == "script-src":
-            sources = [*sources[:1], *extra_script_sources, *sources[1:]]
+            sources = [*sources, *extra_script_sources]
 
         parts.append(" ".join([name, *sources]))
 
@@ -143,9 +142,14 @@ class SecurityHeadersMiddleware:
     The viewer's own policy is added to every other response too, not just
     `index.html`: a worker script takes its policy from its own response
     headers. Mounted apps such as the JSON API (whose docs pages load scripts
-    from a CDN) are exempt and keep only `frame-ancestors`; that holds for
-    every path under `{mount}/` as long as they are mounted before the static
-    mount.
+    from a CDN) are exempt and keep only `frame-ancestors`.
+
+    Exemptions are matched before routing, so they must cover only paths the
+    router sends to the exempt app. Exempt exactly the mount path: a broader
+    prefix (`/api` for an app mounted at `/api/v2`) also exempts paths such
+    as `/api/..%2f/` that reach the static mount, which resolves the `..`. A
+    mounted app is exempt for every path under `{mount}/`, which holds as
+    long as it is mounted before the static mount.
 
     Args:
         app: The ASGI app to wrap.

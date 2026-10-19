@@ -10,7 +10,7 @@ from inspect_scout._view._csp import (
     inline_script_source,
     read_content_security_policy,
 )
-from inspect_scout._view.server import _view_app
+from inspect_scout._view.server import _ScoutStaticFiles, _view_app
 
 _INDEX_SCRIPT = "window.theme = 1;"
 _DIRECTIVES = {
@@ -77,6 +77,36 @@ def test_the_api_only_forbids_framing(tmp_path: Path) -> None:
     assert response.headers["x-frame-options"] == "DENY"
 
 
+# The policy is chosen before routing, and the static mount resolves `..`.
+@pytest.mark.parametrize("path", ["/api/..%2f/", "/api/..%2findex.html", "/api"])
+def test_api_lookalike_paths_that_reach_the_viewer_get_its_policy(
+    tmp_path: Path, path: str
+) -> None:
+    response = _client(tmp_path).get(path)
+
+    assert response.headers["content-security-policy"] == (
+        f"{_POLICY}; frame-ancestors 'none'"
+    )
+
+
+def test_a_server_error_outside_the_api_still_forbids_framing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fail(*_: object) -> None:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(_ScoutStaticFiles, "get_response", fail)
+    app = _view_app(_api(), _dist(tmp_path), "")
+
+    response = TestClient(app, raise_server_exceptions=False).get("/")
+
+    assert response.status_code == 500
+    assert response.headers["content-security-policy"] == (
+        f"{_POLICY}; frame-ancestors 'none'"
+    )
+    assert response.headers["x-frame-options"] == "DENY"
+
+
 def test_a_dist_without_a_policy_only_forbids_framing(tmp_path: Path) -> None:
     response = _client(tmp_path, directives=None).get("/")
 
@@ -119,10 +149,15 @@ def test_a_malformed_policy_fails_the_server_at_startup(tmp_path: Path) -> None:
     [
         ("not json", "Invalid viewer"),
         ('{"version": 2, "directives": {"a": []}}', "unsupported version"),
+        ('{"version": true, "directives": {"a": []}}', "unsupported version"),
         ('{"version": 1, "directives": {}}', "non-empty object"),
         (
             '{"version": 1, "directives": {"a": [], "a": []}}',
             "duplicate key",
+        ),
+        (
+            '{"version": 1, "directives": {"img-src": [], "IMG-SRC": []}}',
+            "duplicate directive",
         ),
         (
             '{"version": 1, "directives": {"frame-ancestors": ["\'none\'"]}}',
@@ -130,6 +165,7 @@ def test_a_malformed_policy_fails_the_server_at_startup(tmp_path: Path) -> None:
         ),
         ('{"version": 1, "directives": {"img-src": ["a b"]}}', "disallowed"),
         ('{"version": 1, "directives": {"img-src": ["a;b"]}}', "disallowed"),
+        ('{"version": 1, "directives": {"img-src": ["a,b"]}}', "disallowed"),
         ('{"version": 1, "directives": {"img-src": "a"}}', "list of sources"),
     ],
 )

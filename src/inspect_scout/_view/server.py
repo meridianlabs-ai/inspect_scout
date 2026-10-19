@@ -13,7 +13,7 @@ from inspect_ai._util.event_loop_monitor import event_loop_monitor
 from inspect_ai._util.file import filesystem
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import HTMLResponse
-from starlette.types import Scope
+from starlette.types import ASGIApp, Scope
 
 from inspect_scout._util.appdirs import scout_cache_dir
 from inspect_scout._util.constants import (
@@ -159,7 +159,7 @@ def view_server(
     anyio.run(run_server)
 
 
-def _view_app(v2_api: FastAPI, directory: Path, root_path: str) -> FastAPI:
+def _view_app(v2_api: FastAPI, directory: Path, root_path: str) -> ASGIApp:
     """The view server's app: the API under `/api/v2` and the viewer at `/`.
 
     The viewer's files are served with the dist's Content-Security-Policy,
@@ -205,12 +205,13 @@ def _view_app(v2_api: FastAPI, directory: Path, root_path: str) -> FastAPI:
         name="static",
     )
 
-    app.add_middleware(
-        SecurityHeadersMiddleware,
+    # Wraps the whole app so responses from FastAPI's error handler get the
+    # headers too.
+    return SecurityHeadersMiddleware(
+        app,
         content_security_policy=content_security_policy,
-        viewer_policy_exempt_mounts=("/api",),
+        viewer_policy_exempt_mounts=("/api/v2",),
     )
-    return app
 
 
 def view_url(host: str, port: int, mode: Literal["default", "scans"]) -> str:

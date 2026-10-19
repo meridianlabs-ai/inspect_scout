@@ -25,7 +25,6 @@ from inspect_scout._util.constants import (
 from inspect_scout._view.network import (
     BrowserOriginMiddleware,
     HostValidationMiddleware,
-    SecurityHeadersMiddleware,
     ViewerNetworkPolicy,
     resolve_viewer_network_policy,
     unsafe_network_warning,
@@ -35,12 +34,24 @@ from inspect_scout._view.types import ViewConfig
 
 from .._display._display import display
 from ._api_v2 import v2_api_app
+from ._csp import (
+    SecurityHeadersMiddleware,
+    inline_script_source,
+    read_content_security_policy,
+)
 
 _IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
 _DIST_DIR = Path(__file__).parent / "dist"
 _REPO_URL = "https://github.com/meridianlabs-ai/inspect_scout.git"
 
 logger = logging.getLogger(__name__)
+
+
+def _base_path_script(root_path: str) -> str:
+    """The inline script that tells the frontend its base path behind a proxy."""
+    return (
+        f"window.__SCOUT_BASE_PATH__={root_path!r};window.__SCOUT_DISABLE_SSE__=true;"
+    )
 
 
 class _ScoutStaticFiles(StaticFiles):
@@ -62,12 +73,7 @@ class _ScoutStaticFiles(StaticFiles):
         if root_path:
             index_path = Path(str(self.directory)) / "index.html"
             html = index_path.read_text()
-            script = (
-                "<script>"
-                f"window.__SCOUT_BASE_PATH__={root_path!r};"
-                "window.__SCOUT_DISABLE_SSE__=true;"
-                "</script>"
-            )
+            script = f"<script>{_base_path_script(root_path)}</script>"
             self._index_html_override = html.replace("</head>", f"{script}</head>", 1)
 
     def file_response(
@@ -192,7 +198,33 @@ def standalone_view_app(
 ) -> ASGIApp:
     root_path = _normalize_root_path(root_path)
     directory = directory or _resolve_dist_directory()
-    v2_api = v2_api_app(view_config=view_config, dist_path=directory)
+    return _view_app(
+        v2_api_app(view_config=view_config, dist_path=directory),
+        directory,
+        root_path,
+        network_policy,
+    )
+
+
+def _view_app(
+    v2_api: FastAPI,
+    directory: Path,
+    root_path: str,
+    network_policy: ViewerNetworkPolicy,
+) -> ASGIApp:
+    """The view server's app: the API under `/api/v2` and the viewer at `/`.
+
+    The viewer's files are served with the dist's Content-Security-Policy,
+    which also allows the base-path script the server injects behind a proxy.
+    Every response forbids framing.
+    """
+    content_security_policy = read_content_security_policy(
+        directory,
+        extra_script_sources=(
+            (inline_script_source(_base_path_script(root_path)),) if root_path else ()
+        ),
+    )
+
     app = FastAPI(lifespan=notify_lifespan)
 
     if os.getenv("SCOUT_VIEW_EVENT_LOOP_MONITOR", "false").lower() in (
@@ -232,7 +264,13 @@ def standalone_view_app(
         )
 
     protected_app: ASGIApp = HostValidationMiddleware(app, network_policy)
-    return SecurityHeadersMiddleware(protected_app)
+    # Wraps the whole app so responses from FastAPI's error handler and the
+    # host check get the headers too.
+    return SecurityHeadersMiddleware(
+        protected_app,
+        content_security_policy=content_security_policy,
+        viewer_policy_exempt_mounts=("/api/v2",),
+    )
 
 
 def view_url(host: str, port: int, mode: Literal["default", "scans"]) -> str:

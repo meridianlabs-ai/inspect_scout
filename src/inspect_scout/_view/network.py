@@ -5,9 +5,8 @@ import re
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
-from starlette.datastructures import MutableHeaders
 from starlette.responses import PlainTextResponse
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 _DNS_LABEL = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 _VALIDATED_HOST_SCOPE_KEY = "inspect_scout.viewer_authority"
@@ -226,25 +225,6 @@ class BrowserOriginMiddleware:
             return
 
         await self.app(scope, receive, send)
-
-
-class SecurityHeadersMiddleware:
-    def __init__(self, app: ASGIApp) -> None:
-        self.app = app
-
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http":
-            await self.app(scope, receive, send)
-            return
-
-        async def send_with_security_headers(message: Message) -> None:
-            if message["type"] == "http.response.start":
-                headers = MutableHeaders(scope=message)
-                headers.append("Content-Security-Policy", "frame-ancestors 'none'")
-                headers["X-Frame-Options"] = "DENY"
-            await send(message)
-
-        await self.app(scope, receive, send_with_security_headers)
 
 
 def _absolute_root_path_origin(root_path: str) -> str | None:

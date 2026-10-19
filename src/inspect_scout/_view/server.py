@@ -14,7 +14,7 @@ from inspect_ai._util.event_loop_monitor import event_loop_monitor
 from inspect_ai._util.file import filesystem
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import HTMLResponse
-from starlette.types import Scope
+from starlette.types import ASGIApp, Scope
 
 from inspect_scout._util.appdirs import scout_cache_dir
 from inspect_scout._util.constants import (
@@ -27,10 +27,22 @@ from inspect_scout._view.types import ViewConfig
 
 from .._display._display import display
 from ._api_v2 import v2_api_app
+from ._csp import (
+    SecurityHeadersMiddleware,
+    inline_script_source,
+    read_content_security_policy,
+)
 
 _IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
 _DIST_DIR = Path(__file__).parent / "dist"
 _REPO_URL = "https://github.com/meridianlabs-ai/inspect_scout.git"
+
+
+def _base_path_script(root_path: str) -> str:
+    """The inline script that tells the frontend its base path behind a proxy."""
+    return (
+        f"window.__SCOUT_BASE_PATH__={root_path!r};window.__SCOUT_DISABLE_SSE__=true;"
+    )
 
 
 class _ScoutStaticFiles(StaticFiles):
@@ -52,12 +64,7 @@ class _ScoutStaticFiles(StaticFiles):
         if root_path:
             index_path = Path(str(self.directory)) / "index.html"
             html = index_path.read_text()
-            script = (
-                "<script>"
-                f"window.__SCOUT_BASE_PATH__={root_path!r};"
-                "window.__SCOUT_DISABLE_SSE__=true;"
-                "</script>"
-            )
+            script = f"<script>{_base_path_script(root_path)}</script>"
             self._index_html_override = html.replace("</head>", f"{script}</head>", 1)
 
     def file_response(
@@ -126,6 +133,47 @@ def view_server(
     if authorization:
         v2_api.add_middleware(AuthorizationMiddleware, authorization=authorization)
 
+    app = _view_app(v2_api, directory, root_path)
+
+    # run app
+    display().print("Scout View")
+
+    async def run_server() -> None:
+        config = uvicorn.Config(
+            app, host=host, port=port, root_path=root_path, log_config=None
+        )
+        server = uvicorn.Server(config)
+
+        async def announce_when_ready() -> None:
+            while not server.started:
+                await anyio.sleep(0.05)
+            # Print this for compatibility with the Inspect VSCode plugin:
+            url = view_url(host, port, mode)
+            display().print(
+                f"======== Running on {url} ========\n(Press CTRL+C to quit)"
+            )
+
+        async with anyio.create_task_group() as tg:
+            tg.start_soon(announce_when_ready)
+            await server.serve()
+
+    anyio.run(run_server)
+
+
+def _view_app(v2_api: FastAPI, directory: Path, root_path: str) -> ASGIApp:
+    """The view server's app: the API under `/api/v2` and the viewer at `/`.
+
+    The viewer's files are served with the dist's Content-Security-Policy,
+    which also allows the base-path script the server injects behind a proxy.
+    Every response forbids framing.
+    """
+    content_security_policy = read_content_security_policy(
+        directory,
+        extra_script_sources=(
+            (inline_script_source(_base_path_script(root_path)),) if root_path else ()
+        ),
+    )
+
     app = FastAPI(lifespan=notify_lifespan)
 
     if os.getenv("SCOUT_VIEW_EVENT_LOOP_MONITOR", "false").lower() in (
@@ -158,29 +206,13 @@ def view_server(
         name="static",
     )
 
-    # run app
-    display().print("Scout View")
-
-    async def run_server() -> None:
-        config = uvicorn.Config(
-            app, host=host, port=port, root_path=root_path, log_config=None
-        )
-        server = uvicorn.Server(config)
-
-        async def announce_when_ready() -> None:
-            while not server.started:
-                await anyio.sleep(0.05)
-            # Print this for compatibility with the Inspect VSCode plugin:
-            url = view_url(host, port, mode)
-            display().print(
-                f"======== Running on {url} ========\n(Press CTRL+C to quit)"
-            )
-
-        async with anyio.create_task_group() as tg:
-            tg.start_soon(announce_when_ready)
-            await server.serve()
-
-    anyio.run(run_server)
+    # Wraps the whole app so responses from FastAPI's error handler get the
+    # headers too.
+    return SecurityHeadersMiddleware(
+        app,
+        content_security_policy=content_security_policy,
+        viewer_policy_exempt_mounts=("/api/v2",),
+    )
 
 
 def view_url(host: str, port: int, mode: Literal["default", "scans"]) -> str:

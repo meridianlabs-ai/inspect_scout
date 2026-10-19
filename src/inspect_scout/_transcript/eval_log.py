@@ -11,6 +11,7 @@ from types import TracebackType
 from typing import (
     Any,
     AsyncIterator,
+    Callable,
     Final,
     Sequence,
     TypeAlias,
@@ -74,7 +75,7 @@ from .handle import (
 from .json.load_filtered import load_filtered_transcript
 from .json.stream_parse import StreamParseResult, stream_parse_to_spool
 from .local_files_cache import init_task_files_cache
-from .transcripts import TranscriptsReader
+from .transcripts import TranscriptsReader, UnreadableSource
 from .types import (
     BytesContextManager,
     Transcript,
@@ -220,6 +221,10 @@ class EvalLogTranscriptsReader(TranscriptsReader):
             transcript_ids=transcript_ids,
         )
 
+    @override
+    def unreadable(self) -> list[UnreadableSource]:
+        return self._db.unreadable
+
 
 def _logs_df_from_snapshot(snapshot: ScanTranscripts) -> "pd.DataFrame":
     import pandas as pd
@@ -279,6 +284,9 @@ class EvalLogTranscriptsView(TranscriptsView):
         self._conn: sqlite3.Connection | None = None
         self._columns: set[str] = set()
 
+        # logs skipped by connect() because they could not be read
+        self.unreadable: list[UnreadableSource] = []
+
         # True when the input has no samples (zero-column DataFrame).
         # Query methods return empty results without touching SQLite.
         self._is_empty: bool = False
@@ -301,7 +309,8 @@ class EvalLogTranscriptsView(TranscriptsView):
             if isinstance(self._logs_input, pd.DataFrame):
                 df = self._logs_input
             else:
-                df = _index_logs(self._logs_input)
+                self.unreadable = []
+                df = _index_logs(self._logs_input, self._skip_unreadable)
 
             # Guard: zero-column DataFrames produce invalid SQL
             # (e.g. eval logs with no samples). Set the empty flag and
@@ -311,7 +320,9 @@ class EvalLogTranscriptsView(TranscriptsView):
                 self._conn = sqlite3.connect(":memory:")
                 return
 
-            if self._cache_key:
+            # don't share a partial index: the next connect retries the
+            # unreadable logs (readable ones are still cached per file)
+            if self._cache_key and not self.unreadable:
                 self._conn = sqlite3.connect(
                     f"file:{self._cache_key}?mode=memory&cache=shared", uri=True
                 )
@@ -331,6 +342,12 @@ class EvalLogTranscriptsView(TranscriptsView):
                 "SELECT name FROM pragma_table_info(?)", [TRANSCRIPTS]
             ).fetchall()
         }
+
+    def _skip_unreadable(self, path: str, error: Exception) -> None:
+        logger.warning(f"Skipping unreadable eval log {path}: {error}")
+        # same form as the source_uri of indexed transcripts (no file://)
+        uri = path.removeprefix("file://")
+        self.unreadable.append(UnreadableSource(uri=uri, error=error))
 
     @override
     async def select(self, query: Query | None = None) -> AsyncIterator[TranscriptInfo]:
@@ -778,7 +795,9 @@ def transcripts_from_logs(logs: Logs) -> Transcripts:
     return EvalLogTranscripts(logs)
 
 
-def _index_logs(logs: Logs) -> pd.DataFrame:
+def _index_logs(
+    logs: Logs, on_error: Callable[[str, Exception], None] | None = None
+) -> pd.DataFrame:
     """Index eval logs into a DataFrame with two-level caching.
 
     Caching: Per-file DataFrames are cached via samples_df_with_caching (L1 cache).
@@ -786,6 +805,9 @@ def _index_logs(logs: Logs) -> pd.DataFrame:
 
     Args:
         logs: Paths to eval log files or directories
+        on_error: Called with the path and exception of each log that
+            cannot be read, which is then skipped (without it the first
+            unreadable log raises)
 
     Returns:
         DataFrame with one row per sample from all logs
@@ -800,7 +822,7 @@ def _index_logs(logs: Logs) -> pd.DataFrame:
             progress.update(path)
             return df
 
-        return samples_df_with_caching(read_samples, logs)
+        return samples_df_with_caching(read_samples, logs, on_error=on_error)
 
 
 def _read_samples(paths: list[str]) -> pd.DataFrame:

@@ -1,7 +1,7 @@
 import abc
 from copy import deepcopy
 from types import TracebackType
-from typing import AsyncIterator, Literal, Mapping
+from typing import AsyncIterator, Literal, Mapping, NamedTuple
 
 from .._query import Query
 from .._query.condition import Condition
@@ -12,6 +12,16 @@ from .._validation.types import ValidationCase, ValidationSet
 from .columns import Column
 from .handle import MaterializedTranscriptHandle, TranscriptHandle
 from .types import Transcript, TranscriptContent, TranscriptInfo
+
+
+class UnreadableSource(NamedTuple):
+    """A transcript source that was skipped because it could not be read."""
+
+    uri: str
+    """Source location (e.g. eval log path)."""
+
+    error: Exception
+    """Why the source could not be read."""
 
 
 class TranscriptsReader(abc.ABC):
@@ -71,6 +81,14 @@ class TranscriptsReader(abc.ABC):
 
     @abc.abstractmethod
     async def snapshot(self) -> ScanTranscripts: ...
+
+    def unreadable(self) -> list[UnreadableSource]:
+        """Sources skipped when indexing because they could not be read.
+
+        The default reports none; backends that skip unreadable sources
+        (e.g. a truncated eval log) override this so a scan can record them.
+        """
+        return []
 
 
 class Transcripts(abc.ABC):

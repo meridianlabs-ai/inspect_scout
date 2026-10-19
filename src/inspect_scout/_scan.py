@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from logging import getLogger
 from pathlib import Path
 from typing import Any, AsyncIterator, Awaitable, Callable, Mapping, Sequence, cast
+from uuid import NAMESPACE_URL, uuid5
 
 import anyio
 import yaml
@@ -590,6 +591,25 @@ async def _scan_async_inner(
             scanner_names_list = list(scan.scanners.keys())
             if not scanner_names_list:
                 raise PrerequisiteError("No scanners provided")
+
+            # a source that could not be indexed (e.g. a truncated eval log)
+            # is reported like a transcript that failed to parse
+            for source in tr.unreadable():
+                info = TranscriptInfo(
+                    transcript_id=str(uuid5(NAMESPACE_URL, source.uri)),
+                    source_type=snapshot.type,
+                    source_uri=source.uri,
+                )
+                error = RuntimeError(f"Unable to read {source.uri}: {source.error}")
+                error.__cause__ = source.error
+                for idx, name in enumerate(scanner_names_list):
+                    if await recorder.is_recorded(info.transcript_id, name):
+                        continue
+                    reports = _reports_for_parse_error(
+                        ParseJob(info, {idx}), error, scanner_names_list
+                    )
+                    await recorder.record(info, name, reports, None)
+
             total_scans = 0
             skipped_scans = 0
             for transcript_id in snapshot.transcript_ids.keys():
@@ -603,6 +623,11 @@ async def _scan_async_inner(
                 total_scans = sum(len(work.transcripts) for work in scan.worklist)
 
             if total_scans == 0:
+                if unreadable := tr.unreadable():
+                    raise PrerequisiteError(
+                        "No readable transcripts; unable to read: "
+                        + ", ".join(source.uri for source in unreadable)
+                    )
                 raise PrerequisiteError("No transcripts")
 
             # start scan
@@ -1438,7 +1463,7 @@ def _reports_for_parse_error(
                 transcript_id=job.transcript_info.transcript_id,
                 scanner=scanner_names[idx],
                 error=str(exception),
-                traceback=traceback.format_exc(),
+                traceback="".join(traceback.format_exception(exception)),
                 refusal=False,
             ),
             events=[],

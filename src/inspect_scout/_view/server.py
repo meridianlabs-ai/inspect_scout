@@ -1,5 +1,6 @@
 import logging
 import os
+import secrets
 from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlparse
@@ -197,7 +198,9 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         auth_header = request.headers.get("authorization", None)
-        if auth_header != self.authorization:
+        if auth_header is None or not secrets.compare_digest(
+            auth_header.encode(), self.authorization.encode()
+        ):
             return Response("Unauthorized", status_code=401)
         return await call_next(request)
 

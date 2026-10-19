@@ -18,7 +18,9 @@ def test_view_network_options_are_forwarded(
         captured.update(kwargs)
 
     monkeypatch.setattr(view_cli, "view", fake_view)
-    monkeypatch.setattr(view_cli, "process_common_options", lambda _options: None)
+    monkeypatch.setattr(
+        view_cli, "process_common_options", lambda *_args, **_kwargs: None
+    )
     monkeypatch.setattr(view_cli, "resolve_view_authorization", lambda: None)
 
     result = CliRunner().invoke(
@@ -56,7 +58,9 @@ def test_view_authorization_is_forwarded(
         captured.update(kwargs)
 
     monkeypatch.setattr(view_cli, "view", fake_view)
-    monkeypatch.setattr(view_cli, "process_common_options", lambda _options: None)
+    monkeypatch.setattr(
+        view_cli, "process_common_options", lambda *_args, **_kwargs: None
+    )
     monkeypatch.setattr(view_cli, "resolve_view_authorization", lambda: "secret")
 
     result = CliRunner().invoke(
@@ -76,7 +80,9 @@ def test_view_policy_errors_are_usage_errors(
         raise ViewerNetworkPolicyError("unsafe viewer configuration")
 
     monkeypatch.setattr(view_cli, "view", fake_view)
-    monkeypatch.setattr(view_cli, "process_common_options", lambda _options: None)
+    monkeypatch.setattr(
+        view_cli, "process_common_options", lambda *_args, **_kwargs: None
+    )
     monkeypatch.setattr(view_cli, "resolve_view_authorization", lambda: None)
 
     result = CliRunner().invoke(

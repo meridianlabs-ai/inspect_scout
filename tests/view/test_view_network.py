@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
-from httpx import Response
+from httpx2 import Response
 from inspect_scout._view.network import (
     Authority,
     Origin,
@@ -485,10 +485,11 @@ def test_unsafe_bind_is_rejected_before_port_acquisition(
 
 def test_existing_view_positional_parameter_order_is_preserved() -> None:
     view_module = importlib.import_module("inspect_scout._view.view")
-    assert list(inspect.signature(view_module.view).parameters)[:11] == [
+    assert list(inspect.signature(view_module.view).parameters)[:12] == [
         "project_dir",
         "transcripts",
         "scans",
+        "trust_content",
         "mode",
         "host",
         "port",

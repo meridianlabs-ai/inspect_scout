@@ -38,6 +38,7 @@ A factory function `message_numbering()` returns a pair of functions — a `mess
 MessagesAsStr: TypeAlias = Callable[[list[ChatMessage]], Awaitable[str]]
 ExtractReferences: TypeAlias = Callable[[str], list[Reference]]
 
+
 def message_numbering(
     preprocessor: MessagesPreprocessor | None = None,
 ) -> tuple[MessagesAsStr, ExtractReferences]:
@@ -256,9 +257,10 @@ async def chunked_messages(
 @dataclass(frozen=True)
 class RenderedMessages:
     """A chunk of messages, pre-rendered and sized to fit a context window."""
+
     messages: list[ChatMessage]
-    text: str              # pre-rendered string from messages_as_str
-    segment: int           # 0-based segment index
+    text: str  # pre-rendered string from messages_as_str
+    segment: int  # 0-based segment index
 ```
 
 Segments result from either compaction boundaries (when given events) or context window chunking — `RenderedMessages` does not distinguish the cause. The `segment` index is 0-based and auto-increments across yields. No total count is tracked — async generators yield lazily and the total isn't known upfront.
@@ -386,6 +388,7 @@ Extends `RenderedMessages` with span context:
 @dataclass(frozen=True)
 class TimelineMessages(RenderedMessages):
     """A chunk of messages from a specific timeline span."""
+
     span: TimelineSpan
 ```
 
@@ -709,6 +712,7 @@ class TranscriptContent:
             timeline from all events; a list of event types builds
             a filtered timeline.
     """
+
     messages: MessageFilter = field(default=None)
     events: EventFilter = field(default=None)
     timeline: TimelineFilter = field(default=None)
@@ -772,8 +776,10 @@ def llm_scanner(
         template = DEFAULT_SCANNER_TEMPLATE
     resolved_answer = answer_from_argument(answer)
     retry_refusals = (
-        retry_refusals if isinstance(retry_refusals, int)
-        else 3 if retry_refusals is True
+        retry_refusals
+        if isinstance(retry_refusals, int)
+        else 3
+        if retry_refusals is True
         else 0
     )
 
@@ -904,7 +910,7 @@ The refactored `llm_scanner` scan loop is sequential:
 ```python
 async for segment in transcript_messages(...):
     prompt = await render_scanner_prompt(...)
-    result = await generate_answer(...)      # seconds per call
+    result = await generate_answer(...)  # seconds per call
     results.append(result)
 ```
 
@@ -966,9 +972,9 @@ async def parallel_scan(
     max_concurrency = model.config.max_connections or model.api.max_connections()
     results: dict[int, Result] = {}
 
-    send_stream, receive_stream = anyio.create_memory_object_stream[
-        RenderedMessages
-    ](max_buffer_size=max_concurrency)
+    send_stream, receive_stream = anyio.create_memory_object_stream[RenderedMessages](
+        max_buffer_size=max_concurrency
+    )
 
     async def producer() -> None:
         async with send_stream:

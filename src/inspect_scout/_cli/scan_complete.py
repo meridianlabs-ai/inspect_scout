@@ -10,12 +10,14 @@ from .scan import scan_command
 @scan_command.command("complete")
 @click.argument("scan_location", nargs=1)
 @common_options
+@click.pass_context
 def scan_complete_command(
+    ctx: click.Context,
     scan_location: str,
     **common: Unpack[CommonOptions],
 ) -> None:
     """Complete a scan which is incomplete due to errors (errors are not retried)."""
     # Process common options
-    process_common_options(common)
+    process_common_options(ctx, common)
 
-    scan_complete(scan_location)
+    scan_complete(scan_location, log_level=common["log_level"])

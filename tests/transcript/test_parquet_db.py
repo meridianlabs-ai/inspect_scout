@@ -35,6 +35,7 @@ def create_sample_transcript(
     model: str | None = None,
     task: str | None = None,
     score: JsonValue | None = None,
+    score_explanation: str | None = None,
     metadata: dict[str, Any] | None = None,
     messages: list[ChatMessage] | None = None,
     events: list[Event] | None = None,
@@ -48,6 +49,7 @@ def create_sample_transcript(
         task_set=task,
         model=model,
         score=score,
+        score_explanation=score_explanation,
         metadata=metadata or {},
         messages=messages or [ChatMessageUser(content="Test message")],
         events=events or [],
@@ -69,6 +71,7 @@ def create_test_transcripts(count: int = 10) -> list[Transcript]:
                 model=models[i % 3],
                 task=tasks[i % 3],
                 score=0.5 + (i % 10) * 0.05,
+                score_explanation=f"answer {i} matched the target",
                 metadata={
                     "temperature": 0.5 + (i % 5) * 0.1,
                     "index": i,
@@ -558,6 +561,11 @@ async def test_complex_conditions(populated_db: ParquetTranscriptsDB) -> None:
     assert len(results) == 2
 
 
+def _info_fields(t: TranscriptInfo) -> dict[str, object]:
+    """Every `TranscriptInfo` field, so a read that drops one fails loudly."""
+    return {name: getattr(t, name) for name in TranscriptInfo.model_fields}
+
+
 # Content Loading Tests
 @pytest.mark.asyncio
 async def test_read_full_content(populated_db: ParquetTranscriptsDB) -> None:
@@ -575,6 +583,8 @@ async def test_read_full_content(populated_db: ParquetTranscriptsDB) -> None:
     assert len(transcript.messages) > 0
     # Events are empty in our test data
     assert len(transcript.events) == 0
+
+    assert _info_fields(transcript) == _info_fields(infos[0])
 
 
 @pytest.mark.asyncio
@@ -606,8 +616,8 @@ async def test_read_no_content(populated_db: ParquetTranscriptsDB) -> None:
     assert len(transcript.messages) == 0
     assert len(transcript.events) == 0
 
-    # Should still have metadata
-    assert transcript.transcript_id == infos[0].transcript_id
+    assert infos[0].score_explanation is not None
+    assert _info_fields(transcript) == _info_fields(infos[0])
 
 
 # Schema & File Management Tests
@@ -1995,6 +2005,45 @@ async def test_pool_dedup_read_content_equality(test_location: Path) -> None:
         assert e_np.call is not None
         assert e_p.call is not None
         assert e_np.call.request["messages"] == e_p.call.request["messages"]
+
+
+@pytest.mark.asyncio
+async def test_pool_dedup_events_json_is_compact(test_location: Path) -> None:
+    """Pool-dedup events/events_data columns are stored as compact JSON.
+
+    Regression guard: the serializer must use indent=None so that on-disk
+    (and the streamed-to-viewer) representation is not bloated by pretty-print
+    whitespace. Indented JSON would contain newlines.
+    """
+    import pyarrow.parquet as pq
+
+    db = ParquetTranscriptsDB(str(test_location))
+    await db.connect()
+    try:
+        await db.insert([_transcript_with_repeated_inputs()])
+    finally:
+        await db.disconnect()
+
+    parquet_files = list(test_location.glob(PARQUET_TRANSCRIPTS_GLOB))
+    assert len(parquet_files) == 1
+
+    table = pq.read_table(str(parquet_files[0]))
+    events_json = table.column("events").to_pylist()[0]
+    events_data_json = table.column("events_data").to_pylist()[0]
+
+    # Compact serialization: no pretty-print whitespace (indent=2 adds newlines).
+    assert isinstance(events_json, str)
+    assert isinstance(events_data_json, str)
+    assert "\n" not in events_json
+    assert "\n" not in events_data_json
+
+    events = json.loads(events_json)
+    events_data = json.loads(events_data_json)
+
+    # Pooling actually populated both columns for this poolable fixture
+    # (not just an empty "[]"/"{}" that would still be truthy as a string).
+    assert isinstance(events, list) and events
+    assert isinstance(events_data, dict) and events_data
 
 
 # --- Phase 3: read_messages_events() pool resolution tests ---

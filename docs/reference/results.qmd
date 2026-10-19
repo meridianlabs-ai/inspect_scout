@@ -14,15 +14,17 @@ reference: inspect_scout
 ### ScanResultsDF
 ### scan_results_arrow
 ### ScanResultsArrow
+### scan_results_batches
+### HEAVY_COLUMNS
 
 ## Validation
 
 ### validation_set
+### validation_predicate
 ### ValidationSet
 ### ValidationCase
 ### PredicateType
 ### PredicateFn
 ### ValidationPredicate
-
 
 

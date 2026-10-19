@@ -14,7 +14,7 @@ from typing_extensions import Literal, NotRequired, Required, TypedDict
 
 from inspect_scout._query.condition import Condition
 from inspect_scout._query.condition_sql import condition_as_sql
-from inspect_scout._validation.types import ValidationSet
+from inspect_scout._validation.types import ValidationSetSpec
 
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
 
@@ -71,6 +71,13 @@ class ScanOptions(BaseModel):
 
     shuffle: bool | int | None = Field(default=None)
     """Shuffle order of transcripts."""
+
+    results_buffer: int | None = Field(default=None)
+    """Sync in-progress results to the scan location every N recorded results.
+
+    When None (the default) results are only written to the scan location
+    when the scan completes (or is interrupted).
+    """
 
 
 class TranscriptField(TypedDict, total=False):
@@ -175,7 +182,7 @@ class ScanSpec(BaseModel):
     model: ModelConfig | None = Field(default=None)
     """Model used for eval."""
 
-    model_roles: dict[str, ModelConfig] | None = Field(default=None)
+    model_roles: dict[str, ModelConfig | list[ModelConfig]] | None = Field(default=None)
     """Model roles."""
 
     revision: ScanRevision | None = Field(default=None)
@@ -196,7 +203,7 @@ class ScanSpec(BaseModel):
     worklist: list[Worklist] | None = Field(default=None)
     """Transcript ids to process for each scanner (defaults to processing all transcripts)."""
 
-    validation: dict[str, ValidationSet] | None = Field(default=None)
+    validation: dict[str, ValidationSetSpec] | None = Field(default=None)
     """Validation cases to apply for scanners."""
 
     @field_serializer("timestamp")

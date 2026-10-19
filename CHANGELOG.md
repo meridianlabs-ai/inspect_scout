@@ -1,6 +1,182 @@
-## Unreleased
+# Changelog
 
-- Security: Validate standalone Scout View Host and browser origins, prevent framing, and require authorization or explicit acknowledgement for non-loopback binds.
+## [0.6.0](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.5...0.6.0) (2026-10-15)
+
+
+### Breaking Changes
+
+* require Python 3.11 and test on Python 3.14 ([#703](https://github.com/meridianlabs-ai/inspect_scout/issues/703))
+
+### Features
+
+* optional nonce marks real message headers in transcripts rendered into scanner prompts ([#709](https://github.com/meridianlabs-ai/inspect_scout/issues/709)) ([c7f3486](https://github.com/meridianlabs-ai/inspect_scout/commit/c7f34861c8a305a798cdf1b07a1b8f3ac2ca4683))
+* require Python 3.11 and test on Python 3.14 ([#703](https://github.com/meridianlabs-ai/inspect_scout/issues/703)) ([b9d16f8](https://github.com/meridianlabs-ai/inspect_scout/commit/b9d16f852d84560cb1d38c71f84770d9f723f386))
+
+
+### Bug Fixes
+
+* default transcript read hands scanners raw JSON strings for index metadata ([#645](https://github.com/meridianlabs-ai/inspect_scout/issues/645)) ([59a6171](https://github.com/meridianlabs-ai/inspect_scout/commit/59a6171439064eab646bb0fe8f5c170cc9a586b9))
+* importing eval logs with long agent transcripts runs out of memory ([#700](https://github.com/meridianlabs-ai/inspect_scout/issues/700)) ([2e2332b](https://github.com/meridianlabs-ai/inspect_scout/commit/2e2332bcd06e7a96d213dd321982274ea90e0c48))
+* scan results load under a host Content-Security-Policy without 'unsafe-eval' ([#710](https://github.com/meridianlabs-ai/inspect_scout/issues/710)) ([5d3b3fc](https://github.com/meridianlabs-ai/inspect_scout/commit/5d3b3fcd9df987b8c10c6b71419fb289e6dc14dc))
+* scan results record invalid transcript metadata, or recording fails, for some metadata values ([#706](https://github.com/meridianlabs-ai/inspect_scout/issues/706)) ([228af05](https://github.com/meridianlabs-ai/inspect_scout/commit/228af05c1da0ed67f793360938f628cc6a812ac6))
+* scans fail on Petri logs when a scanner filters events ([#702](https://github.com/meridianlabs-ai/inspect_scout/issues/702)) ([0ff478f](https://github.com/meridianlabs-ai/inspect_scout/commit/0ff478fd4cc8b50962a3b71c424f65274d765a75))
+* scorer explanations are no longer dropped when reading or recording transcripts ([#635](https://github.com/meridianlabs-ai/inspect_scout/issues/635)) ([d2b1376](https://github.com/meridianlabs-ai/inspect_scout/commit/d2b13766e942964d9461170bf9b8afd66c38cba7))
+* show sentinel proceed actions correctly in the transcript view ([#698](https://github.com/meridianlabs-ai/inspect_scout/issues/698)) ([3178de3](https://github.com/meridianlabs-ai/inspect_scout/commit/3178de324b8a42770b99df0213cdfdaa9061c326))
+
+## [0.5.5](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.4...0.5.5) (2026-10-11)
+
+
+### Features
+
+* show untrusted model output as plain text in Scout View ([#690](https://github.com/meridianlabs-ai/inspect_scout/issues/690)) ([b0133f4](https://github.com/meridianlabs-ai/inspect_scout/commit/b0133f48bf269283dd6e416318d2a15515a04b31))
+* support inspect_ai sentinel events in scanners and grep_scanner ([#697](https://github.com/meridianlabs-ai/inspect_scout/issues/697)) ([bb56a40](https://github.com/meridianlabs-ai/inspect_scout/commit/bb56a402510d4566eca439c4c4cf721dc52b441c))
+
+
+### Bug Fixes
+
+* scan results record transcript_success as text when the first transcript has no score ([#689](https://github.com/meridianlabs-ai/inspect_scout/issues/689)) ([5f2881d](https://github.com/meridianlabs-ai/inspect_scout/commit/5f2881d1c0217829653e6bdb60c7430d3670569d))
+* scanners and transcript databases lose the scorer's explanation ([d746d2a](https://github.com/meridianlabs-ai/inspect_scout/commit/d746d2a323b96307705a918505ccf303b56547da))
+
+## [0.5.4](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.3...0.5.4) (2026-10-06)
+
+
+### Bug Fixes
+
+* allow scanners with postponed annotations ([#617](https://github.com/meridianlabs-ai/inspect_scout/issues/617)) ([8660a28](https://github.com/meridianlabs-ai/inspect_scout/commit/8660a28217ff8934d3aa9b719642bf9a302151db))
+* record each loader item's own events on its ResultReport ([#663](https://github.com/meridianlabs-ai/inspect_scout/issues/663)) ([1d5f774](https://github.com/meridianlabs-ai/inspect_scout/commit/1d5f77402c7b4e24bfaccb3259ddc677870c7523))
+
+
+### Performance Improvements
+
+* **examples/openclaw_telemetry_hal:** assign message ids once per lane, not per model event ([#652](https://github.com/meridianlabs-ai/inspect_scout/issues/652)) ([b8ff1bc](https://github.com/meridianlabs-ai/inspect_scout/commit/b8ff1bcaa29a4e0dd9b1e3868bbc1e46dbc8adae))
+
+## [0.5.3](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.2...0.5.3) (2026-09-16)
+
+
+### Features
+
+* scans stream large transcripts, and scanners can opt into streaming ([#608](https://github.com/meridianlabs-ai/inspect_scout/issues/608)) ([59ac7aa](https://github.com/meridianlabs-ai/inspect_scout/commit/59ac7aa095be7c69f80003e57ecbcdf211ab503d))
+
+
+### Bug Fixes
+
+* an erroring scan item no longer reports the previous item's ([419a190](https://github.com/meridianlabs-ai/inspect_scout/commit/419a190311270a240bdd489092377888b2f4661c))
+* attachment contents no longer come back as dangling attachment:// hashes ([#603](https://github.com/meridianlabs-ai/inspect_scout/issues/603)) ([419a190](https://github.com/meridianlabs-ai/inspect_scout/commit/419a190311270a240bdd489092377888b2f4661c))
+* preserve provider error details in multi-process scans ([#632](https://github.com/meridianlabs-ai/inspect_scout/issues/632)) ([d2e2e3b](https://github.com/meridianlabs-ai/inspect_scout/commit/d2e2e3b112f38d000ee380c90f7414ca598f1a03))
+
+
+### Performance Improvements
+
+* bound the segments an llm_scanner holds and scans at once ([#604](https://github.com/meridianlabs-ai/inspect_scout/issues/604)) ([2063b5b](https://github.com/meridianlabs-ai/inspect_scout/commit/2063b5bc650d50cec1c4de0765951daf2eac3847))
+* parse large eval-log samples into a disk spool instead of memory ([#606](https://github.com/meridianlabs-ai/inspect_scout/issues/606)) ([afdbcd1](https://github.com/meridianlabs-ai/inspect_scout/commit/afdbcd1b009b0238831f8effb96b8e744a4509bd))
+* viewer LLM search no longer loads the whole transcript into memory ([#607](https://github.com/meridianlabs-ai/inspect_scout/issues/607)) ([30b3f9f](https://github.com/meridianlabs-ai/inspect_scout/commit/30b3f9ffc5629498b3c81ee32f759973eabbee59))
+* write recorded transcript columns as UTF-8 bytes instead of str ([#605](https://github.com/meridianlabs-ai/inspect_scout/issues/605)) ([8446bd9](https://github.com/meridianlabs-ai/inspect_scout/commit/8446bd90bfc906c717a5696fa331f12dbbb72f1e))
+
+## [0.5.2](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.1...0.5.2) (2026-09-07)
+
+
+### Bug Fixes
+
+* viewer lib npm publish fails typecheck on missing score_explanation column ([#625](https://github.com/meridianlabs-ai/inspect_scout/issues/625)) ([a3123a6](https://github.com/meridianlabs-ai/inspect_scout/commit/a3123a698857d01e335cc0b4a529957a5e6a7c30))
+
+## [0.5.1](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.0...0.5.1) (2026-09-07)
+
+
+### Features
+
+* use tool_choice="auto" for answer tool ([4cd6522](https://github.com/meridianlabs-ai/inspect_scout/commit/4cd652234729c3b3f4e0638922b7caf3015c1821))
+
+
+### Bug Fixes
+
+* temp parquet files leak when a scan sync does not complete the scan ([#624](https://github.com/meridianlabs-ai/inspect_scout/issues/624)) ([5375cdc](https://github.com/meridianlabs-ai/inspect_scout/commit/5375cdcfa40482331d83d1d625b01c2b75faf8c2))
+
+## [0.5.0](https://github.com/meridianlabs-ai/inspect_scout/compare/0.4.46...0.5.0) (2026-09-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* callers that rely on input, input_data, or scan_events being present in default dataframe/reader output must pass exclude_columns=[] (or use ScanResultsArrow.get_fields() for per-row access).
+
+### Features
+
+* add scan_results_batches() — scan_results_df() semantics without loading everything in memory ([#541](https://github.com/meridianlabs-ai/inspect_scout/issues/541)) ([b332c1e](https://github.com/meridianlabs-ai/inspect_scout/commit/b332c1e46b9d5f7cfe79dd0232d4dc53034ae940))
+* carry the scorer's explanation on TranscriptInfo ([#614](https://github.com/meridianlabs-ai/inspect_scout/issues/614)) ([094e11c](https://github.com/meridianlabs-ai/inspect_scout/commit/094e11c540ca616f0864e688c20daccab0f8ede9))
+* cron kind, operator provenance, reconstruction fidelity + spawn-less session placement in the openclaw telemetry-hal example ([#566](https://github.com/meridianlabs-ai/inspect_scout/issues/566)) ([817a8f0](https://github.com/meridianlabs-ai/inspect_scout/commit/817a8f076ca14cede9d6da2863ea7d9cbf88f2c0))
+* exclude heavy columns by default when reading scan results ([#583](https://github.com/meridianlabs-ai/inspect_scout/issues/583)) ([886d339](https://github.com/meridianlabs-ai/inspect_scout/commit/886d3396570b497c283f0eebf186e05fcc266a6a))
+* typed parsed answers on scanner results ([#579](https://github.com/meridianlabs-ai/inspect_scout/issues/579)) ([d5a7df5](https://github.com/meridianlabs-ai/inspect_scout/commit/d5a7df53778e55bfa441a34e1b7fd9fc366578c5))
+
+
+### Bug Fixes
+
+* bound the multiprocess results queue ([#555](https://github.com/meridianlabs-ai/inspect_scout/issues/555)) ([3985b81](https://github.com/meridianlabs-ai/inspect_scout/commit/3985b81f10c7740e5c064d973a6a91b6955a2ee1))
+* bump openai to &gt;=3.0.0; pass allow_remote_mcp to inspect_ai bridge tool converters ([#562](https://github.com/meridianlabs-ai/inspect_scout/issues/562)) ([e799945](https://github.com/meridianlabs-ai/inspect_scout/commit/e79994514349d740e7b914fd5fdd2b9dc0b25619))
+* complete the interrupted-status sync under Ctrl-C ([#578](https://github.com/meridianlabs-ai/inspect_scout/issues/578)) ([548f464](https://github.com/meridianlabs-ai/inspect_scout/commit/548f464f762d35e9e54a534755ae0859de998ecd))
+* conform to inspect_ai model-role lists and regenerate schema/types ([#581](https://github.com/meridianlabs-ai/inspect_scout/issues/581)) ([1fb066a](https://github.com/meridianlabs-ai/inspect_scout/commit/1fb066ab2a46f79f19f4c47414960b410c782526))
+* deliver the final metrics update synchronously at strategy teardown ([#572](https://github.com/meridianlabs-ai/inspect_scout/issues/572)) ([548f464](https://github.com/meridianlabs-ai/inspect_scout/commit/548f464f762d35e9e54a534755ae0859de998ecd))
+* **examples/openclaw_telemetry_hal:** accept 'explicit' session kind as an orchestrator surface ([#565](https://github.com/meridianlabs-ai/inspect_scout/issues/565)) ([6563d39](https://github.com/meridianlabs-ai/inspect_scout/commit/6563d39346b8d5ea09a71c7b5c5a87583e158157))
+* prevent deferred metrics write to closed active scans store ([#564](https://github.com/meridianlabs-ai/inspect_scout/issues/564)) ([bbacfbb](https://github.com/meridianlabs-ai/inspect_scout/commit/bbacfbb2200fdcc53ee716a326f2905002796871))
+* report per-item model usage for custom loaders ([#586](https://github.com/meridianlabs-ai/inspect_scout/issues/586)) ([4f47afc](https://github.com/meridianlabs-ai/inspect_scout/commit/4f47afc19a5559146a1692ca5adaae2998e0549f))
+* stream scan result compaction to disk ([#554](https://github.com/meridianlabs-ai/inspect_scout/issues/554)) ([5234d59](https://github.com/meridianlabs-ai/inspect_scout/commit/5234d5938dc9f05ea541c9e5f9c7d33f84565f96))
+
+
+### Performance Improvements
+
+* fix quadratic `_expand_events_in_df` ([#538](https://github.com/meridianlabs-ai/inspect_scout/issues/538)) ([63b481d](https://github.com/meridianlabs-ai/inspect_scout/commit/63b481d64db14b98fb476b0071827f1d41b3c96d))
+
+## [0.4.46](https://github.com/meridianlabs-ai/inspect_scout/compare/0.4.45...0.4.46) (2026-08-05)
+
+
+### Features
+
+* add results_buffer option for periodic sync of in-progress results ([#550](https://github.com/meridianlabs-ai/inspect_scout/issues/550)) ([243006d](https://github.com/meridianlabs-ai/inspect_scout/commit/243006dc698fe61a4afe5a8b995b36e43695525e))
+
+
+### Bug Fixes
+
+* absence-implied true-negative validation rows suppressed by labels on other transcripts ([#545](https://github.com/meridianlabs-ai/inspect_scout/issues/545)) ([c86ea5f](https://github.com/meridianlabs-ai/inspect_scout/commit/c86ea5f52191d4ce11822f13ccace74af6580cb0))
+* **deps:** relax click pin to allow 8.3.2+ (matches inspect_ai[#4596](https://github.com/meridianlabs-ai/inspect_scout/issues/4596)) ([#551](https://github.com/meridianlabs-ai/inspect_scout/issues/551)) ([2c8501e](https://github.com/meridianlabs-ai/inspect_scout/commit/2c8501e1b930b6d20d5db8494531ce9737829536))
+
+
+### Performance Improvements
+
+* project columns before download in _load_scanner_df ([#539](https://github.com/meridianlabs-ai/inspect_scout/issues/539)) ([c963e85](https://github.com/meridianlabs-ai/inspect_scout/commit/c963e858b0c214de1b9eadd91606603bfb1e0531))
+
+## [0.4.45](https://github.com/meridianlabs-ai/inspect_scout/compare/v0.4.44...0.4.45) (2026-07-20)
+
+
+### Features
+
+* **OpenClaw:** Add example transcript importer for telemetry generated by "telemetry-hal" plugin ([#490](https://github.com/meridianlabs-ai/inspect_scout/issues/490)) ([e87280a](https://github.com/meridianlabs-ai/inspect_scout/commit/e87280ae701b5584289a4a4020d7d3103e56dbf2))
+* **Transcript DB:** add Harbor ATIF (Agent Trajectory Interchange Format) source ([#486](https://github.com/meridianlabs-ai/inspect_scout/issues/486)) ([e09b09b](https://github.com/meridianlabs-ai/inspect_scout/commit/e09b09bd2d3c7322a8c600c53afe4792d1030170))
+
+
+### Bug Fixes
+
+* reject scanners whose union types don't cover all filtered message/event types ([#530](https://github.com/meridianlabs-ai/inspect_scout/issues/530)) ([e4f029f](https://github.com/meridianlabs-ai/inspect_scout/commit/e4f029fb3725bf90845f0a4c27777d58788c9423))
+* restore compatibility with inspect-ai 0.3.248 trace CLI ([#540](https://github.com/meridianlabs-ai/inspect_scout/issues/540)) ([1af6fbc](https://github.com/meridianlabs-ai/inspect_scout/commit/1af6fbcaca066b20dd79c461d3d773668154073d))
+* robust union detection in import CLI on Python 3.14 ([#534](https://github.com/meridianlabs-ai/inspect_scout/issues/534)) ([1cb67e0](https://github.com/meridianlabs-ai/inspect_scout/commit/1cb67e0b510cb2cb65d5d951196dce19d24b08b0))
+* scope Model reducer to Scout's pickler, not global copyreg ([#542](https://github.com/meridianlabs-ai/inspect_scout/issues/542)) ([30a9251](https://github.com/meridianlabs-ai/inspect_scout/commit/30a9251fde6e6ea5a2f12ba3a67e1879d2b4e8a0))
+* support legacy JSON logs in EvalLogTranscriptsView.read() ([#517](https://github.com/meridianlabs-ai/inspect_scout/issues/517)) ([6de4f8c](https://github.com/meridianlabs-ai/inspect_scout/commit/6de4f8c579e5d339acf31aa7a698a1b3b9624b99))
+
+
+### Performance Improvements
+
+* index eval logs concurrently on a thread pool (~6x faster for S3 log directories) ([#528](https://github.com/meridianlabs-ai/inspect_scout/issues/528)) ([06d24d7](https://github.com/meridianlabs-ai/inspect_scout/commit/06d24d7da5cf674392abbb3eb7605f5c83a8f245))
+
+## [0.4.44](https://github.com/meridianlabs-ai/inspect_scout/compare/0.4.43...v0.4.44) (2026-07-14)
+
+
+### Bug Fixes
+
+* guard against empty eval logs producing invalid SQL ([#319](https://github.com/meridianlabs-ai/inspect_scout/issues/319)) ([cc4354f](https://github.com/meridianlabs-ai/inspect_scout/commit/cc4354fa602e106ed3179242b19523bf6c1c0c21))
+* improve scout import output when no transcripts are imported ([#505](https://github.com/meridianlabs-ai/inspect_scout/issues/505)) ([5d7c144](https://github.com/meridianlabs-ai/inspect_scout/commit/5d7c144b22285a206e5685ea6824c8bd2b174348))
+* restore multiprocess concurrency against inspect_ai's updated ConcurrencySemaphore protocol ([#498](https://github.com/meridianlabs-ai/inspect_scout/issues/498)) ([#516](https://github.com/meridianlabs-ai/inspect_scout/issues/516)) ([cc4354f](https://github.com/meridianlabs-ai/inspect_scout/commit/cc4354fa602e106ed3179242b19523bf6c1c0c21))
+* sync OpenAPI schema for inspect_ai reasoning_mode ([5d7c144](https://github.com/meridianlabs-ai/inspect_scout/commit/5d7c144b22285a206e5685ea6824c8bd2b174348))
+
+## 0.4.43 (05 July 2026)
+
+- Store transcript and scan-result event/input columns as compact JSON (`indent=None`), substantially reducing on-disk Parquet size and the bytes streamed to Scout View (e.g. ~700 MiB → ~200 MiB for a large events column).
 - Security: Remove terminal control sequences from scanner names, scan metadata, errors, progress text, and filenames before rendering console output.
 - Security: Build DuckDB queries from bound Parquet sources and quoted, schema-validated identifiers so malicious transcript/scan filenames and sort or distinct columns cannot inject SQL.
 - Add `timeline` option to `transcript_messages()` and `llm_scanner()` for selecting a named timeline.
@@ -10,6 +186,7 @@
 - Scout View: Fix broken commit links for ssh-style GitHub origins
 - Scout View: Improve MathJax Sanitization
 - Bugfix: Per-key validation metrics for dict/multi-label targets now bucket each key against its own target value. Previously the whole-dict positivity (always positive for a non-empty dict) was applied to every key, so a key whose target was `False`/negative was scored TP/FN instead of TN/FP, inflating per-key precision and specificity.
+- Bugfix: Respect `--log-level` CLI arg and `SCOUT_LOG_LEVEL` env var across all `scout` commands.
 
 ## 0.4.41 (12 June 2026)
 

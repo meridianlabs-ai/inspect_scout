@@ -16,9 +16,8 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import filesystem
-from inspect_ai._util.json import to_json_str_safe
 from inspect_ai._util.path import pretty_path
-from inspect_ai.log import condense_events, expand_events
+from inspect_ai.log import condense_events
 from inspect_ai.util import trace_action, trace_message
 from pydantic_core import to_json
 from typing_extensions import override
@@ -28,6 +27,7 @@ from inspect_scout._display._display import display
 from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._transcript.database.factory import transcripts_from_db_snapshot
 from inspect_scout._transcript.util import LazyJSONDict
+from inspect_scout._util._json import to_json_str_compact
 from inspect_scout._util.filesystem import ensure_filesystem_dependencies
 
 from ...._query import Query
@@ -507,12 +507,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
             transcript_model = row_dict.get("model")
             transcript_model_options = row_dict.get("model_options")
             transcript_score = row_dict.get("score")
+            transcript_score_explanation = row_dict.get("score_explanation")
             transcript_success = row_dict.get("success")
             transcript_message_count = row_dict.get("message_count")
             transcript_total_time = row_dict.get("total_time")
             transcript_total_tokens = row_dict.get("total_tokens")
             transcript_error = row_dict.get("error")
             transcript_limit = row_dict.get("limit")
+            transcript_trust_content = row_dict.get("trust_content")
 
             # resolve json
             if transcript_agent_args is not None:
@@ -549,12 +551,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 model=transcript_model,
                 model_options=transcript_model_options,
                 score=transcript_score,
+                score_explanation=transcript_score_explanation,
                 success=transcript_success,
                 message_count=transcript_message_count,
                 total_time=transcript_total_time,
                 total_tokens=transcript_total_tokens,
                 error=transcript_error,
                 limit=transcript_limit,
+                trust_content=transcript_trust_content,
                 metadata={},
                 filename=transcript_filename,
             )
@@ -695,12 +699,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 model=t.model,
                 model_options=t.model_options,
                 score=t.score,
+                score_explanation=t.score_explanation,
                 success=t.success,
                 message_count=t.message_count,
                 total_time=t.total_time,
                 total_tokens=t.total_tokens,
                 error=t.error,
                 limit=t.limit,
+                trust_content=t.trust_content,
                 metadata=t.metadata,
             )
 
@@ -709,8 +715,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
         ):
             # Determine which columns we need to read
             need_messages = content.messages is not None
-            need_events = content.events is not None
             need_timelines = content.timeline is not None
+            # Stored timelines reference events by UUID, so resolving them
+            # needs the events even when none were requested.
+            need_events = content.events is not None or need_timelines
 
             if not need_messages and not need_events and not need_timelines:
                 # No content needed - use model_construct to preserve LazyJSONDict
@@ -829,6 +837,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 else:
                     yield b"[]"
 
+                # Streamed rather than expanded afterwards: pools must resolve
+                # before stored timelines bind to the events.
+                if events_data_json:
+                    yield b', "events_data": '
+                    events_data_bytes = events_data_json.encode("utf-8")
+                    for i in range(0, len(events_data_bytes), chunk_size):
+                        yield events_data_bytes[i : i + chunk_size]
+
                 if timelines_json:
                     yield b', "timelines": '
                     timelines_bytes = timelines_json.encode("utf-8")
@@ -847,12 +863,8 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 t,
                 content.messages,
                 events_filter,
+                metadata=content.metadata is not False,
             )
-
-            # Resolve pool references back to full messages/calls
-            if events_data_json:
-                resolved_events = expand_events(transcript.events, events_data_json)
-                transcript = transcript.model_copy(update={"events": resolved_events})
 
             # Fallback: if timelines were requested but not stored, build from events
             if (
@@ -1042,8 +1054,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
 
         if pool_dedup:
             condensed_events, events_data = condense_events(transcript.events)
-            events_json = to_json_str_safe(condensed_events)
-            events_data_json = to_json_str_safe(events_data)
+            # Compact JSON to reduce storage: pretty-printing significantly
+            # increases the size of structures like range-encoded input_refs.
+            events_json = to_json_str_compact(condensed_events)
+            events_data_json = to_json_str_compact(events_data)
         else:
             events_json = json.dumps(
                 [event.model_dump() for event in transcript.events]
@@ -1073,12 +1087,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 if isinstance(transcript.score, (dict, list))
                 else (str(transcript.score) if transcript.score is not None else None)
             ),
+            "score_explanation": transcript.score_explanation,
             "success": transcript.success,
             "message_count": transcript.message_count,
             "total_time": transcript.total_time,
             "total_tokens": transcript.total_tokens,
             "error": transcript.error,
             "limit": transcript.limit,
+            "trust_content": transcript.trust_content,
             "messages": json.dumps(messages_array),
             "events": events_json,
             "timelines": (

@@ -209,6 +209,23 @@ result = await generate_answer(
 
 : {tbl-colwidths=\[25,75\]}
 
+In addition to the serialized `value`, the returned `Result` carries the typed parsed answer in its `parsed` field. For `AnswerStructured` this is the validated instance of your Pydantic type, with the result typed accordingly:
+
+``` python
+from pydantic import BaseModel, Field
+from inspect_scout import AnswerStructured, generate_answer
+
+class Detection(BaseModel):
+    behavior: str = Field(description="Behavior observed.")
+    confidence: float = Field(description="Confidence from 0 to 1.")
+
+# Result[Detection]
+result = await generate_answer(prompt, answer=AnswerStructured(Detection))
+if result.parsed is not None:
+    print(result.parsed.confidence)
+```
+
+Note that `parsed` is `None` when the response could not be parsed. It is also dropped whenever the `Result` is serialized, so it does not appear in stored results.
 
 ## Answer Parsing
 
@@ -238,6 +255,8 @@ result = parse_answer(
 | `value_to_float` | Optional function to convert the parsed value to a float. |
 
 : {tbl-colwidths=\[25,75\]}
+
+As with `generate_answer()`, the returned `Result` carries the typed parsed answer in its `parsed` field (though for `AnswerStructured` answers, `parse_answer()` raises `ValidationError` on non-conforming output rather than returning `parsed=None`).
 
 ## Answer Types {#answer-types}
 

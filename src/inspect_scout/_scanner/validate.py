@@ -1,11 +1,9 @@
 import inspect
-from types import UnionType
 from typing import (
     Any,
     Callable,
     Literal,
     Type,
-    Union,
     get_args,
     get_origin,
     get_type_hints,
@@ -27,6 +25,7 @@ from inspect_ai.event._sample_init import SampleInitEvent
 from inspect_ai.event._sample_limit import SampleLimitEvent
 from inspect_ai.event._sandbox import SandboxEvent
 from inspect_ai.event._score import ScoreEvent
+from inspect_ai.event._sentinel import SentinelEvent
 from inspect_ai.event._span import SpanBeginEvent, SpanEndEvent
 from inspect_ai.event._state import StateEvent
 from inspect_ai.event._store import StoreEvent
@@ -39,7 +38,9 @@ from inspect_ai.model._chat_message import (
     ChatMessageUser,
 )
 
+from .._transcript.handle import is_transcript_handle_type
 from .._transcript.types import EventType, MessageType, Transcript
+from .._util.type_hints import is_union_type
 
 # Reverse mappings for inferring filters from types
 TYPE_TO_MESSAGE_FILTER: dict[type[Any], str] = {
@@ -58,6 +59,7 @@ TYPE_TO_EVENT_FILTER: dict[type[Any], str] = {
     StateEvent: "state",
     StoreEvent: "store",
     ApprovalEvent: "approval",
+    SentinelEvent: "sentinel",
     InputEvent: "input",
     ScoreEvent: "score",
     ErrorEvent: "error",
@@ -137,7 +139,7 @@ def infer_filters_from_type(
     event_filters = []
 
     # Handle Union types
-    if get_origin(input_type) in (Union, UnionType):
+    if is_union_type(input_type):
         for arg in get_args(input_type):
             if arg in TYPE_TO_MESSAGE_FILTER:
                 message_filters.append(TYPE_TO_MESSAGE_FILTER[arg])
@@ -396,6 +398,7 @@ def _get_event_types_from_filter(
         "state": StateEvent,
         "store": StoreEvent,
         "approval": ApprovalEvent,
+        "sentinel": SentinelEvent,
         "compaction": CompactionEvent,
         "branch": BranchEvent,
         "input": InputEvent,
@@ -467,17 +470,25 @@ def _can_handle_all_types(
 
 def _get_union_members(type_hint: Any) -> set[Type[Any]] | None:
     """Get the member types of a Union, or None if not a Union."""
-    origin = get_origin(type_hint)
-
-    # Handle Union from typing module
-    if origin is Union:
+    if is_union_type(type_hint):
         return set(get_args(type_hint))
-
-    # Handle Python 3.10+ union syntax (X | Y)
-    if isinstance(type_hint, UnionType):
-        return set(get_args(type_hint))
-
     return None
+
+
+def _union_covers_union(scanner_type: Any, target_type: Any) -> bool:
+    """Check if a union scanner type covers every member of a union target.
+
+    A partial union (e.g. two of ChatMessage's four members) does not cover
+    the full union. Returns False if either type is not a union.
+    """
+    scanner_members = _get_union_members(scanner_type)
+    target_members = _get_union_members(target_type)
+    if scanner_members is None or target_members is None:
+        return False
+    return all(
+        any(_is_compatible_with_type(s, t) for s in scanner_members)
+        for t in target_members
+    )
 
 
 def _is_compatible_with_type(scanner_type: Any, target_type: Any) -> bool:
@@ -497,6 +508,25 @@ def _is_compatible_with_type(scanner_type: Any, target_type: Any) -> bool:
         # Direct equality
         if scanner_type == target_type:
             return True
+
+        # A `Transcript | TranscriptHandle` union is compatible wherever a bare
+        # Transcript is. Requiring a genuine handle member among the non-
+        # matching members keeps this from swallowing partial non-handle
+        # unions, which the coverage check below rejects.
+        union_members = _get_union_members(scanner_type)
+        if union_members is not None:
+            others = {
+                m for m in union_members if not _is_compatible_with_type(m, target_type)
+            }
+            if 0 < len(others) < len(union_members) and all(
+                is_transcript_handle_type(m) for m in others
+            ):
+                return True
+
+        # Unions never match on origin alone (every union's origin is Union,
+        # so a partial union would wrongly match a full one)
+        if is_union_type(scanner_type) or is_union_type(target_type):
+            return _union_covers_union(scanner_type, target_type)
 
         # Try to check subclass relationship
         # This works for normal classes

@@ -49,12 +49,14 @@ class TestTranscriptSchemaFields:
             "model",
             "model_options",
             "score",
+            "score_explanation",
             "success",
             "message_count",
             "total_time",
             "total_tokens",
             "error",
             "limit",
+            "trust_content",
             "messages",
             "events",
             "timelines",
@@ -128,7 +130,7 @@ class TestTranscriptsDbSchema:
         """transcripts_db_schema('pyarrow') returns valid PyArrow Schema."""
         schema = transcripts_db_schema(format="pyarrow")
         assert isinstance(schema, pa.Schema)
-        assert len(schema) == 23
+        assert len(schema) == 25
         assert "transcript_id" in schema.names
 
     def test_pyarrow_field_types(self) -> None:
@@ -146,7 +148,7 @@ class TestTranscriptsDbSchema:
         assert schema["type"] == "record"
         assert schema["name"] == "Transcript"
         assert "fields" in schema
-        assert len(schema["fields"]) == 23
+        assert len(schema["fields"]) == 25
 
     def test_avro_field_structure(self) -> None:
         """Avro schema fields have correct structure."""
@@ -200,7 +202,7 @@ class TestTranscriptsDbSchema:
         df = transcripts_db_schema(format="pandas")
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 0
-        assert len(df.columns) == 23
+        assert len(df.columns) == 25
 
     def test_pandas_column_dtypes(self) -> None:
         """Pandas DataFrame has correct column dtypes."""
@@ -236,9 +238,9 @@ class TestReservedColumns:
         assert "filename" in reserved
 
     def test_count(self) -> None:
-        """Should have correct count (23 schema fields + filename)."""
+        """Should have correct count (24 schema fields + filename)."""
         reserved = reserved_columns()
-        assert len(reserved) == 24
+        assert len(reserved) == 26
 
 
 class TestValidateTranscriptSchema:

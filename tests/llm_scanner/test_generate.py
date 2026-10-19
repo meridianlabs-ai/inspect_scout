@@ -56,6 +56,7 @@ async def test_generate_normal_dispatch() -> None:
     mock_gen.assert_awaited_once()
     assert isinstance(result, Result)
     assert result.value is True
+    assert result.parsed is True
 
 
 @pytest.mark.anyio
@@ -116,7 +117,7 @@ async def test_generate_structured_context_tools() -> None:
     tools = mock_gen.call_args.kwargs["tools"]
     tool_names = [getattr(t, "name", None) for t in tools]
     assert tool_names == ["bash", "answer"]
-    assert mock_gen.call_args.kwargs["tool_choice"].name == "answer"
+    assert mock_gen.call_args.kwargs["tool_choice"] == "auto"
 
 
 @pytest.mark.anyio
@@ -159,6 +160,8 @@ async def test_generate_structured_dispatch() -> None:
         )
 
     assert isinstance(result, Result)
+    assert type(result.parsed) is MyAnswer
+    assert result.parsed.score == 5
 
 
 # ---------------------------------------------------------------------------
@@ -265,6 +268,7 @@ async def test_generate_structured_null_value() -> None:
 
     assert isinstance(result, Result)
     assert result.value is None
+    assert result.parsed is None
     assert result.answer == "Could not determine."
 
 

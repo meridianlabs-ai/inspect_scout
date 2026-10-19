@@ -3,6 +3,7 @@
 from typing import Any, TypeVar
 
 from inspect_scout._scanjob_config import ScanJobConfig
+from inspect_scout._util.trust import lowest_trust_content
 
 # Field categories for special merge semantics.
 # Simple fields (fallback behavior) are any fields not in these categories.
@@ -15,7 +16,9 @@ MODEL_FIELDS = {
 }
 UNION_LIST_FIELDS = {"worklist", "tags"}
 UNION_DICT_FIELDS = {"scanners", "validation", "metadata"}
-SPECIAL_FIELDS = MODEL_FIELDS | UNION_LIST_FIELDS | UNION_DICT_FIELDS
+# Lowest-trust fields: an override may lower trust but never raise it.
+TRUST_FIELDS = {"trust_content"}
+SPECIAL_FIELDS = MODEL_FIELDS | UNION_LIST_FIELDS | UNION_DICT_FIELDS | TRUST_FIELDS
 
 # TypeVar for generic config merging (preserves subclass type)
 ConfigT = TypeVar("ConfigT", bound=ScanJobConfig)
@@ -27,6 +30,7 @@ def merge_configs(base: ConfigT, override: ScanJobConfig) -> ConfigT:
     Override values take precedence for simple fields when explicitly set.
     Union fields are combined (override wins on conflicts).
     Model fields are treated as atomic unit.
+    Trust fields take the lower trust: an override can lower it, never raise it.
 
     Args:
         base: The base configuration providing defaults.
@@ -91,5 +95,9 @@ def _merge_config_dicts(
             base_dict = base.get(field) or {}
             override_dict = override[field] or {}
             result[field] = {**base_dict, **override_dict}
+
+    for field in TRUST_FIELDS:
+        if field in override:
+            result[field] = lowest_trust_content(base.get(field), override[field])
 
     return result

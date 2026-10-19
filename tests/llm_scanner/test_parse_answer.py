@@ -544,7 +544,7 @@ def test_parse_value_to_float(
     expected_value: float,
 ) -> None:
     output = ModelOutput(model="test", completion=completion)
-    result = parse_answer(output, answer_spec, _no_refs, value_to_float=value_to_float)  # type: ignore[arg-type]
+    result = parse_answer(output, answer_spec, _no_refs, value_to_float=value_to_float)  # type: ignore[call-overload]
     assert result.value == expected_value
 
 

@@ -31,6 +31,7 @@ from inspect_ai.model import (
     ModelOutput,
     ModelUsage,
 )
+from inspect_ai.tool import ToolCall
 from inspect_scout._transcript.timeline import (
     Timeline,
     TimelineEvent,
@@ -138,7 +139,18 @@ def _create_event(event_type: str, data: dict[str, Any]) -> Event | None:
         choices: list[dict[str, Any]] = []
         for choice_data in choices_data:
             msg_data = choice_data.get("message", {})
-            msg = ChatMessageAssistant(content=msg_data.get("content", ""))
+            tool_calls = [
+                ToolCall(
+                    id=tc.get("id", "tc-1"),
+                    function=tc.get("function", "tool"),
+                    arguments=tc.get("arguments", {}),
+                )
+                for tc in msg_data.get("tool_calls", [])
+            ]
+            msg = ChatMessageAssistant(
+                content=msg_data.get("content", ""),
+                tool_calls=tool_calls or None,
+            )
             choices.append(
                 {"message": msg, "stop_reason": choice_data.get("stop_reason", "stop")}
             )

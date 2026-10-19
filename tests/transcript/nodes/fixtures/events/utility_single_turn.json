@@ -1,5 +1,5 @@
 {
-  "description": "Agent with 1 ModelEvent and different system prompt is classified as utility",
+  "description": "Agent with 1 ModelEvent and different system prompt under a tool-calling parent is classified as utility",
   "events": [
     {
       "event": "span_begin",
@@ -30,6 +30,17 @@
         {"role": "user", "content": "Solve the task."}
       ],
       "output": {
+        "choices": [
+          {
+            "message": {
+              "content": "Delegating to the safety checker.",
+              "tool_calls": [
+                {"id": "tc-1", "function": "delegate", "arguments": {}}
+              ]
+            },
+            "stop_reason": "tool_calls"
+          }
+        ],
         "usage": {
           "input_tokens": 50,
           "output_tokens": 25

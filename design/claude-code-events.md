@@ -112,11 +112,13 @@ The retry/attempts loop needs to work with this streaming approach — each atte
 ```python
 bridge_model_events: dict[str, ModelEvent] = {}
 
+
 def on_event(event: Event) -> None:
     if isinstance(event, ModelEvent) and event.pending is None:
         msg_id = event.output.choices[0].message.id if event.output.choices else None
         if msg_id:
             bridge_model_events[msg_id] = event
+
 
 transcript()._subscribe(on_event)
 ```

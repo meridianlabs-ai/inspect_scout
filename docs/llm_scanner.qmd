@@ -5,7 +5,7 @@ llms-description: "Customizable LLM scanner for model evaluation of transcripts"
 
 ## Overview
 
-The `llm_scanner()` provides a core "batteries included" implementation of an LLM-based `Transcript` scanner with the following features:.
+The `llm_scanner()` provides a core "batteries included" implementation of an LLM-based `Transcript` scanner with the following features:
 
 -   Support for a variety of model answer types including boolean, number, string, classification (single or multi), and structured JSON output.
 -   Textual presentation of message history including a numbering scheme that enables models to create reference links to specific messages.
@@ -110,7 +110,7 @@ You can provide your own `template` as an argument to `llm_scanner()`. The follo
 | `{{{ question }}}` | str | Question about the transcript posed to the LLM (e.g. "Did the assistant refuse the user's request?") |
 | `{{{ answer_prompt }}}` | str | The prompt used by the current answer type (e.g. "Answer the following yes or no question:") |
 | `{{{ answer_format }}}` | str | Formatting guidelines used by the current answer type (e.g. ""'ANSWER: \$VALUE' (without quotes) where \$VALUE is yes or no.") |
-| `{{{ date}}}` | str | ISO 8601 datetime when the transcript was created. |
+| `{{{ date }}}` | str | ISO 8601 datetime when the transcript was created. |
 | `{{{ task_set }}}` | str | Set from which transcript task was drawn (e.g. Inspect taks name or benchmark name). |
 | `{{{ task_id }}}` | str | Identifier for task (e.g. dataset sample id). |
 | `{{{ task_repeat }}}` | int | Repeat for a given task id within a task set (e.g. epoch). |
@@ -119,13 +119,15 @@ You can provide your own `template` as an argument to `llm_scanner()`. The follo
 | `{{{ model }}}` | str | Main model used by agent. |
 | `{{{ model_options }}}` | dict | Generation options for main model. |
 | `{{{ score }}}` | JsonValue | Value indicating score on task. |
+| `{{{ score_explanation }}}` | str | Scorer's account of how it reached `score`, where it gave one. |
 | `{{{ success }}}` | bool | Boolean reduction of `score` to succeeded/failed. |
 | `{{{ message_count }}}` | number | Total messages in conversation. |
 | `{{{ total_time }}}` | number | Time required to execute task (seconds) |
 | `{{{ total_tokens }}}` | number | Tokens spent in execution of task. |
 | `{{{ error }}}` | str | Error message that terminated the task. |
 | `{{{ limit }}}` | str | Limit that caused the task to exit (e.g. "tokens", "messages, etc.) |
-| `{{{ metadata }}}` | dict | Additional metadata |
+| `{{{ metadata }}}` | dict | Additional metadata (includes `sample_metadata`, `target` and `scores` from the log body unless the scanner declines them with `metadata=False`) |
+| `{{{ scout_nonce }}}` | str | The `nonce` passed to `llm_scanner()`, which is also written on every message header (e.g. `[M2] USER (3f9a1c7e):`). Undefined when no `nonce` is passed; a `scout_nonce` key in `template_variables` is ignored. When it is set, the default template adds a paragraph telling the model that a header without the nonce is part of the message it appears in. |
 
 : {tbl-colwidths=\[40,15,45\]}
 
@@ -257,7 +259,7 @@ Scanners produce results which ultimately carry a specific `value`. There are tw
     class ToolErrors(BaseModel):
         tool_errors: int = Field(alias="value", description="The number of tool errors encountered.")
 
-        causes: str = Field(description="What were the most common causes of tool errors.") 
+        causes: str = Field(description="What were the most common causes of tool errors.")
     ```
 
 ### Labels and Explanations
@@ -357,7 +359,7 @@ Instead of a static string, you can pass a function that takes a `Transcript` an
 ``` python
 async def question_from_transcript(transcript: Transcript) -> str:
     # access sample metadata
-    topic = transcript.metadata["sample_metadata]".get("topic", "unknown")
+    topic = transcript.metadata["sample_metadata"].get("topic", "unknown")  # needs the default metadata=True
 
     # access message count
     num_messages = len(transcript.messages)
@@ -501,4 +503,4 @@ Container and utility spans (such as the synthetic top-level wrapper inserted ar
 
 ### Timeline Selection
 
-Transcripts can carry multiple named timelines (e.g. a default agent-centric view alongside alternative groupings). Use the `timeline` parameter to scan a specific one by name — by default the transcript's first timeline is used. Naming a timeline that doesn't exist on the transcript raises an error.
+Transcripts can carry multiple named timelines (e.g. a default agent-centric view alongside alternative groupings). Use the `timeline` parameter to scan a specific one by name — by default the transcript's first timeline is used. Passing `timeline` requests timeline content on its own, so `llm_scanner(timeline="target", ...)` works without `@scanner(timeline=True)` or a `content` override. Naming a timeline that doesn't exist on the transcript raises an error.

@@ -63,6 +63,19 @@ def simple_scanner_factory() -> Scanner[Transcript]:
     return scan_transcript
 
 
+@scanner(name="boolean_resultset_scanner", messages="all")
+def boolean_resultset_scanner_factory() -> Scanner[Transcript]:
+    """Scanner that returns a resultset whose values are uniformly boolean."""
+
+    async def scan_transcript(transcript: Transcript) -> list[Result]:
+        return [
+            Result(label="deception", value=True),
+            Result(label="sandbagging", value=False),
+        ]
+
+    return scan_transcript
+
+
 @scanner(name="empty_resultset_scanner", messages="all")
 def empty_resultset_scanner_factory() -> Scanner[Transcript]:
     """Scanner that returns an empty resultset."""
@@ -258,6 +271,32 @@ def test_resultset_with_optional_fields() -> None:
         deception_rows = df[df["label"] == "deception"]
         # Check that answer column exists but may be None
         assert "answer" in deception_rows.columns
+
+
+def test_uniformly_boolean_resultset_values_survive_expansion() -> None:
+    """Regression test: uniformly-boolean resultsets keep True/False values.
+
+    Resultset expansion parses JSON into native Python bools; the boolean
+    cast previously only mapped string representations, silently turning
+    every value into NaN when all expanded values were boolean.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        status = scan(
+            scanners=[boolean_resultset_scanner_factory()],
+            transcripts=transcripts_from(LOGS_DIR),
+            scans=tmpdir,
+            limit=1,
+            max_processes=1,
+        )
+
+        results = scan_results_df(status.location, scanner="boolean_resultset_scanner")
+        df = results.scanners["boolean_resultset_scanner"]
+
+        assert len(df) == 2
+        assert all(df["value_type"] == "boolean")
+        values = df.set_index("label")["value"]
+        assert values["deception"] is True
+        assert values["sandbagging"] is False
 
 
 def test_multiple_transcripts_with_resultsets() -> None:

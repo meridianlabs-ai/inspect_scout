@@ -1,0 +1,154 @@
+"""Tests for EvalLogTranscriptsView.read() with legacy JSON format logs."""
+
+from pathlib import Path
+
+import pytest
+from inspect_ai.log import read_eval_log, write_eval_log
+from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
+from inspect_scout._transcript.types import (
+    Transcript,
+    TranscriptContent,
+    TranscriptInfo,
+    TranscriptTooLargeError,
+)
+
+TEST_EVAL_LOGS_DIR = Path(__file__).parent.parent / "recorder" / "logs"
+EVAL_LOG = (
+    TEST_EVAL_LOGS_DIR
+    / "2025-11-07T10-59-47-05-00_websearch-addition-problem_LqPDntDnkk4h2fSqQ8i6CE.eval"
+)
+
+
+@pytest.fixture(scope="module")
+def json_log(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Legacy JSON-format copy of the .eval fixture."""
+    json_path = tmp_path_factory.mktemp("logs") / EVAL_LOG.with_suffix(".json").name
+    log = read_eval_log(str(EVAL_LOG))
+    # Strip stored timelines so the timeline_build() fallback is always
+    # exercised, even if the fixture is regenerated with a newer
+    # inspect_ai that stores timelines.
+    for sample in log.samples or []:
+        sample.timelines = None
+    write_eval_log(log, str(json_path))
+    return json_path
+
+
+async def _read_first_transcript(
+    log_path: Path, content: TranscriptContent, max_bytes: int | None = None
+) -> Transcript:
+    """Read the first transcript from a log file."""
+    async with EvalLogTranscriptsView(str(log_path)) as view:
+        async for info in view.select():
+            return await view.read(info, content, max_bytes)
+    raise AssertionError("No transcripts found")
+
+
+@pytest.mark.asyncio
+async def test_read_json_log_matches_eval_log(json_log: Path) -> None:
+    """Reading a legacy JSON log yields the same content as the .eval log."""
+    content = TranscriptContent(messages="all", events="all")
+
+    eval_transcript = await _read_first_transcript(EVAL_LOG, content)
+    json_transcript = await _read_first_transcript(json_log, content)
+
+    assert json_transcript.messages == eval_transcript.messages
+    assert json_transcript.events == eval_transcript.events
+
+
+@pytest.mark.asyncio
+async def test_read_json_log_builds_timeline_and_refilters_events(
+    json_log: Path,
+) -> None:
+    """Timeline requests build timelines from events and re-filter events after."""
+    content = TranscriptContent(messages="all", events=["model"], timeline="all")
+
+    eval_transcript = await _read_first_transcript(EVAL_LOG, content)
+    json_transcript = await _read_first_transcript(json_log, content)
+
+    assert json_transcript.timelines
+    assert json_transcript.timelines == eval_transcript.timelines
+    assert all(event.event == "model" for event in json_transcript.events)
+    assert json_transcript.events == eval_transcript.events
+
+
+@pytest.mark.asyncio
+async def test_read_json_log_respects_max_bytes(json_log: Path) -> None:
+    """A JSON sample larger than max_bytes raises TranscriptTooLargeError."""
+    content = TranscriptContent(messages="all", events="all")
+
+    with pytest.raises(TranscriptTooLargeError):
+        await _read_first_transcript(json_log, content, max_bytes=10)
+
+
+POPULARITY_LOG = (
+    TEST_EVAL_LOGS_DIR
+    / "2025-09-23T08-09-58-04-00_popularity_DN2wbX2ZvACsBpjwptzBRo.eval"
+)
+
+# Index metadata columns that are stored as JSON strings and parsed lazily. The
+# sample body overlays `sample_metadata`, so only the index-only keys were
+# stranded by the merge; these four are what the popularity fixture carries.
+INDEX_ONLY_JSON_KEYS = ("eval_metadata", "task_args", "generate_config", "model_roles")
+
+
+@pytest.mark.asyncio
+async def test_default_read_parses_index_only_json_metadata() -> None:
+    """A default read must not hand scanners raw JSON strings.
+
+    The merge in the read path did ``base.copy() | overrides``, and both
+    ``dict.copy()`` and ``dict.__or__`` drop back to a plain dict, stranding
+    every index key nobody had read as its raw string.
+    """
+    transcript = await _read_first_transcript(
+        POPULARITY_LOG, TranscriptContent(messages="all", events="all")
+    )
+    for key in INDEX_ONLY_JSON_KEYS:
+        assert isinstance(transcript.metadata[key], dict), (
+            f"{key} came back as {type(transcript.metadata[key]).__name__}"
+        )
+
+
+@pytest.mark.asyncio
+async def test_default_read_metadata_matches_the_declined_path() -> None:
+    """The default read should agree with the declined path key for key.
+
+    Declining metadata leaves the index dict uncopied, so that path never had
+    the bug.
+    """
+    content = TranscriptContent(messages="all", events="all")
+    default = await _read_first_transcript(POPULARITY_LOG, content)
+    declined = await _read_first_transcript(
+        POPULARITY_LOG,
+        TranscriptContent(messages="all", events="all", metadata=False),
+    )
+    for key in INDEX_ONLY_JSON_KEYS:
+        assert default.metadata[key] == declined.metadata[key]
+
+
+@pytest.mark.asyncio
+async def test_default_read_keeps_non_json_strings_as_strings() -> None:
+    """The fix must not start parsing columns that hold plain text."""
+    transcript = await _read_first_transcript(
+        POPULARITY_LOG, TranscriptContent(messages="all", events="all")
+    )
+    assert isinstance(transcript.metadata["input"], str)
+
+
+@pytest.mark.asyncio
+async def test_read_preserves_every_info_field() -> None:
+    """`RawTranscript` mirrors the info field by field; a read must not drop one.
+
+    `metadata` is excluded: read() merges the sample's unthinned values into it.
+    """
+    content = TranscriptContent(messages="all", events="all")
+    fields = [name for name in TranscriptInfo.model_fields if name != "metadata"]
+
+    async with EvalLogTranscriptsView(str(EVAL_LOG)) as view:
+        async for info in view.select():
+            assert info.score_explanation
+            transcript = await view.read(info, content)
+            assert {name: getattr(transcript, name) for name in fields} == {
+                name: getattr(info, name) for name in fields
+            }
+            return
+    raise AssertionError("No transcripts found")

@@ -48,7 +48,7 @@ scout import claude_code --dry-run --limit 5
 | `--sources` | | List available sources and their parameters | False |
 | `--dry-run` | | Fetch and display summary without writing | False |
 
-The import command always prints the `scout view` command after a successful import.
+After an import, the command prints the scout view command for the transcripts database. If the source produced no transcripts, it instead prints a notice ("No transcripts were imported") and skips the scout view hint.
 
 ## Parameter Parsing (`-P`)
 

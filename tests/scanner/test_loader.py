@@ -109,7 +109,7 @@ def test_loader_requires_filter() -> None:
 def test_loader_with_both_filters() -> None:
     """Loader can have both message and event filters."""
 
-    @loader(messages=["user"], events=["model"])  # type: ignore[arg-type]
+    @loader(messages=["user"], events=["model"], metadata=False)  # type: ignore[arg-type]
     def test_loader() -> Callable[[Transcript], AsyncIterator[Transcript]]:
         async def load(
             transcript: Transcript,
@@ -122,6 +122,7 @@ def test_loader_with_both_filters() -> None:
     config = registry_info(instance).metadata[LOADER_CONFIG]
     assert config.content.messages == ["user"]
     assert config.content.events == ["model"]
+    assert registry_info(instance).metadata[LOADER_CONFIG].content.metadata is False
 
 
 # Loader integration tests

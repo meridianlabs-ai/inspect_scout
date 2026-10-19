@@ -22,6 +22,7 @@ from .._project._project import (
 )
 from .._project.types import ProjectConfig
 from .._util.constants import DEFAULT_SCANS_DIR
+from .._util.trust import lowest_trust_content
 from ._api_v2_types import AppConfig, AppDir
 from ._server_common import InspectPydanticJSONResponse
 from .invalidationTopics import notify_topics
@@ -56,7 +57,9 @@ def create_config_router(
         transcripts_path = view_config.transcripts_cli or project.transcripts
         scans_path = view_config.scans_cli or project.scans or DEFAULT_SCANS_DIR
         return AppConfig(
-            **project.model_dump(exclude={"transcripts", "scans", "results"}),
+            **project.model_dump(
+                exclude={"transcripts", "scans", "results", "trust_content"}
+            ),
             home_dir=UPath(PathlibPath.home()).resolve().as_uri(),
             project_dir=UPath(PathlibPath.cwd()).resolve().as_uri(),
             transcripts=AppDir(
@@ -68,6 +71,9 @@ def create_config_router(
             scans=AppDir(
                 dir=UPath(scans_path).resolve().as_uri(),
                 source="cli" if view_config.scans_cli else "project",
+            ),
+            trust_content=lowest_trust_content(
+                view_config.trust_content_cli, project.trust_content
             ),
         )
 

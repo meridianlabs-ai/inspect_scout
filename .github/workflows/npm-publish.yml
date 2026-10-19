@@ -1,9 +1,12 @@
 name: Publish React Viewer Lib
 
 on:
-  push:
-    tags:
-      - "[0-9]+.[0-9]+.[0-9]+"
+  # Auto-publish when Release Please cuts a GitHub Release (App token triggers
+  # this). Replaces the old tag-push trigger — release-please owns tags now, and
+  # triggering on the release avoids a double-fire from tag creation.
+  release:
+    types: [published]
+  # Manual break-glass path (defaults to dry-run).
   workflow_dispatch:
     inputs:
       dry-run:
@@ -18,6 +21,19 @@ on:
         default: false
 
 jobs:
+  # Post the "awaiting approval" Slack ping — un-gated, in this same run, so it
+  # deep-links to the run whose publish job is paused on the npm environment.
+  notify-approval:
+    if: ${{ github.event_name == 'release' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: meridianlabs-ai/actions/slack-approval-ping@v1
+        with:
+          webhook: ${{ secrets.SLACK_APPROVALS_WEBHOOK_URL }}
+          approvers: "jjallaire dragonstyle epatey"
+          message: ":package: *${{ github.repository }}* ${{ github.event.release.tag_name }} — npm viewer-lib publish is *awaiting approval*."
+          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
   publish:
     name: Publish to NPM
     runs-on: ubuntu-latest
@@ -30,23 +46,23 @@ jobs:
       id-token: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           submodules: true
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:
           package_json_file: src/inspect_scout/_view/ts-mono/package.json
 
+      # No pnpm cache: the published package must be built from the reviewed
+      # lockfile, not from a pnpm store another workflow saved to the cache.
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22.x"
           registry-url: "https://registry.npmjs.org"
-          cache: "pnpm"
-          cache-dependency-path: src/inspect_scout/_view/ts-mono/pnpm-lock.yaml
 
       - name: Upgrade npm (for Trusted Publishing)
         run: |

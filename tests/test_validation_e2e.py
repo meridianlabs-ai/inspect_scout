@@ -369,7 +369,6 @@ async def test_validation_different_predicates_e2e() -> None:
             scans=tmpdir,
             limit=3,  # Only scan 3 transcripts for efficiency
         )
-
         # Get results
         results = scan_results_df(scan_result.location, scanner="int_scanner")
         df = results.scanners["int_scanner"]
@@ -486,6 +485,12 @@ async def test_validation_with_custom_predicate_e2e() -> None:
             scans=tmpdir,
             limit=3,  # Only scan 3 transcripts for efficiency
         )
+        scan_spec = json.loads((Path(scan_result.location) / "_scan.json").read_text())
+        assert scan_spec["validation"]["int_scanner"]["predicate"] == {
+            "kind": "unavailable",
+            "display_name": "custom_within_range",
+            "reason": "anonymous",
+        }
 
         # Get results
         results = scan_results_df(scan_result.location, scanner="int_scanner")

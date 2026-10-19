@@ -2,6 +2,7 @@ from logging import getLogger
 from typing import Literal
 
 import click
+from inspect_ai._util.path import chdir
 from typing_extensions import Unpack
 
 from inspect_scout._cli.common import (
@@ -34,6 +35,16 @@ logger = getLogger(__name__)
     help="Location of scan results to view.",
 )
 @click.option(
+    "--trust-content/--no-trust-content",
+    default=None,
+    envvar="SCOUT_VIEW_TRUST_CONTENT",
+    help="Whether model output may be rendered richly (markdown, syntax highlighting, "
+    "ANSI colors, media, links). --no-trust-content shows all model output as plain "
+    "text, whatever the project or each transcript's own setting. --trust-content, "
+    "like leaving the option unset, defers to them; it never shows untrusted content "
+    "richly.",
+)
+@click.option(
     "--mode",
     type=click.Choice(("default", "scans")),
     default="default",
@@ -41,10 +52,13 @@ logger = getLogger(__name__)
 )
 @view_options
 @common_options
+@click.pass_context
 def view_command(
+    ctx: click.Context,
     project_dir: str | None,
     transcripts: str | None,
     scans: str | None,
+    trust_content: bool | None,
     mode: Literal["default", "scans"],
     host: str,
     port: int,
@@ -56,13 +70,16 @@ def view_command(
     **common: Unpack[CommonOptions],
 ) -> None:
     """View scan results."""
-    process_common_options(common)
+    # chdir to correctly resolve log level based on the relevant project_dir
+    with chdir(project_dir or "."):
+        process_common_options(ctx, common, init_logging=False)
 
     try:
         view(
             project_dir=project_dir,
             transcripts=transcripts,
             scans=scans,
+            trust_content=trust_content,
             host=host,
             port=port,
             browser=browser is True,

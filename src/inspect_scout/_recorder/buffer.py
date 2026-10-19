@@ -1,5 +1,6 @@
 import os
 import shutil
+import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Final, Sequence, Set, TypeVar, cast
@@ -123,8 +124,7 @@ class RecorderBuffer:
                 self._state.summary = Summary(
                     complete=False, scanners=list(spec.scanners.keys())
                 )
-                with open(scan_summary_file.as_posix(), "w") as f:
-                    f.write(self._state.summary.model_dump_json(indent=2))
+                _persist_scan_summary(self._buffer_dir, self._state.summary)
 
         self._error_file = self._buffer_dir.joinpath(SCAN_ERRORS)
 
@@ -154,6 +154,9 @@ class RecorderBuffer:
             transcript.model_options, "generate_config", m
         )
         transcript_score = resolve_metadata_var(transcript.score, "score", m)
+        transcript_score_explanation = resolve_metadata_var(
+            transcript.score_explanation, "score_explanation", m
+        )
         transcript_success = resolve_success_value(
             transcript.success, cast(JsonValue | None, transcript_score)
         )
@@ -186,12 +189,15 @@ class RecorderBuffer:
                     "transcript_model": transcript_model,
                     "transcript_model_options": transcript_model_options,
                     "transcript_score": transcript_score,
+                    "transcript_score_explanation": transcript_score_explanation,
                     "transcript_success": transcript_success,
                     "transcript_message_count": transcript_message_count,
                     "transcript_total_time": transcript_total_time,
                     "transcript_total_tokens": transcript_total_tokens,
                     "transcript_error": transcript_error,
                     "transcript_limit": transcript_limit,
+                    # no metadata fallback: trust only ever comes from the field
+                    "transcript_trust_content": transcript.trust_content,
                     "transcript_metadata": transcript.metadata,
                     "scan_id": self._spec.scan_id,
                     "scan_tags": self._spec.tags or [],
@@ -248,8 +254,7 @@ class RecorderBuffer:
         async with self._state.lock:
             assert self._state.summary is not None  # set in __init__
             self._state.summary._report(transcript, scanner, results, metrics)
-            with open(self._buffer_dir.joinpath(SCAN_SUMMARY).as_posix(), "w") as f:
-                f.write(self._state.summary.model_dump_json(indent=2))
+            _persist_scan_summary(self._buffer_dir, self._state.summary)
 
         # record errors (open(..., "at") gives OS-atomic appends)
         for result in results:
@@ -265,8 +270,7 @@ class RecorderBuffer:
         async with self._state.lock:
             assert self._state.summary is not None  # set in __init__
             self._state.summary._report_metrics(scanner, metrics)
-            with open(self._buffer_dir.joinpath(SCAN_SUMMARY).as_posix(), "w") as f:
-                f.write(self._state.summary.model_dump_json(indent=2))
+            _persist_scan_summary(self._buffer_dir, self._state.summary)
 
     async def is_recorded(self, transcript_id: str, scanner: str) -> bool:
         sdir = self._buffer_dir / f"scanner={_sanitize_component(scanner)}"
@@ -319,9 +323,20 @@ def resolve_success_value(value: bool | None, score: JsonValue | None) -> bool |
 def scanner_table(
     buffer_dir: UPath,
     scanner: str,
+    output_file: str,
     *,
     extra_inputs: list[UPath] | None = None,
-) -> bytes | None:
+) -> bool:
+    """Compact per-transcript buffer parquets into a single parquet file.
+
+    Streams batches from the buffer (and any `extra_inputs`) directly into
+    `output_file` (a local path), so peak memory stays bounded regardless of
+    the total size of the compacted output.
+
+    Returns:
+        True if `output_file` was written, False if there was nothing to
+        compact (in which case no file is created).
+    """
     import pyarrow as pa
     import pyarrow.dataset as ds
     import pyarrow.parquet as pq
@@ -372,7 +387,7 @@ def scanner_table(
         # avoid creating a schema-less empty parquet when there's nothing to
         # compact. If you *must* emit a file in that case, you need a known
         # schema.
-        return None
+        return False
     # set of paths whose batches need transcript_id filtering against
     # `buffer_tids` (paths NOT in the buffer dir → from extra_inputs)
     extra_paths_set: set[str] = set(extra_paths)
@@ -383,22 +398,38 @@ def scanner_table(
     # build dataset
     dataset: ds.Dataset = ds.dataset(inputs, format="parquet")
 
-    # discover the unified schema up-front. This ensures column order/types are stable.
-    # if there are absolutely no fragments under sdir, accessing .schema may raise.
+    # pyarrow infers the dataset schema from the first fragment only, which drops
+    # any column that only later files carry (a scan resumed across an upgrade).
+    # Union the field names across all inputs instead; first-seen type wins.
+    fields: dict[str, pa.Field[Any]] = {}
     try:
-        schema: pa.Schema = dataset.schema
+        for path in inputs:
+            for field in pq.read_schema(path):
+                fields.setdefault(field.name, field)
     except Exception as e:
         raise RuntimeError(
             f"Unable to discover dataset schema under {sdir}: {e}"
         ) from e
+    schema = pa.schema(fields.values())
 
     # Correct schema to handle type inconsistencies across files:
-    # 1. Promote null-type columns to string (unknown type)
-    # 2. Force 'value' and 'transcript_score' columns to string since they can have
+    # 1. Pin columns with a known type (`fixed_types`): the first file may hold
+    #    them as all-null, which would otherwise demote them to string, or lack
+    #    them entirely (written by an older version), which would drop them
+    # 2. Promote other null-type columns to string (unknown type)
+    # 3. Force 'value' and 'transcript_score' columns to string since they can have
     #    mixed types across different result reports / transcripts
+    fixed_types: dict[str, pa.DataType] = {
+        "transcript_success": pa.bool_(),
+        "transcript_trust_content": pa.bool_(),
+    }
     corrected_fields = []
     for field in schema:
-        if pa.types.is_null(field.type):
+        if field.name in fixed_types:
+            corrected_fields.append(
+                pa.field(field.name, fixed_types[field.name], nullable=True)
+            )
+        elif pa.types.is_null(field.type):
             # Promote null type to string
             corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))
         elif field.name in {"value", "transcript_score"}:
@@ -406,6 +437,11 @@ def scanner_table(
             corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))
         else:
             corrected_fields.append(field)
+    corrected_fields.extend(
+        pa.field(name, type, nullable=True)
+        for name, type in fixed_types.items()
+        if name not in schema.names
+    )
     schema = pa.schema(corrected_fields)
 
     # state for bounded accumulation -> large-ish row groups
@@ -421,69 +457,88 @@ def scanner_table(
         accumulated.clear()
         accumulated_bytes = 0
 
-    # Create an in-memory buffer (use PyArrow's native type for efficiency)
-    buffer = pa.BufferOutputStream()
-    writer = pq.ParquetWriter(
-        buffer,
+    with pq.ParquetWriter(
+        output_file,
         schema,
         compression="zstd",
         use_dictionary=True,
-    )
+    ) as writer:
+        # iterate materialized batches; to keep memory in check we use a small batch_size.
+        # We iterate fragments and manually cast to handle schema inconsistencies
+        for fragment in dataset.get_fragments():
+            # batches from `extra_inputs` get filtered against buffer_tids
+            # so a transcript represented in the buffer doesn't double-count
+            is_extra = fragment.path in extra_paths_set
+            for batch in fragment.to_batches(
+                batch_size=DEFAULT_BATCH_ROWS,
+                use_threads=False,
+            ):
+                # Cast batch to corrected schema to handle type mismatches
+                # (e.g., null columns promoted to string, or missing columns)
+                try:
+                    arrays = []
+                    for field in schema:
+                        if field.name in batch.schema.names:
+                            # Column exists - cast it to target type
+                            col = batch.column(field.name)
+                            arrays.append(col.cast(field.type))
+                        else:
+                            # Column missing - create null array
+                            arrays.append(
+                                pa.array([None] * len(batch), type=field.type)
+                            )
 
-    # iterate materialized batches; to keep memory in check we use a small batch_size.
-    # We iterate fragments and manually cast to handle schema inconsistencies
-    for fragment in dataset.get_fragments():
-        # batches from `extra_inputs` get filtered against buffer_tids
-        # so a transcript represented in the buffer doesn't double-count
-        is_extra = fragment.path in extra_paths_set
-        for batch in fragment.to_batches(
-            batch_size=DEFAULT_BATCH_ROWS,
-            use_threads=False,
-        ):
-            # Cast batch to corrected schema to handle type mismatches
-            # (e.g., null columns promoted to string, or missing columns)
-            try:
-                arrays = []
-                for field in schema:
-                    if field.name in batch.schema.names:
-                        # Column exists - cast it to target type
-                        col = batch.column(field.name)
-                        arrays.append(col.cast(field.type))
-                    else:
-                        # Column missing - create null array
-                        arrays.append(pa.array([None] * len(batch), type=field.type))
+                    batch = pa.RecordBatch.from_arrays(arrays, schema=schema)
+                except Exception as e:
+                    raise RuntimeError(f"Failed to cast batch to schema: {e}") from e
 
-                batch = pa.RecordBatch.from_arrays(arrays, schema=schema)
-            except Exception as e:
-                raise RuntimeError(f"Failed to cast batch to schema: {e}") from e
+                # drop rows whose transcript_id is already covered by a
+                # buffer file (the buffer is authoritative for those tids)
+                if is_extra and buffer_tid_array is not None:
+                    mask = pc.invert(
+                        pc.is_in(
+                            batch.column("transcript_id"), value_set=buffer_tid_array
+                        )
+                    )
+                    batch = batch.filter(mask)
+                    if batch.num_rows == 0:
+                        continue
 
-            # drop rows whose transcript_id is already covered by a
-            # buffer file (the buffer is authoritative for those tids)
-            if is_extra and buffer_tid_array is not None:
-                mask = pc.invert(
-                    pc.is_in(batch.column("transcript_id"), value_set=buffer_tid_array)
-                )
-                batch = batch.filter(mask)
-                if batch.num_rows == 0:
-                    continue
+                size = batch.nbytes
+                if accumulated_bytes and accumulated_bytes + size > MAX_BYTES:
+                    flush_accumulated(writer)
+                accumulated.append(batch)
+                accumulated_bytes += size
 
-            size = batch.nbytes
-            if accumulated_bytes and accumulated_bytes + size > MAX_BYTES:
-                flush_accumulated(writer)
-            accumulated.append(batch)
-            accumulated_bytes += size
+        # Final flush. If no rows were seen, this still leaves us with an empty file (schema only).
+        flush_accumulated(writer)
 
-    # Final flush. If no rows were seen, this still leaves us with an empty file (schema only).
-    flush_accumulated(writer)
-    writer.close()
+    return True
 
-    # TODO: If we changed the signature of this function from:
-    #   bytes | None
-    #     to
-    #   pa.Buffer | None
-    # We could avoid the copy (that to_pybytes does) altogether.
-    # Keep in mind that the previous BytesIO.getvalue() made a copy too.
-    return buffer.getvalue().to_pybytes()
+
+def _persist_scan_summary(buffer_dir: UPath, summary: Summary) -> None:
+    """Atomically persist the buffer's summary file.
+
+    A mid-scan results sync (see the `results_buffer` scan option) may read
+    `_summary.json` concurrently with a record; write-to-tmp + rename keeps
+    readers from ever observing a truncated file.
+
+    The tmp name is unique per write because the buffer dir is keyed by scan
+    location rather than by process: concurrent record-only workers (eval_set
+    selection mode) share one buffer, and a fixed tmp name lets one worker's
+    rename consume another's file mid-write — the loser then errors its
+    sample on the missing tmp. Unique names reduce the race to
+    last-writer-wins over the summary's *content*: each process persists its
+    own accumulated counts, so with concurrent writers the file undercounts
+    every process's share but one. A single-process scan is exact; an
+    external runner that owns a shared scan's lifecycle must derive the
+    durable summary from the recorded rows rather than trust this file.
+    """
+    summary_file = buffer_dir.joinpath(SCAN_SUMMARY)
+    tmp_file = buffer_dir.joinpath(f".{SCAN_SUMMARY}.{uuid.uuid4().hex}.tmp")
+    with open(tmp_file.as_posix(), "w") as f:
+        f.write(summary.model_dump_json(indent=2))
+    os.replace(tmp_file.as_posix(), summary_file.as_posix())
 
 
 def cleanup_buffer_dir(buffer_dir: UPath) -> None:
@@ -504,12 +559,22 @@ def _sanitize_component(name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_\-=+.,@]", "_", name)
 
 
-def _normalize_scalar(v: Any) -> Any:
+_SERIALIZED_INPUT_COLUMNS = frozenset({"input", "input_data"})
+"""Columns `ResultReport.to_df_columns` fills with pre-serialized UTF-8 JSON."""
+
+
+def _normalize_scalar(key: str, v: Any) -> Any:
     if v is None:
         return None
     if isinstance(v, bool):
         return v
     if isinstance(v, (str, int, float)):
+        return v
+    # `input`/`input_data` arrive pre-serialized as UTF-8 JSON; pyarrow decodes
+    # UTF-8 into a string column directly, while `to_json` below would wrap the
+    # buffer in quotes. Scoped by key because any other column can hold
+    # arbitrary user bytes, which pyarrow rejects with `ArrowInvalid`.
+    if key in _SERIALIZED_INPUT_COLUMNS and isinstance(v, (bytes, bytearray)):
         return v
     # datetime/date
     try:
@@ -534,7 +599,7 @@ def _records_to_arrow(records: list[dict[str, Any]]) -> "pa.Table":
     import pyarrow as pa
 
     # First normalize scalars
-    norm = [{k: _normalize_scalar(v) for k, v in r.items()} for r in records]
+    norm = [{k: _normalize_scalar(k, v) for k, v in r.items()} for r in records]
 
     # Check for mixed-type columns and convert them to strings
     if norm:
@@ -543,7 +608,14 @@ def _records_to_arrow(records: list[dict[str, Any]]) -> "pa.Table":
         for record in norm:
             for key, value in record.items():
                 if value is not None:
-                    val_type = type(value).__name__
+                    # str and buffers are all text for a string column, so a
+                    # column mixing them is not "mixed": stringifying here
+                    # would write b'...' into the cell.
+                    val_type = (
+                        "str"
+                        if isinstance(value, (bytes, bytearray))
+                        else type(value).__name__
+                    )
                     if key not in columns_types:
                         columns_types[key] = set()
                     columns_types[key].add(val_type)
@@ -553,8 +625,15 @@ def _records_to_arrow(records: list[dict[str, Any]]) -> "pa.Table":
         if mixed_cols:
             for record in norm:
                 for col in mixed_cols:
-                    if col in record and record[col] is not None:
-                        record[col] = str(record[col])
+                    value = record.get(col)
+                    if value is not None:
+                        # decode rather than `str()`, which would write the
+                        # b'...' repr into the cell
+                        record[col] = (
+                            value.decode()
+                            if isinstance(value, (bytes, bytearray))
+                            else str(value)
+                        )
 
     # Build arrays column-wise so string columns can use large_string offsets.
     # This avoids the ~2GB limit of Arrow's default string offset type.
@@ -570,7 +649,10 @@ def _records_to_arrow(records: list[dict[str, Any]]) -> "pa.Table":
     for column in columns:
         values = [record.get(column) for record in norm]
         non_null_values = [value for value in values if value is not None]
-        if non_null_values and all(isinstance(value, str) for value in non_null_values):
+        if non_null_values and all(
+            isinstance(value, (str, bytes, bytearray)) for value in non_null_values
+        ):
+            # pyarrow decodes UTF-8 bytes into a string column directly
             arrays[column] = pa.array(values, type=pa.large_string())
         else:
             arrays[column] = pa.array(values)

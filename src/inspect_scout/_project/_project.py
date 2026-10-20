@@ -296,13 +296,15 @@ def write_project_config(
 def _config_patch(config: ProjectConfig) -> dict[str, Any]:
     """The fields explicitly set on `config`, as a patch for `apply_config_patch`.
 
+    Only top-level keys are filtered by `model_fields_set`. Nested values are
+    dumped in full, because a nested model with no fields set can still be
+    meaningful (e.g. `cache: {}` enables the default `CachePolicy`).
     None values and empty collections are stripped from within nested values.
     A top-level field that is (or cleans to) None/empty is kept as None, the
     marker for removing that key. `results` is dropped because the
     `results` -> `scans` validator has already copied it to `scans`.
     """
-    patch = config.model_dump(exclude_unset=True)
-    patch.pop("results", None)
+    patch = config.model_dump(include=config.model_fields_set - {"results"})
     cleaned = _clean_empty_values(patch)
     return {key: cleaned.get(key) for key in patch}
 

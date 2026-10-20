@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from inspect_ai.model import CachePolicy
 from inspect_scout._project._project import (
     EtagMismatchError,
     compute_project_etag,
@@ -274,6 +275,26 @@ def test_save_creates_new_file_with_set_fields_only(
         None,
     )
     assert _load(tmp_path / "scout.yaml") == {"model": "openai/gpt-5"}
+
+
+@pytest.mark.parametrize(
+    "existing",
+    [pytest.param("name: x\n", id="existing-file"), pytest.param(None, id="new-file")],
+)
+def test_save_keeps_default_cache_policy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, existing: str | None
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    if existing is not None:
+        (tmp_path / "scout.yaml").write_text(existing, encoding="utf-8")
+
+    updated, _ = write_project_config(
+        ProjectConfig.model_validate({"filter": [], "generate_config": {"cache": {}}}),
+        None,
+    )
+
+    assert updated.generate_config is not None
+    assert updated.generate_config.cache == CachePolicy()
 
 
 def test_save_checks_etag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

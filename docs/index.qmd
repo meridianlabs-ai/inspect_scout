@@ -106,11 +106,35 @@ ssh -L 7576:127.0.0.1:7576 user@remote
 
 Run `scout view` normally on the remote machine, then open `http://127.0.0.1:7576` locally.
 
+If you forward to a different local port (for example `ssh -L 8080:127.0.0.1:7576 user@remote`, or VS Code Remote picking another free port), declare the address you open in the browser:
+
+``` bash
+scout view --trusted-origin http://127.0.0.1:8080
+```
+
+The origin must match the browser's address bar exactly. `http://localhost:8080` and `http://127.0.0.1:8080` are different origins, so repeat `--trusted-origin` if you use both. VS Code opens forwarded ports as `http://localhost:<port>`.
+
 If local DNS or a hosts file maps a custom name to loopback, declare that exact browser origin:
 
 ``` bash
 scout view --trusted-origin http://my-scout:7576
 ```
+
+Inside Jupyter, `jupyter-server-proxy` serves Scout under `proxy/7576/` and forwards the browser's `Host`. Pass the proxied path and the Jupyter origin. Under JupyterHub:
+
+``` bash
+scout view \
+  --root-path "${JUPYTERHUB_SERVICE_PREFIX}proxy/7576" \
+  --trusted-origin https://hub.example.org
+```
+
+For a local Jupyter server at `http://localhost:8888`:
+
+``` bash
+scout view --root-path /proxy/7576 --trusted-origin http://localhost:8888
+```
+
+Scout must see the scheme the browser used. That holds when Jupyter is served over plain HTTP, or when JupyterHub's own proxy terminates TLS. It does not hold when TLS ends at the Jupyter server itself or at a load balancer in front of JupyterHub.
 
 Binding beyond loopback requires request authorization. For browser access, place Scout View behind an authenticating reverse proxy that injects the configured upstream authorization header:
 
@@ -122,7 +146,16 @@ INSPECT_VIEW_AUTHORIZATION_TOKEN="$UPSTREAM_SECRET" \
   --root-path /scout
 ```
 
-Load `UPSTREAM_SECRET` through your normal secret-management mechanism and set it to the complete expected `Authorization` header value (for example, `Bearer ...`). The proxy must authenticate the external user, preserve the configured public `Host`, set the public request scheme from a trusted proxy address, remove any client-supplied copy of the upstream authorization header, and inject the configured value.
+Load `UPSTREAM_SECRET` through your normal secret-management mechanism and set it to the complete expected `Authorization` header value (for example, `Bearer ...`). The proxy must authenticate the external user, remove any client-supplied copy of the upstream authorization header, and inject the configured value.
+
+The proxy must also forward the browser's `Host` header unchanged and, if it terminates TLS, send `X-Forwarded-Proto: https`. Otherwise Scout rejects requests. In nginx:
+
+``` nginx
+proxy_set_header Host $http_host;
+proxy_set_header X-Forwarded-Proto $scheme;
+```
+
+Scout honors `X-Forwarded-Proto` only from addresses in the `FORWARDED_ALLOW_IPS` environment variable (default `127.0.0.1,::1`). When the proxy connects from another address, set it to the proxy's address.
 
 For compatibility, an absolute `--root-path` such as `https://scout.example.org/scout` supplies its origin when no explicit `--trusted-origin` is provided. An explicit trusted origin is preferred, and a path-only `root_path` does not grant host or origin trust.
 

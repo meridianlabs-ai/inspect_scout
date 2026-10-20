@@ -183,12 +183,12 @@ def view_options(func: Callable[..., Any]) -> Callable[..., click.Context]:
     @click.option(
         "--trusted-origin",
         multiple=True,
-        help="Exact browser origin allowed to use the viewer. Repeat for multiple origins.",
+        help="Exact browser origin (scheme://host[:port]) allowed to use the viewer, such as a reverse proxy's public URL or a forwarded port's local address. Repeat for multiple origins.",
     )
     @click.option(
         "--trusted-host",
         multiple=True,
-        help="Additional exact HTTP authority allowed for non-browser clients.",
+        help="Additional exact Host header (host[:port]) accepted from non-browser clients such as health checks. Does not authorize browsers.",
     )
     @click.option(
         "--unsafe-allow-unauthenticated",

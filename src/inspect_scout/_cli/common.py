@@ -183,7 +183,7 @@ def view_options(func: Callable[..., Any]) -> Callable[..., click.Context]:
     @click.option(
         "--trusted-origin",
         multiple=True,
-        help="Exact browser origin (scheme://host[:port]) allowed to use the viewer, such as a reverse proxy's public URL or a forwarded local port. Repeat for multiple origins.",
+        help="Exact browser origin (scheme://host[:port]) allowed to use the viewer, such as a reverse proxy's public URL or a forwarded port's local address. Repeat for multiple origins.",
     )
     @click.option(
         "--trusted-host",

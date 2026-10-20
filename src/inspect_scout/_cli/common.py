@@ -188,7 +188,7 @@ def view_options(func: Callable[..., Any]) -> Callable[..., click.Context]:
     @click.option(
         "--trusted-host",
         multiple=True,
-        help="Additional exact Host header (host[:port]) accepted from non-browser clients such as health checks. Does not authorize browsers.",
+        help="Additional exact Host header (host[:port]) to accept, such as the Host a reverse proxy sends or a health check's address. Does not authorize a browser origin.",
     )
     @click.option(
         "--unsafe-allow-unauthenticated",

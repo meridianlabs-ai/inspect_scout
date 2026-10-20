@@ -6,7 +6,6 @@ whose directories vanished are deleted.
 """
 
 import asyncio
-import sys
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from functools import partial
@@ -24,9 +23,6 @@ from .._recorder.file import FileRecorder, _is_not_found
 from .._util._async import as_value
 from .convert import scan_row_from_status
 from .store import ScanIndexStore
-
-if sys.version_info < (3, 11):
-    from exceptiongroup import ExceptionGroup
 
 logger = getLogger(__name__)
 

@@ -1,12 +1,14 @@
 import io
 import json
 from collections.abc import AsyncIterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import IO, Any, Callable
 
 import ijson
 from inspect_ai._util.async_bytes_reader import AsyncBytesReader, adapt_to_reader
 from inspect_ai.event import timeline_load
+from inspect_ai.event._validate import validate_chat_messages
+from inspect_ai.log import EventsData, expand_events
 from pydantic import JsonValue
 
 from ..types import (
@@ -16,9 +18,8 @@ from ..types import (
     TranscriptContent,
     TranscriptInfo,
 )
-from ..util import filter_transcript
+from ..util import filter_transcript, merge_metadata
 from .hydrate import hydrate_nested_tool_events
-from .pool import resolve_pools
 from .reducer import (
     ATTACHMENT_PREFIX,
     ATTACHMENT_PREFIX_LEN,
@@ -39,6 +40,7 @@ from .reducer import (
     ParseState,
     attachments_coroutine,
     call_pool_item_coroutine,
+    event_has_pool_refs,
     event_item_coroutine,
     message_item_coroutine,
     message_pool_item_coroutine,
@@ -109,16 +111,20 @@ class RawTranscript:
     model: str | None
     model_options: dict[str, Any] | None
     score: JsonValue
+    score_explanation: str | None
     success: bool | None
     message_count: int | None
     total_time: float | None
     total_tokens: int | None
     error: str | None
     limit: str | None
+    trust_content: bool | None
     metadata: dict[str, Any]
     messages: list[dict[str, Any]]
     events: list[dict[str, Any]]
     timelines: list[dict[str, Any]] | None = None
+    message_pool: list[dict[str, Any]] = field(default_factory=list)
+    call_pool: list[Any] = field(default_factory=list)
 
 
 async def load_filtered_transcript(
@@ -152,10 +158,11 @@ async def load_filtered_transcript(
         Transcript with filtered messages/events and resolved attachments.
         Unless ``metadata=False``, metadata includes sample_metadata, target,
         and scores from the body. Stored timelines are returned only when
-        ``events`` is not ``None``: they resolve against the loaded events, so
-        excluding events yields no timelines. ``input`` is not unthinned:
-        resolving its refs requires the attachments section, which follows
-        events and would defeat the early-exit optimization.
+        ``events`` is ``"all"``: they resolve against the loaded events and may
+        reference any of them, so a partial event list yields no timelines.
+        ``input`` is not unthinned: resolving its refs requires the attachments
+        section, which follows events and would defeat the early-exit
+        optimization.
     """
     try:
         async with adapt_to_reader(sample_bytes) as reader:
@@ -191,7 +198,8 @@ async def _load_with_json5_fallback(
         io_source = sample_bytes
     io_source.seek(0)
     data = json.load(io.TextIOWrapper(io_source, encoding="utf-8"))
-    _resolve_pools_from_dict(data)
+    message_pool, call_pool = _pools_from_dict(data)
+    keep_timelines = events == "all"
 
     return filter_transcript(
         _resolve_attachments(
@@ -209,22 +217,26 @@ async def _load_with_json5_fallback(
                 model=t.model,
                 model_options=t.model_options,
                 score=t.score,
+                score_explanation=t.score_explanation,
                 success=t.success,
                 message_count=t.message_count,
                 total_time=t.total_time,
                 total_tokens=t.total_tokens,
                 error=t.error,
                 limit=t.limit,
+                trust_content=t.trust_content,
                 metadata=_merge_unthinned_from_dict(t.metadata, data)
                 if metadata
                 else t.metadata,
                 messages=data.get("messages", []),
                 events=data.get("events", []),
-                timelines=data.get("timelines"),
+                timelines=data.get("timelines") if keep_timelines else None,
+                message_pool=message_pool,
+                call_pool=call_pool,
             ),
             data.get("attachments", {}),
         ),
-        TranscriptContent(messages, events),
+        TranscriptContent(messages, events, timeline="all" if keep_timelines else None),
     )
 
 
@@ -237,24 +249,22 @@ def _merge_unthinned(base: dict[str, Any], state: ParseState) -> dict[str, Any]:
         overrides["target"] = state.target
     if state.scores:
         overrides["scores"] = state.scores
-    return base.copy() | overrides if overrides else base
+    return merge_metadata(base, overrides)
 
 
-def _resolve_pools_from_dict(data: dict[str, Any]) -> None:
-    """Resolve v3 pools in a fully-parsed sample dict (mutates in-place).
+def _pools_from_dict(data: dict[str, Any]) -> tuple[list[Any], list[Any]]:
+    """Message and call pools from a fully-parsed sample dict.
 
-    Accepts either pool shape (see reducer.py); no-op if neither present.
+    Accepts either pool shape (see reducer.py); empty if neither present.
     """
-    from .pool import _resolve_events_pools
-
     events_data = data.get("events_data")
     if isinstance(events_data, dict):
         message_pool = events_data.get("messages") or []
         call_pool = events_data.get("calls") or []
     else:
-        message_pool = data.get("message_pool", [])
-        call_pool = data.get("call_pool", [])
-    _resolve_events_pools(data.get("events", []), message_pool, call_pool)
+        message_pool = data.get("message_pool") or []
+        call_pool = data.get("call_pool") or []
+    return message_pool, call_pool
 
 
 def _merge_unthinned_from_dict(
@@ -268,7 +278,7 @@ def _merge_unthinned_from_dict(
         overrides["target"] = data["target"]
     if data.get("scores"):
         overrides["scores"] = data["scores"]
-    return base.copy() | overrides if overrides else base
+    return merge_metadata(base, overrides)
 
 
 async def _parse_and_filter(
@@ -311,7 +321,7 @@ async def _parse_and_filter(
         message_item_coroutine(state, messages_config) if messages_config else None
     )
     events_coro = event_item_coroutine(state, events_config) if events_config else None
-    timelines_coro = timeline_item_coroutine(state)
+    timelines_coro = timeline_item_coroutine(state) if events_filter == "all" else None
     attachments_coro = attachments_coroutine(state, events_coro is not None)
     # With `metadata=False` nothing is overlaid, so `_merge_unthinned` hands
     # back `t.metadata` itself -- the index's LazyJSONDict, uncopied.
@@ -465,7 +475,7 @@ async def _parse_and_filter(
                 target_coro.send((prefix, event, value))
             except StopIteration:
                 target_coro = None
-        elif current_section == _SECTION_TIMELINES and events_coro:
+        elif current_section == _SECTION_TIMELINES and timelines_coro:
             timelines_coro.send((prefix, event, value))
         elif current_section == _SECTION_SCORES and scores_coro:
             scores_coro.send((prefix, event, value))
@@ -475,8 +485,6 @@ async def _parse_and_filter(
         elif current_section == _SECTION_CALL_POOL and call_pool_coros:
             for coro in call_pool_coros:
                 coro.send((prefix, event, value))
-
-    resolve_pools(state)
 
     return (
         RawTranscript(
@@ -493,16 +501,20 @@ async def _parse_and_filter(
             model=t.model,
             model_options=t.model_options,
             score=t.score,
+            score_explanation=t.score_explanation,
             success=t.success,
             message_count=t.message_count,
             total_time=t.total_time,
             total_tokens=t.total_tokens,
             error=t.error,
             limit=t.limit,
+            trust_content=t.trust_content,
             metadata=_merge_unthinned(t.metadata, state),
             messages=state.messages,
             events=state.events,
             timelines=state.timelines if state.timelines else None,
+            message_pool=state.message_pool,
+            call_pool=state.call_pool,
         ),
         state.attachments,
     )
@@ -565,18 +577,44 @@ def _resolve_attachments(
         "model": transcript.model,
         "model_options": transcript.model_options,
         "score": transcript.score,
+        "score_explanation": transcript.score_explanation,
         "success": transcript.success,
         "message_count": transcript.message_count,
         "total_time": transcript.total_time,
         "total_tokens": transcript.total_tokens,
         "error": transcript.error,
         "limit": transcript.limit,
+        "trust_content": transcript.trust_content,
         "metadata": {},  # Placeholder to avoid validation
         "messages": resolved_messages,
         "events": resolved_events,
     }
 
     validated = Transcript.model_validate(transcript_data)
+
+    # Expand pool refs only after validation, against pool entries validated
+    # once: every event then shares the same message objects. Expanding the
+    # raw dicts first would validate (and attachment-walk) one copy per ref,
+    # which is quadratic in conversation length. Pools are skipped when no
+    # retained event references them (e.g. an events filter without "model").
+    if (transcript.message_pool or transcript.call_pool) and any(
+        event_has_pool_refs(event) for event in transcript.events
+    ):
+        validated.events = expand_events(
+            validated.events,
+            EventsData(
+                messages=validate_chat_messages(
+                    [
+                        _resolve_dict_attachments(message, resolve_string)
+                        for message in transcript.message_pool
+                    ]
+                ),
+                calls=[
+                    _resolve_dict_attachments(call, resolve_string)
+                    for call in transcript.call_pool
+                ],
+            ),
+        )
 
     # Resolve timelines with event UUID context (events must be validated first)
     if transcript.timelines:

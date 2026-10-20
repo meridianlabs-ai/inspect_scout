@@ -1,6 +1,7 @@
 """Tests for message extraction functions in llm_scanner."""
 
 import json
+from typing import Literal
 
 import pytest
 from inspect_ai._util.content import (
@@ -1533,3 +1534,98 @@ async def test_message_numbering_uses_role_label() -> None:
     result = await messages_as_str_fn(messages)
 
     assert result == "[M1] PROPOSER:\nQ1\n\n[M2] CRITIC:\nQ2\n"
+
+
+@pytest.mark.parametrize(
+    "message,expected",
+    [
+        (
+            ChatMessageUser(content="Hello"),
+            "USER (3f9a1c7e):\nHello\n",
+        ),
+        (
+            ChatMessageAssistant(
+                content="Calling tool",
+                tool_calls=[
+                    ToolCall(
+                        id="tc1", function="get_weather", arguments={"city": "Paris"}
+                    )
+                ],
+            ),
+            "ASSISTANT (3f9a1c7e):\nCalling tool\n\nTool Call: get_weather\nArguments:\ncity: Paris\n",
+        ),
+        (
+            ChatMessageTool(
+                content="Failed",
+                function="get_weather",
+                error=ToolCallError(type="unknown", message="boom"),
+            ),
+            "TOOL (3f9a1c7e):\nFailed\n\nError in tool call 'get_weather':\nboom\n\n",
+        ),
+        (
+            ChatMessageAssistant(content="Sure", metadata={"prefill": True}),
+            "<prefill>\nASSISTANT (3f9a1c7e):\nSure\n</prefill>",
+        ),
+        (
+            ChatMessageUser(content="Hello", metadata={"role_label": "proposer"}),
+            "PROPOSER (3f9a1c7e):\nHello\n",
+        ),
+    ],
+)
+def test_message_as_str_nonce(message: ChatMessage, expected: str) -> None:
+    """A nonce goes in parentheses after the role label on every message kind."""
+    assert message_as_str(message, nonce="3f9a1c7e") == expected
+
+
+@pytest.mark.parametrize(
+    "format,expected",
+    [
+        ("text", "USER (3f9a1c7e):\nQ1\n\nASSISTANT (3f9a1c7e):\nA1\n"),
+        (
+            "json",
+            json.dumps(
+                [
+                    {"role": "user", "content": "USER (3f9a1c7e):\nQ1\n"},
+                    {"role": "assistant", "content": "ASSISTANT (3f9a1c7e):\nA1\n"},
+                ]
+            ),
+        ),
+    ],
+)
+@pytest.mark.asyncio
+async def test_messages_as_str_nonce_without_ids(
+    format: Literal["text", "json"], expected: str
+) -> None:
+    """A nonce shows on each header even when ids are off; JSON carries it in `content` only."""
+    messages: list[ChatMessage] = [
+        ChatMessageUser(content="Q1"),
+        ChatMessageAssistant(content="A1"),
+    ]
+
+    result = await messages_as_str(messages, format=format, nonce="3f9a1c7e")
+    assert result == expected
+
+
+@pytest.mark.asyncio
+async def test_message_numbering_nonce() -> None:
+    """`message_numbering` puts the nonce on every header across calls; references still resolve."""
+    messages_as_str_fn, extract_refs = message_numbering(nonce="3f9a1c7e")
+
+    first = await messages_as_str_fn([ChatMessageUser(content="Q1", id="msg1")])
+    second = await messages_as_str_fn([ChatMessageAssistant(content="A1", id="msg2")])
+
+    assert first == "[M1] USER (3f9a1c7e):\nQ1\n"
+    assert second == "[M2] ASSISTANT (3f9a1c7e):\nA1\n"
+    assert [ref.id for ref in extract_refs("See [M2]")] == ["msg2"]
+
+
+@pytest.mark.parametrize("nonce", ["", "3f9a1c7"])
+@pytest.mark.asyncio
+async def test_nonce_too_short(nonce: str) -> None:
+    """Each entry point raises for a nonce shorter than 8 characters, even with no messages."""
+    with pytest.raises(ValueError, match="at least 8 characters"):
+        message_as_str(ChatMessageUser(content="Hello"), nonce=nonce)
+    with pytest.raises(ValueError, match="at least 8 characters"):
+        await messages_as_str([], nonce=nonce)
+    with pytest.raises(ValueError, match="at least 8 characters"):
+        message_numbering(nonce=nonce)

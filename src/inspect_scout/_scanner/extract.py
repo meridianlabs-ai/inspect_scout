@@ -427,14 +427,15 @@ def _tag_nonce(nonce: str | None) -> str:
 def _argument_str(key: str, value: object, nonce: str | None) -> str:
     """One tool call argument as `key: value`.
 
-    With a nonce, a value that spans lines goes between `[BEGIN 'key' (nonce)]`
+    With a nonce, an argument that spans lines goes between `[BEGIN 'key' (nonce)]`
     and `[END 'key' (nonce)]` lines, so its lines cannot pass for other
     arguments or tool calls. The key is written with `repr()` so that a key
     with a line break cannot start a line that ends in the nonce.
     """
     text = str(value)
-    if nonce is None or text.splitlines() in ([], [text]):
-        return f"{key}: {text}"
+    line = f"{key}: {text}"
+    if nonce is None or line.splitlines() == [line]:
+        return line
     return f"[BEGIN {key!r} ({nonce})]\n{text}\n[END {key!r} ({nonce})]"
 
 

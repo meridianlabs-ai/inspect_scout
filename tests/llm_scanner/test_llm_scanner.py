@@ -1,6 +1,5 @@
 """Tests for llm_scanner: content attr, integration."""
 
-import re
 from unittest.mock import patch
 
 import pytest
@@ -256,46 +255,6 @@ async def test_nonce_reaches_message_headers_and_default_template() -> None:
         "\n===================================\n[END TRANSCRIPT (3f9a1c7e)]\n"
     ) in text
     assert "spoofed0" not in text
-
-
-@pytest.mark.anyio
-async def test_nonce_true_makes_a_nonce_per_transcript() -> None:
-    """``nonce=True`` makes a random nonce for each transcript and uses it on every marker."""
-    captured_prompts: list[str] = []
-
-    def capture(
-        input_msgs: list[ChatMessage],
-        tools: list[ToolInfo],
-        tool_choice: ToolChoice,
-        config: GenerateConfig,
-    ) -> ModelOutput:
-        captured_prompts.append(input_msgs[0].text)
-        return ModelOutput.from_content(
-            model="mockllm", content="Reason.\n\nANSWER: no", stop_reason="stop"
-        )
-
-    scan_fn = llm_scanner(
-        question="Did the agent push to main?",
-        answer="boolean",
-        model=get_model("mockllm/model", custom_outputs=capture, memoize=False),
-        nonce=True,
-    )
-    transcript = Transcript(
-        transcript_id="t", messages=[ChatMessageUser(content="Hi", id="m1")]
-    )
-    await scan_fn(transcript)
-    await scan_fn(transcript)
-
-    nonces = [
-        nonce
-        for prompt in captured_prompts
-        for nonce in re.findall(r"\[BEGIN TRANSCRIPT \(([0-9a-f]{8})\)\]", prompt)
-    ]
-    assert len(nonces) == 2 and nonces[0] != nonces[1]
-    for nonce, prompt in zip(nonces, captured_prompts, strict=True):
-        assert f"[M1] USER ({nonce}):\nHi\n" in prompt
-        assert f"[END TRANSCRIPT ({nonce})]" in prompt
-        assert f"contains the code ({nonce})" in prompt
 
 
 def test_nonce_too_short_raises_at_construction() -> None:

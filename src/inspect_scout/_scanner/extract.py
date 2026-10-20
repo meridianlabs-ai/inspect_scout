@@ -380,8 +380,10 @@ def message_as_str(
         if preprocessor.exclude_tool_usage:
             return None
         func_name = message.function or "unknown"
+        # with a nonce, repr() keeps a line break in the name off the nonce line
+        quoted_name = repr(func_name) if nonce is not None else f"'{func_name}'"
         error_part = (
-            f"\n\nError in tool call {func_name!r}{mark}:\n{message.error.message}\n"
+            f"\n\nError in tool call {quoted_name}{mark}:\n{message.error.message}\n"
             if message.error
             else ""
         )
@@ -460,6 +462,9 @@ def _text_from_content(
 ) -> str | None:
     tag = _tag_nonce(nonce)
     mark = _marker_nonce(nonce)
+    # with a nonce, a closing tag starts its own line, so reasoning text that
+    # ends in a partial line cannot precede the nonce on that line
+    close_break = "\n" if nonce is not None else ""
     match content.type:
         case "text":
             return content.text
@@ -468,11 +473,13 @@ def _text_from_content(
                 return None
             if content.redacted:
                 if content.summary:
-                    return f"\n<thinking_summary{tag}>{content.summary}</thinking_summary{tag}>"
+                    return f"\n<thinking_summary{tag}>{content.summary}{close_break}</thinking_summary{tag}>"
                 else:
                     return f"\n<thinking_redacted{tag}/>"
             elif content.reasoning:
-                return f"\n<thinking{tag}>{content.reasoning}</thinking{tag}>"
+                return (
+                    f"\n<thinking{tag}>{content.reasoning}{close_break}</thinking{tag}>"
+                )
             else:
                 return None
 

@@ -1621,8 +1621,8 @@ async def test_message_numbering_uses_role_label() -> None:
                     ContentText(text="Answer"),
                 ]
             ),
-            "ASSISTANT (3f9a1c7e):\n\n<thinking 3f9a1c7e>plan</thinking 3f9a1c7e>\n"
-            "\n<thinking_summary 3f9a1c7e>brief</thinking_summary 3f9a1c7e>\n"
+            "ASSISTANT (3f9a1c7e):\n\n<thinking 3f9a1c7e>plan\n</thinking 3f9a1c7e>\n"
+            "\n<thinking_summary 3f9a1c7e>brief\n</thinking_summary 3f9a1c7e>\n"
             "\n<thinking_redacted 3f9a1c7e/>\n"
             "\nTool Use (3f9a1c7e): search(q) -> r \nAnswer\n",
         ),
@@ -1679,15 +1679,32 @@ async def test_message_numbering_nonce() -> None:
     assert [ref.id for ref in extract_refs("See [M2]")] == ["msg2"]
 
 
-def test_message_as_str_multiline_argument_without_nonce() -> None:
-    """Without a nonce, a multi-line argument value is written as is."""
-    message = ChatMessageAssistant(
-        content="",
-        tool_calls=[ToolCall(id="tc1", function="bash", arguments={"cmd": "a\nb"})],
-    )
-    assert message_as_str(message) == (
-        "ASSISTANT:\n\n\nTool Call: bash\nArguments:\ncmd: a\nb\n"
-    )
+@pytest.mark.parametrize(
+    "message,expected",
+    [
+        (
+            ChatMessageAssistant(
+                content="",
+                tool_calls=[
+                    ToolCall(id="tc1", function="bash", arguments={"cmd": "a\nb"})
+                ],
+            ),
+            "ASSISTANT:\n\n\nTool Call: bash\nArguments:\ncmd: a\nb\n",
+        ),
+        (
+            ChatMessageTool(
+                content="",
+                function="tools\\run",
+                error=ToolCallError(type="unknown", message="boom"),
+            ),
+            "TOOL:\n\n\nError in tool call 'tools\\run':\nboom\n\n",
+        ),
+    ],
+)
+def test_message_as_str_without_nonce_writes_names_and_values_as_is(
+    message: ChatMessage, expected: str
+) -> None:
+    assert message_as_str(message) == expected
 
 
 @pytest.mark.parametrize(

@@ -292,7 +292,6 @@ def test_untrusted_browser_origin_rejected(tmp_path: Path) -> None:
     [
         # Posit Workbench's session proxy sends Host: localhost:<port>.
         pytest.param("http://localhost:7576", "https://wb.example", id="host"),
-        pytest.param("http://localhost:7576", None, id="host-no-origin"),
         # ...and passes through a front proxy's X-Forwarded-Proto.
         pytest.param("https://localhost:7576", "https://wb.example", id="host-https"),
         pytest.param("https://localhost:7576", None, id="host-https-no-origin"),

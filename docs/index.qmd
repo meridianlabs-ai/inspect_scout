@@ -126,6 +126,8 @@ In Posit Workbench, pass the session proxy URL as the root path. `rserver-url -l
 scout view --root-path "$(/usr/lib/rstudio-server/bin/rserver-url -l 7576)"
 ```
 
+Every app served from the Workbench origin can then call Scout's API.
+
 Inside Jupyter, `jupyter-server-proxy` serves Scout under `proxy/7576/` and forwards the browser's `Host`. Pass the proxied path and the Jupyter origin. Under JupyterHub:
 
 ``` bash

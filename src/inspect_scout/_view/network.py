@@ -171,12 +171,10 @@ class HostValidationMiddleware:
 
 
 class BrowserOriginMiddleware:
-    """Reject browser requests from origins outside the trusted set.
+    """Reject cross-site fetches and requests whose Origin is not trusted.
 
-    The origin is not compared with the request's Host or scheme. Proxies such
-    as Posit Workbench rewrite Host to `localhost:<port>`, and a TLS proxy may
-    not forward the scheme. HostValidationMiddleware already rejects
-    DNS-rebinding hosts.
+    The Origin is not compared with the request's Host or scheme, which
+    proxies may rewrite; HostValidationMiddleware checks the Host.
     """
 
     def __init__(self, app: ASGIApp, policy: ViewerNetworkPolicy) -> None:

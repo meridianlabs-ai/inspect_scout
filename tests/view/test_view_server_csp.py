@@ -10,7 +10,9 @@ from inspect_scout._view._csp import (
     inline_script_source,
     read_content_security_policy,
 )
+from inspect_scout._view.network import resolve_viewer_network_policy
 from inspect_scout._view.server import _ScoutStaticFiles, _view_app
+from starlette.types import ASGIApp
 
 _INDEX_SCRIPT = "window.theme = 1;"
 _DIRECTIVES = {
@@ -44,11 +46,20 @@ def _api() -> FastAPI:
     return api
 
 
+_PORT = 7576
+_BASE_URL = f"http://127.0.0.1:{_PORT}"
+
+
+def _app(dist: Path, root_path: str = "") -> ASGIApp:
+    policy = resolve_viewer_network_policy(bind_host="127.0.0.1", port=_PORT)
+    return _view_app(_api(), dist, root_path, policy)
+
+
 def _client(
     tmp_path: Path, root_path: str = "", directives: object | None = _DIRECTIVES
 ) -> TestClient:
-    app = _view_app(_api(), _dist(tmp_path, directives), root_path)
-    return TestClient(app, root_path=root_path)
+    app = _app(_dist(tmp_path, directives), root_path)
+    return TestClient(app, base_url=_BASE_URL, root_path=root_path)
 
 
 _POLICY = "default-src 'none'; script-src 'self' {hash}; worker-src 'self'".format(
@@ -96,9 +107,11 @@ def test_a_server_error_outside_the_api_still_forbids_framing(
         raise RuntimeError("boom")
 
     monkeypatch.setattr(_ScoutStaticFiles, "get_response", fail)
-    app = _view_app(_api(), _dist(tmp_path), "")
+    app = _app(_dist(tmp_path))
 
-    response = TestClient(app, raise_server_exceptions=False).get("/")
+    response = TestClient(app, base_url=_BASE_URL, raise_server_exceptions=False).get(
+        "/"
+    )
 
     assert response.status_code == 500
     assert response.headers["content-security-policy"] == (
@@ -141,7 +154,7 @@ def test_the_api_behind_a_proxy_only_forbids_framing(tmp_path: Path) -> None:
 
 def test_a_malformed_policy_fails_the_server_at_startup(tmp_path: Path) -> None:
     with pytest.raises(ContentSecurityPolicyError):
-        _view_app(_api(), _dist(tmp_path, directives=["not", "an", "object"]), "")
+        _app(_dist(tmp_path, directives=["not", "an", "object"]))
 
 
 @pytest.mark.parametrize(

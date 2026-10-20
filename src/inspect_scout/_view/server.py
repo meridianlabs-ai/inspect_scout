@@ -22,6 +22,13 @@ from inspect_scout._util.constants import (
     DEFAULT_SERVER_HOST,
     DEFAULT_VIEW_PORT,
 )
+from inspect_scout._view.network import (
+    BrowserOriginMiddleware,
+    HostValidationMiddleware,
+    ViewerNetworkPolicy,
+    resolve_viewer_network_policy,
+    unsafe_network_warning,
+)
 from inspect_scout._view.notify import notify_lifespan
 from inspect_scout._view.types import ViewConfig
 
@@ -36,6 +43,8 @@ from ._csp import (
 _IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
 _DIST_DIR = Path(__file__).parent / "dist"
 _REPO_URL = "https://github.com/meridianlabs-ai/inspect_scout.git"
+
+logger = logging.getLogger(__name__)
 
 
 def _base_path_script(root_path: str) -> str:
@@ -114,7 +123,20 @@ def view_server(
     authorization: str | None = None,
     fs_options: dict[str, Any] | None = None,
     root_path: str = "",
+    trusted_origins: tuple[str, ...] = (),
+    trusted_hosts: tuple[str, ...] = (),
+    unsafe_allow_unauthenticated: bool = False,
+    network_policy: ViewerNetworkPolicy | None = None,
 ) -> None:
+    network_policy = network_policy or resolve_viewer_network_policy(
+        bind_host=host,
+        port=port,
+        trusted_hosts=trusted_hosts,
+        trusted_origins=trusted_origins,
+        authorization=authorization,
+        unsafe_allow_unauthenticated=unsafe_allow_unauthenticated,
+        root_path=root_path,
+    )
     root_path = _normalize_root_path(root_path)
 
     # get filesystem and resolve scan_dir to full path
@@ -128,19 +150,26 @@ def view_server(
     # ensure we've resolved the dist directory
     directory = _resolve_dist_directory()
 
-    v2_api = v2_api_app(view_config=config, dist_path=directory)
-
-    if authorization:
-        v2_api.add_middleware(AuthorizationMiddleware, authorization=authorization)
-
-    app = _view_app(v2_api, directory, root_path)
+    app = standalone_view_app(
+        view_config=config,
+        network_policy=network_policy,
+        root_path=root_path,
+        directory=directory,
+    )
 
     # run app
     display().print("Scout View")
+    warning = unsafe_network_warning(network_policy)
+    if warning:
+        logger.warning(warning)
 
     async def run_server() -> None:
         config = uvicorn.Config(
-            app, host=host, port=port, root_path=root_path, log_config=None
+            app,
+            host=network_policy.bind_host,
+            port=network_policy.port,
+            root_path=root_path,
+            log_config=None,
         )
         server = uvicorn.Server(config)
 
@@ -148,7 +177,7 @@ def view_server(
             while not server.started:
                 await anyio.sleep(0.05)
             # Print this for compatibility with the Inspect VSCode plugin:
-            url = view_url(host, port, mode)
+            url = view_url(network_policy.bind_host, network_policy.port, mode)
             display().print(
                 f"======== Running on {url} ========\n(Press CTRL+C to quit)"
             )
@@ -160,7 +189,29 @@ def view_server(
     anyio.run(run_server)
 
 
-def _view_app(v2_api: FastAPI, directory: Path, root_path: str) -> ASGIApp:
+def standalone_view_app(
+    *,
+    view_config: ViewConfig | None,
+    network_policy: ViewerNetworkPolicy,
+    root_path: str = "",
+    directory: Path | None = None,
+) -> ASGIApp:
+    root_path = _normalize_root_path(root_path)
+    directory = directory or _resolve_dist_directory()
+    return _view_app(
+        v2_api_app(view_config=view_config, dist_path=directory),
+        directory,
+        root_path,
+        network_policy,
+    )
+
+
+def _view_app(
+    v2_api: FastAPI,
+    directory: Path,
+    root_path: str,
+    network_policy: ViewerNetworkPolicy,
+) -> ASGIApp:
     """The view server's app: the API under `/api/v2` and the viewer at `/`.
 
     The viewer's files are served with the dist's Content-Security-Policy,
@@ -194,7 +245,7 @@ def _view_app(v2_api: FastAPI, directory: Path, root_path: str) -> ASGIApp:
 
         app.middleware("http")(log_and_monitor)
 
-    app.mount("/api/v2", v2_api)
+    app.mount("/api/v2", BrowserOriginMiddleware(v2_api, network_policy))
 
     app.mount(
         "/",
@@ -206,10 +257,17 @@ def _view_app(v2_api: FastAPI, directory: Path, root_path: str) -> ASGIApp:
         name="static",
     )
 
-    # Wraps the whole app so responses from FastAPI's error handler get the
-    # headers too.
+    if network_policy.authorization:
+        app.add_middleware(
+            AuthorizationMiddleware,
+            authorization=network_policy.authorization,
+        )
+
+    protected_app: ASGIApp = HostValidationMiddleware(app, network_policy)
+    # Wraps the whole app so responses from FastAPI's error handler and the
+    # host check get the headers too.
     return SecurityHeadersMiddleware(
-        app,
+        protected_app,
         content_security_policy=content_security_policy,
         viewer_policy_exempt_mounts=("/api/v2",),
     )

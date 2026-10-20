@@ -96,6 +96,47 @@ scout scan list
 
 Scans will be listed from most to least recent. If you are running within VS Code you can click the scans in the list to view them in a VS Code editor. The VS Code Scout activity bar also includes a scans pane that lists recent scans.
 
+#### Remote Access
+
+By default, `scout view` binds to `127.0.0.1` on port 7576. For single-user access to a viewer on a remote machine, keep that loopback bind and use SSH port forwarding:
+
+``` bash
+ssh -L 7576:127.0.0.1:7576 user@remote
+```
+
+Run `scout view` normally on the remote machine, then open `http://127.0.0.1:7576` locally.
+
+If local DNS or a hosts file maps a custom name to loopback, declare that exact browser origin:
+
+``` bash
+scout view --trusted-origin http://my-scout:7576
+```
+
+Binding beyond loopback requires request authorization. For browser access, place Scout View behind an authenticating reverse proxy that injects the configured upstream authorization header:
+
+``` bash
+INSPECT_VIEW_AUTHORIZATION_TOKEN="$UPSTREAM_SECRET" \
+  scout view \
+  --host 0.0.0.0 \
+  --trusted-origin https://scout.example.org \
+  --root-path /scout
+```
+
+Load `UPSTREAM_SECRET` through your normal secret-management mechanism and set it to the complete expected `Authorization` header value (for example, `Bearer ...`). The proxy must authenticate the external user, preserve the configured public `Host`, set the public request scheme from a trusted proxy address, remove any client-supplied copy of the upstream authorization header, and inject the configured value.
+
+For compatibility, an absolute `--root-path` such as `https://scout.example.org/scout` supplies its origin when no explicit `--trusted-origin` is provided. An explicit trusted origin is preferred, and a path-only `root_path` does not grant host or origin trust.
+
+Unauthenticated network exposure remains available only through an explicit acknowledgement:
+
+``` bash
+scout view \
+  --host 0.0.0.0 \
+  --trusted-origin "http://$MACHINE_IP:7576" \
+  --unsafe-allow-unauthenticated
+```
+
+This permits any network client that can reach the address to call viewer APIs. Exact Host and browser-origin validation and framing protection remain active. `--trusted-host` may add an exact authority for a non-browser client or health check, but does not authorize a browser origin. Hosting the frontend and API on different origins is not supported.
+
 ### Projects
 
 In some cases you'll prefer to define your transcript source, scanning model, and other configuration once for a project rather than each time you run `scout scan`. You can do this with a `scout.yaml` project file. For example, if we have this project file in our working directory:

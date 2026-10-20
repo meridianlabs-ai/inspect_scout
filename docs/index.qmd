@@ -120,6 +120,12 @@ If local DNS or a hosts file maps a custom name to loopback, declare that exact 
 scout view --trusted-origin http://my-scout:7576
 ```
 
+In Posit Workbench, pass the session proxy URL as the root path. `rserver-url -l` prints the full URL, so Scout also trusts its origin:
+
+``` bash
+scout view --root-path "$(/usr/lib/rstudio-server/bin/rserver-url -l 7576)"
+```
+
 Inside Jupyter, `jupyter-server-proxy` serves Scout under `proxy/7576/` and forwards the browser's `Host`. Pass the proxied path and the Jupyter origin. Under JupyterHub:
 
 ``` bash
@@ -134,8 +140,6 @@ For a local Jupyter server at `http://localhost:8888`:
 scout view --root-path /proxy/7576 --trusted-origin http://localhost:8888
 ```
 
-Scout must see the scheme the browser used. That holds when Jupyter is served over plain HTTP, or when JupyterHub's own proxy terminates TLS. It does not hold when TLS ends at the Jupyter server itself or at a load balancer in front of JupyterHub.
-
 Binding beyond loopback requires request authorization. For browser access, place Scout View behind an authenticating reverse proxy that injects the configured upstream authorization header:
 
 ``` bash
@@ -148,14 +152,7 @@ INSPECT_VIEW_AUTHORIZATION_TOKEN="$UPSTREAM_SECRET" \
 
 Load `UPSTREAM_SECRET` through your normal secret-management mechanism and set it to the complete expected `Authorization` header value (for example, `Bearer ...`). The proxy must authenticate the external user, remove any client-supplied copy of the upstream authorization header, and inject the configured value.
 
-The proxy must also forward the browser's `Host` header unchanged and, if it terminates TLS, send `X-Forwarded-Proto: https`. Otherwise Scout rejects requests. In nginx:
-
-``` nginx
-proxy_set_header Host $http_host;
-proxy_set_header X-Forwarded-Proto $scheme;
-```
-
-Scout honors `X-Forwarded-Proto` only from addresses in the `FORWARDED_ALLOW_IPS` environment variable (default `127.0.0.1,::1`). When the proxy connects from another address, set it to the proxy's address.
+Scout rejects requests whose `Host` header it doesn't trust. Either have the proxy forward the browser's `Host` unchanged (in nginx, `proxy_set_header Host $http_host;`), or add the `Host` the proxy sends with `--trusted-host`.
 
 For compatibility, an absolute `--root-path` such as `https://scout.example.org/scout` supplies its origin when no explicit `--trusted-origin` is provided. An explicit trusted origin is preferred, and a path-only `root_path` does not grant host or origin trust.
 

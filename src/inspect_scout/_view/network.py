@@ -9,7 +9,6 @@ from starlette.responses import PlainTextResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 _DNS_LABEL = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
-_VALIDATED_HOST_SCOPE_KEY = "inspect_scout.viewer_authority"
 _VIEW_DOCS_URL = "https://meridianlabs-ai.github.io/inspect_scout/"
 
 
@@ -168,11 +167,18 @@ class HostValidationMiddleware:
             await _reject(scope, receive, send, 400, "Invalid host header")
             return
 
-        scope[_VALIDATED_HOST_SCOPE_KEY] = authority
         await self.app(scope, receive, send)
 
 
 class BrowserOriginMiddleware:
+    """Reject browser requests from origins outside the trusted set.
+
+    The origin is not compared with the request's Host or scheme. Proxies such
+    as Posit Workbench rewrite Host to `localhost:<port>`, and a TLS proxy may
+    not forward the scheme. HostValidationMiddleware already rejects
+    DNS-rebinding hosts.
+    """
+
     def __init__(self, app: ASGIApp, policy: ViewerNetworkPolicy) -> None:
         self.app = app
         self.policy = policy
@@ -195,9 +201,6 @@ class BrowserOriginMiddleware:
             await _reject(scope, receive, send, 403, "Forbidden browser origin")
             return
 
-        request_host = scope.get(_VALIDATED_HOST_SCOPE_KEY)
-        request_scheme = _http_scheme(str(scope.get("scheme", "http")).lower())
-
         if origin_value:
             try:
                 origin = _parse_origin(origin_value)
@@ -205,24 +208,9 @@ class BrowserOriginMiddleware:
                 await _reject(scope, receive, send, 403, "Forbidden browser origin")
                 return
 
-            if (
-                origin not in self.policy.trusted_origins
-                or origin.scheme != request_scheme
-                or not isinstance(request_host, Authority)
-                or not _authority_matches(request_host, origin.authority, origin.scheme)
-            ):
+            if origin not in self.policy.trusted_origins:
                 await _reject(scope, receive, send, 403, "Forbidden browser origin")
                 return
-        elif fetch_site == "same-origin" and (
-            not isinstance(request_host, Authority)
-            or not any(
-                origin.scheme == request_scheme
-                and _authority_matches(request_host, origin.authority, origin.scheme)
-                for origin in self.policy.trusted_origins
-            )
-        ):
-            await _reject(scope, receive, send, 403, "Forbidden browser origin")
-            return
 
         await self.app(scope, receive, send)
 

@@ -20,7 +20,7 @@ dependencies = [
     "fastapi>=0.128.1",
     "ijson>=3.2.0",
     "importlib-metadata",
-    "inspect-ai>=0.3.278",
+    "inspect-ai>=0.3.281",
     "inspect-swe>=0.2.56",
     "jinja2>=3.0.0",
     "jsonlines>=3.0.0",
@@ -95,45 +95,6 @@ doc = [
 ]
 dist = ["twine", "build"]
 
-[dependency-groups]
-dev = [
-    "ruff",
-    "pytest",
-    "pytest-xdist",
-    # >=1.0.0: anthropic 1.x types its exceptions against httpx2, which the
-    # tests construct directly (httpx2 arrives transitively via anthropic)
-    "anthropic>=1.0.0",
-    "arize-phoenix-client",
-    "google-genai",
-    # harbor (for the atif source tests): >=0.6.0 is the first release with the
-    # ATIF v1.7 schema the source parses; harbor itself requires Python >=3.12
-    "harbor>=0.6.0; python_version >= '3.12'",
-    "huggingface_hub",
-    "langsmith",
-    "logfire",
-    # >=3.0.0: openai 3.x types its exceptions against httpx2, which the
-    # tests construct directly (httpx2 arrives transitively via openai)
-    "openai>=3.0.0",
-    "pytest-dotenv",
-    "pytest-asyncio",
-    "mypy",
-    "pandas-stubs>=2.3.2.250926",
-    "pyarrow-stubs>=20.0.0.20250928",
-    "types-jsonschema",
-    "types-psutil",
-    "types-PyYAML",
-    "types-Send2Trash"
-]
-doc = [
-    "jupyter",
-    "panflute",
-    "markdown",
-    "griffe",
-    "pyyaml",
-    "quarto-cli>=1.9.36"
-]
-dist = ["twine", "build"]
-
 [tool.hatch.build]
 only-packages = true
 exclude = ["docs/", "tests/"]
@@ -150,9 +111,6 @@ local_scheme = "no-local-version" # Important for PyPI compatibility
 
 [tool.hatch.metadata]
 allow-direct-references = true
-
-[tool.uv]
-managed = true
 
 [tool.ruff]
 extend-exclude = ["docs"]

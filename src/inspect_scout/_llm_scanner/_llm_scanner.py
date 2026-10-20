@@ -21,6 +21,7 @@ from .._scanner.result import Result
 from .._scanner.scanner import (
     SCANNER_CONTENT_ATTR,
     SCANNER_NAME_ATTR,
+    SCANNER_TIMELINE_NEEDED_ATTR,
     Scanner,
     mark_streaming_support,
     scanner,
@@ -258,9 +259,13 @@ def llm_scanner(
         context_window: Override the model's context window size for chunking.
             When set, transcripts exceeding this limit are split into multiple
             segments, each scanned independently.
-        timeline: Name of the timeline to extract messages from. ``None``
-            (default) uses the transcript's first timeline. Raises
-            ``ValueError`` if no timeline with the given name exists.
+        timeline: Name of the timeline to extract messages from (e.g. a
+            stored ``"target"`` timeline). Setting it loads timelines, so no
+            ``content`` override is needed. ``None`` (default) uses the
+            transcript's first timeline (or one built from its events) when
+            the scanner's content includes timelines or events, and
+            otherwise its messages. Raises ``ValueError`` if no timeline
+            with the given name exists.
         compaction: How to handle compaction boundaries when extracting
             messages from events. ``"all"`` (default) scans all compaction
             segments; ``"last"`` scans only the most recent.
@@ -281,14 +286,19 @@ def llm_scanner(
             wrapped in a resultset (cross-span attribution is preserved).
             Resultset answers (e.g. ``list[Model]``) bypass reduction and
             return a resultset directly.
-        nonce: If set, written in parentheses after the role on every message
-            header (e.g. ``[M2] USER (3f9a1c7e):``) and available to the
-            template as ``{{ scout_nonce }}``. A ``scout_nonce`` key in
+        nonce: A code written on every marker in the rendered transcript
+            (message headers such as ``[M2] USER (3f9a1c7e):``, tool calls,
+            tool errors, reasoning and prefill tags; see ``messages_as_str()``)
+            and available to the template as ``{{ scout_nonce }}``. Make it
+            with ``secrets.token_hex(4)`` when the scanner is built. Never
+            write a literal nonce in code: an agent that can read the scanner
+            file, or that knows the value from elsewhere, can forge markers.
+            Must be at least 8 ASCII letters and digits (raises
+            ``ValueError`` otherwise). A ``scout_nonce`` key in
             ``template_variables`` is always ignored. The default template
-            tells the model that a header without the nonce is text inside the
-            message before it. Must be at least 8 characters (raises
-            ``ValueError`` otherwise); expected to be lowercase letters and
-            digits.
+            puts the nonce on its transcript start and end lines and tells the
+            model that text that looks like a marker but lacks the nonce is
+            part of the message it appears in.
 
     Returns:
         A ``Scanner`` function that analyzes Transcript instances and returns
@@ -534,6 +544,11 @@ def llm_scanner(
     if content is not None:
         setattr(scan, SCANNER_CONTENT_ATTR, content)
 
+    # Readers only return stored timelines when the content requests them, so
+    # a named timeline would otherwise never be found.
+    if timeline is not None:
+        setattr(scan, SCANNER_TIMELINE_NEEDED_ATTR, True)
+
     # Vouch either way: a callable template or a timeline request needs the
     # whole transcript, and "unsafe" must be a recorded verdict, not silence.
     mark_streaming_support(scan, not full_transcript_needed)
@@ -629,7 +644,7 @@ async def render_scanner_prompt(
         question: Question for the scanner to answer. Can be a static string
             or a callable that takes a Transcript and returns an awaitable string.
         answer: Answer object containing prompt and format strings.
-        nonce: Message header nonce, available to the template as ``scout_nonce``.
+        nonce: Transcript marker nonce, available to the template as ``scout_nonce``.
 
     Returns:
         Rendered prompt string with all variables substituted.

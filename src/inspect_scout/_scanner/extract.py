@@ -381,7 +381,7 @@ def message_as_str(
             return None
         func_name = message.function or "unknown"
         error_part = (
-            f"\n\nError in tool call '{func_name}'{mark}:\n{message.error.message}\n"
+            f"\n\nError in tool call {func_name!r}{mark}:\n{message.error.message}\n"
             if message.error
             else ""
         )
@@ -425,14 +425,15 @@ def _tag_nonce(nonce: str | None) -> str:
 def _argument_str(key: str, value: object, nonce: str | None) -> str:
     """One tool call argument as `key: value`.
 
-    With a nonce, a value that spans lines goes between `[BEGIN key (nonce)]`
-    and `[END key (nonce)]` lines, so its lines cannot pass for other
-    arguments or tool calls.
+    With a nonce, a value that spans lines goes between `[BEGIN 'key' (nonce)]`
+    and `[END 'key' (nonce)]` lines, so its lines cannot pass for other
+    arguments or tool calls. The key is written with `repr()` so that a key
+    with a line break cannot start a line that ends in the nonce.
     """
     text = str(value)
     if nonce is None or text.splitlines() in ([], [text]):
         return f"{key}: {text}"
-    return f"[BEGIN {key} ({nonce})]\n{text}\n[END {key} ({nonce})]"
+    return f"[BEGIN {key!r} ({nonce})]\n{text}\n[END {key!r} ({nonce})]"
 
 
 def _role_label(message: ChatMessage, *, upper_fallback: bool) -> str:

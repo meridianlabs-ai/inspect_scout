@@ -212,12 +212,13 @@ def write_project_config(
 ) -> tuple[ProjectConfig, str]:
     """Write project configuration, preserving YAML comments.
 
-    When scout.yaml exists, `config` is applied as a patch: only the fields
-    that were explicitly set on it (`model_fields_set`) are written, so any
-    key the caller didn't mention is left untouched. An explicitly set field
-    whose value is None or an empty list/dict removes that key. A set field
-    with a nested value (e.g. `generate_config`, `metadata`) replaces the
-    existing value as a whole rather than being deep-merged into it.
+    `config` is applied as a patch: only the fields that were explicitly set
+    on it (`model_fields_set`) are written, so any key of an existing
+    scout.yaml that the caller didn't mention is left untouched. An explicitly
+    set field whose value is None or an empty list/dict removes that key. A
+    set field with a nested value (e.g. `generate_config`, `metadata`)
+    replaces the existing value as a whole rather than being deep-merged into
+    it.
 
     Args:
         config: The configuration fields to write.

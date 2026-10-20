@@ -43,6 +43,7 @@ EDITABLE_KEYS = {
     "model_base_url",
     "model_args",
     "generate_config",
+    "trust_content",
 }
 
 

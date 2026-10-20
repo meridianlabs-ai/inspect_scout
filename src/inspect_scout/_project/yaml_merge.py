@@ -22,9 +22,9 @@ def apply_config_patch(original: CommentedMap, updates: dict[str, Any]) -> None:
 
     Only keys present in `updates` are touched; keys omitted from `updates`
     are left as they are. A key whose value is None, `[]` or `{}` is removed.
-    Any other value replaces the original value via `apply_config_update`,
-    so a nested dict or list is replaced as a whole (keys missing from it are
-    removed) while comments on its unchanged parts are kept.
+    Any other value replaces the original value as a whole: a nested dict is
+    updated with `apply_config_update` (keys missing from it are removed) and
+    a list with `_update_list`, so comments on unchanged parts are kept.
 
     Args:
         original: The ruamel.yaml CommentedMap to update in place.

@@ -10,6 +10,7 @@ from inspect_ai._util.content import (
     ContentImage,
     ContentReasoning,
     ContentText,
+    ContentToolUse,
 )
 from inspect_ai.model import (
     ChatMessage,
@@ -1552,7 +1553,22 @@ async def test_message_numbering_uses_role_label() -> None:
                     )
                 ],
             ),
-            "ASSISTANT (3f9a1c7e):\nCalling tool\n\nTool Call: get_weather\nArguments:\ncity: Paris\n",
+            "ASSISTANT (3f9a1c7e):\nCalling tool\n\nTool Call (3f9a1c7e): get_weather\nArguments:\ncity: Paris\n",
+        ),
+        (
+            ChatMessageAssistant(
+                content="Dry run",
+                tool_calls=[
+                    ToolCall(
+                        id="tc1",
+                        function="bash",
+                        arguments={"cmd": "./deploy.sh prod\ndry_run: true", "n": 1},
+                    )
+                ],
+            ),
+            "ASSISTANT (3f9a1c7e):\nDry run\n\nTool Call (3f9a1c7e): bash\nArguments:\n"
+            "[BEGIN cmd (3f9a1c7e)]\n./deploy.sh prod\ndry_run: true\n[END cmd (3f9a1c7e)]\n"
+            "n: 1\n",
         ),
         (
             ChatMessageTool(
@@ -1560,11 +1576,32 @@ async def test_message_numbering_uses_role_label() -> None:
                 function="get_weather",
                 error=ToolCallError(type="unknown", message="boom"),
             ),
-            "TOOL (3f9a1c7e):\nFailed\n\nError in tool call 'get_weather':\nboom\n\n",
+            "TOOL (3f9a1c7e):\nFailed\n\nError in tool call 'get_weather' (3f9a1c7e):\nboom\n\n",
         ),
         (
             ChatMessageAssistant(content="Sure", metadata={"prefill": True}),
-            "<prefill>\nASSISTANT (3f9a1c7e):\nSure\n</prefill>",
+            "<prefill 3f9a1c7e>\nASSISTANT (3f9a1c7e):\nSure\n</prefill 3f9a1c7e>",
+        ),
+        (
+            ChatMessageAssistant(
+                content=[
+                    ContentReasoning(reasoning="plan"),
+                    ContentReasoning(reasoning="", redacted=True, summary="brief"),
+                    ContentReasoning(reasoning="", redacted=True),
+                    ContentToolUse(
+                        tool_type="web_search",
+                        id="s1",
+                        name="search",
+                        arguments="q",
+                        result="r",
+                    ),
+                    ContentText(text="Answer"),
+                ]
+            ),
+            "ASSISTANT (3f9a1c7e):\n\n<thinking 3f9a1c7e>plan</thinking 3f9a1c7e>\n"
+            "\n<thinking_summary 3f9a1c7e>brief</thinking_summary 3f9a1c7e>\n"
+            "\n<thinking_redacted 3f9a1c7e/>\n"
+            "\nTool Use (3f9a1c7e): search(q) -> r \nAnswer\n",
         ),
         (
             ChatMessageUser(content="Hello", metadata={"role_label": "proposer"}),
@@ -1573,7 +1610,7 @@ async def test_message_numbering_uses_role_label() -> None:
     ],
 )
 def test_message_as_str_nonce(message: ChatMessage, expected: str) -> None:
-    """A nonce goes in parentheses after the role label on every message kind."""
+    """A nonce goes on every marker: headers, tool calls and errors, multi-line arguments, tags."""
     assert message_as_str(message, nonce="3f9a1c7e") == expected
 
 
@@ -1619,10 +1656,23 @@ async def test_message_numbering_nonce() -> None:
     assert [ref.id for ref in extract_refs("See [M2]")] == ["msg2"]
 
 
-@pytest.mark.parametrize("nonce", ["", "3f9a1c7"])
+def test_message_as_str_multiline_argument_without_nonce() -> None:
+    """Without a nonce, a multi-line argument value is written as is."""
+    message = ChatMessageAssistant(
+        content="",
+        tool_calls=[ToolCall(id="tc1", function="bash", arguments={"cmd": "a\nb"})],
+    )
+    assert message_as_str(message) == (
+        "ASSISTANT:\n\n\nTool Call: bash\nArguments:\ncmd: a\nb\n"
+    )
+
+
+@pytest.mark.parametrize(
+    "nonce", ["", "3f9a1c7", "deploy key", "3f9a1c7e)", "3f9a1c7e\n", "3f9a1c7é"]
+)
 @pytest.mark.asyncio
-async def test_nonce_too_short(nonce: str) -> None:
-    """Each entry point raises for a nonce shorter than 8 characters, even with no messages."""
+async def test_invalid_nonce(nonce: str) -> None:
+    """Each entry point raises for a nonce that is not 8+ ASCII letters and digits."""
     with pytest.raises(ValueError, match="at least 8 characters"):
         message_as_str(ChatMessageUser(content="Hello"), nonce=nonce)
     with pytest.raises(ValueError, match="at least 8 characters"):

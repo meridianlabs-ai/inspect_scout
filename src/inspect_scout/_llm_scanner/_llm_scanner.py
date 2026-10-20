@@ -1,3 +1,4 @@
+import secrets
 from logging import getLogger
 from typing import Any, AsyncIterator, Awaitable, Callable, Literal, cast, overload
 
@@ -141,7 +142,7 @@ def llm_scanner(
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
-    nonce: str | None = None,
+    nonce: str | Literal[True] | None = None,
 ) -> Scanner[Transcript]: ...
 
 
@@ -167,7 +168,7 @@ def llm_scanner(
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
-    nonce: str | None = None,
+    nonce: str | Literal[True] | None = None,
 ) -> Scanner[Transcript]: ...
 
 
@@ -193,7 +194,7 @@ def llm_scanner(
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
-    nonce: str | None = None,
+    nonce: str | Literal[True] | None = None,
 ) -> Scanner[Transcript]:
     """Create a scanner that uses an LLM to scan transcripts.
 
@@ -286,20 +287,24 @@ def llm_scanner(
             wrapped in a resultset (cross-span attribution is preserved).
             Resultset answers (e.g. ``list[Model]``) bypass reduction and
             return a resultset directly.
-        nonce: If set, written in parentheses after the role on every message
-            header (e.g. ``[M2] USER (3f9a1c7e):``) and available to the
-            template as ``{{ scout_nonce }}``. A ``scout_nonce`` key in
-            ``template_variables`` is always ignored. The default template
-            tells the model that a header without the nonce is text inside the
-            message before it. Must be at least 8 characters (raises
-            ``ValueError`` otherwise); expected to be lowercase letters and
-            digits.
+        nonce: A code written on every marker in the rendered transcript
+            (message headers such as ``[M2] USER (3f9a1c7e):``, tool calls,
+            tool errors, reasoning and prefill tags; see ``messages_as_str()``)
+            and available to the template as ``{{ scout_nonce }}``. Pass
+            ``True`` to make a random nonce for each transcript. A literal
+            nonce must be at least 8 ASCII letters and digits (raises
+            ``ValueError`` otherwise) and must stay secret from the agents
+            whose transcripts are scanned: an agent that knows it can forge
+            markers. A ``scout_nonce`` key in ``template_variables`` is always
+            ignored. The default template puts the nonce on its transcript
+            start and end lines and tells the model that text that looks like
+            a marker but lacks the nonce is part of the message it appears in.
 
     Returns:
         A ``Scanner`` function that analyzes Transcript instances and returns
         ``Result`` (single segment) or ``list[Result]`` (multiple segments).
     """
-    check_nonce(nonce)
+    check_nonce(None if nonce is True else nonce)
 
     # Resolve template form once at factory time.
     # - None or tuple: structured 2-block render with cache_prompt=True.
@@ -359,6 +364,8 @@ def llm_scanner(
         # Resolve the model once — defers role resolution to scan time
         resolved_model = get_model(model, role=model_role)
 
+        transcript_nonce = secrets.token_hex(4) if nonce is True else nonce
+
         # On the streaming path, template rendering only needs TranscriptInfo
         # fields, so pass a content-empty Transcript where one is required.
         info_transcript: Transcript
@@ -385,7 +392,7 @@ def llm_scanner(
             preprocessor=cast(
                 MessagesPreprocessor[list[ChatMessage]] | None, preprocessor
             ),
-            nonce=nonce,
+            nonce=transcript_nonce,
         )
 
         async def scan_segment(messages_str: str) -> Result:
@@ -399,7 +406,7 @@ def llm_scanner(
                     messages=messages_str,
                     question=question,
                     answer=resolved_answer,
-                    nonce=nonce,
+                    nonce=transcript_nonce,
                 )
                 prompt = [
                     ChatMessageUser(
@@ -418,7 +425,7 @@ def llm_scanner(
                     messages=messages_str,
                     question=question,
                     answer=resolved_answer,
-                    nonce=nonce,
+                    nonce=transcript_nonce,
                 )
                 call_config = GenerateConfig(cache=cache) if cache is not None else None
             return await generate_answer(
@@ -441,7 +448,7 @@ def llm_scanner(
             transcript=info_transcript,
             question=question,
             answer=resolved_answer,
-            nonce=nonce,
+            nonce=transcript_nonce,
             model=resolved_model,
         )
         effective_budget = _effective_segment_budget(
@@ -639,7 +646,7 @@ async def render_scanner_prompt(
         question: Question for the scanner to answer. Can be a static string
             or a callable that takes a Transcript and returns an awaitable string.
         answer: Answer object containing prompt and format strings.
-        nonce: Message header nonce, available to the template as ``scout_nonce``.
+        nonce: Transcript marker nonce, available to the template as ``scout_nonce``.
 
     Returns:
         Rendered prompt string with all variables substituted.

@@ -748,12 +748,7 @@ async def test_record_thins_oversized_transcript_metadata(
     recorder_buffer: RecorderBuffer,
     sample_results: list[ResultReport],
 ) -> None:
-    """Oversized sample metadata is recorded in the thinned form log summaries use.
-
-    Sample metadata can embed whole files (gigabytes in real eval logs). Parquet
-    cannot store a string of 2 GiB or more, and the failed write interrupted the
-    scan.
-    """
+    """Oversized sample metadata is recorded thinned, as log summaries store it."""
     scanner_name = "test_scanner"
     transcript = TranscriptInfo(
         transcript_id="big-metadata-1",

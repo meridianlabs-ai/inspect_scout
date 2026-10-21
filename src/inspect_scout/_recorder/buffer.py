@@ -573,12 +573,8 @@ _SERIALIZED_INPUT_COLUMNS = frozenset({"input", "input_data"})
 
 
 def _transcript_metadata_column(transcript: TranscriptInfo) -> Any:
-    """Serialize transcript metadata once for all of a transcript's result rows.
-
-    Sample metadata can embed whole files, and parquet cannot store a string of
-    2 GiB or more, so past the cap the thinned form log summaries use is recorded.
-    """
     serialized = _normalize_scalar("transcript_metadata", transcript.metadata)
+    # Sample metadata can embed whole files; parquet strings must stay under 2 GiB.
     if isinstance(serialized, str) and len(serialized) > TRANSCRIPT_METADATA_MAX_CHARS:
         logger.warning(
             "Transcript %s: metadata serializes to %d characters, over the %d cap; "

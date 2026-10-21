@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.6.1](https://github.com/meridianlabs-ai/inspect_scout/compare/0.6.0...0.6.1) (2026-10-21)
+
+
+### Features
+
+* scout view serves the viewer's Content-Security-Policy ([#712](https://github.com/meridianlabs-ai/inspect_scout/issues/712)) ([f0a0133](https://github.com/meridianlabs-ai/inspect_scout/commit/f0a0133f34a3bd46514551417e81e5d068e46ef5))
+
+
+### Bug Fixes
+
+* a monitored agent can forge tool calls, tool errors, reasoning and transcript end lines past the scanner nonce ([#726](https://github.com/meridianlabs-ai/inspect_scout/issues/726)) ([c2dac24](https://github.com/meridianlabs-ai/inspect_scout/commit/c2dac241b79325901f681bcc0394ddd2a4e013d8))
+* block DNS-rebinding and cross-site requests to scout view ([#482](https://github.com/meridianlabs-ai/inspect_scout/issues/482)) ([d6baf23](https://github.com/meridianlabs-ai/inspect_scout/commit/d6baf238fd0029f3592c6052ae50661ca50c4a81))
+* compare the scout view token in constant time ([#720](https://github.com/meridianlabs-ai/inspect_scout/issues/720)) ([01ce170](https://github.com/meridianlabs-ai/inspect_scout/commit/01ce170b4854f67981575d33ef736ffbfdcb38a0))
+* discover eval logs with prefix-scoped S3 access ([#678](https://github.com/meridianlabs-ai/inspect_scout/issues/678)) ([867cc7c](https://github.com/meridianlabs-ai/inspect_scout/commit/867cc7c54f7798592453112e3bd8f12560b2af5a))
+* **examples:** eval_awareness no longer counts topic vocabulary as awareness ([#679](https://github.com/meridianlabs-ai/inspect_scout/issues/679)) ([2653f93](https://github.com/meridianlabs-ai/inspect_scout/commit/2653f933d634f3f7e8f20c7d49ba3ff26f30fd16))
+* llm_scanner fails on Petri logs when scanning a named timeline ([8c8e789](https://github.com/meridianlabs-ai/inspect_scout/commit/8c8e789593d14db0788f92831a1dd08c64aaabe6))
+* saving project settings no longer deletes scout.yaml fields the settings page doesn't show ([4bff241](https://github.com/meridianlabs-ai/inspect_scout/commit/4bff2418ca2a5f627ae87c00d43dc34c361ee2af))
+* scout no longer installs DuckDB 2.0, which broke reading transcript databases ([96c2575](https://github.com/meridianlabs-ai/inspect_scout/commit/96c25756ddbd0c17112de20dc8e439daad931c6c))
+* scout view fails to load scans behind Posit Workbench and other Host-rewriting proxies ([#723](https://github.com/meridianlabs-ai/inspect_scout/issues/723)) ([9f95ff9](https://github.com/meridianlabs-ai/inspect_scout/commit/9f95ff97d23748eb42808b539ac3930b89dad9d5))
+* timeline scans of transcript databases gave the judge nearly empty stored timelines, so earlier results from those scans may be wrong ([8c8e789](https://github.com/meridianlabs-ai/inspect_scout/commit/8c8e789593d14db0788f92831a1dd08c64aaabe6))
+
 ## [0.6.0](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.5...0.6.0) (2026-10-15)
 
 

@@ -748,7 +748,6 @@ async def test_record_thins_oversized_transcript_metadata(
     recorder_buffer: RecorderBuffer,
     sample_results: list[ResultReport],
 ) -> None:
-    """Oversized sample metadata is recorded thinned, as log summaries store it."""
     scanner_name = "test_scanner"
     transcript = TranscriptInfo(
         transcript_id="big-metadata-1",

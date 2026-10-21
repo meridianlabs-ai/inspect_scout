@@ -1,6 +1,12 @@
 # Contributing to Inspect Scout
 
-Thanks for contributing to Inspect Scout — this guide covers local setup, the checks CI runs, and how commits map to releases.
+Thanks for contributing to Inspect Scout — this guide covers how to propose a change, local setup, the checks CI runs, and how commits map to releases.
+
+## Open an issue first
+
+Unless you are a maintainer, please open an issue and wait for a maintainer to accept it before you write code. Describe the problem or feature and include your evidence (for a bug, a repro). Once a maintainer agrees on the issue that the project wants the change, open your PR and link the issue (`Fixes #NNN`). This applies whoever filed the issue: what matters is that a maintainer has accepted it. PRs without an accepted issue may be closed without review.
+
+**Exception:** trivial documentation fixes (typos, broken links) are always welcome directly.
 
 ## Development setup
 
@@ -93,4 +99,4 @@ Found a bug or have a feature request? Please open an issue on the [GitHub issue
 
 ## Bug-fix pull requests
 
-A bug-fix PR should either link the issue it resolves or include a crisp minimal repro that **demonstrates** the bug: a real affected input, or steps that reproduce it, alongside the root cause. Show the repro rather than asserting the cause. That lets a reviewer confirm the diagnosis instead of reverse-engineering it, and keeps the PR from stalling. Without an issue or a demonstrated repro, review is deferred until you add one.
+A bug-fix PR should either link the issue it resolves or, for a maintainer's PR with no issue, include a crisp minimal repro that **demonstrates** the bug: a real affected input, or steps that reproduce it, alongside the root cause. Show the repro rather than asserting the cause. That lets a reviewer confirm the diagnosis instead of reverse-engineering it, and keeps the PR from stalling. Without an issue or a demonstrated repro, review is deferred until you add one.

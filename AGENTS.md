@@ -51,13 +51,14 @@ Development setup (editable install, inspect_ai tracked from `main`, frontend/Gi
 
 ## Pull Requests
 
+- Unless you are acting for a project maintainer, every PR needs a linked issue (`Fixes #NNN`) that a maintainer has accepted, whoever filed it. Without one, don't open the PR: file your evidence on an issue and stop; open the PR only after a maintainer accepts the issue. Trivial documentation fixes (typos, broken links) are the exception
 - Title PRs as Conventional Commits (`<type>: <description>`)—we squash-merge, so the PR title becomes the commit message that drives releases; `pr-title-lint` enforces it
 - Describe the user-facing outcome in the title, not the mechanism: "fix: scan hangs when transcripts are on S3", not "fix: use AsyncFilesystem in transcript loader". The title becomes a release-notes line—a user scanning the notes should recognize their problem or their feature. PRs with no user-facing outcome (refactoring, tooling, docs) describe the change itself
 - `feat:`/`fix:` are for user-facing changes only: they headline the release notes and bump the version. `perf:`/`revert:` also appear in the notes (no bump); `docs:`, `refactor:`, `chore:`, `build:`, `ci:`, `test:`, `style:` are hidden
 - Body lines starting with `<type>:` are parsed as extra changelog entries—don't begin description lines with a conventional-commit prefix unless that's intended
 - Never edit `CHANGELOG.md`, version numbers, or `.release-please-manifest.json`—Release Please owns them
 - After opening a PR, watch its checks until they complete (`gh pr checks <number> --watch`); investigate and fix any failures
-- A bug-fix PR needs a linked issue or a crisp minimal repro that *demonstrates* the bug—a real affected input or reproducible steps, not just an asserted root cause. A regression test that encodes an unproven premise doesn't count. Without one, review is deferred until you add it
+- A bug-fix PR needs a linked issue or, when acting for a maintainer with no issue, a crisp minimal repro that *demonstrates* the bug—a real affected input or reproducible steps, not just an asserted root cause. A regression test that encodes an unproven premise doesn't count. Without one, review is deferred until you add it
 - See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines
 
 ### Agent review disclosure

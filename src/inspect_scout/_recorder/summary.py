@@ -166,6 +166,12 @@ class Summary(BaseModel):
             all_entries = existing_entries + new_entries
             tot_results.validation = ValidationResults.from_entries(all_entries)
 
+    def _report_error(self, scanner: str) -> None:
+        if scanner not in self.scanners:
+            self.scanners[scanner] = ScannerSummary()
+        self.scanners[scanner].scans += 1
+        self.scanners[scanner].errors += 1
+
     def _report_metrics(
         self,
         scanner: str,

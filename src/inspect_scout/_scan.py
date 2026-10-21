@@ -824,7 +824,18 @@ async def _scan_async_inner(
                         results: Sequence[ResultReport],
                     ) -> None:
                         metrics = accumulate_metrics(scanner, results)
-                        await recorder.record(transcript, scanner, results, metrics)
+                        try:
+                            await recorder.record(transcript, scanner, results, metrics)
+                        except Exception as ex:
+                            if fail_on_error:
+                                raise
+                            # record the error without the results: a retried
+                            # write fails again when the unwritable value is
+                            # transcript-level (e.g. metadata)
+                            report = _error_report(transcript, scanner, ex)
+                            assert report.error is not None
+                            await recorder.record_error(report.error)
+                            results = [report]
                         scan_display.results(transcript, scanner, results, metrics)
                         active_store.put_scanner_results(
                             scan.spec.scan_id, scanner, results
@@ -1425,27 +1436,38 @@ def _streaming_eligible(
 def _reports_for_parse_error(
     job: ParseJob, exception: Exception, scanner_names: list[str]
 ) -> list[ResultReport]:
-    # Create placeholder transcript since parse failed
-    placeholder_transcript = _info_placeholder_transcript(job.transcript_info)
     return [
-        ResultReport(
-            input_type="transcript",
-            input_ids=[job.transcript_info.transcript_id],
-            input=placeholder_transcript,
-            result=None,
-            validation=None,
-            error=Error(
-                transcript_id=job.transcript_info.transcript_id,
-                scanner=scanner_names[idx],
-                error=str(exception),
-                traceback=traceback.format_exc(),
-                refusal=False,
-            ),
-            events=[],
-            model_usage={},
-        )
+        _error_report(job.transcript_info, scanner_names[idx], exception)
         for idx in job.scanner_indices
     ]
+
+
+def _error_report(
+    info: TranscriptInfo, scanner: str, exception: Exception
+) -> ResultReport:
+    """Error report standing in for a transcript's results.
+
+    Call from an `except` block: it records the traceback being handled.
+    """
+    return ResultReport(
+        input_type="transcript",
+        input_ids=[info.transcript_id],
+        # `_info_placeholder_transcript` can't take a full `Transcript`
+        input=info
+        if isinstance(info, Transcript)
+        else _info_placeholder_transcript(info),
+        result=None,
+        validation=None,
+        error=Error(
+            transcript_id=info.transcript_id,
+            scanner=scanner,
+            error=str(exception),
+            traceback=traceback.format_exc(),
+            refusal=False,
+        ),
+        events=[],
+        model_usage={},
+    )
 
 
 async def _resolve_worklist(

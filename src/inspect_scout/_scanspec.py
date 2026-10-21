@@ -81,7 +81,8 @@ class ScanOptions(BaseModel):
 
     record_input: Literal["copy", "reference"] = Field(default="copy")
     """How scanner input is recorded in results: a self-contained copy
-    (default), or a reference to the source transcript resolved on read."""
+    (default), or a reference to the source transcript resolved on read.
+    References also record transcript metadata thinned to summary size."""
 
 
 class TranscriptField(TypedDict, total=False):

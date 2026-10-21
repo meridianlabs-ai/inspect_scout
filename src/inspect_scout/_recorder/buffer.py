@@ -177,7 +177,9 @@ class RecorderBuffer:
         transcript_error = resolve_metadata_var(transcript.error, "error", m)
         transcript_limit = resolve_metadata_var(transcript.limit, "limit", m)
 
-        transcript_metadata = _transcript_metadata_column(transcript)
+        transcript_metadata = _transcript_metadata_column(
+            transcript, thin=self._spec.options.record_input == "reference"
+        )
         records = [
             cast(
                 dict[str, str | bool | int | float | None],
@@ -572,7 +574,13 @@ _SERIALIZED_INPUT_COLUMNS = frozenset({"input", "input_data"})
 """Columns `ResultReport.to_df_columns` fills with pre-serialized UTF-8 JSON."""
 
 
-def _transcript_metadata_column(transcript: TranscriptInfo) -> Any:
+def _transcript_metadata_column(transcript: TranscriptInfo, *, thin: bool) -> Any:
+    if thin:
+        # Reference rows are resolved from the source transcript, which holds the full
+        # metadata; skip serializing it at all (it can be gigabytes).
+        return _normalize_scalar(
+            "transcript_metadata", _thin_metadata(transcript.metadata)
+        )
     serialized = _normalize_scalar("transcript_metadata", transcript.metadata)
     # Sample metadata can embed whole files; parquet strings must stay under 2 GiB.
     if isinstance(serialized, str) and len(serialized) > TRANSCRIPT_METADATA_MAX_CHARS:

@@ -16,7 +16,7 @@ from inspect_scout._scanner.result import (
     Result,
     ResultReport,
 )
-from inspect_scout._scanspec import ScannerSpec, ScanSpec
+from inspect_scout._scanspec import ScannerSpec, ScanOptions, ScanSpec
 from inspect_scout._transcript.types import TranscriptInfo
 from inspect_scout._util.constants import TRANSCRIPT_METADATA_MAX_CHARS
 
@@ -816,3 +816,47 @@ async def test_thinned_metadata_keeps_unread_json_values_as_objects(
         "files": "Key removed from summary (> 1k)",
     }
     assert metadata.unread_json("files") is not None
+
+
+@pytest.mark.asyncio
+async def test_reference_scan_records_thinned_transcript_metadata(
+    sample_results: list[ResultReport],
+) -> None:
+    """Reference rows re-read their transcript, so they carry only summary-sized metadata."""
+    from inspect_scout._transcript.util import LazyJSONDict
+
+    metadata = LazyJSONDict(
+        {
+            "model": "gpt-4",
+            "config": '{"temperature": 0.7}',
+            "files": json.dumps({"fixture.py": "x" * 2_000}),
+        },
+        json_keys=["config", "files"],
+    )
+    transcript = TranscriptInfo(
+        transcript_id="ref-1",
+        source_type="test",
+        source_id="src-1",
+        source_uri="/path/to/src.log",
+    )
+    # As the transcript readers do: validation would turn it into a plain dict.
+    object.__setattr__(transcript, "metadata", metadata)
+    spec = ScanSpec(
+        scan_name="myscan",
+        scanners={"test_scanner": ScannerSpec(name="test_scanner")},
+        options=ScanOptions(record_input="reference"),
+    )
+    with tempfile.TemporaryDirectory() as tmpdir:
+        buffer = RecorderBuffer(tmpdir, spec)
+        await buffer.record(transcript, "test_scanner", sample_results, None)
+        table = pq.read_table(
+            (buffer._buffer_dir / "scanner=test_scanner" / "ref-1.parquet").as_posix()
+        )
+        buffer.cleanup()
+
+    stored = json.loads(table.column("transcript_metadata")[0].as_py())
+    assert stored == {
+        "model": "gpt-4",
+        "config": {"temperature": 0.7},
+        "files": "Key removed from summary (> 1k)",
+    }

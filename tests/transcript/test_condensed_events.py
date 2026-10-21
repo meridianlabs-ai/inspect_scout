@@ -457,22 +457,33 @@ async def test_condensed_read_from_parquet_database(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("duplicate_uuid", [False, True], ids=["", "duplicate-uuid"])
 @pytest.mark.parametrize(
+    "condensed",
+    [CONDENSED, TranscriptContent(events=["tool"], condensed=True)],
+    ids=["beside-all", "beside-tool-events"],
+)
+@pytest.mark.parametrize(
     "sibling",
     [
         EXPANDED,
         TranscriptContent(events=["model"]),
         TranscriptContent(messages="all", events="all", timeline=True),
+        # model events only through the timeline: the read drops them from
+        # the flat list after building it
+        TranscriptContent(events=["tool"], timeline=True),
     ],
-    ids=["all", "model-events", "timeline"],
+    ids=["all", "model-events", "timeline", "tool-events-with-timeline"],
 )
 @pytest.mark.asyncio
 async def test_a_scanner_that_does_not_ask_sees_events_as_before(
-    tmp_path: Path, sibling: TranscriptContent, duplicate_uuid: bool
+    tmp_path: Path,
+    sibling: TranscriptContent,
+    condensed: TranscriptContent,
+    duplicate_uuid: bool,
 ) -> None:
     """Sharing a read with a condensed scanner leaves a sibling's events unchanged."""
     log = _write_log(tmp_path, 12, varied=True, duplicate_uuid=duplicate_uuid)
     alone = filter_transcript(await _read(log, sibling), sibling)
-    union = union_transcript_contents([sibling, CONDENSED])
+    union = union_transcript_contents([sibling, condensed])
     shared = filter_transcript(await _read(log, union), sibling)
 
     assert shared.events_data is None
@@ -481,8 +492,9 @@ async def test_a_scanner_that_does_not_ask_sees_events_as_before(
     assert [t.model_dump() for t in shared.timelines] == [
         t.model_dump() for t in alone.timelines
     ]
-    assert [_positions(t, shared.events) for t in shared.timelines] == [
-        _positions(t, alone.events) for t in alone.timelines
+    # what each timeline cites, inputs included, in order
+    assert [_dumps(_timeline_events(t.root)) for t in shared.timelines] == [
+        _dumps(_timeline_events(t.root)) for t in alone.timelines
     ]
 
 
@@ -1012,3 +1024,112 @@ async def test_filtering_a_condensed_read_expands_only_what_is_kept(
     assert [t.model_dump() for t in filtered.timelines] == [
         t.model_dump() for t in alone.timelines
     ]
+
+
+def test_a_plain_timeline_scanner_beside_a_condensed_one_keeps_its_timeline_inputs(
+    tmp_path: Path,
+) -> None:
+    """Model events reached only through a timeline are expanded for a plain scanner."""
+    log = _write_log(tmp_path / "logs", 6)
+    seen: dict[str, list[tuple[int, Any]]] = {}
+
+    @scanner(name="timeline_tools", events=["tool"], timeline=True)
+    def timeline_tools() -> Scanner[Transcript]:
+        async def scan_transcript(transcript: Transcript) -> Result:
+            assert transcript.events_data is None
+            seen[run_name] = [
+                (len(event.input), event.input_refs)
+                for timeline in transcript.timelines
+                for event in _timeline_events(timeline.root)
+                if isinstance(event, ModelEvent)
+            ]
+            return Result(value=True)
+
+        return scan_transcript
+
+    @scanner(name="condensed_tools", events=["tool"], condensed=True)
+    def condensed_tools() -> Scanner[Transcript]:
+        async def scan_transcript(transcript: Transcript) -> Result:
+            assert transcript.events_data is not None
+            return Result(value=True)
+
+        return scan_transcript
+
+    run_name = ""
+    for run_name, scanners in (
+        ("alone", [timeline_tools()]),
+        ("mixed", [condensed_tools(), timeline_tools()]),
+    ):
+        status = scan(
+            scanners=scanners,
+            transcripts=transcripts_from(log),
+            scans=str(tmp_path / run_name),
+            max_processes=1,
+            display="none",
+        )
+        assert status.complete
+
+    assert seen["alone"] and all(size > 0 for size, _ in seen["alone"])
+    assert seen["mixed"] == seen["alone"]
+
+
+def test_condensing_an_inline_transcript_condenses_what_its_timelines_cite() -> None:
+    _, events = _conversation(6)
+    transcript = Transcript(
+        transcript_id="t", events=events, timelines=[timeline_build(events)]
+    )
+    content = TranscriptContent(events=["tool"], timeline=True, condensed=True)
+
+    condensed = filter_transcript(transcript, content)
+
+    assert condensed.events_data is not None
+    (timeline,) = condensed.timelines
+    cited = _timeline_events(timeline.root)
+    model_events = [e for e in cited if isinstance(e, ModelEvent)]
+    assert model_events and all(e.input == [] and e.input_refs for e in model_events)
+    (original,) = transcript.timelines
+    assert _dumps(expand_events(cited, condensed.events_data)) == _dumps(
+        _timeline_events(original.root)
+    )
+
+
+@loader(events="all", condensed=True)
+def condensed_loader() -> Loader[Transcript]:
+    async def load(transcript: Transcript) -> AsyncIterator[Transcript]:
+        yield transcript
+
+    return load
+
+
+@scanner(events="all", loader=condensed_loader())
+def scanner_with_a_condensed_loader() -> Scanner[Transcript]:
+    async def scan_transcript(transcript: Transcript) -> Result:
+        assert transcript.events_data is not None
+        return Result(value=len(transcript.events_data["messages"]))
+
+    return scan_transcript
+
+
+def test_a_scorer_honours_a_custom_loaders_condensed_setting() -> None:
+    task = Task(scorer=as_scorer(scanner_with_a_condensed_loader()))
+    log = eval(tasks=task, model="mockllm/model", display="none")[0]
+
+    assert log.status == "success"
+    assert log.samples and log.samples[0].scores
+    (score,) = log.samples[0].scores.values()
+    assert isinstance(score.value, int) and score.value > 0
+
+
+def test_condensing_leaves_events_nested_in_tool_spawned_agents_as_they_are() -> None:
+    """Timelines keep citing the nested events the tool events hold."""
+    events = agentic_events()
+    transcript = Transcript(
+        transcript_id="t", events=events, timelines=[timeline_build(events)]
+    )
+    content = TranscriptContent(events="all", timeline=True, condensed=True)
+
+    condensed = filter_transcript(transcript, content)
+
+    held = {id(event) for event in _with_nested(condensed.events)}
+    (timeline,) = condensed.timelines
+    assert all(id(event) in held for event in _timeline_events(timeline.root))

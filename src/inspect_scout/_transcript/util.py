@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import json
 from functools import reduce
-from typing import Any, Iterable, Iterator, Sequence, TypeVar, overload
+from typing import Any, Iterable, Iterator, NamedTuple, Sequence, TypeVar, overload
 
 from inspect_ai.event import (
     ModelEvent,
     Timeline,
     TimelineEvent,
     TimelineSpan,
+    ToolEvent,
     timeline_build,
 )
 from inspect_ai.event._event import Event
@@ -272,14 +273,9 @@ def filter_transcript(transcript: Transcript, content: TranscriptContent) -> Tra
     if condensed != (events_data is not None):
         # Converted after filtering, so only the events this scanner keeps (or
         # its timelines cite) are condensed or expanded.
-        kept = {id(event) for event in events} | {
-            id(event) for timeline in timelines for event in _cited(timeline.root)
-        }
-        subset = [event for event in transcript.events if id(event) in kept]
-        converted, events_data = _converted(subset, events_data, condensed)
-        replacement = _replacement(subset, converted)
-        events = [replacement.get(id(event), event) for event in events]
-        timelines = _rebind_timelines(timelines, replacement)
+        events, timelines, events_data = _converted_with_timelines(
+            events, timelines, events_data, condensed
+        )
     # Use model_construct to avoid materializing LazyJSONDict metadata
     return Transcript.model_construct(
         transcript_id=transcript.transcript_id,
@@ -322,18 +318,62 @@ def with_events_form(transcript: Transcript, condensed: bool) -> Transcript:
     """
     if condensed == (transcript.events_data is not None):
         return transcript
-    events, events_data = _converted(
-        transcript.events, transcript.events_data, condensed
+    events, timelines, events_data = _converted_with_timelines(
+        transcript.events, transcript.timelines, transcript.events_data, condensed
     )
     return transcript.model_copy(
-        update={
-            "events": events,
-            "events_data": events_data,
-            "timelines": _rebind_timelines(
-                transcript.timelines, _replacement(transcript.events, events)
-            ),
-        }
+        update={"events": events, "events_data": events_data, "timelines": timelines}
     )
+
+
+class _ConvertedEvents(NamedTuple):
+    events: list[Event]
+    timelines: list[Timeline]
+    events_data: EventsData | None
+
+
+def _converted_with_timelines(
+    events: list[Event],
+    timelines: list[Timeline],
+    events_data: EventsData | None,
+    condensed: bool,
+) -> _ConvertedEvents:
+    """Events and the timelines citing them, converted together.
+
+    A timeline can cite events the flat list leaves out (readers load every
+    event to build or bind timelines, then filter the list), so the events
+    converted are the flat ones plus those the timelines cite, each once.
+    Events nested in tool-spawned agents are left as they are, as
+    `condense_events` leaves them.
+    """
+    cited = [event for timeline in timelines for event in _cited(timeline.root)]
+    nested = _nested_ids([*events, *cited])
+    seen: set[int] = set()
+    subset: list[Event] = []
+    for event in (*events, *cited):
+        if id(event) not in seen and id(event) not in nested:
+            seen.add(id(event))
+            subset.append(event)
+    converted, events_data = _converted(subset, events_data, condensed)
+    replacement = _replacement(subset, converted)
+    return _ConvertedEvents(
+        events=[replacement.get(id(event), event) for event in events],
+        timelines=_rebind_timelines(timelines, replacement),
+        events_data=events_data,
+    )
+
+
+def _nested_ids(events: list[Event]) -> set[int]:
+    """Identities of the events nested (at any depth) in tool-spawned agents."""
+    nested: set[int] = set()
+    stack = [event for event in events if isinstance(event, ToolEvent)]
+    while stack:
+        for child in stack.pop().events:
+            if id(child) not in nested:
+                nested.add(id(child))
+                if isinstance(child, ToolEvent):
+                    stack.append(child)
+    return nested
 
 
 def _converted(

@@ -18,6 +18,7 @@ from inspect_ai.scorer import (
 from inspect_ai.solver import TaskState
 from pydantic import JsonValue
 
+from inspect_scout._scanner.loader import config_for_loader
 from inspect_scout._scanner.metrics import as_score_value, metrics_for_scanner
 from inspect_scout._scanner.result import Result, as_resultset
 from inspect_scout._scanner.scanner import Scanner, ScannerConfig, config_for_scanner
@@ -78,7 +79,8 @@ def as_scorer(
                 events=events,
                 timelines=timelines,
             )
-            if config.content.condensed:
+            # The loader's content governs, as in a scan (`_scan_one`).
+            if config_for_loader(config.loader).content.condensed:
                 transcript = filter_transcript(
                     transcript,
                     TranscriptContent(

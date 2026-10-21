@@ -73,6 +73,12 @@ def _error_scanner(provider: str, attempts: Path, mode: str) -> Scanner[Transcri
                     f"simultaneous worker failure: {transcript.transcript_id}"
                 )
             if transcript.transcript_id == "failing":
+                if mode == "sigkill":
+                    # stand-in for the kernel OOM killer
+                    os.kill(os.getpid(), signal.SIGKILL)
+                if mode == "exit":
+                    # stand-in for native code calling exit()
+                    os._exit(3)
                 _raise_provider_error(provider)
             return Result(value="ok")
 
@@ -206,7 +212,9 @@ if __name__ == "__main__":
     parser.add_argument("--max-processes", type=int, required=True)
     parser.add_argument("--api", choices=("sync", "async"), default="async")
     parser.add_argument(
-        "--mode", choices=("normal", "multiple", "pressure"), default="normal"
+        "--mode",
+        choices=("normal", "multiple", "pressure", "sigkill", "exit"),
+        default="normal",
     )
     args = parser.parse_args()
     run_scenario(

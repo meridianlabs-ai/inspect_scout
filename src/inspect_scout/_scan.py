@@ -106,7 +106,7 @@ from ._transcript.types import (
     TranscriptContent,
     TranscriptInfo,
 )
-from ._transcript.util import union_transcript_contents
+from ._transcript.util import union_transcript_contents, with_events_form
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
 from ._util.deprecation import raise_results_error, show_results_warning
 from ._util.log import init_log
@@ -1150,6 +1150,9 @@ async def _scan_one(
 
     scanner_config = config_for_scanner(job.scanner)
     loader = scanner_config.loader
+    # The shared read is condensed if any scanner asked; each loader, custom
+    # ones included, gets the event form its own content asks for.
+    loader_condensed = config_for_loader(loader).content.condensed is True
 
     def _stream_error_report(ex: Exception) -> ResultReport:
         """Error report for an exception raised lazily during iteration."""
@@ -1182,7 +1185,9 @@ async def _scan_one(
     try:
         loader_iterations: AsyncIterator[ScannerInput | TranscriptHandle]
         if isinstance(job.union_transcript, Transcript):
-            loader_iterations = loader(job.union_transcript)
+            loader_iterations = loader(
+                with_events_form(job.union_transcript, loader_condensed)
+            )
         elif scanner_supports_streaming(job.scanner):
             loader_iterations = _single_item_iter(job.union_transcript)
         else:
@@ -1198,7 +1203,7 @@ async def _scan_one(
                     raise
                 results.append(_stream_error_report(ex))
                 return results
-            loader_iterations = loader(transcript)
+            loader_iterations = loader(with_events_form(transcript, loader_condensed))
 
         # Iterate explicitly so a lazy parse error raised by the iteration is
         # contained per-transcript rather than propagating. PrerequisiteError
@@ -1408,8 +1413,8 @@ def _streaming_eligible(
     exactly the metadata-heavy sets it exists for.
 
     A condensed union materializes: a handle has no message pool to resolve
-    condensed events against, and a sibling that did not ask for them must be
-    expanded by its loader.
+    condensed events against, and a sibling that did not ask for them is
+    handed expanded events (`with_events_form`), which a handle cannot be.
 
     Callers must already have checked `scanner_supports_streaming`.
     """

@@ -2,14 +2,22 @@ from __future__ import annotations
 
 import json
 from functools import reduce
-from typing import Any, Iterable, NamedTuple, TypeVar
+from typing import Any, Iterable, Iterator, Sequence, TypeVar, overload
 
-from inspect_ai.event import Timeline, timeline_build, timeline_dump, timeline_load
+from inspect_ai.event import (
+    ModelEvent,
+    Timeline,
+    ToolEvent,
+    timeline_build,
+    timeline_dump,
+    timeline_load,
+)
 from inspect_ai.event._event import Event
 from inspect_ai.log import EventsData, condense_events, expand_events
 from inspect_ai.model._chat_message import ChatMessage, ChatMessageBase
 from pydantic_core import from_json, to_json
 
+from .json.pool import slice_positions
 from .types import (
     CondensedFilter,
     EventFilter,
@@ -258,7 +266,7 @@ def filter_transcript(transcript: Transcript, content: TranscriptContent) -> Tra
     Returns:
         A new Transcript with filtered messages and events based on the content specification.
     """
-    events, events_data, timelines = _events_as_requested(transcript, content)
+    transcript = with_events_form(transcript, content.condensed is True)
     # Use model_construct to avoid materializing LazyJSONDict metadata
     return Transcript.model_construct(
         transcript_id=transcript.transcript_id,
@@ -284,66 +292,122 @@ def filter_transcript(transcript: Transcript, content: TranscriptContent) -> Tra
         trust_content=transcript.trust_content,
         metadata=transcript.metadata,
         messages=filter_list(transcript.messages, content.messages),
-        events=filter_list(events, content.events),
-        timelines=filter_timelines(timelines, content.timeline),
-        events_data=events_data,
+        events=filter_list(transcript.events, content.events),
+        timelines=filter_timelines(transcript.timelines, content.timeline),
+        events_data=transcript.events_data,
     )
 
 
-class _EventsForm(NamedTuple):
-    events: list[Event]
-    events_data: EventsData | None
-    timelines: list[Timeline]
-
-
-def _events_as_requested(
-    transcript: Transcript, content: TranscriptContent
-) -> _EventsForm:
-    """The transcript's events, condensed or expanded as `content` asks.
+def with_events_form(transcript: Transcript, condensed: bool) -> Transcript:
+    """The transcript with its events condensed or expanded, nothing else changed.
 
     A shared read is condensed when any scanner asks (see
-    `union_transcript_contents`), so a sibling that did not ask gets the
-    events expanded here, sharing the pool's message objects as the expanded
-    read does. Timelines hold event objects, so they are rebound to whichever
-    form is returned.
+    `union_transcript_contents`), so each loader is handed the form its own
+    content asks for: a loader that did not ask gets the events expanded,
+    sharing the pool's message objects as the expanded read does, and no
+    pool. Timelines hold event objects, so they are rebound to the new events.
     """
-    if content.condensed:
-        if transcript.events_data is not None:
-            return _EventsForm(
-                transcript.events, transcript.events_data, transcript.timelines
-            )
+    if condensed == (transcript.events_data is not None):
+        return transcript
+    events_data: EventsData | None
+    if condensed:
         events, events_data = condense_events(transcript.events)
-        return _EventsForm(
-            events, events_data, _rebind_timelines(transcript.timelines, events)
-        )
-    if transcript.events_data is None:
-        return _EventsForm(transcript.events, None, transcript.timelines)
-    if content.timeline is None or not transcript.timelines:
-        expanded = expand_events(
-            filter_list(transcript.events, content.events), transcript.events_data
-        )
-        return _EventsForm(expanded, None, [])
-    expanded = expand_events(transcript.events, transcript.events_data)
-    return _EventsForm(
-        expanded, None, _rebind_timelines(transcript.timelines, expanded)
+    else:
+        assert transcript.events_data is not None
+        events = expand_events(transcript.events, transcript.events_data)
+        events_data = None
+    return transcript.model_copy(
+        update={
+            "events": events,
+            "events_data": events_data,
+            "timelines": _rebind_timelines(transcript.timelines, events),
+        }
     )
 
 
 def _rebind_timelines(timelines: list[Timeline], events: list[Event]) -> list[Timeline]:
-    return [timeline_load(timeline_dump(timeline), events) for timeline in timelines]
+    if not timelines:
+        return []
+    bindable = _with_nested_events(events)
+    return [timeline_load(timeline_dump(timeline), bindable) for timeline in timelines]
+
+
+def _with_nested_events(events: list[Event]) -> list[Event]:
+    """The events plus those nested in tool-spawned agents, which timelines cite."""
+    flat: list[Event] = []
+    stack = list(reversed(events))
+    while stack:
+        event = stack.pop()
+        flat.append(event)
+        if isinstance(event, ToolEvent):
+            stack.extend(reversed(event.events))
+    return flat
 
 
 def build_timeline(events: list[Event], events_data: EventsData | None) -> Timeline:
     """`timeline_build` over events that may be condensed.
 
-    `timeline_build` reads each `ModelEvent`'s input, so condensed events are
-    expanded for the build and the timeline is bound back to the condensed
-    events.
+    `timeline_build` reads a few messages of each `ModelEvent`'s input (its
+    system prompt, and for warmup calls and bridged agents a message near the
+    end), so condensed events are given views that read their pool ranges on
+    demand rather than expanded inputs; the timeline is then bound back to the
+    condensed events.
     """
     if events_data is None:
         return timeline_build(events)
-    timeline = timeline_build(expand_events(events, events_data))
-    return timeline_load(timeline_dump(timeline), events)
+    pool = events_data["messages"]
+    viewed: list[Event] = [
+        event.model_copy(update={"input": PooledInput(event.input_refs, pool)})
+        if isinstance(event, ModelEvent) and event.input_refs is not None
+        else event
+        for event in events
+    ]
+    return _rebind_timelines([timeline_build(viewed)], events)[0]
+
+
+class PooledInput(Sequence[ChatMessage]):
+    """Read-only view of a condensed input: its ranges over the pool.
+
+    Iteration (either direction) reads one pool position at a time, so a
+    reader that stops at the first system message touches one message, not
+    the whole input.
+    """
+
+    def __init__(
+        self, refs: Sequence[tuple[int, int]], pool: Sequence[ChatMessage]
+    ) -> None:
+        self._ranges = [slice_positions(start, end, len(pool)) for start, end in refs]
+        self._pool = pool
+
+    def __len__(self) -> int:
+        return sum(len(positions) for positions in self._ranges)
+
+    def __iter__(self) -> Iterator[ChatMessage]:
+        for positions in self._ranges:
+            for position in positions:
+                yield self._pool[position]
+
+    def __reversed__(self) -> Iterator[ChatMessage]:
+        for positions in reversed(self._ranges):
+            for position in reversed(positions):
+                yield self._pool[position]
+
+    @overload
+    def __getitem__(self, index: int) -> ChatMessage: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> list[ChatMessage]: ...
+
+    def __getitem__(self, index: int | slice) -> ChatMessage | list[ChatMessage]:
+        if isinstance(index, slice):
+            return list(self)[index]
+        if index < 0:
+            index += len(self)
+        for positions in self._ranges:
+            if 0 <= index < len(positions):
+                return self._pool[positions[index]]
+            index -= len(positions)
+        raise IndexError("PooledInput index out of range")
 
 
 def _union_contents(a: TranscriptContent, b: TranscriptContent) -> TranscriptContent:
@@ -357,8 +421,8 @@ def _union_contents(a: TranscriptContent, b: TranscriptContent) -> TranscriptCon
 
 
 def _union_condensed(a: CondensedFilter, b: CondensedFilter) -> CondensedFilter:
-    # Condensed beats expanded: a sibling that did not ask is expanded per
-    # scanner by `filter_transcript`, from pool objects decoded once.
+    # Condensed beats expanded: a loader that did not ask is handed the events
+    # expanded (`with_events_form`), from pool objects decoded once.
     return True if a or b else None
 
 

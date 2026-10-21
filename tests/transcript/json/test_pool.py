@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import io
+import json
+from typing import Any
+
 import pytest
-from inspect_scout._transcript.json.pool import _expand_refs_raw, resolve_pools
+from inspect_ai.event import ModelEvent
+from inspect_scout._transcript.json.load_filtered import load_filtered_transcript
 from inspect_scout._transcript.json.reducer import (
     CALL_POOL_ITEM_PREFIX,
     MESSAGE_POOL_ITEM_PREFIX,
@@ -11,184 +16,197 @@ from inspect_scout._transcript.json.reducer import (
     call_pool_item_coroutine,
     message_pool_item_coroutine,
 )
+from inspect_scout._transcript.types import Transcript, TranscriptInfo
+
+POOL = [
+    {"id": "p0", "role": "system", "content": "You are helpful"},
+    {"id": "p1", "role": "user", "content": "Hello"},
+    {"id": "p2", "role": "assistant", "content": "Hi there"},
+]
 
 
-class TestExpandRefsRaw:
-    """Unit tests for range-encoded ref expansion."""
+def _model_event(**fields: Any) -> dict[str, Any]:
+    return {
+        "span_id": "s1",
+        "timestamp": "2022-01-01T00:00:00+00:00",
+        "working_start": 0,
+        "event": "model",
+        "model": "m",
+        "input": [],
+        "output": {"model": "m", "choices": []},
+        "tools": [],
+        "tool_choice": "auto",
+        "config": {},
+        **fields,
+    }
 
-    @pytest.mark.parametrize(
-        ("refs", "pool", "expected"),
-        [
-            pytest.param([], [{"role": "user", "content": "hi"}], [], id="empty_refs"),
-            pytest.param(
-                [[0, 4]], ["a", "b", "c", "d"], ["a", "b", "c", "d"], id="contiguous"
-            ),
-            pytest.param(
-                [[0, 2], [4, 6]],
-                ["a", "b", "c", "d", "e", "f"],
-                ["a", "b", "e", "f"],
-                id="multiple_ranges",
-            ),
-            pytest.param(
-                [[0, 1], [2, 3]], ["a", "b", "c"], ["a", "c"], id="single_element"
-            ),
-            pytest.param(
-                [[2, 3], [5, 6], [8, 9]],
-                list(range(10)),
-                [2, 5, 8],
-                id="non_contiguous",
-            ),
-        ],
+
+async def _load(sample: dict[str, Any], raw: bytes | None = None) -> Transcript:
+    data = raw if raw is not None else json.dumps(sample).encode()
+    return await load_filtered_transcript(
+        io.BytesIO(data), TranscriptInfo(transcript_id="t1"), "all", "all"
     )
-    def test_expand_refs(
-        self, refs: list[list[int]], pool: list[object], expected: list[object]
-    ) -> None:
-        assert _expand_refs_raw(refs, pool) == expected
 
 
-class TestResolvePools:
-    """Tests for resolve_pools post-processing step."""
+def _model_events(transcript: Transcript) -> list[ModelEvent]:
+    return [e for e in transcript.events if isinstance(e, ModelEvent)]
 
-    def test_noop_when_pools_empty(self) -> None:
-        """v2 files: pools are empty, events unchanged."""
-        state = ParseState()
-        state.events = [
-            {"event": "model", "input": [{"role": "user", "content": "hi"}]}
-        ]
-        original_events = [e.copy() for e in state.events]
-        resolve_pools(state)
-        assert state.events == original_events
 
-    def test_resolves_input_refs(self) -> None:
-        """v3 events with input_refs get input populated from message_pool."""
-        state = ParseState()
-        state.message_pool = [
-            {"role": "system", "content": "You are helpful"},
-            {"role": "user", "content": "Hello"},
-            {"role": "assistant", "content": "Hi there"},
-        ]
-        state.events = [
-            {"event": "model", "input": [], "input_refs": [[0, 2]]},
-            {"event": "model", "input": [], "input_refs": [[0, 3]]},
-        ]
-        resolve_pools(state)
-        assert state.events[0]["input"] == [
-            {"role": "system", "content": "You are helpful"},
-            {"role": "user", "content": "Hello"},
-        ]
-        assert "input_refs" not in state.events[0]
-        assert len(state.events[1]["input"]) == 3
+class TestLoadResolvesPools:
+    @pytest.mark.asyncio
+    async def test_input_refs_expand_to_shared_messages(self) -> None:
+        """Events referencing the same pool entry share one validated message.
 
-    def test_resolves_call_refs(self) -> None:
-        """v3 events with call_refs get request messages from call_pool."""
-        state = ParseState()
-        state.call_pool = [
-            {"role": "user", "content": "msg1"},
-            {"role": "assistant", "content": "msg2"},
-        ]
-        state.events = [
+        Validating a copy per reference is quadratic in conversation length:
+        a long agent transcript expands to tens of millions of messages.
+        """
+        transcript = await _load(
             {
-                "event": "model",
-                "call": {
-                    "request": {"model": "gpt-4"},
-                    "call_refs": [[0, 2]],
-                    "call_key": "messages",
+                "events": [
+                    _model_event(input_refs=[[0, 2]]),
+                    _model_event(input_refs=[[0, 3]]),
+                ],
+                "events_data": {"messages": POOL, "calls": []},
+            }
+        )
+        first, second = _model_events(transcript)
+        assert [m.text for m in first.input] == ["You are helpful", "Hello"]
+        assert [m.text for m in second.input] == [
+            "You are helpful",
+            "Hello",
+            "Hi there",
+        ]
+        assert first.input_refs is None
+        assert first.input[0] is second.input[0]
+
+    @pytest.mark.asyncio
+    async def test_non_contiguous_ranges(self) -> None:
+        transcript = await _load(
+            {
+                "events": [_model_event(input_refs=[[0, 1], [2, 3]])],
+                "events_data": {"messages": POOL, "calls": []},
+            }
+        )
+        (event,) = _model_events(transcript)
+        assert [m.id for m in event.input] == ["p0", "p2"]
+
+    @pytest.mark.asyncio
+    async def test_inline_input_unchanged(self) -> None:
+        """v2 events carry their input inline and have no refs to expand."""
+        transcript = await _load(
+            {
+                "events": [
+                    _model_event(input=[{"role": "user", "content": "inline"}]),
+                    _model_event(input_refs=[[1, 2]]),
+                ],
+                "events_data": {"messages": POOL, "calls": []},
+            }
+        )
+        inline, pooled = _model_events(transcript)
+        assert [m.text for m in inline.input] == ["inline"]
+        assert [m.text for m in pooled.input] == ["Hello"]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("call_key", [None, "contents"])
+    async def test_call_refs_expand_under_call_key(self, call_key: str | None) -> None:
+        call: dict[str, Any] = {"request": {"model": "m"}, "call_refs": [[0, 2]]}
+        if call_key:
+            call["call_key"] = call_key
+        transcript = await _load(
+            {
+                "events": [_model_event(call=call)],
+                "events_data": {
+                    "messages": [],
+                    "calls": [{"role": "user", "n": 1}, {"role": "user", "n": 2}],
                 },
             }
+        )
+        (event,) = _model_events(transcript)
+        assert event.call is not None
+        assert event.call.call_refs is None
+        assert event.call.request[call_key or "messages"] == [
+            {"role": "user", "n": 1},
+            {"role": "user", "n": 2},
         ]
-        resolve_pools(state)
-        call = state.events[0]["call"]
-        assert call["request"]["messages"] == [
-            {"role": "user", "content": "msg1"},
-            {"role": "assistant", "content": "msg2"},
-        ]
-        assert "call_refs" not in call
-        assert "call_key" not in call
 
-    def test_mixed_v2_and_v3_events(self) -> None:
-        """Events without refs are left unchanged."""
-        state = ParseState()
-        state.message_pool = [{"role": "user", "content": "pooled"}]
-        state.events = [
-            {"event": "model", "input": [{"role": "user", "content": "inline"}]},
-            {"event": "model", "input": [], "input_refs": [[0, 1]]},
-            {"event": "score", "score": {"value": 1.0}},
-        ]
-        resolve_pools(state)
-        assert state.events[0]["input"] == [{"role": "user", "content": "inline"}]
-        assert state.events[1]["input"] == [{"role": "user", "content": "pooled"}]
-        assert state.events[2] == {"event": "score", "score": {"value": 1.0}}
-
-    def test_call_key_defaults_to_messages(self) -> None:
-        """When call_key is missing, defaults to 'messages'."""
-        state = ParseState()
-        state.call_pool = [{"role": "user", "content": "msg"}]
-        state.events = [
+    @pytest.mark.asyncio
+    async def test_attachment_ref_in_call_pool_entry_resolves(self) -> None:
+        att = "a" * 32
+        transcript = await _load(
             {
-                "event": "model",
-                "call": {
-                    "request": {"model": "gpt-4"},
-                    "call_refs": [[0, 1]],
+                "events": [_model_event(call={"request": {}, "call_refs": [[0, 1]]})],
+                "attachments": {att: "POOLED CALL CONTENT"},
+                "events_data": {
+                    "messages": [],
+                    "calls": [{"role": "user", "content": f"attachment://{att}"}],
                 },
             }
+        )
+        (event,) = _model_events(transcript)
+        assert event.call is not None
+        assert event.call.request["messages"] == [
+            {"role": "user", "content": "POOLED CALL CONTENT"}
         ]
-        resolve_pools(state)
-        assert "messages" in state.events[0]["call"]["request"]
 
-    def test_call_key_contents(self) -> None:
-        """call_key='contents' puts messages under 'contents' key."""
-        state = ParseState()
-        state.call_pool = [{"role": "user", "parts": [{"text": "hi"}]}]
-        state.events = [
-            {
-                "event": "model",
-                "call": {
-                    "request": {"model": "gemini"},
-                    "call_refs": [[0, 1]],
-                    "call_key": "contents",
+    @pytest.mark.asyncio
+    async def test_unreferenced_pool_is_not_validated(self) -> None:
+        """An events filter that keeps no model events never touches the pool."""
+        sample = {
+            "events": [
+                _model_event(input_refs=[[0, 1]]),
+                {
+                    "span_id": "s1",
+                    "timestamp": "2022-01-01T00:00:00+00:00",
+                    "working_start": 0,
+                    "event": "info",
+                    "data": "kept",
                 },
-            }
-        ]
-        resolve_pools(state)
-        assert "contents" in state.events[0]["call"]["request"]
+            ],
+            "events_data": {"messages": [{"role": "bogus"}], "calls": []},
+        }
+        transcript = await load_filtered_transcript(
+            io.BytesIO(json.dumps(sample).encode()),
+            TranscriptInfo(transcript_id="t1"),
+            None,
+            ["info"],
+        )
+        assert [e.event for e in transcript.events] == ["info"]
 
-    def test_resolves_both_input_and_call_refs(self) -> None:
-        """An event with both input_refs and call_refs gets both resolved."""
-        state = ParseState()
-        state.message_pool = [{"role": "user", "content": "input_msg"}]
-        state.call_pool = [{"role": "user", "content": "call_msg"}]
-        state.events = [
+    @pytest.mark.asyncio
+    async def test_legacy_top_level_pools(self) -> None:
+        transcript = await _load(
             {
-                "event": "model",
-                "input": [],
-                "input_refs": [[0, 1]],
-                "call": {"request": {}, "call_refs": [[0, 1]]},
+                "events": [
+                    _model_event(
+                        input_refs=[[1, 2]],
+                        call={"request": {}, "call_refs": [[0, 1]]},
+                    )
+                ],
+                "message_pool": POOL,
+                "call_pool": [{"role": "user", "content": "call"}],
             }
-        ]
-        resolve_pools(state)
-        assert state.events[0]["input"] == [{"role": "user", "content": "input_msg"}]
-        assert state.events[0]["call"]["request"]["messages"] == [
-            {"role": "user", "content": "call_msg"}
-        ]
-        assert "input_refs" not in state.events[0]
-        assert "call_refs" not in state.events[0]["call"]
+        )
+        (event,) = _model_events(transcript)
+        assert [m.text for m in event.input] == ["Hello"]
+        assert event.call is not None
+        assert event.call.request["messages"] == [{"role": "user", "content": "call"}]
 
-    def test_call_refs_creates_request_when_missing(self) -> None:
-        """call_refs resolution works even when request dict is absent."""
-        state = ParseState()
-        state.call_pool = [{"role": "user", "content": "msg"}]
-        state.events = [
-            {
-                "event": "model",
-                "call": {
-                    "call_refs": [[0, 1]],
-                },
-            }
-        ]
-        resolve_pools(state)
-        assert state.events[0]["call"]["request"]["messages"] == [
-            {"role": "user", "content": "msg"}
-        ]
+    @pytest.mark.asyncio
+    async def test_json5_fallback_expands_shared_messages(self) -> None:
+        """NaN forces the non-streaming fallback, which resolves pools the same way."""
+        sample = {
+            "metadata": {"x": "NAN_PLACEHOLDER"},
+            "events": [
+                _model_event(input_refs=[[0, 2]]),
+                _model_event(input_refs=[[0, 2]]),
+            ],
+            "events_data": {"messages": POOL, "calls": []},
+        }
+        raw = json.dumps(sample).replace('"NAN_PLACEHOLDER"', "NaN").encode()
+        transcript = await _load(sample, raw)
+        first, second = _model_events(transcript)
+        assert [m.text for m in first.input] == ["You are helpful", "Hello"]
+        assert first.input[1] is second.input[1]
 
 
 class TestPoolCoroutines:

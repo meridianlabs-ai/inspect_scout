@@ -2,16 +2,12 @@
 
 import asyncio
 import pickle
-import sys
 import threading
 import traceback
 from typing import Any
 
 import pytest
 from inspect_scout._concurrency._mp_error import WorkerProcessError, worker_error
-
-if sys.version_info < (3, 11):
-    from exceptiongroup import ExceptionGroup
 
 
 class ProviderError(Exception):

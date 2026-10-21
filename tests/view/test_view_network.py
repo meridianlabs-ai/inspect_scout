@@ -258,7 +258,7 @@ def test_custom_loopback_dns_origin_is_configurable(tmp_path: Path) -> None:
     assert untrusted.status_code == 400
 
 
-def test_trusted_host_only_rejects_browser_fetch_but_allows_non_browser(
+def test_trusted_host_rejects_browser_origin_but_allows_non_browser(
     tmp_path: Path,
 ) -> None:
     app = _app(
@@ -268,7 +268,7 @@ def test_trusted_host_only_rejects_browser_fetch_but_allows_non_browser(
     with TestClient(app, base_url="http://health.internal:7576") as client:
         browser = client.get(
             "/api/v2/app-config",
-            headers={"Sec-Fetch-Site": "same-origin"},
+            headers={"Origin": "http://health.internal:7576"},
         )
         non_browser = client.get("/api/v2/app-config")
 
@@ -276,42 +276,41 @@ def test_trusted_host_only_rejects_browser_fetch_but_allows_non_browser(
     assert non_browser.status_code == 200
 
 
-def test_untrusted_or_mismatched_browser_origin_rejected(tmp_path: Path) -> None:
-    app = _app(
-        tmp_path,
-        _policy(
-            trusted_origins=(
-                "http://my-scout:7576",
-                "http://other-scout:7576",
-            )
-        ),
-    )
+def test_untrusted_browser_origin_rejected(tmp_path: Path) -> None:
+    app = _app(tmp_path, _policy(trusted_origins=("http://my-scout:7576",)))
     with TestClient(app, base_url="http://my-scout:7576") as client:
         attacker = client.get(
             "/api/v2/app-config",
             headers={"Origin": "https://attacker.example"},
         )
-        other_trusted_host = client.get(
-            "/api/v2/app-config",
-            headers={"Origin": "http://other-scout:7576"},
-        )
 
     assert attacker.status_code == 403
-    assert other_trusted_host.status_code == 403
 
 
-def test_origin_scheme_must_match_request_scheme(tmp_path: Path) -> None:
-    app = _app(
-        tmp_path,
-        _policy(trusted_origins=("https://scout.example",)),
-    )
-    with TestClient(app, base_url="http://scout.example") as client:
-        response = client.get(
-            "/api/v2/app-config",
-            headers={"Origin": "https://scout.example"},
-        )
+@pytest.mark.parametrize(
+    ("base_url", "origin"),
+    [
+        # Posit Workbench's session proxy sends Host: localhost:<port>.
+        pytest.param("http://localhost:7576", "https://wb.example", id="host"),
+        # ...and passes through a front proxy's X-Forwarded-Proto.
+        pytest.param("https://localhost:7576", "https://wb.example", id="host-https"),
+        pytest.param("https://localhost:7576", None, id="host-https-no-origin"),
+        # A TLS-terminating proxy that sends no X-Forwarded-Proto.
+        pytest.param("http://wb.example", "https://wb.example", id="scheme"),
+        pytest.param("http://wb.example", None, id="scheme-no-origin"),
+    ],
+)
+def test_trusted_origin_succeeds_through_proxy_that_rewrites_host_or_scheme(
+    tmp_path: Path, base_url: str, origin: str | None
+) -> None:
+    app = _app(tmp_path, _policy(root_path="https://wb.example/s/abc/p/def/"))
+    headers = {"Sec-Fetch-Site": "same-origin"}
+    if origin is not None:
+        headers["Origin"] = origin
+    with TestClient(app, base_url=base_url) as client:
+        response = client.get("/api/v2/app-config", headers=headers)
 
-    assert response.status_code == 403
+    assert response.status_code == 200
 
 
 def test_fetch_metadata_and_malformed_origins_are_rejected(

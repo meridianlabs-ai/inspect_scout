@@ -286,14 +286,19 @@ def llm_scanner(
             wrapped in a resultset (cross-span attribution is preserved).
             Resultset answers (e.g. ``list[Model]``) bypass reduction and
             return a resultset directly.
-        nonce: If set, written in parentheses after the role on every message
-            header (e.g. ``[M2] USER (3f9a1c7e):``) and available to the
-            template as ``{{ scout_nonce }}``. A ``scout_nonce`` key in
+        nonce: A code written on every marker in the rendered transcript
+            (message headers such as ``[M2] USER (3f9a1c7e):``, tool calls,
+            tool errors, reasoning and prefill tags; see ``messages_as_str()``)
+            and available to the template as ``{{ scout_nonce }}``. Make it
+            with ``secrets.token_hex(4)`` when the scanner is built. Never
+            write a literal nonce in code: an agent that can read the scanner
+            file, or that knows the value from elsewhere, can forge markers.
+            Must be at least 8 ASCII letters and digits (raises
+            ``ValueError`` otherwise). A ``scout_nonce`` key in
             ``template_variables`` is always ignored. The default template
-            tells the model that a header without the nonce is text inside the
-            message before it. Must be at least 8 characters (raises
-            ``ValueError`` otherwise); expected to be lowercase letters and
-            digits.
+            puts the nonce on its transcript start and end lines and tells the
+            model that text that looks like a marker but lacks the nonce is
+            part of the message it appears in.
 
     Returns:
         A ``Scanner`` function that analyzes Transcript instances and returns
@@ -639,7 +644,7 @@ async def render_scanner_prompt(
         question: Question for the scanner to answer. Can be a static string
             or a callable that takes a Transcript and returns an awaitable string.
         answer: Answer object containing prompt and format strings.
-        nonce: Message header nonce, available to the template as ``scout_nonce``.
+        nonce: Transcript marker nonce, available to the template as ``scout_nonce``.
 
     Returns:
         Rendered prompt string with all variables substituted.

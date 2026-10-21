@@ -14,6 +14,7 @@ from typing_extensions import TypeVar
 
 from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
 from inspect_scout._transcript.types import Transcript
+from inspect_scout._util import constants as constants_mod
 from inspect_scout._util._json import to_json_bytes_compact, to_json_str_compact
 
 # Reference comes from inspect_ai; __all__ marks it re-exported for strict mypy.
@@ -139,9 +140,21 @@ class SerializedTranscript(BaseModel):
     `input` whose row carries an `input_data`."""
 
 
-ReportInput = ScannerInput | SerializedTranscript
-"""What a `ResultReport` may carry: a live scanner input, or -- for spooled
-transcript handles -- pre-serialized column values.
+class ReferenceTranscript(BaseModel):
+    """A transcript recorded by reference instead of copied into the row.
+
+    `content_json` is the scanner's content filters; None means they were
+    unavailable and resolving the reference reads full content.
+    """
+
+    source_uri: str | None
+    transcript_id: str
+    content_json: str | None
+
+
+ReportInput = ScannerInput | SerializedTranscript | ReferenceTranscript
+"""What a `ResultReport` may carry: a live scanner input, pre-serialized column
+values (spooled transcript handles), or a reference recorded instead of a copy.
 
 Deliberately NOT part of `ScannerInput`: that alias is public API, bounds
 `Loader[T]` and the `@scanner` type parameter, and drives the OpenAPI schema.
@@ -176,9 +189,40 @@ class ResultReport(BaseModel):
         # input (transcript, event, or message)
         columns["input_type"] = self.input_type
         columns["input_ids"] = json.dumps(self.input_ids)
-        columns["input"], columns["input_data"] = _serialize_input(
-            self.input, self.input_type, pool_dedup=pool_dedup
-        )
+        if isinstance(self.input, ReferenceTranscript):
+            columns["input"] = None
+            columns["input_data"] = None
+            columns["input_storage"] = "reference"
+            columns["input_content"] = self.input.content_json
+        else:
+            input_bytes, data_bytes = _serialize_input(
+                self.input, self.input_type, pool_dedup=pool_dedup
+            )
+            oversized = max(
+                len(input_bytes) if isinstance(input_bytes, (bytes, bytearray)) else 0,
+                len(data_bytes) if isinstance(data_bytes, (bytes, bytearray)) else 0,
+            )
+            if oversized > constants_mod.RECORD_CELL_MAX_BYTES and isinstance(
+                self.input, Transcript
+            ):
+                # Serialized in the parent (materialized sources), so the
+                # spool-side guard never saw it, and no content filters are
+                # available here.
+                logger.warning(
+                    "Transcript %s: serialized input is %d bytes, over the "
+                    "parquet cell cap; recording a reference to the source.",
+                    self.input.transcript_id,
+                    oversized,
+                )
+                columns["input"] = None
+                columns["input_data"] = None
+                columns["input_storage"] = "reference"
+                columns["input_content"] = None
+            else:
+                columns["input"] = input_bytes
+                columns["input_data"] = data_bytes
+                columns["input_storage"] = "inline"
+                columns["input_content"] = None
 
         if self.result is not None:
             # result

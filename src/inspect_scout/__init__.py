@@ -47,6 +47,7 @@ from ._scanner.scanner import Scanner, scanner
 from ._scanner.scorer import as_scorer
 from ._scanner.types import ScannerInput
 from ._scanresults import (
+    resolve_input_reference,
     scan_results_arrow,
     scan_results_batches,
     scan_results_df,
@@ -138,6 +139,7 @@ __all__ = [
     "ScanResultsArrow",
     "scan_results_batches",
     "HEAVY_COLUMNS",
+    "resolve_input_reference",
     "Summary",
     # transcript
     "transcripts_db",

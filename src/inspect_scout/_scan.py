@@ -107,7 +107,12 @@ from ._transcript.types import (
     TranscriptContent,
     TranscriptInfo,
 )
-from ._transcript.util import union_transcript_contents, with_events_form
+from ._transcript.util import (
+    filter_list,
+    filter_timelines,
+    union_transcript_contents,
+    with_events_form,
+)
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
 from ._util.deprecation import raise_results_error, show_results_warning
 from ._util.log import init_log
@@ -670,7 +675,10 @@ async def _scan_async_inner(
                             )
                             on_complete = None
                             lead_idx, *follower_indices = sorted(job.scanner_indices)
-                        job_transcripts = _JobTranscripts(union_transcript)
+                        job_transcripts = _JobTranscripts(
+                            union_transcript,
+                            [scanners_list[idx] for idx in job.scanner_indices],
+                        )
 
                         def _make_job(
                             idx: int,
@@ -1403,15 +1411,24 @@ def _filters_equal(
 class _JobTranscripts:
     """The shared read, in the event form each scanner's loader asks for.
 
-    Built before any scanner runs. A condensed read is expanded at most once
-    and shared by every job that did not ask for condensed events, as the
-    expanded read was before. Each condensed job gets its own pool lists, so
-    a scanner rearranging its pool cannot change another scanner's events.
+    Built before any scanner runs. Scanners whose loaders did not ask for
+    condensed events share one projection of a condensed read: expanded once,
+    as the expanded read was before, if any of them wants model events (or
+    timelines citing them); otherwise just the events and timelines they ask
+    for, with no model inputs expanded at all. Each condensed job gets its own
+    pool lists, so a scanner rearranging its pool cannot change another's.
     """
 
-    def __init__(self, union: Transcript | TranscriptHandle) -> None:
+    def __init__(
+        self, union: Transcript | TranscriptHandle, scanners: list[Scanner[Any]]
+    ) -> None:
         self._union = union
-        self._expanded: Transcript | None = None
+        self._plain_contents = [
+            content
+            for content in map(_content_for_scanner, scanners)
+            if not content.condensed
+        ]
+        self._plain: Transcript | None = None
 
     def for_scanner(self, scanner: Scanner[Any]) -> Transcript | TranscriptHandle:
         union = self._union
@@ -1426,9 +1443,30 @@ class _JobTranscripts:
                     )
                 }
             )
-        if self._expanded is None:
-            self._expanded = with_events_form(union, False)
-        return self._expanded
+        if self._plain is None:
+            self._plain = self._plain_projection(union)
+        return self._plain
+
+    def _plain_projection(self, union: Transcript) -> Transcript:
+        if any(map(_wants_model_events, self._plain_contents)):
+            return with_events_form(union, False)
+        # Nothing asked for model events, so none are kept and the result
+        # holds no condensed event.
+        plain = union_transcript_contents(self._plain_contents)
+        return union.model_copy(
+            update={
+                "events": filter_list(union.events, plain.events),
+                "timelines": filter_timelines(union.timelines, plain.timeline),
+                "events_data": None,
+            }
+        )
+
+
+def _wants_model_events(content: TranscriptContent) -> bool:
+    return any(
+        wanted == "all" or wanted is True or (wanted is not None and "model" in wanted)
+        for wanted in (content.events, content.timeline)
+    )
 
 
 def _streaming_eligible(

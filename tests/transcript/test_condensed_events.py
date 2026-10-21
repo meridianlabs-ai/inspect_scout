@@ -76,7 +76,11 @@ CONDENSED = TranscriptContent(messages="all", events="all", condensed=True)
 
 
 def _conversation(
-    turns: int, *, varied: bool = False, duplicate_uuid: bool = False
+    turns: int,
+    *,
+    varied: bool = False,
+    bridge_every_turn: bool = False,
+    duplicate_uuid: bool = False,
 ) -> tuple[list[ChatMessage], list[Event]]:
     """An agent loop of `turns` model calls, each re-sending the conversation.
 
@@ -87,15 +91,22 @@ def _conversation(
     `varied` adds what else `timeline_build` reads inputs for: turns without
     tool calls, cache-warmup calls, sub-agent spans with their own system
     prompt, and three bridged `agent-<call id>` spans whose results the next
-    call's input carries. `duplicate_uuid` gives the first tool event the
-    first model event's uuid, as an edited log can.
+    call's input carries. `bridge_every_turn` bridges every tool-calling
+    turn instead. `duplicate_uuid` gives the first tool event the first model
+    event's uuid, as an edited log can.
     """
     system = ChatMessageSystem(content="You are a careful agent.")
     conversation: list[ChatMessage] = [
         system,
         ChatMessageUser(content="Probe the system."),
     ]
-    bridged = {2, turns // 2 + 2, turns - 2} if varied else set()
+    bridged = (
+        set(range(turns))
+        if bridge_every_turn
+        else {2, turns // 2 + 2, turns - 2}
+        if varied
+        else set()
+    )
     events: list[Event] = []
     for turn in range(turns):
         if turn == turns // 2:
@@ -176,8 +187,10 @@ def _model_event(
     *,
     output: ChatMessageAssistant | None = None,
     max_tokens: int | None = None,
+    span_id: str | None = None,
 ) -> ModelEvent:
     return ModelEvent(
+        span_id=span_id,
         model="mockllm/model",
         input=input,
         tools=[],
@@ -205,6 +218,7 @@ def _sub_agent(span_id: str, system_prompt: str) -> list[Event]:
                 ChatMessageUser(content=f"Help with {span_id}."),
             ],
             output=ChatMessageAssistant(content=f"{span_id} answered."),
+            span_id=span_id,
         ),
         SpanEndEvent(id=span_id, span_id=span_id),
     ]
@@ -874,3 +888,127 @@ def test_a_pooled_input_equals_the_expanded_input() -> None:
             assert list(reversed(view)) == original.input[::-1]
             assert view[-1] == original.input[-1]
             assert view != original.input[:-1]
+
+
+def test_bridged_sub_agents_on_every_turn_cost_what_inspect_ai_timeline_build_costs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Pins a known quadratic walk in inspect_ai's `timeline_build`.
+
+    For each bridged `agent-<call id>` span, `_extract_agent_results`
+    (inspect_ai/event/_timeline.py) scans the next call's whole input for the
+    tool result, so with a bridge on every turn the messages it reads grow
+    with the square of the turns. The expanded build reads the same messages;
+    the fix belongs in inspect_ai (an index of tool results built once,
+    queued for R7 PR 6). These counts are pinned so that fix shows up here as
+    a change: update them, and expect them to grow linearly.
+    """
+    viewed = {"count": 0}
+
+    def counting(view: Any) -> Any:
+        def wrapped(self: PooledInput) -> Iterator[ChatMessage]:
+            for message in view(self):
+                viewed["count"] += 1
+                yield message
+
+        return wrapped
+
+    monkeypatch.setattr(PooledInput, "__iter__", counting(PooledInput.__iter__))
+    monkeypatch.setattr(PooledInput, "__reversed__", counting(PooledInput.__reversed__))
+
+    counts: dict[int, int] = {}
+    for turns in (20, 40):
+        events = _conversation(turns, bridge_every_turn=True)[1]
+        condensed, events_data = condense_events(events)
+        viewed["count"] = 0
+        built = build_timeline(condensed, events_data)
+        counts[turns] = viewed["count"]
+        assert timeline_dump(built) == timeline_dump(timeline_build(events))
+
+    assert counts == {20: 483, 40: 1868}
+
+
+@scanner(name="messages_only", messages="all")
+def messages_only() -> Scanner[Transcript]:
+    async def scan_transcript(transcript: Transcript) -> Result:
+        assert transcript.events == [] and transcript.events_data is None
+        return Result(value=len(transcript.messages))
+
+    return scan_transcript
+
+
+def test_siblings_that_want_no_model_events_expand_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Messages-only and tool-events-only siblings keep a condensed scan linear."""
+    expanded = _ExpandedSlots(monkeypatch)
+    decodes = _Decodes(monkeypatch)
+    tool_events: dict[str, list[dict[str, Any]]] = {}
+
+    @scanner(name="tool_events_only", events=["tool"])
+    def tool_events_only() -> Scanner[Transcript]:
+        async def scan_transcript(transcript: Transcript) -> Result:
+            assert transcript.events_data is None
+            assert all(isinstance(e, ToolEvent) for e in transcript.events)
+            tool_events[run_name] = _dumps(transcript.events)
+            return Result(value=len(transcript.events))
+
+        return scan_transcript
+
+    counts: dict[int, dict[str, int]] = {}
+    run_name = ""
+    for turns in (20, 40):
+        log = _write_log(tmp_path / f"logs-{turns}", turns)
+        for run_name, scanners in (
+            (f"alone-{turns}", [tool_events_only()]),
+            (
+                f"mixed-{turns}",
+                [condensed_scanner(), messages_only(), tool_events_only()],
+            ),
+        ):
+            expanded.count = decodes.count = 0
+            status = scan(
+                scanners=scanners,
+                transcripts=transcripts_from(log),
+                scans=str(tmp_path / run_name),
+                max_processes=1,
+                display="none",
+            )
+            assert status.complete
+        counts[turns] = {"expanded": expanded.count, "decodes": decodes.count}
+
+    assert counts[20]["expanded"] == counts[40]["expanded"] == 0, counts
+    assert counts[40]["decodes"] <= 2.2 * counts[20]["decodes"], counts
+    for turns in (20, 40):
+        assert tool_events[f"mixed-{turns}"] == tool_events[f"alone-{turns}"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "content",
+    [
+        TranscriptContent(messages="all"),
+        TranscriptContent(events=["tool"]),
+        TranscriptContent(events=["tool"], timeline=["tool"]),
+    ],
+    ids=["messages", "tool-events", "tool-timeline"],
+)
+async def test_filtering_a_condensed_read_expands_only_what_is_kept(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, content: TranscriptContent
+) -> None:
+    log = _write_log(tmp_path, 12)
+    union = union_transcript_contents(
+        [content, TranscriptContent(events="all", timeline=True, condensed=True)]
+    )
+    shared = await _read(log, union)
+    alone = filter_transcript(await _read(log, content), content)
+    expanded = _ExpandedSlots(monkeypatch)
+
+    filtered = filter_transcript(shared, content)
+
+    assert expanded.count == 0
+    assert filtered.events_data is None
+    assert _dumps(filtered.events) == _dumps(alone.events)
+    assert [t.model_dump() for t in filtered.timelines] == [
+        t.model_dump() for t in alone.timelines
+    ]

@@ -265,7 +265,21 @@ def filter_transcript(transcript: Transcript, content: TranscriptContent) -> Tra
     Returns:
         A new Transcript with filtered messages and events based on the content specification.
     """
-    transcript = with_events_form(transcript, content.condensed is True)
+    events = filter_list(transcript.events, content.events)
+    timelines = filter_timelines(transcript.timelines, content.timeline)
+    events_data = transcript.events_data
+    condensed = content.condensed is True
+    if condensed != (events_data is not None):
+        # Converted after filtering, so only the events this scanner keeps (or
+        # its timelines cite) are condensed or expanded.
+        kept = {id(event) for event in events} | {
+            id(event) for timeline in timelines for event in _cited(timeline.root)
+        }
+        subset = [event for event in transcript.events if id(event) in kept]
+        converted, events_data = _converted(subset, events_data, condensed)
+        replacement = _replacement(subset, converted)
+        events = [replacement.get(id(event), event) for event in events]
+        timelines = _rebind_timelines(timelines, replacement)
     # Use model_construct to avoid materializing LazyJSONDict metadata
     return Transcript.model_construct(
         transcript_id=transcript.transcript_id,
@@ -291,9 +305,9 @@ def filter_transcript(transcript: Transcript, content: TranscriptContent) -> Tra
         trust_content=transcript.trust_content,
         metadata=transcript.metadata,
         messages=filter_list(transcript.messages, content.messages),
-        events=filter_list(transcript.events, content.events),
-        timelines=filter_timelines(transcript.timelines, content.timeline),
-        events_data=transcript.events_data,
+        events=events,
+        timelines=timelines,
+        events_data=events_data,
     )
 
 
@@ -308,41 +322,60 @@ def with_events_form(transcript: Transcript, condensed: bool) -> Transcript:
     """
     if condensed == (transcript.events_data is not None):
         return transcript
-    events_data: EventsData | None
-    if condensed:
-        events, events_data = condense_events(transcript.events)
-    else:
-        assert transcript.events_data is not None
-        events = expand_events(transcript.events, transcript.events_data)
-        events_data = None
+    events, events_data = _converted(
+        transcript.events, transcript.events_data, condensed
+    )
     return transcript.model_copy(
         update={
             "events": events,
             "events_data": events_data,
             "timelines": _rebind_timelines(
-                transcript.timelines, transcript.events, events
+                transcript.timelines, _replacement(transcript.events, events)
             ),
         }
     )
 
 
-def _rebind_timelines(
-    timelines: list[Timeline], old_events: list[Event], new_events: list[Event]
-) -> list[Timeline]:
-    """Timelines citing `new_events` wherever they cited `old_events`.
+def _converted(
+    events: list[Event], events_data: EventsData | None, condensed: bool
+) -> tuple[list[Event], EventsData | None]:
+    if condensed:
+        return condense_events(events)
+    assert events_data is not None
+    return expand_events(events, events_data), None
 
-    `old_events` and `new_events` correspond by position (condensing and
-    expanding keep order and length, and leave events nested in tool-spawned
-    agents as they are), so events are matched by identity: a uuid can repeat
-    in a log, and resolving by uuid would bind the wrong event.
+
+def _replacement(old_events: list[Event], new_events: list[Event]) -> dict[int, Event]:
+    """New events by the identity of the old ones they replace.
+
+    Condensing and expanding keep order and length (and leave events nested
+    in tool-spawned agents as they are), so events correspond by position.
+    Matching by identity rather than uuid matters: a uuid can repeat in a log.
     """
-    if not timelines:
-        return []
-    replacement = {
+    return {
         id(old): new
         for old, new in zip(old_events, new_events, strict=True)
         if old is not new
     }
+
+
+def _cited(span: TimelineSpan) -> Iterator[Event]:
+    """Events a timeline span cites, in its content and its branches."""
+    for item in span.content:
+        if isinstance(item, TimelineSpan):
+            yield from _cited(item)
+        else:
+            yield item.event
+    for branch in span.branches:
+        yield from _cited(branch)
+
+
+def _rebind_timelines(
+    timelines: list[Timeline], replacement: dict[int, Event]
+) -> list[Timeline]:
+    """Timelines citing each replacement wherever they cited what it replaces."""
+    if not timelines or not replacement:
+        return timelines
     return [
         timeline.model_copy(update={"root": _rebind_span(timeline.root, replacement)})
         for timeline in timelines
@@ -388,7 +421,7 @@ def build_timeline(events: list[Event], events_data: EventsData | None) -> Timel
         else event
         for event in events
     ]
-    return _rebind_timelines([timeline_build(viewed)], viewed, events)[0]
+    return _rebind_timelines([timeline_build(viewed)], _replacement(viewed, events))[0]
 
 
 class PooledInput(Sequence[ChatMessage]):

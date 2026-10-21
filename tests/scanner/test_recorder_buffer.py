@@ -16,7 +16,7 @@ from inspect_scout._scanner.result import (
     Result,
     ResultReport,
 )
-from inspect_scout._scanspec import ScannerSpec, ScanSpec
+from inspect_scout._scanspec import ScannerSpec, ScanOptions, ScanSpec
 from inspect_scout._transcript.types import TranscriptInfo
 from inspect_scout._util.constants import TRANSCRIPT_METADATA_MAX_CHARS
 
@@ -771,3 +771,34 @@ async def test_record_thins_oversized_transcript_metadata(
     stored = json.loads(table.column("transcript_metadata")[0].as_py())
     assert stored["model"] == "gpt-4"
     assert len(stored["test_files"]) <= 1024
+
+
+@pytest.mark.asyncio
+async def test_reference_scan_records_thinned_transcript_metadata(
+    sample_results: list[ResultReport],
+) -> None:
+    """Reference rows re-read their transcript, so they carry only summary-sized metadata."""
+    metadata = {"model": "gpt-4", "files": {"fixture.py": "x" * 2_000}}
+    transcript = TranscriptInfo(
+        transcript_id="ref-1",
+        source_type="test",
+        source_id="src-1",
+        source_uri="/path/to/src.log",
+        metadata=metadata,
+    )
+    spec = ScanSpec(
+        scan_name="myscan",
+        scanners={"test_scanner": ScannerSpec(name="test_scanner")},
+        options=ScanOptions(record_input="reference"),
+    )
+    with tempfile.TemporaryDirectory() as tmpdir:
+        buffer = RecorderBuffer(tmpdir, spec)
+        await buffer.record(transcript, "test_scanner", sample_results, None)
+        table = pq.read_table(
+            (buffer._buffer_dir / "scanner=test_scanner" / "ref-1.parquet").as_posix()
+        )
+        buffer.cleanup()
+
+    stored = json.loads(table.column("transcript_metadata")[0].as_py())
+    assert stored["model"] == "gpt-4"
+    assert stored["files"] != metadata["files"]

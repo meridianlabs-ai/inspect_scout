@@ -115,6 +115,8 @@ Whether a row is a copy or a reference is visible in the `input_storage` column,
 
 A NULL `input_content` on a reference row means the filters weren't available when the row was recorded, and resolving the reference falls back to full content (`messages="all", events="all"`).
 
+A `record_input="reference"` scan also records `transcript_metadata` in the thinned form eval log summaries use (long strings shortened, other values over 1 KB removed), since a sample's metadata can be as large as its transcript. Resolve the reference to get the full metadata.
+
 Even a `record_input="copy"` scan can produce reference rows: when a transcript's serialized input is too large to store inline, or otherwise can't be read, Scout degrades that row to a reference rather than failing the scan. Filter by `input_storage == "reference"` to find these rows regardless of the scan's `record_input` setting.
 
 Use `resolve_input_reference()` to turn a reference row back into the `Transcript` the scanner saw. It re-reads the source named by `transcript_source_uri`, selects the sample by `transcript_id`, and applies the recorded `input_content` filters. It's an `async` function, and it accepts any mapping of column name to value — for example a row obtained from the `duckdb` connection returned by `scan_results_db()`, or from a record batch returned by `scan_results_arrow()`:

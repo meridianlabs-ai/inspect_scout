@@ -185,7 +185,7 @@ def scan(
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
         fail_on_error: Re-raise exceptions instead of capturing them in results. Defaults to False.
         dry_run: Don't actually run the scan, just print the spec and return the status. Defaults to False.
-        record_input: How scanner input is recorded in results: a self-contained copy (default), or a reference to the source transcript resolved on read.
+        record_input: How scanner input is recorded in results: a self-contained copy (default), or a reference to the source transcript resolved on read (references also record transcript metadata thinned to summary size).
         deprecated: Deprecated arguments.
 
     Returns:
@@ -278,7 +278,7 @@ async def scan_async(
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
         fail_on_error: Re-raise exceptions instead of capturing them in results. Defaults to False.
         dry_run: Don't actually run the scan, just print the spec and return the status. Defaults to False.
-        record_input: How scanner input is recorded in results: a self-contained copy (default), or a reference to the source transcript resolved on read.
+        record_input: How scanner input is recorded in results: a self-contained copy (default), or a reference to the source transcript resolved on read (references also record transcript metadata thinned to summary size).
         deprecated: Deprecated arguments.
 
     Returns:

@@ -3,6 +3,7 @@ import shutil
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
+from logging import getLogger
 from typing import Any, Final, Sequence, Set, TypeVar, cast
 
 import anyio
@@ -13,18 +14,22 @@ import pyarrow.parquet as pq
 from inspect_ai._util.appdirs import inspect_data_dir
 from inspect_ai._util.file import file
 from inspect_ai._util.hash import mm3_hash
+from inspect_ai.log._util import thin_metadata
 from inspect_ai.scorer import value_to_float
 from pydantic import JsonValue
 from pydantic_core import to_json
 from upath import UPath
 
 from inspect_scout._recorder.summary import Summary
+from inspect_scout._util.constants import TRANSCRIPT_METADATA_MAX_CHARS
 from inspect_scout._util.path import normalize_for_hashing
 
 from .._scanner.result import Error, ResultReport
 from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
 from .._transcript.util import LazyJSONDict
+
+logger = getLogger(__name__)
 
 SCAN_ERRORS = "_errors.jsonl"
 SCAN_SUMMARY = "_summary.json"
@@ -172,6 +177,7 @@ class RecorderBuffer:
         transcript_error = resolve_metadata_var(transcript.error, "error", m)
         transcript_limit = resolve_metadata_var(transcript.limit, "limit", m)
 
+        transcript_metadata = _transcript_metadata_column(transcript)
         records = [
             cast(
                 dict[str, str | bool | int | float | None],
@@ -198,7 +204,7 @@ class RecorderBuffer:
                     "transcript_limit": transcript_limit,
                     # no metadata fallback: trust only ever comes from the field
                     "transcript_trust_content": transcript.trust_content,
-                    "transcript_metadata": transcript.metadata,
+                    "transcript_metadata": transcript_metadata,
                     "scan_id": self._spec.scan_id,
                     "scan_tags": self._spec.tags or [],
                     "scan_metadata": self._spec.metadata or {},
@@ -564,6 +570,27 @@ def _sanitize_component(name: str) -> str:
 
 _SERIALIZED_INPUT_COLUMNS = frozenset({"input", "input_data"})
 """Columns `ResultReport.to_df_columns` fills with pre-serialized UTF-8 JSON."""
+
+
+def _transcript_metadata_column(transcript: TranscriptInfo) -> Any:
+    """Serialize transcript metadata once for all of a transcript's result rows.
+
+    Sample metadata can embed whole files, and parquet cannot store a string of
+    2 GiB or more, so past the cap the thinned form log summaries use is recorded.
+    """
+    serialized = _normalize_scalar("transcript_metadata", transcript.metadata)
+    if isinstance(serialized, str) and len(serialized) > TRANSCRIPT_METADATA_MAX_CHARS:
+        logger.warning(
+            "Transcript %s: metadata serializes to %d characters, over the %d cap; "
+            "recording it thinned.",
+            transcript.transcript_id,
+            len(serialized),
+            TRANSCRIPT_METADATA_MAX_CHARS,
+        )
+        serialized = _normalize_scalar(
+            "transcript_metadata", thin_metadata(transcript.metadata)
+        )
+    return serialized
 
 
 def _normalize_scalar(key: str, v: Any) -> Any:

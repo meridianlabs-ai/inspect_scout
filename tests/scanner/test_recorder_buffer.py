@@ -18,6 +18,7 @@ from inspect_scout._scanner.result import (
 )
 from inspect_scout._scanspec import ScannerSpec, ScanSpec
 from inspect_scout._transcript.types import TranscriptInfo
+from inspect_scout._util.constants import TRANSCRIPT_METADATA_MAX_CHARS
 
 
 @pytest.fixture
@@ -740,3 +741,39 @@ async def test_scanner_table_promotes_null_input_to_large_string(
         "ref-transcript",
         "big-transcript",
     }
+
+
+@pytest.mark.asyncio
+async def test_record_thins_oversized_transcript_metadata(
+    recorder_buffer: RecorderBuffer,
+    sample_results: list[ResultReport],
+) -> None:
+    """Oversized sample metadata is recorded in the thinned form log summaries use.
+
+    Sample metadata can embed whole files (gigabytes in real eval logs). Parquet
+    cannot store a string of 2 GiB or more, and the failed write interrupted the
+    scan.
+    """
+    scanner_name = "test_scanner"
+    transcript = TranscriptInfo(
+        transcript_id="big-metadata-1",
+        source_type="test",
+        source_id="src-1",
+        source_uri="/path/to/src.log",
+        metadata={
+            "model": "gpt-4",
+            "test_files": "x" * (TRANSCRIPT_METADATA_MAX_CHARS + 1),
+        },
+    )
+
+    await recorder_buffer.record(transcript, scanner_name, sample_results, None)
+
+    parquet_path = (
+        recorder_buffer._buffer_dir
+        / f"scanner={scanner_name}"
+        / "big-metadata-1.parquet"
+    )
+    table = pq.read_table(parquet_path.as_posix())
+    stored = json.loads(table.column("transcript_metadata")[0].as_py())
+    assert stored["model"] == "gpt-4"
+    assert len(stored["test_files"]) <= 1024

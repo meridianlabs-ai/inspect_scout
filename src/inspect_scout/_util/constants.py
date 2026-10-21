@@ -24,3 +24,6 @@ SPOOL_THRESHOLD_BYTES: int = 64 * 1024 * 1024
 # bytes; this constant leaves headroom. Access via the module (like
 # SPOOL_THRESHOLD_BYTES) so tests can monkeypatch it.
 RECORD_CELL_MAX_BYTES: int = 2_000_000_000
+
+TRANSCRIPT_METADATA_MAX_CHARS: int = 64 * 1024 * 1024
+"""Serialized length above which result rows record thinned transcript metadata instead of the full value."""

@@ -15,7 +15,7 @@ from typing_extensions import Literal
 
 from .._transcript.handle import is_transcript_handle_type
 from .._transcript.types import Transcript, TranscriptContent
-from .._transcript.util import filter_list, filter_timelines, filter_transcript
+from .._transcript.util import filter_list, filter_transcript
 from .._util.type_hints import is_union_type
 from .loader import Loader, loader
 from .types import ScannerInput
@@ -93,7 +93,7 @@ def _TimelineListLoader(
         async def the_loader(
             transcript: Transcript,
         ) -> AsyncIterator[list[Timeline]]:
-            yield filter_timelines(transcript.timelines, content.timeline)
+            yield filter_transcript(transcript, content).timelines
 
         return the_loader
 
@@ -108,7 +108,7 @@ def _TimelineItemLoader(
         async def the_loader(
             transcript: Transcript,
         ) -> AsyncIterator[Timeline]:
-            filtered = filter_timelines(transcript.timelines, content.timeline)
+            filtered = filter_transcript(transcript, content).timelines
             if filtered:
                 yield filtered[0]
 
@@ -152,6 +152,14 @@ def create_implicit_loader(
         or _matches_transcript_or_handle(input_annotation)
     ):
         return _IdentityLoader(content)
+
+    # Condensed events refer to `Transcript.events_data`, which only a
+    # transcript input carries.
+    if content.condensed:
+        raise ValueError(
+            "condensed=True requires a scanner that takes a Transcript "
+            f"(got {input_annotation})"
+        )
 
     # Check if it's a list type
     origin = get_origin(input_annotation)
@@ -258,4 +266,5 @@ def _get_filtered_list(
     if message_or_event == "message":
         return filter_list(transcript.messages, content.messages)
     else:
-        return filter_list(transcript.events, content.events)
+        # Through `filter_transcript`, which expands a condensed shared read.
+        return filter_transcript(transcript, content).events

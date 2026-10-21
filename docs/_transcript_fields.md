@@ -27,6 +27,7 @@ Here are the available `Transcript` fields:
 | `messages` | [list\[ChatMessage\]](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages) | Message history. |
 | `events` | [list\[Event\]](https://inspect.aisi.org.uk/reference/inspect_ai.event.html) | Event history (e.g. model events, tool events, etc.) |
 | `timelines` | list\[Timeline\] | Optional list of custom timelines for this transcript. |
+| `events_data` | EventsData \| None | Message and call pools that condensed model events refer to; set only for a scanner that passes `condensed=True`. |
 
 : {tbl-colwidths=\[20,30,50\]}
 

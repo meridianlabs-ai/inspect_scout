@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import json
 from functools import reduce
-from typing import TYPE_CHECKING, Any, Iterable, TypeVar
+from typing import Any, Iterable, NamedTuple, TypeVar
 
+from inspect_ai.event import Timeline, timeline_build, timeline_dump, timeline_load
 from inspect_ai.event._event import Event
+from inspect_ai.log import EventsData, condense_events, expand_events
 from inspect_ai.model._chat_message import ChatMessage, ChatMessageBase
 from pydantic_core import from_json, to_json
 
 from .types import (
+    CondensedFilter,
     EventFilter,
     MessageFilter,
     MetadataFilter,
@@ -16,9 +19,6 @@ from .types import (
     Transcript,
     TranscriptContent,
 )
-
-if TYPE_CHECKING:
-    from inspect_ai.event import Timeline
 
 
 class LazyJSONDict(dict[str, Any]):
@@ -242,7 +242,9 @@ def union_transcript_contents(
     return reduce(
         _union_contents,
         contents,
-        TranscriptContent(messages=None, events=None, timeline=None, metadata=False),
+        TranscriptContent(
+            messages=None, events=None, timeline=None, metadata=False, condensed=None
+        ),
     )
 
 
@@ -256,6 +258,7 @@ def filter_transcript(transcript: Transcript, content: TranscriptContent) -> Tra
     Returns:
         A new Transcript with filtered messages and events based on the content specification.
     """
+    events, events_data, timelines = _events_as_requested(transcript, content)
     # Use model_construct to avoid materializing LazyJSONDict metadata
     return Transcript.model_construct(
         transcript_id=transcript.transcript_id,
@@ -281,9 +284,66 @@ def filter_transcript(transcript: Transcript, content: TranscriptContent) -> Tra
         trust_content=transcript.trust_content,
         metadata=transcript.metadata,
         messages=filter_list(transcript.messages, content.messages),
-        events=filter_list(transcript.events, content.events),
-        timelines=filter_timelines(transcript.timelines, content.timeline),
+        events=filter_list(events, content.events),
+        timelines=filter_timelines(timelines, content.timeline),
+        events_data=events_data,
     )
+
+
+class _EventsForm(NamedTuple):
+    events: list[Event]
+    events_data: EventsData | None
+    timelines: list[Timeline]
+
+
+def _events_as_requested(
+    transcript: Transcript, content: TranscriptContent
+) -> _EventsForm:
+    """The transcript's events, condensed or expanded as `content` asks.
+
+    A shared read is condensed when any scanner asks (see
+    `union_transcript_contents`), so a sibling that did not ask gets the
+    events expanded here, sharing the pool's message objects as the expanded
+    read does. Timelines hold event objects, so they are rebound to whichever
+    form is returned.
+    """
+    if content.condensed:
+        if transcript.events_data is not None:
+            return _EventsForm(
+                transcript.events, transcript.events_data, transcript.timelines
+            )
+        events, events_data = condense_events(transcript.events)
+        return _EventsForm(
+            events, events_data, _rebind_timelines(transcript.timelines, events)
+        )
+    if transcript.events_data is None:
+        return _EventsForm(transcript.events, None, transcript.timelines)
+    if content.timeline is None or not transcript.timelines:
+        expanded = expand_events(
+            filter_list(transcript.events, content.events), transcript.events_data
+        )
+        return _EventsForm(expanded, None, [])
+    expanded = expand_events(transcript.events, transcript.events_data)
+    return _EventsForm(
+        expanded, None, _rebind_timelines(transcript.timelines, expanded)
+    )
+
+
+def _rebind_timelines(timelines: list[Timeline], events: list[Event]) -> list[Timeline]:
+    return [timeline_load(timeline_dump(timeline), events) for timeline in timelines]
+
+
+def build_timeline(events: list[Event], events_data: EventsData | None) -> Timeline:
+    """`timeline_build` over events that may be condensed.
+
+    `timeline_build` reads each `ModelEvent`'s input, so condensed events are
+    expanded for the build and the timeline is bound back to the condensed
+    events.
+    """
+    if events_data is None:
+        return timeline_build(events)
+    timeline = timeline_build(expand_events(events, events_data))
+    return timeline_load(timeline_dump(timeline), events)
 
 
 def _union_contents(a: TranscriptContent, b: TranscriptContent) -> TranscriptContent:
@@ -292,7 +352,14 @@ def _union_contents(a: TranscriptContent, b: TranscriptContent) -> TranscriptCon
         events=_union_filters(a.events, b.events),
         timeline=_union_filters(a.timeline, b.timeline),
         metadata=_union_metadata(a.metadata, b.metadata),
+        condensed=_union_condensed(a.condensed, b.condensed),
     )
+
+
+def _union_condensed(a: CondensedFilter, b: CondensedFilter) -> CondensedFilter:
+    # Condensed beats expanded: a sibling that did not ask is expanded per
+    # scanner by `filter_transcript`, from pool objects decoded once.
+    return True if a or b else None
 
 
 def _union_metadata(a: MetadataFilter, b: MetadataFilter) -> MetadataFilter:

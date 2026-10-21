@@ -75,6 +75,7 @@ def loader(
     *,
     name: str | None = None,
     metadata: bool | None = None,
+    condensed: bool | None = None,
     messages: Literal["all"],
     events: None = None,
     content: None = None,
@@ -89,6 +90,7 @@ def loader(
     *,
     name: str | None = None,
     metadata: bool | None = None,
+    condensed: bool | None = None,
     messages: list[MessageType],
     events: None = None,
     content: None = None,
@@ -103,6 +105,7 @@ def loader(
     *,
     name: str | None = None,
     metadata: bool | None = None,
+    condensed: bool | None = None,
     messages: None = None,
     events: Literal["all"] = ...,
     content: None = None,
@@ -117,6 +120,7 @@ def loader(
     *,
     name: str | None = None,
     metadata: bool | None = None,
+    condensed: bool | None = None,
     messages: None = None,
     events: list[EventType] = ...,
     content: None = None,
@@ -131,6 +135,7 @@ def loader(
     *,
     name: str | None = None,
     metadata: bool | None = None,
+    condensed: bool | None = None,
     messages: list[MessageType] | Literal["all"],
     events: list[EventType] | Literal["all"],
     content: None = None,
@@ -145,6 +150,7 @@ def loader(
     *,
     name: str | None = None,
     metadata: bool | None = None,
+    condensed: bool | None = None,
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
     content: TranscriptContent,
@@ -158,6 +164,7 @@ def loader(
     *,
     name: str | None = None,
     metadata: bool | None = None,
+    condensed: bool | None = None,
     messages: list[MessageType] | Literal["all"] | None = None,
     events: list[EventType] | Literal["all"] | None = None,
     timeline: Literal[True] | list[EventType] | Literal["all"] | None = None,
@@ -172,6 +179,8 @@ def loader(
        timeline: Event types to include in timelines.
        metadata: Whether to read the sample's metadata, target and scores from
            the log body (default). False keeps the log's summary values.
+       condensed: Deliver model events condensed, with `input_refs` into
+           `transcript.events_data`, rather than each input expanded.
        content: Transcript content filter.
 
     Returns:
@@ -189,6 +198,7 @@ def loader(
                 normalize_timeline_filter(timeline) if timeline is not None else None
             ),
             metadata=metadata,
+            condensed=condensed,
         )
     else:
         assert (
@@ -196,7 +206,11 @@ def loader(
             and events is None
             and timeline is None
             and metadata is None
-        ), "Don't pass messages, events, timeline, or metadata if you pass content"
+            and condensed is None
+        ), (
+            "Don't pass messages, events, timeline, metadata, or condensed if you "
+            "pass content"
+        )
 
     def decorate(
         factory: LoaderFactory[P, TLoaderResult],

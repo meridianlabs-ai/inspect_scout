@@ -1407,9 +1407,13 @@ def _streaming_eligible(
     output -- while forcing materialization here would defeat the decline for
     exactly the metadata-heavy sets it exists for.
 
+    A condensed union materializes: a handle has no message pool to resolve
+    condensed events against, and a sibling that did not ask for them must be
+    expanded by its loader.
+
     Callers must already have checked `scanner_supports_streaming`.
     """
-    if union_content.timeline is not None:
+    if union_content.timeline is not None or union_content.condensed:
         return False
     for scanner in scanners:
         content = _content_for_scanner(scanner)

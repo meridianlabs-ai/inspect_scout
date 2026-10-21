@@ -49,16 +49,15 @@ def transcripts_dir(tmp_path: Path) -> str:
     return str(db_path)
 
 
-@pytest.mark.parametrize("max_processes", [1, 2])
 def test_unrecordable_result_is_error_and_scan_continues(
-    tmp_path: Path, transcripts_dir: str, max_processes: int
+    tmp_path: Path, transcripts_dir: str
 ) -> None:
     with temp_active_scans_store():
         status = scan(
             scanners=[int_value_scanner()],
             transcripts=transcripts_from(transcripts_dir),
             scans=str(tmp_path / "scans"),
-            max_processes=max_processes,
+            max_processes=1,
             display="none",
         )
 

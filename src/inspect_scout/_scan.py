@@ -1445,15 +1445,14 @@ def _reports_for_parse_error(
 def _error_report(
     info: TranscriptInfo, scanner: str, exception: Exception
 ) -> ResultReport:
-    """Error report for a transcript, standing in for any results it produced.
+    """Error report standing in for a transcript's results.
 
-    `info` is reported as the input if it is a `Transcript`, otherwise an
-    info-only placeholder is. Call from an `except` block: the traceback is the
-    one being handled.
+    Call from an `except` block: it records the traceback being handled.
     """
     return ResultReport(
         input_type="transcript",
         input_ids=[info.transcript_id],
+        # `_info_placeholder_transcript` can't take a full `Transcript`
         input=info
         if isinstance(info, Transcript)
         else _info_placeholder_transcript(info),

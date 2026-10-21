@@ -111,13 +111,11 @@ _active: bool = False
 SignalHandler = Callable[[int, FrameType | None], Any] | int | None
 
 
+# A worker killed mid-write can leave a read blocked forever. Abandoned on an anyio
+# worker thread, such a read would keep the process from exiting, since those threads
+# are non-daemon.
 class _DaemonQueueReader:
-    """Reads the upstream queue on a daemon thread, one item per `get()`.
-
-    A worker killed mid-write can leave a read blocked forever. Abandoned on an
-    anyio worker thread, such a read would keep the process from exiting, since
-    those threads are non-daemon.
-    """
+    """Reads the upstream queue on a daemon thread, one item per `get()`."""
 
     def __init__(self, queue: Queue[UpstreamQueueItem]) -> None:
         self._queue = queue

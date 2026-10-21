@@ -1,6 +1,9 @@
 """Tests for transcripts_view() and transcripts_db() factory functions."""
 
+from collections.abc import AsyncIterator
 from pathlib import Path
+from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
 from inspect_scout._transcript.database.factory import transcripts_db, transcripts_view
@@ -10,6 +13,7 @@ from inspect_scout._transcript.eval_log import (
     EvalLogTranscriptsView,
 )
 from inspect_scout._transcript.factory import _location_type, transcripts_from
+from upath import UPath
 
 # Path to real test eval logs
 TEST_EVAL_LOGS_DIR = Path(__file__).parent.parent / "recorder" / "logs"
@@ -88,6 +92,60 @@ def test_location_type_detects_eval_log_for_s3_uri() -> None:
     unreachable bucket is fine.
     """
     assert _location_type("s3://nonexistent-bucket/path/to/log.eval") == "eval_log"
+
+
+@pytest.mark.parametrize(
+    ("keys", "deny_listing", "expected"),
+    [
+        (["logs/job/nested/task.eval"], False, "eval_log"),
+        (["logs/job/.models.json"], False, "database"),
+        (["logs/job/task.eval"], True, PermissionError),
+        ([], False, PermissionError),
+    ],
+)
+def test_location_type_with_prefix_scoped_s3(
+    monkeypatch: pytest.MonkeyPatch,
+    keys: list[str],
+    deny_listing: bool,
+    expected: str | type[PermissionError],
+) -> None:
+    location = "s3://bucket/logs/job"
+    root = UPath(location, anon=True, skip_instance_cache=True)
+    fs = root.fs
+
+    async def iterdir(
+        bucket: str,
+        *,
+        prefix: str,
+        delimiter: str,
+        **kwargs: Any,
+    ) -> AsyncIterator[dict[str, Any]]:
+        assert bucket == "bucket"
+        assert prefix == "logs/job/"
+        assert delimiter == ""
+        if deny_listing:
+            raise PermissionError("ListObjectsV2 denied")
+        for key in keys:
+            yield {
+                "name": f"bucket/{key}",
+                "type": "file",
+                "size": 1,
+                "mtime": 1.0,
+            }
+
+    monkeypatch.setattr(
+        fs, "_call_s3", AsyncMock(side_effect=PermissionError("HeadObject denied"))
+    )
+    monkeypatch.setattr(fs, "_iterdir", iterdir)
+    monkeypatch.setattr(
+        "inspect_scout._transcript.factory.UPath", lambda location: root
+    )
+
+    if expected is PermissionError:
+        with pytest.raises(PermissionError):
+            _location_type(location)
+    else:
+        assert _location_type(location) == expected
 
 
 def test_transcripts_from_multiple_eval_log_files() -> None:

@@ -7,10 +7,9 @@ from typing import Any, Iterable, Iterator, Sequence, TypeVar, overload
 from inspect_ai.event import (
     ModelEvent,
     Timeline,
-    ToolEvent,
+    TimelineEvent,
+    TimelineSpan,
     timeline_build,
-    timeline_dump,
-    timeline_load,
 )
 from inspect_ai.event._event import Event
 from inspect_ai.log import EventsData, condense_events, expand_events
@@ -320,28 +319,52 @@ def with_events_form(transcript: Transcript, condensed: bool) -> Transcript:
         update={
             "events": events,
             "events_data": events_data,
-            "timelines": _rebind_timelines(transcript.timelines, events),
+            "timelines": _rebind_timelines(
+                transcript.timelines, transcript.events, events
+            ),
         }
     )
 
 
-def _rebind_timelines(timelines: list[Timeline], events: list[Event]) -> list[Timeline]:
+def _rebind_timelines(
+    timelines: list[Timeline], old_events: list[Event], new_events: list[Event]
+) -> list[Timeline]:
+    """Timelines citing `new_events` wherever they cited `old_events`.
+
+    `old_events` and `new_events` correspond by position (condensing and
+    expanding keep order and length, and leave events nested in tool-spawned
+    agents as they are), so events are matched by identity: a uuid can repeat
+    in a log, and resolving by uuid would bind the wrong event.
+    """
     if not timelines:
         return []
-    bindable = _with_nested_events(events)
-    return [timeline_load(timeline_dump(timeline), bindable) for timeline in timelines]
+    replacement = {
+        id(old): new
+        for old, new in zip(old_events, new_events, strict=True)
+        if old is not new
+    }
+    return [
+        timeline.model_copy(update={"root": _rebind_span(timeline.root, replacement)})
+        for timeline in timelines
+    ]
 
 
-def _with_nested_events(events: list[Event]) -> list[Event]:
-    """The events plus those nested in tool-spawned agents, which timelines cite."""
-    flat: list[Event] = []
-    stack = list(reversed(events))
-    while stack:
-        event = stack.pop()
-        flat.append(event)
-        if isinstance(event, ToolEvent):
-            stack.extend(reversed(event.events))
-    return flat
+def _rebind_span(span: TimelineSpan, replacement: dict[int, Event]) -> TimelineSpan:
+    content: list[TimelineEvent | TimelineSpan] = []
+    for item in span.content:
+        if isinstance(item, TimelineSpan):
+            content.append(_rebind_span(item, replacement))
+        else:
+            event = replacement.get(id(item.event))
+            content.append(
+                item if event is None else item.model_copy(update={"event": event})
+            )
+    return span.model_copy(
+        update={
+            "content": content,
+            "branches": [_rebind_span(branch, replacement) for branch in span.branches],
+        }
+    )
 
 
 def build_timeline(events: list[Event], events_data: EventsData | None) -> Timeline:
@@ -356,13 +379,16 @@ def build_timeline(events: list[Event], events_data: EventsData | None) -> Timel
     if events_data is None:
         return timeline_build(events)
     pool = events_data["messages"]
+    # The copies look like expanded events: an input and no refs.
     viewed: list[Event] = [
-        event.model_copy(update={"input": PooledInput(event.input_refs, pool)})
+        event.model_copy(
+            update={"input": PooledInput(event.input_refs, pool), "input_refs": None}
+        )
         if isinstance(event, ModelEvent) and event.input_refs is not None
         else event
         for event in events
     ]
-    return _rebind_timelines([timeline_build(viewed)], events)[0]
+    return _rebind_timelines([timeline_build(viewed)], viewed, events)[0]
 
 
 class PooledInput(Sequence[ChatMessage]):
@@ -381,6 +407,17 @@ class PooledInput(Sequence[ChatMessage]):
 
     def __len__(self) -> int:
         return sum(len(positions) for positions in self._ranges)
+
+    def __eq__(self, other: object) -> bool:
+        # Equal to any sequence of the same messages, as the expanded list is.
+        if not isinstance(other, Sequence) or isinstance(other, str):
+            return NotImplemented
+        return len(self) == len(other) and all(
+            mine == theirs for mine, theirs in zip(self, other, strict=True)
+        )
+
+    def __hash__(self) -> int:
+        raise TypeError("unhashable type: 'PooledInput'")
 
     def __iter__(self) -> Iterator[ChatMessage]:
         for positions in self._ranges:

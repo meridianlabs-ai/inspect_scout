@@ -20,6 +20,7 @@ from inspect_ai._util.json import jsonable_python
 from inspect_ai._util.path import pretty_path
 from inspect_ai._util.platform import platform_init as init_platform
 from inspect_ai._util.rich import clean_control_characters
+from inspect_ai.log import EventsData
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.model._model import (
     Model,
@@ -669,13 +670,16 @@ async def _scan_async_inner(
                             )
                             on_complete = None
                             lead_idx, *follower_indices = sorted(job.scanner_indices)
+                        job_transcripts = _JobTranscripts(union_transcript)
 
                         def _make_job(
                             idx: int,
                             followers: tuple[ScannerJob, ...] = (),
                         ) -> ScannerJob:
                             return ScannerJob(
-                                union_transcript=union_transcript,
+                                union_transcript=job_transcripts.for_scanner(
+                                    scanners_list[idx]
+                                ),
                                 scanner=scanners_list[idx],
                                 scanner_name=scanner_names_list[idx],
                                 followers=followers,
@@ -1150,8 +1154,8 @@ async def _scan_one(
 
     scanner_config = config_for_scanner(job.scanner)
     loader = scanner_config.loader
-    # The shared read is condensed if any scanner asked; each loader, custom
-    # ones included, gets the event form its own content asks for.
+    # A no-op for jobs built by `_JobTranscripts`; kept so every loader,
+    # custom ones included, gets the event form its own content asks for.
     loader_condensed = config_for_loader(loader).content.condensed is True
 
     def _stream_error_report(ex: Exception) -> ResultReport:
@@ -1394,6 +1398,37 @@ def _filters_equal(
     ):
         return set(a) == set(b)
     return a == b
+
+
+class _JobTranscripts:
+    """The shared read, in the event form each scanner's loader asks for.
+
+    Built before any scanner runs. A condensed read is expanded at most once
+    and shared by every job that did not ask for condensed events, as the
+    expanded read was before. Each condensed job gets its own pool lists, so
+    a scanner rearranging its pool cannot change another scanner's events.
+    """
+
+    def __init__(self, union: Transcript | TranscriptHandle) -> None:
+        self._union = union
+        self._expanded: Transcript | None = None
+
+    def for_scanner(self, scanner: Scanner[Any]) -> Transcript | TranscriptHandle:
+        union = self._union
+        if not isinstance(union, Transcript) or union.events_data is None:
+            return union
+        if _content_for_scanner(scanner).condensed:
+            return union.model_copy(
+                update={
+                    "events_data": EventsData(
+                        messages=list(union.events_data["messages"]),
+                        calls=list(union.events_data["calls"]),
+                    )
+                }
+            )
+        if self._expanded is None:
+            self._expanded = with_events_form(union, False)
+        return self._expanded
 
 
 def _streaming_eligible(

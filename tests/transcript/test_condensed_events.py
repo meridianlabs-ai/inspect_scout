@@ -4,16 +4,20 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, AsyncIterator, Callable, Iterator
+from typing import Any, AsyncIterator, Callable, Iterator, Literal
 
 import pytest
+from inspect_ai import Task, eval
 from inspect_ai.event import (
     CompactionEvent,
     Event,
     ModelEvent,
     SpanBeginEvent,
     SpanEndEvent,
+    Timeline,
+    TimelineSpan,
     ToolEvent,
+    _pool,
     timeline_build,
     timeline_dump,
 )
@@ -40,12 +44,18 @@ from inspect_scout import (
     scan_results_df,
     scanner,
 )
+from inspect_scout._scanner.result import ResultReport
+from inspect_scout._scanner.scorer import as_scorer
 from inspect_scout._transcript.database.factory import transcripts_db
 from inspect_scout._transcript.eval_log import EvalLogTranscriptsView
 from inspect_scout._transcript.factory import transcripts_from
-from inspect_scout._transcript.handle import TranscriptHandle
+from inspect_scout._transcript.handle import (
+    MaterializedTranscriptHandle,
+    TranscriptHandle,
+)
 from inspect_scout._transcript.types import Transcript, TranscriptContent
 from inspect_scout._transcript.util import (
+    PooledInput,
     build_timeline,
     filter_transcript,
     union_transcript_contents,
@@ -65,17 +75,27 @@ EXPANDED = TranscriptContent(messages="all", events="all")
 CONDENSED = TranscriptContent(messages="all", events="all", condensed=True)
 
 
-def _conversation(turns: int) -> tuple[list[ChatMessage], list[Event]]:
+def _conversation(
+    turns: int, *, varied: bool = False, duplicate_uuid: bool = False
+) -> tuple[list[ChatMessage], list[Event]]:
     """An agent loop of `turns` model calls, each re-sending the conversation.
 
     Every turn makes two parallel tool calls, and a compaction halfway
     through restarts the conversation from a summary, so the inputs grow
     with the turn count as a real run's do.
+
+    `varied` adds what else `timeline_build` reads inputs for: turns without
+    tool calls, cache-warmup calls, sub-agent spans with their own system
+    prompt, and three bridged `agent-<call id>` spans whose results the next
+    call's input carries. `duplicate_uuid` gives the first tool event the
+    first model event's uuid, as an edited log can.
     """
+    system = ChatMessageSystem(content="You are a careful agent.")
     conversation: list[ChatMessage] = [
-        ChatMessageSystem(content="You are a careful agent."),
+        system,
         ChatMessageUser(content="Probe the system."),
     ]
+    bridged = {2, turns // 2 + 2, turns - 2} if varied else set()
     events: list[Event] = []
     for turn in range(turns):
         if turn == turns // 2:
@@ -84,6 +104,15 @@ def _conversation(turns: int) -> tuple[list[ChatMessage], list[Event]]:
                 conversation[0],
                 ChatMessageUser(content=f"Summary of turns 0 to {turn - 1}."),
             ]
+        if varied and turn % 7 == 1:
+            events.append(
+                _model_event([system, ChatMessageUser(content="warm")], max_tokens=1)
+            )
+        if varied and turn % 5 == 3:
+            reply = ChatMessageAssistant(content=f"Thinking at turn {turn}.")
+            events.append(_model_event(list(conversation), output=reply))
+            conversation.extend([reply, ChatMessageUser(content="Continue.")])
+            continue
         calls = [
             ToolCall(id=f"call-{turn}-{i}", function="probe", arguments={"i": i})
             for i in range(2)
@@ -116,6 +145,10 @@ def _conversation(turns: int) -> tuple[list[ChatMessage], list[Event]]:
             )
         )
         conversation.append(assistant)
+        if varied and turn % 6 == 4:
+            events.extend(_sub_agent(f"research-{turn}", "You are a researcher."))
+        if turn in bridged:
+            events.extend(_sub_agent(f"agent-{calls[0].id}", "You are a helper."))
         for call in calls:
             result = f"{call.id} found nothing."
             events.append(
@@ -131,19 +164,76 @@ def _conversation(turns: int) -> tuple[list[ChatMessage], list[Event]]:
                     content=result, tool_call_id=call.id, function=call.function
                 )
             )
+    if duplicate_uuid:
+        model = next(e for e in events if isinstance(e, ModelEvent))
+        tool = next(e for e in events if isinstance(e, ToolEvent))
+        tool.uuid = model.uuid
     return conversation, events
 
 
-def _write_log(directory: Path, turns: int) -> Path:
-    """An `.eval` log holding one sample of `turns` turns (pooled on write)."""
+def _model_event(
+    input: list[ChatMessage],
+    *,
+    output: ChatMessageAssistant | None = None,
+    max_tokens: int | None = None,
+) -> ModelEvent:
+    return ModelEvent(
+        model="mockllm/model",
+        input=input,
+        tools=[],
+        tool_choice="auto",
+        config=GenerateConfig(max_tokens=max_tokens),
+        output=ModelOutput(
+            model="mockllm/model",
+            choices=[
+                ChatCompletionChoice(
+                    message=output or ChatMessageAssistant(content="ok"),
+                    stop_reason="stop",
+                )
+            ],
+        ),
+    )
+
+
+def _sub_agent(span_id: str, system_prompt: str) -> list[Event]:
+    """An agent span holding one call with its own system prompt."""
+    return [
+        SpanBeginEvent(id=span_id, name="helper", type="agent", span_id=span_id),
+        _model_event(
+            [
+                ChatMessageSystem(content=system_prompt),
+                ChatMessageUser(content=f"Help with {span_id}."),
+            ],
+            output=ChatMessageAssistant(content=f"{span_id} answered."),
+        ),
+        SpanEndEvent(id=span_id, span_id=span_id),
+    ]
+
+
+def _write_log(
+    directory: Path,
+    turns: int,
+    *,
+    format: Literal["eval", "json"] = "eval",
+    varied: bool = False,
+    duplicate_uuid: bool = False,
+) -> Path:
+    """A log holding one sample of `turns` turns, with no stored timeline.
+
+    `.eval` logs pool inputs on write; inspect_ai serves `.json` logs to
+    Scout with every input expanded.
+    """
     log = read_eval_log(str(BASE_LOG))
     assert log.samples
     sample = log.samples[0]
-    sample.messages, sample.events = _conversation(turns)
+    sample.messages, sample.events = _conversation(
+        turns, varied=varied, duplicate_uuid=duplicate_uuid
+    )
     sample.timelines = None
     log.samples = [sample]
     directory.mkdir(parents=True, exist_ok=True)
-    path = directory / f"turns-{turns}.eval"
+    # `.json` logs are found by their standard file name
+    path = directory / BASE_LOG.with_suffix(f".{format}").name
     write_eval_log(log, str(path))
     return path
 
@@ -170,6 +260,21 @@ class _Decodes:
             post_init(message, context)
 
         monkeypatch.setattr(ChatMessageBase, "model_post_init", counting)
+
+
+class _ExpandedSlots:
+    """Counts messages placed into inputs or requests by inspect_ai's pool expansion."""
+
+    def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self.count = 0
+        expand_refs = _pool._expand_refs
+
+        def counting(refs: Any, pool: Any) -> Any:
+            expanded = expand_refs(refs, pool)
+            self.count += len(expanded)
+            return expanded
+
+        monkeypatch.setattr(_pool, "_expand_refs", counting)
 
 
 @scanner(messages="all", events="all", condensed=True, supports_streaming=True)
@@ -221,11 +326,13 @@ async def test_condensed_read_decodes_each_pooled_message_once(
     """A read decodes the sample's messages, each pool row, and each output."""
     log = _write_log(tmp_path, 30)
     decodes = _Decodes(monkeypatch)
+    expanded = _ExpandedSlots(monkeypatch)
     async with EvalLogTranscriptsView(str(log)) as view:
         info = [info async for info in view.select()][0]
         decodes.count = 0
         transcript = await view.read(info, CONDENSED)
 
+    assert expanded.count == 0
     assert transcript.events_data is not None
     model_events = [e for e in transcript.events if isinstance(e, ModelEvent)]
     assert decodes.count == (
@@ -236,6 +343,7 @@ async def test_condensed_read_decodes_each_pooled_message_once(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("format", ["eval", "json"])
 @pytest.mark.parametrize(
     "content",
     [
@@ -246,10 +354,10 @@ async def test_condensed_read_decodes_each_pooled_message_once(
     ids=["all", "model-events", "timeline"],
 )
 async def test_condensed_read_expands_to_the_expanded_read(
-    tmp_path: Path, content: TranscriptContent
+    tmp_path: Path, content: TranscriptContent, format: Literal["eval", "json"]
 ) -> None:
     """`expand_events` over a condensed read gives the events read expanded."""
-    log = _write_log(tmp_path, 12)
+    log = _write_log(tmp_path, 12, format=format)
     expanded_content = TranscriptContent(
         messages=content.messages, events=content.events, timeline=content.timeline
     )
@@ -267,11 +375,10 @@ async def test_condensed_read_expands_to_the_expanded_read(
         expanded.events
     )
     assert condensed.messages == expanded.messages
-    # timelines bind to the events the scanner receives
-    assert len(condensed.timelines) == len(expanded.timelines)
-    for timeline in condensed.timelines:
-        bound = {id(event) for event in condensed.events}
-        assert all(id(event) in bound for event in _timeline_events(timeline.root))
+    # timelines cite the events the scanner receives, at the same positions
+    assert [_positions(t, condensed.events) for t in condensed.timelines] == [
+        _positions(t, expanded.events) for t in expanded.timelines
+    ]
 
 
 def _with_nested(events: list[Event]) -> list[Event]:
@@ -286,14 +393,25 @@ def _with_nested(events: list[Event]) -> list[Event]:
     ]
 
 
-def _timeline_events(node: Any) -> list[Event]:
+def _timeline_events(span: TimelineSpan) -> list[Event]:
     events: list[Event] = []
-    for item in getattr(node, "content", []):
-        if item.type == "event":
-            events.append(item.event)
-        else:
+    for item in span.content:
+        if isinstance(item, TimelineSpan):
             events.extend(_timeline_events(item))
+        else:
+            events.append(item.event)
+    for branch in span.branches:
+        events.extend(_timeline_events(branch))
     return events
+
+
+def _positions(timeline: Timeline, events: list[Event]) -> list[int]:
+    """Where each event a timeline cites sits among `events` (nested included).
+
+    Raises KeyError for a cited event that is not one of `events`.
+    """
+    index = {id(event): i for i, event in enumerate(_with_nested(events))}
+    return [index[id(event)] for event in _timeline_events(timeline.root)]
 
 
 @pytest.mark.asyncio
@@ -323,6 +441,7 @@ async def test_condensed_read_from_parquet_database(tmp_path: Path) -> None:
     assert _dumps(expanded.events) == _dumps(expanded_from_log.events)
 
 
+@pytest.mark.parametrize("duplicate_uuid", [False, True], ids=["", "duplicate-uuid"])
 @pytest.mark.parametrize(
     "sibling",
     [
@@ -334,10 +453,10 @@ async def test_condensed_read_from_parquet_database(tmp_path: Path) -> None:
 )
 @pytest.mark.asyncio
 async def test_a_scanner_that_does_not_ask_sees_events_as_before(
-    tmp_path: Path, sibling: TranscriptContent
+    tmp_path: Path, sibling: TranscriptContent, duplicate_uuid: bool
 ) -> None:
     """Sharing a read with a condensed scanner leaves a sibling's events unchanged."""
-    log = _write_log(tmp_path, 12)
+    log = _write_log(tmp_path, 12, varied=True, duplicate_uuid=duplicate_uuid)
     alone = filter_transcript(await _read(log, sibling), sibling)
     union = union_transcript_contents([sibling, CONDENSED])
     shared = filter_transcript(await _read(log, union), sibling)
@@ -348,9 +467,9 @@ async def test_a_scanner_that_does_not_ask_sees_events_as_before(
     assert [t.model_dump() for t in shared.timelines] == [
         t.model_dump() for t in alone.timelines
     ]
-    for timeline in shared.timelines:
-        bound = {id(event) for event in shared.events}
-        assert all(id(event) in bound for event in _timeline_events(timeline.root))
+    assert [_positions(t, shared.events) for t in shared.timelines] == [
+        _positions(t, alone.events) for t in alone.timelines
+    ]
 
 
 def test_condensed_from_an_inline_transcript() -> None:
@@ -556,20 +675,22 @@ def _bridge_and_warmup_events() -> list[Event]:
     "events",
     [
         _conversation(12)[1],
+        _conversation(30, varied=True)[1],
+        _conversation(12, varied=True, duplicate_uuid=True)[1],
         agentic_events(),
         _bridge_and_warmup_events(),
     ],
-    ids=["conversation", "agentic", "bridge-and-warmup"],
+    ids=["conversation", "varied", "duplicate-uuid", "agentic", "bridge-and-warmup"],
 )
 def test_a_timeline_built_from_condensed_events_equals_the_expanded_build(
     events: list[Event],
 ) -> None:
     condensed, events_data = condense_events(events)
     built = build_timeline(condensed, events_data)
+    expected = timeline_build(events)
 
-    assert timeline_dump(built) == timeline_dump(timeline_build(events))
-    bound = {id(event) for event in _with_nested(condensed)}
-    assert all(id(event) in bound for event in _timeline_events(built.root))
+    assert timeline_dump(built) == timeline_dump(expected)
+    assert _positions(built, condensed) == _positions(expected, events)
 
 
 @pytest.mark.asyncio
@@ -580,53 +701,176 @@ async def test_condensed_read_with_a_built_timeline_does_linear_work(
 
     Counts messages decoded, message slots expanded by inspect_ai's pool
     resolution, and messages read through pooled-input views, at n and 2n
-    turns of a log with no stored timeline.
+    turns of a log with no stored timeline. The log has every kind of call
+    `timeline_build` reads inputs for (see `_conversation(varied=True)`).
     """
-    from inspect_ai.event import _pool
-    from inspect_scout._transcript import util
-
     decodes = _Decodes(monkeypatch)
-    work = {"expanded": 0, "viewed": 0}
-
-    expand_refs = _pool._expand_refs
-
-    def counting_expand_refs(refs: Any, pool: Any) -> Any:
-        expanded = expand_refs(refs, pool)
-        work["expanded"] += len(expanded)
-        return expanded
-
-    monkeypatch.setattr(_pool, "_expand_refs", counting_expand_refs)
+    expanded = _ExpandedSlots(monkeypatch)
+    work = {"viewed": 0}
 
     def counting(view: Any) -> Any:
-        def wrapped(self: util.PooledInput) -> Iterator[ChatMessage]:
+        def wrapped(self: PooledInput) -> Iterator[ChatMessage]:
             for message in view(self):
                 work["viewed"] += 1
                 yield message
 
         return wrapped
 
-    monkeypatch.setattr(
-        util.PooledInput, "__iter__", counting(util.PooledInput.__iter__)
-    )
-    monkeypatch.setattr(
-        util.PooledInput, "__reversed__", counting(util.PooledInput.__reversed__)
-    )
+    monkeypatch.setattr(PooledInput, "__iter__", counting(PooledInput.__iter__))
+    monkeypatch.setattr(PooledInput, "__reversed__", counting(PooledInput.__reversed__))
 
     content = TranscriptContent(
         messages="all", events="all", timeline=True, condensed=True
     )
     counts: dict[int, dict[str, int]] = {}
     for turns in (20, 40):
-        log = _write_log(tmp_path / f"logs-{turns}", turns)
+        log = _write_log(tmp_path / f"logs-{turns}", turns, varied=True)
         async with EvalLogTranscriptsView(str(log)) as view:
             info = [info async for info in view.select()][0]
-            decodes.count = 0
-            work.update(expanded=0, viewed=0)
+            decodes.count = expanded.count = work["viewed"] = 0
             transcript = await view.read(info, content)
         assert transcript.timelines
         assert transcript.events_data is not None
-        counts[turns] = {"decodes": decodes.count, **work}
+        counts[turns] = {
+            "decodes": decodes.count,
+            "expanded": expanded.count,
+            **work,
+        }
 
     for counted in ("decodes", "viewed"):
         assert counts[40][counted] <= 2.2 * counts[20][counted], counts
     assert counts[20]["expanded"] == counts[40]["expanded"] == 0, counts
+
+
+def test_a_condensed_scanner_as_a_scorer_gets_condensed_events() -> None:
+    task = Task(scorer=as_scorer(condensed_scanner()))
+    log = eval(tasks=task, model="mockllm/model", display="none")[0]
+
+    assert log.status == "success"
+    assert log.samples and log.samples[0].scores
+    (score,) = log.samples[0].scores.values()
+    # the scanner asserts it got refs and a pool; its value is the pool's size
+    assert isinstance(score.value, int) and score.value > 0
+
+
+@pytest.mark.asyncio
+async def test_a_condensed_input_recorded_without_pooling_is_expanded(
+    tmp_path: Path,
+) -> None:
+    log = _write_log(tmp_path, 6)
+    condensed = await _read(log, CONDENSED)
+    expanded = await _read(log, EXPANDED)
+    report = ResultReport(
+        input_type="transcript",
+        input_ids=[condensed.transcript_id],
+        input=condensed,
+        result=Result(value=True),
+        validation=None,
+        error=None,
+        events=[],
+        model_usage={},
+    )
+
+    columns = report.to_df_columns(pool_dedup=False)
+
+    assert columns["input_data"] is None
+    input_json = columns["input"]
+    assert isinstance(input_json, (bytes, bytearray))
+    recorded = Transcript.model_validate_json(input_json)
+    assert _dumps(recorded.events) == _dumps(expanded.events)
+
+
+@pytest.mark.asyncio
+async def test_opening_a_large_transcript_condensed_materializes_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The spool expands inputs as it replays, so condensed opens skip it."""
+    monkeypatch.setattr(constants_mod, "SPOOL_THRESHOLD_BYTES", 0)
+    log = _write_log(tmp_path, 6)
+    async with EvalLogTranscriptsView(str(log)) as view:
+        info = [info async for info in view.select()][0]
+        async with await view.open(info, CONDENSED) as handle:
+            assert isinstance(handle, MaterializedTranscriptHandle)
+            transcript = await handle.load()
+
+    assert transcript.events_data is not None
+    assert all(
+        e.input == [] and e.input_refs
+        for e in transcript.events
+        if isinstance(e, ModelEvent)
+    )
+
+
+def test_a_scan_expands_a_condensed_read_once_and_isolates_each_pool(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Plain scanners share one expansion; no scanner can rearrange another's pool.
+
+    The condensed lead runs first and reverses its pool in place.
+    """
+    log = _write_log(tmp_path / "logs", 12)
+    expanded = _ExpandedSlots(monkeypatch)
+    first_inputs: list[str] = []
+    first_pool_rows: list[str] = []
+
+    @scanner(name="pool_reverser", messages="all", events="all", condensed=True)
+    def pool_reverser() -> Scanner[Transcript]:
+        async def scan_transcript(transcript: Transcript) -> Result:
+            assert transcript.events_data is not None
+            transcript.events_data["messages"].reverse()
+            return Result(value=True)
+
+        return scan_transcript
+
+    @scanner(name="pool_reader", messages="all", events="all", condensed=True)
+    def pool_reader() -> Scanner[Transcript]:
+        async def scan_transcript(transcript: Transcript) -> Result:
+            assert transcript.events_data is not None
+            first_pool_rows.append(transcript.events_data["messages"][0].text)
+            return Result(value=True)
+
+        return scan_transcript
+
+    @scanner(name="plain_reader", messages="all", events="all")
+    def plain_reader() -> Scanner[Transcript]:
+        async def scan_transcript(transcript: Transcript) -> Result:
+            model = next(e for e in transcript.events if isinstance(e, ModelEvent))
+            first_inputs.append(model.input[0].text)
+            return Result(value=True)
+
+        return scan_transcript
+
+    def run(name: str, scanners: list[Scanner[Any]]) -> int:
+        expanded.count = 0
+        status = scan(
+            scanners=scanners,
+            transcripts=transcripts_from(log),
+            scans=str(tmp_path / name),
+            max_processes=1,
+            display="none",
+        )
+        assert status.complete
+        return expanded.count
+
+    plain_only = run("plain", [plain_reader(), plain_reader()])
+    mixed = run(
+        "mixed", [pool_reverser(), pool_reader(), plain_reader(), plain_reader()]
+    )
+
+    assert plain_only > 0 and mixed == plain_only
+    assert first_inputs == ["You are a careful agent."] * 4
+    assert first_pool_rows == ["You are a careful agent."]
+
+
+def test_a_pooled_input_equals_the_expanded_input() -> None:
+    _, events = _conversation(6)
+    condensed, events_data = condense_events(events)
+    pool = events_data["messages"]
+    for original, event in zip(events, condensed, strict=True):
+        if isinstance(event, ModelEvent):
+            assert isinstance(original, ModelEvent) and event.input_refs is not None
+            view = PooledInput(event.input_refs, pool)
+            assert view == original.input and list(view) == original.input
+            assert list(reversed(view)) == original.input[::-1]
+            assert view[-1] == original.input[-1]
+            assert view != original.input[:-1]

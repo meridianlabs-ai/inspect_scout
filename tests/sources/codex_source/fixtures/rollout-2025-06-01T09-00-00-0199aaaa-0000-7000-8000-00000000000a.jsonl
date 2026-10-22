@@ -1,0 +1,2 @@
+{"id": "0199aaaa-0000-7000-8000-00000000000a", "timestamp": "2025-06-01T09:00:00.000Z", "instructions": "old format", "cwd": "/home/user/old"}
+{"type": "message", "role": "user", "content": [{"type": "input_text", "text": "old style line"}]}

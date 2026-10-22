@@ -88,6 +88,7 @@ from ._scanjob import (
     Scanners,
 )
 from ._scanjob_config import ScanJobConfig
+from ._scanner._loaders import is_identity_loader
 from ._scanner.loader import config_for_loader
 from ._scanner.result import (
     Error,
@@ -1166,7 +1167,8 @@ async def _scan_one(
     handle after the last job.
 
     `record_input="reference"` records transcript inputs (handle or
-    materialized) as references without serializing them.
+    materialized) as references without serializing them, except a custom
+    loader's `Transcript`, which is recorded inline.
     """
     from inspect_ai.log._transcript import (
         Transcript as InspectTranscript,
@@ -1393,7 +1395,13 @@ async def _scan_one(
                                 traceback=traceback.format_exc(),
                                 refusal=False,
                             )
-            elif record_input == "reference" and isinstance(loader_input, Transcript):
+            elif (
+                record_input == "reference"
+                and isinstance(loader_input, Transcript)
+                # A custom loader may change the transcript, which re-reading
+                # the source would not reproduce, so its output stays inline.
+                and is_identity_loader(loader)
+            ):
                 report_input = _reference_for_record(loader_input, job.scanner)
             else:
                 # Not an assert: a loader yielding None is contained above and

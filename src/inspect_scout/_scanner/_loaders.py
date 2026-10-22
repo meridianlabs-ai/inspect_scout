@@ -8,6 +8,7 @@ from typing import (
     get_origin,
 )
 
+from inspect_ai._util.registry import is_registry_object, registry_info, registry_name
 from inspect_ai.event import Timeline
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage
@@ -36,10 +37,20 @@ def _matches_transcript_or_handle(type_annotation: Any) -> bool:
     return has_transcript and others_are_handles
 
 
+_IDENTITY_LOADER = "IdentityLoader"
+
+
+def is_identity_loader(loader: Loader[Any]) -> bool:
+    """Whether `loader` is the implicit loader that yields the transcript as read."""
+    return is_registry_object(loader) and registry_info(loader).name == registry_name(
+        is_identity_loader, _IDENTITY_LOADER
+    )
+
+
 def _IdentityLoader(
     content: TranscriptContent,
 ) -> Loader[Transcript]:
-    @loader(name="IdentityLoader", content=content)
+    @loader(name=_IDENTITY_LOADER, content=content)
     def the_factory() -> Loader[Transcript]:
         async def the_loader(
             transcript: Transcript,

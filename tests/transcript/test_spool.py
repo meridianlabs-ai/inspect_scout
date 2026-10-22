@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+import errno
+import os
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+from inspect_scout._transcript.json import spool as spool_mod
 from inspect_scout._transcript.json.spool import ByteSpool, ItemSpool
 
 
@@ -59,3 +65,49 @@ def test_byte_spool_roundtrips_across_chunk_boundaries(
         assert all(len(chunk) <= 4096 for chunk in spool.chunks(chunk_size=4096))
     finally:
         spool.close()
+
+
+def test_byte_spool_concurrent_first_reads_agree(tmp_path: Path) -> None:
+    """Readers racing to read freshly written bytes all get the whole value."""
+    payload = bytes(range(256)) * 1000
+    spool = ByteSpool(tmp_path)
+    try:
+        for start in range(0, len(payload), 100):
+            spool.write(payload[start : start + 100])
+        barrier = threading.Barrier(8)
+
+        def read() -> bytes:
+            barrier.wait()
+            return bytes(spool.read())
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            results = list(pool.map(lambda _: read(), range(8)))
+        assert results == [payload] * 8
+    finally:
+        spool.close()
+
+
+def test_byte_spool_close_keeps_a_failed_flush_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A batch write that fails surfaces its own error, not one from close().
+
+    Cleanup paths close the spool while that error, and its traceback, are
+    still live.
+    """
+
+    def disk_full(fd: int, data: memoryview) -> int:
+        raise OSError(errno.ENOSPC, os.strerror(errno.ENOSPC))
+
+    spool = ByteSpool(tmp_path)
+    spool.write(b"batched")
+    monkeypatch.setattr(
+        spool_mod, "os", SimpleNamespace(**{**vars(os), "write": disk_full})
+    )
+    with pytest.raises(OSError) as raised:
+        try:
+            spool.read()
+        except BaseException:
+            spool.close()
+            raise
+    assert raised.value.errno == errno.ENOSPC

@@ -1,5 +1,5 @@
-from collections.abc import Awaitable, Callable
-from typing import TypeVar
+from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable
+from typing import Generic, TypeVar
 
 import anyio
 
@@ -24,3 +24,24 @@ async def as_value(fn: Callable[[], Awaitable[T]]) -> T | BaseException:
         return await fn()
     except (Exception, anyio.get_cancelled_exc_class()) as ex:
         return ex
+
+
+# A class, like `aclosing`: an `@asynccontextmanager` runs a generator of its
+# own, which garbage collection can finalize before the abandoned generator
+# using it, whose exit then raises.
+class aclosing_iter(Generic[T]):
+    """`contextlib.aclosing` for an iterator typed as a plain `AsyncIterator`.
+
+    Closes the iterator on exit if it is an async generator; `aclosing` needs
+    `aclose()`, which `AsyncIterator` does not promise.
+    """
+
+    def __init__(self, iterator: AsyncIterator[T]) -> None:
+        self._iterator = iterator
+
+    async def __aenter__(self) -> AsyncIterator[T]:
+        return self._iterator
+
+    async def __aexit__(self, *exc_info: object) -> None:
+        if isinstance(self._iterator, AsyncGenerator):
+            await self._iterator.aclose()

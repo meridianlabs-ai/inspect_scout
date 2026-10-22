@@ -1,9 +1,11 @@
 import json
 import re
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, fields
 from functools import reduce
 from logging import getLogger
 from typing import (
+    Any,
     Awaitable,
     Callable,
     Generic,
@@ -67,6 +69,34 @@ class MessagesPreprocessor(MessageFormatOptions, Generic[T]):
 
     transform: Callable[[T], Awaitable[list[ChatMessage]]] | None = None
     """Transform the list of messages."""
+
+
+def as_messages_preprocessor(value: object) -> MessagesPreprocessor[Any] | None:
+    """A scanner's `preprocessor` argument as a `MessagesPreprocessor`.
+
+    Scan jobs (YAML/JSON) and the viewer's Run Scan form pass the options as a
+    dict (e.g. ``{"exclude_system": true}``), which scanner params do not
+    convert.
+
+    Raises:
+        TypeError: If `value` is neither a `MessagesPreprocessor` nor a dict of
+            its boolean options.
+    """
+    if value is None or isinstance(value, MessagesPreprocessor):
+        return value
+    options = {f.name for f in fields(MessageFormatOptions)}
+    if not isinstance(value, Mapping):
+        raise TypeError(
+            "preprocessor must be a MessagesPreprocessor or a dict of its options "
+            f"{sorted(options)} (got {type(value).__name__})."
+        )
+    if unknown := set(value) - options:
+        raise TypeError(
+            f"Unknown preprocessor options {sorted(unknown)} (expected {sorted(options)})."
+        )
+    if not_bool := sorted(k for k, v in value.items() if not isinstance(v, bool)):
+        raise TypeError(f"preprocessor options must be booleans; invalid: {not_bool}")
+    return MessagesPreprocessor(**value)
 
 
 class DeprecatedArgs(TypedDict, total=False):

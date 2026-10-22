@@ -11,7 +11,7 @@ from ._match import (
 )
 
 
-@scanner(messages="all")
+@scanner(messages="all", metadata=False)
 def grep_scanner(
     pattern: str | list[str] | dict[str, str | list[str]],
     *,
@@ -30,6 +30,7 @@ def grep_scanner(
     - Messages are searched if `transcript.messages` is populated
     - Events are searched if `transcript.events` is populated
     - Control population via `@scanner(messages=..., events=...)`
+    - Sample metadata is not read: transcripts carry the log's summary metadata
 
     Args:
         pattern: Pattern(s) to search for. Can be:

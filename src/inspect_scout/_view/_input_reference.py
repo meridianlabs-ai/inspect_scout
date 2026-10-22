@@ -24,6 +24,12 @@ InputReferenceLocator = Callable[[Request, InputReference], Awaitable[str]]
 Row values are untrusted when a server shows scans other users wrote, so a
 multi-user host's locator must decide what the requesting user may read and
 return a location it has checked, never the row's URI as given.
+
+Return only `.eval` locations: `input_reference_max_bytes` bounds only those,
+and other locations use the transcripts index path, which is not server-safe.
+Raise `InputReferenceUnavailable` for row-level refusals; it is shown to the
+user with a 200. Any other exception propagates as a server error, deliberately,
+so an outage does not read as a refusal.
 """
 
 
@@ -41,7 +47,11 @@ async def source_uri_locator(request: Request, ref: InputReference) -> str:
 
 
 class ResolvedInput(NamedTuple):
-    """A resolved row's `input` and `input_data`, as copy mode stores them."""
+    """A resolved row's `input` and `input_data`.
+
+    Messages, events and ids match copy mode; top-level info carries identity
+    fields only.
+    """
 
     input: str
     input_data: str | None

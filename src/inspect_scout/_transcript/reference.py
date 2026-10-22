@@ -166,6 +166,8 @@ async def _read_eval_sample(
                 "This log's sample index is too large to look up referenced inputs.",
             )
 
+        # inspect's `read_member_fully` decompresses the summaries whole; the
+        # only bound is the declared-size check above.
         summaries = await read_eval_log_sample_summaries_async(location)
         summary = next((s for s in summaries if s.uuid == ref.transcript_id), None)
         if summary is None:
@@ -213,7 +215,12 @@ class _bounded:
     """Re-iterable view of `chunks` that fails once more than `max_bytes` are produced.
 
     The central directory's declared size is attacker-controlled, so the
-    decompressed stream is bounded as well. Re-iterable because the JSON5
+    decompressed stream is bounded as well. The check runs per decompressed
+    chunk: inspect's deflate and zstd decompressors have no output limit, so a
+    member whose directory entry understates its size can exceed `max_bytes`
+    by one chunk's decompressed output (large for a crafted single-frame zstd
+    member) before `too_large` is raised. Bounding that fully needs
+    output-limited decompression in inspect_ai. Re-iterable because the JSON5
     fallback in `load_filtered_transcript` reads the stream a second time.
     """
 

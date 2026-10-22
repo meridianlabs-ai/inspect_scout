@@ -128,4 +128,6 @@ if row.get("input_storage") == "reference":
 
 If the scan read a transcript database, `transcript_source_uri` is each transcript's original source (e.g. the `.eval` it was imported from) rather than the database. Pass the database location instead with `resolve_input_reference(row, transcripts="<database location>")`.
 
+The Scout viewer (`scout view`) resolves reference rows when you open a result: it reads the sample named by `transcript_source_uri` and `transcript_id`, with your own credentials, and shows the input as it would show a copy. If the source has moved or can't be read, the viewer says why instead.
+
 Result files written before these columns existed have no `input_storage` column at all; reading such a file, rows are treated as non-references.

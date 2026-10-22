@@ -6,11 +6,12 @@ import dataclasses
 import json
 import tempfile
 from pathlib import Path
+from typing import AsyncIterator
 
 import duckdb
 import pytest
 from inspect_ai.model import ModelOutput
-from inspect_scout import Scanner, llm_scanner, scan, scanner
+from inspect_scout import Loader, Scanner, llm_scanner, loader, scan, scanner
 from inspect_scout._concurrency.common import ScannerJob
 from inspect_scout._scan import _scan_one
 from inspect_scout._scanner.result import ReferenceTranscript, Result
@@ -220,6 +221,58 @@ def test_reference_mode_materialized_path_records_reference() -> None:
         assert input_cell is None
         assert storage == "reference"
         assert content == TranscriptContent(messages="all").to_json()
+
+
+@loader(name="first_message_loader", messages="all")
+def _first_message_loader() -> Loader[Transcript]:
+    async def load(transcript: Transcript) -> AsyncIterator[Transcript]:
+        yield transcript.model_copy(update={"messages": transcript.messages[:1]})
+
+    return load
+
+
+def test_reference_mode_records_custom_loader_output_inline() -> None:
+    """A custom loader's transcript is recorded inline, not by reference.
+
+    The loader may change what it yields, and resolving a reference re-reads
+    the unmodified source, so a reference would misreport the scanner's input.
+    """
+
+    @scanner(name="probe", loader=_first_message_loader())
+    def probe() -> Scanner[Transcript]:
+        async def scan_fn(t: Transcript) -> Result:
+            return Result(value=len(t.messages))
+
+        return scan_fn
+
+    logs_dir = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
+    with tempfile.TemporaryDirectory() as scans:
+        status = scan(
+            scanners=[probe()],
+            transcripts=transcripts_from(logs_dir),
+            scans=scans,
+            limit=1,
+            max_processes=1,
+            record_input="reference",
+            display="none",
+        )
+        assert status.complete
+        assert status.location is not None
+
+        files = list(Path(status.location).rglob("*.parquet"))
+        assert files
+        rows = (
+            duckdb.connect()
+            .execute(
+                "SELECT input, input_storage FROM read_parquet(?)",
+                [files[0].as_posix()],
+            )
+            .fetchall()
+        )
+        assert len(rows) == 1
+        input_cell, storage = rows[0]
+        assert storage == "inline"
+        assert len(json.loads(input_cell)["messages"]) == 1
 
 
 def test_content_filters_round_trip_through_json() -> None:

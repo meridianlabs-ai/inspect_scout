@@ -23,6 +23,7 @@ from inspect_ai.tool import ToolCall
 from inspect_scout import grep_scanner
 from inspect_scout._grep_scanner import PatternError
 from inspect_scout._scanner.result import Result
+from inspect_scout._scanner.scanner import config_for_scanner
 from inspect_scout._transcript.types import Transcript
 
 
@@ -814,3 +815,9 @@ class TestErrorHandling:
 
         with pytest.raises(PatternError):
             await scanner(transcript)
+
+
+def test_grep_scanner_declines_sample_metadata() -> None:
+    # Grep searches only messages and events; sample metadata can embed whole
+    # files, so reading it would cost GBs per transcript for nothing.
+    assert config_for_scanner(grep_scanner("error")).content.metadata is False

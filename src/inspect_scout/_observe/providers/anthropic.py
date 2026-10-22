@@ -417,7 +417,10 @@ class AnthropicStreamManagerCaptureContext(ObjectProxyBase):
 
     def _snapshot(self) -> Any:
         """Return the SDK's partial message snapshot, if exposed."""
-        return getattr(self.__wrapped__, "current_message_snapshot", None)
+        try:
+            return getattr(self.__wrapped__, "current_message_snapshot", None)
+        except AssertionError:
+            return None
 
     def __iter__(self) -> Iterator[Any]:
         error: Exception | None = None
@@ -522,7 +525,10 @@ class AnthropicAsyncStreamManagerCaptureContext(ObjectProxyBase):
 
     def _snapshot(self) -> Any:
         """Return the SDK's partial message snapshot, if exposed."""
-        return getattr(self.__wrapped__, "current_message_snapshot", None)
+        try:
+            return getattr(self.__wrapped__, "current_message_snapshot", None)
+        except AssertionError:
+            return None
 
     async def __aiter__(self) -> AsyncIterator[Any]:
         error: Exception | None = None

@@ -592,8 +592,11 @@ def _expand_resultset_rows(
     resultset_rows[_RESULTSET_INDEX] = range(len(resultset_rows))
 
     # Parse JSON strings in value column to lists
-    resultset_rows["value"] = resultset_rows["value"].apply(
-        lambda x: json.loads(x) if isinstance(x, str) and x else []
+    # pandas>=3.1 keeps Arrow dtype through apply; explode fails on all-empty lists.
+    resultset_rows["value"] = (
+        resultset_rows["value"]
+        .astype(object)
+        .apply(lambda x: json.loads(x) if isinstance(x, str) and x else [])
     )
 
     # Explode the value column to create one row per Result

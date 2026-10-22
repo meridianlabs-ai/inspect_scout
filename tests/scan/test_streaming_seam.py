@@ -14,7 +14,11 @@ from inspect_scout._scan import (
     _scan_one,
     _streaming_eligible,
 )
-from inspect_scout._scanner.result import Result, SerializedTranscript
+from inspect_scout._scanner.result import (
+    ReferenceTranscript,
+    Result,
+    SerializedTranscript,
+)
 from inspect_scout._scanner.scanner import Scanner, mark_streaming_support
 from inspect_scout._transcript.handle import (
     MaterializedTranscriptHandle,
@@ -104,6 +108,43 @@ async def test_scan_one_stream_error_contained() -> None:
     assert len(reports) == 1
     assert reports[0].error is not None
     assert "corrupt sample JSON" in reports[0].error.error
+
+
+@pytest.mark.asyncio
+async def test_scan_one_stream_error_reference_mode_materialized_union() -> None:
+    """A stream error in reference mode records a reference, not the full union."""
+
+    async def _raising_loader(transcript: Transcript) -> Any:
+        raise ValueError("corrupt during iteration")
+        yield transcript  # pragma: no cover - makes this an async generator
+
+    @scanner(messages="all", events="all", loader=_raising_loader)
+    def _raising_loader_scanner() -> Scanner[Transcript]:
+        async def scan(transcript: Transcript) -> Result:
+            return Result(value="ok")
+
+        return scan
+
+    transcript = Transcript(
+        transcript_id="t1", source_uri="file:///log.eval", messages=[], events=[]
+    )
+    job = ScannerJob(
+        union_transcript=transcript,
+        scanner=_raising_loader_scanner(),
+        scanner_name="rl",
+    )
+    reports = await _scan_one(
+        job, validation=None, fail_on_error=False, record_input="reference"
+    )
+    assert len(reports) == 1
+    report_input = reports[0].input
+    assert isinstance(report_input, ReferenceTranscript)
+    assert report_input.transcript_id == "t1"
+    assert report_input.source_uri == "file:///log.eval"
+    assert (
+        report_input.content_json
+        == TranscriptContent(messages="all", events="all").to_json()
+    )
 
 
 def _scanner_with(

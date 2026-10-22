@@ -35,6 +35,7 @@ from .._scanjob_config import ScanJobConfig
 from .._scanjobs import scan_jobs_view
 from .._scanresults import scan_results_arrow_async, scan_results_df_async
 from .._transcript.eval_log import JSON_COLUMNS
+from .._transcript.reference import InputReferenceUnavailable
 from ._api_v2_types import (
     ActiveScansResponse,
     DistinctRequest,
@@ -43,6 +44,7 @@ from ._api_v2_types import (
     ScansResponse,
     ScanStatus,
 )
+from ._input_reference import InputReferenceResolver
 from ._pagination_helpers import build_pagination_context
 from ._server_common import InspectPydanticJSONResponse, decode_base64url
 from .invalidationTopics import notify_topics
@@ -50,6 +52,16 @@ from .invalidationTopics import notify_topics
 # Scan result columns that are stored as pre-serialized JSON strings in
 # parquet, in addition to the transcript-level JSON_COLUMNS.
 _SCAN_JSON_COLUMNS = frozenset(JSON_COLUMNS) | {"scan_events", "input_data"}
+
+# Columns a reference-mode row needs to resolve its `input`.
+_REFERENCE_COLUMNS = [
+    "input_storage",
+    "transcript_id",
+    "transcript_source_uri",
+    "transcript_task_id",
+    "transcript_task_repeat",
+    "input_content",
+]
 
 # TODO: temporary simulation tracking currently running scans (by location path)
 _running_scans: set[str] = set()
@@ -82,11 +94,14 @@ def _build_scan_zip(scan_path: UPath) -> Response:
 
 def create_scans_router(
     streaming_batch_size: int = 1024,
+    input_reference_resolver: InputReferenceResolver | None = None,
 ) -> APIRouter:
     """Create scans API router.
 
     Args:
         streaming_batch_size: Batch size for Arrow IPC streaming.
+        input_reference_resolver: Resolves the input of reference-mode rows;
+            without one their `input` stays null with a `not_resolved` error.
 
     Returns:
         Configured APIRouter with scans endpoints.
@@ -324,6 +339,7 @@ def create_scans_router(
         "Repeat the `column` query parameter for each column.",
     )
     async def scanner_row(
+        request: Request,
         dir: str = Path(description="Scans directory (base64url-encoded)"),
         scan: str = Path(description="Scan path (base64url-encoded)"),
         scanner: str = Path(description="Scanner name"),
@@ -338,6 +354,9 @@ def create_scans_router(
         Columns in ``JSON_COLUMNS`` are pre-serialized JSON strings in
         parquet — embedded raw in the response without re-encoding.
         All other columns are serialized with ``json.dumps()``.
+
+        A reference row's failure to resolve is reported in ``input_error``
+        rather than as an error status, so the other columns still arrive.
         """
         if not column:
             raise HTTPException(
@@ -357,19 +376,43 @@ def create_scans_router(
                 detail=f"Scanner '{scanner}' not found in scan results",
             )
 
+        resolve_input = "input" in requested
+        fetch = (
+            list(dict.fromkeys(requested + _REFERENCE_COLUMNS))
+            if resolve_input
+            else requested
+        )
         try:
-            row = result.get_fields(scanner, "uuid", uuid, requested)
+            row = result.get_fields(scanner, "uuid", uuid, fetch)
         except (KeyError, ValueError) as err:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,
                 detail=f"No row found for uuid: {uuid}",
             ) from err
 
+        values = {col: row[col] for col in requested}
+        input_error: dict[str, str] | None = None
+        # Parquet written before reference mode has no `input_storage`: inline.
+        if resolve_input and row.get("input_storage") == "reference":
+            if input_reference_resolver is None:
+                input_error = {
+                    "reason": "not_resolved",
+                    "message": "This result's input is stored by reference, "
+                    "and this server does not resolve references.",
+                }
+            else:
+                try:
+                    resolved = await input_reference_resolver.resolve(request, row)
+                    values["input"] = resolved.input
+                    if "input_data" in values:
+                        values["input_data"] = resolved.input_data
+                except InputReferenceUnavailable as ex:
+                    input_error = {"reason": ex.reason, "message": ex.message}
+
         # Build JSON manually: columns in JSON_COLUMNS are pre-serialized
         # JSON strings in parquet and are embedded raw to avoid double-encoding.
         parts: list[str] = []
-        for col in requested:
-            value = row[col]
+        for col, value in values.items():
             if value is None:
                 serialized = "null"
             elif col in _SCAN_JSON_COLUMNS and isinstance(value, str) and value:
@@ -377,6 +420,8 @@ def create_scans_router(
             else:
                 serialized = json.dumps(value)
             parts.append(json.dumps(col) + ":" + serialized)
+        if input_error is not None:
+            parts.append('"input_error":' + json.dumps(input_error))
 
         return Response(
             content="{" + ",".join(parts) + "}",

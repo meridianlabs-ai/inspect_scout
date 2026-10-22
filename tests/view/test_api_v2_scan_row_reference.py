@@ -158,3 +158,15 @@ def test_legacy_parquet_is_inline(legacy_inline_row: ScanRow) -> None:
     assert "input_error" not in body
     assert body["input_storage"] is None
     assert len(body["input"]["messages"]) == 2
+
+
+def test_input_is_not_resolved_unless_requested(reference_row: ScanRow) -> None:
+    async def fail(request: Request, ref: InputReference) -> str:
+        raise AssertionError("resolved without `input` requested")
+
+    client = TestClient(v2_api_app(input_reference_locator=fail))
+
+    body = _get(client, reference_row.url(["scan_events"]))
+
+    assert set(body) == {"scan_events"}
+    assert "input_error" not in body

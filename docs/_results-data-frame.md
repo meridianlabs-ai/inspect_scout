@@ -115,7 +115,7 @@ Whether a row is a copy or a reference is visible in the `input_storage` column,
 
 A NULL `input_content` on a reference row means the filters weren't available when the row was recorded, and resolving the reference falls back to full content (`messages="all", events="all"`).
 
-Only whole-transcript inputs are recorded by reference. Scanners whose input is a message, event or timeline, and scanners with a custom `@loader` (which may change the transcript it yields), record their input inline in either mode.
+Only whole-transcript inputs are recorded by reference. Scanners whose input is a message, event or timeline, and scanners with a custom `@loader` (which may change the transcript it yields), record their input inline in either mode, unless the serialized input exceeds the parquet cell cap, in which case it is recorded as a reference with full content.
 
 Even a `record_input="copy"` scan can produce reference rows: when a transcript's serialized input is too large to store inline, or otherwise can't be read, Scout degrades that row to a reference rather than failing the scan. Filter by `input_storage == "reference"` to find these rows regardless of the scan's `record_input` setting.
 

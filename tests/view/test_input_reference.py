@@ -51,7 +51,7 @@ def _request() -> Request:
 
 
 @pytest.mark.asyncio
-async def test_resolves_to_the_copy_mode_columns() -> None:
+async def test_resolves_the_same_messages_and_events_as_copy_mode() -> None:
     async with EvalLogTranscriptsView(str(EVAL_LOG)) as view:
         info = [i async for i in view.select()][0]
         expected = await view.read(info, CONTENT)

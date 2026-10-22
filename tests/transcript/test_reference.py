@@ -3,6 +3,7 @@
 import math
 import shutil
 import zipfile
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Callable
 
@@ -67,7 +68,7 @@ def log_copy(tmp_path: Path) -> Path:
 
 
 @pytest.mark.asyncio
-async def test_reads_what_the_index_reader_reads() -> None:
+async def test_reads_the_same_messages_and_events_as_the_index_reader() -> None:
     content = TranscriptContent(messages="all", events="all")
     async with EvalLogTranscriptsView(str(EVAL_LOG)) as view:
         info = [i async for i in view.select()][0]
@@ -163,6 +164,26 @@ async def test_over_cap_is_too_large_without_reading_the_body(
     assert ex.value.message == (
         "The sample is 0.0 MiB, over this server's 0.0 MiB limit for referenced inputs."
     )
+
+
+@pytest.mark.asyncio
+async def test_understated_directory_size_cannot_bypass_the_cap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real = AsyncZipReader.get_member_entry
+
+    async def understate(self: AsyncZipReader, name: str) -> Any:
+        entry = await real(self, name)
+        if name.startswith("samples/"):
+            assert entry.uncompressed_size > 100
+            return replace(entry, uncompressed_size=1)
+        return entry
+
+    monkeypatch.setattr(AsyncZipReader, "get_member_entry", understate)
+
+    with pytest.raises(InputReferenceUnavailable) as ex:
+        await read_referenced_transcript(str(EVAL_LOG), _ref(), max_bytes=100)
+    assert ex.value.reason == "too_large"
 
 
 @pytest.mark.parametrize(

@@ -105,6 +105,7 @@ def test_reference_row_resolves(reference_row: ScanRow) -> None:
     assert body["input_type"] == "transcript"
     assert len(body["input"]["messages"]) == 2
     assert body["input"]["events"] == []
+    assert body["input_data"] == {"messages": [], "calls": []}
     assert body["scan_events"] is not None
 
 

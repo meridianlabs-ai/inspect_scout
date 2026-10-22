@@ -546,6 +546,7 @@ class EvalLogTranscriptsView(TranscriptsView):
                         content.messages,
                         events_filter,
                         metadata=content.metadata is not False,
+                        condensed=content.condensed is True,
                     )
         else:
             # JSON format - read sample via inspect_ai and serialize
@@ -569,6 +570,7 @@ class EvalLogTranscriptsView(TranscriptsView):
                     content.messages,
                     events_filter,
                     metadata=content.metadata is not False,
+                    condensed=content.condensed is True,
                 )
 
         return _resolve_timelines_and_filter_events(transcript, content)
@@ -610,12 +612,14 @@ class EvalLogTranscriptsView(TranscriptsView):
 
         zip_reader, entry = await self._get_zip_reader_and_entry(t)
 
-        # Small files, or timeline requests (which need the full in-memory
-        # event set to resolve stored timeline UUID references), use the
-        # existing materialized read path unchanged.
+        # Small files, timeline requests (which need the full in-memory
+        # event set to resolve stored timeline UUID references), and condensed
+        # requests (the spool expands each event's input as it replays) use
+        # the existing materialized read path unchanged.
         if (
             entry.uncompressed_size <= constants_mod.SPOOL_THRESHOLD_BYTES
             or content.timeline is not None
+            or content.condensed
         ):
             return MaterializedTranscriptHandle(load, t)
 
@@ -742,11 +746,9 @@ def _resolve_timelines_and_filter_events(
     # Fallback: older eval logs don't store timelines, so build
     # from events.
     if content.timeline is not None and not transcript.timelines and transcript.events:
-        from inspect_ai.event import timeline_build
+        from .util import build_timeline, filter_timelines
 
-        from .util import filter_timelines
-
-        raw_timeline = timeline_build(transcript.events)
+        raw_timeline = build_timeline(transcript.events, transcript.events_data)
         timelines = filter_timelines([raw_timeline], content.timeline)
         transcript = transcript.model_copy(update={"timelines": timelines})
 

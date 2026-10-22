@@ -20,6 +20,7 @@ from inspect_ai._util.json import jsonable_python
 from inspect_ai._util.path import pretty_path
 from inspect_ai._util.platform import platform_init as init_platform
 from inspect_ai._util.rich import clean_control_characters
+from inspect_ai.log import EventsData
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.model._model import (
     Model,
@@ -106,7 +107,12 @@ from ._transcript.types import (
     TranscriptContent,
     TranscriptInfo,
 )
-from ._transcript.util import union_transcript_contents
+from ._transcript.util import (
+    filter_list,
+    filter_timelines,
+    union_transcript_contents,
+    with_events_form,
+)
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
 from ._util.deprecation import raise_results_error, show_results_warning
 from ._util.log import init_log
@@ -669,13 +675,19 @@ async def _scan_async_inner(
                             )
                             on_complete = None
                             lead_idx, *follower_indices = sorted(job.scanner_indices)
+                        job_transcripts = _JobTranscripts(
+                            union_transcript,
+                            [scanners_list[idx] for idx in job.scanner_indices],
+                        )
 
                         def _make_job(
                             idx: int,
                             followers: tuple[ScannerJob, ...] = (),
                         ) -> ScannerJob:
                             return ScannerJob(
-                                union_transcript=union_transcript,
+                                union_transcript=job_transcripts.for_scanner(
+                                    scanners_list[idx]
+                                ),
                                 scanner=scanners_list[idx],
                                 scanner_name=scanner_names_list[idx],
                                 followers=followers,
@@ -1150,6 +1162,9 @@ async def _scan_one(
 
     scanner_config = config_for_scanner(job.scanner)
     loader = scanner_config.loader
+    # A no-op for jobs built by `_JobTranscripts`; kept so every loader,
+    # custom ones included, gets the event form its own content asks for.
+    loader_condensed = config_for_loader(loader).content.condensed is True
 
     def _stream_error_report(ex: Exception) -> ResultReport:
         """Error report for an exception raised lazily during iteration."""
@@ -1182,7 +1197,9 @@ async def _scan_one(
     try:
         loader_iterations: AsyncIterator[ScannerInput | TranscriptHandle]
         if isinstance(job.union_transcript, Transcript):
-            loader_iterations = loader(job.union_transcript)
+            loader_iterations = loader(
+                with_events_form(job.union_transcript, loader_condensed)
+            )
         elif scanner_supports_streaming(job.scanner):
             loader_iterations = _single_item_iter(job.union_transcript)
         else:
@@ -1198,7 +1215,7 @@ async def _scan_one(
                     raise
                 results.append(_stream_error_report(ex))
                 return results
-            loader_iterations = loader(transcript)
+            loader_iterations = loader(with_events_form(transcript, loader_condensed))
 
         # Iterate explicitly so a lazy parse error raised by the iteration is
         # contained per-transcript rather than propagating. PrerequisiteError
@@ -1391,6 +1408,67 @@ def _filters_equal(
     return a == b
 
 
+class _JobTranscripts:
+    """The shared read, in the event form each scanner's loader asks for.
+
+    Built before any scanner runs. Scanners whose loaders did not ask for
+    condensed events share one projection of a condensed read: expanded once,
+    as the expanded read was before, if any of them wants model events (or
+    timelines citing them); otherwise just the events and timelines they ask
+    for, with no model inputs expanded at all. Each condensed job gets its own
+    pool lists, so a scanner rearranging its pool cannot change another's.
+    """
+
+    def __init__(
+        self, union: Transcript | TranscriptHandle, scanners: list[Scanner[Any]]
+    ) -> None:
+        self._union = union
+        self._plain_contents = [
+            content
+            for content in map(_content_for_scanner, scanners)
+            if not content.condensed
+        ]
+        self._plain: Transcript | None = None
+
+    def for_scanner(self, scanner: Scanner[Any]) -> Transcript | TranscriptHandle:
+        union = self._union
+        if not isinstance(union, Transcript) or union.events_data is None:
+            return union
+        if _content_for_scanner(scanner).condensed:
+            return union.model_copy(
+                update={
+                    "events_data": EventsData(
+                        messages=list(union.events_data["messages"]),
+                        calls=list(union.events_data["calls"]),
+                    )
+                }
+            )
+        if self._plain is None:
+            self._plain = self._plain_projection(union)
+        return self._plain
+
+    def _plain_projection(self, union: Transcript) -> Transcript:
+        if any(map(_wants_model_events, self._plain_contents)):
+            return with_events_form(union, False)
+        # Nothing asked for model events, so none are kept and the result
+        # holds no condensed event.
+        plain = union_transcript_contents(self._plain_contents)
+        return union.model_copy(
+            update={
+                "events": filter_list(union.events, plain.events),
+                "timelines": filter_timelines(union.timelines, plain.timeline),
+                "events_data": None,
+            }
+        )
+
+
+def _wants_model_events(content: TranscriptContent) -> bool:
+    return any(
+        wanted == "all" or wanted is True or (wanted is not None and "model" in wanted)
+        for wanted in (content.events, content.timeline)
+    )
+
+
 def _streaming_eligible(
     scanners: list[Scanner[Any]], union_content: TranscriptContent
 ) -> bool:
@@ -1407,9 +1485,13 @@ def _streaming_eligible(
     output -- while forcing materialization here would defeat the decline for
     exactly the metadata-heavy sets it exists for.
 
+    A condensed union materializes: a handle has no message pool to resolve
+    condensed events against, and a sibling that did not ask for them is
+    handed expanded events (`with_events_form`), which a handle cannot be.
+
     Callers must already have checked `scanner_supports_streaming`.
     """
-    if union_content.timeline is not None:
+    if union_content.timeline is not None or union_content.condensed:
         return False
     for scanner in scanners:
         content = _content_for_scanner(scanner)

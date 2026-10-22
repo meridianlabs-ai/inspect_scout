@@ -6,9 +6,9 @@ from typing import IO, Any, Callable
 
 import ijson
 from inspect_ai._util.async_bytes_reader import AsyncBytesReader, adapt_to_reader
-from inspect_ai.event import timeline_load
+from inspect_ai.event import ModelEvent, timeline_load
 from inspect_ai.event._validate import validate_chat_messages
-from inspect_ai.log import EventsData, expand_events
+from inspect_ai.log import EventsData, condense_events, expand_events
 from pydantic import JsonValue
 
 from ..types import (
@@ -134,6 +134,7 @@ async def load_filtered_transcript(
     events: EventFilter,
     *,
     metadata: bool = True,
+    condensed: bool = False,
     on_early_exit: Callable[[], None] | None = None,
 ) -> Transcript:
     """Transform and filter JSON sample data into a Transcript.
@@ -151,6 +152,8 @@ async def load_filtered_transcript(
             list=include matching)
         metadata: Whether to read the sample's metadata, target and scores from
             the body; when False the summary values already on ``t`` are kept.
+        condensed: Keep model events condensed, with their pools decoded once
+            into ``Transcript.events_data``, rather than expanding each input.
         on_early_exit: Test-only callback invoked immediately before the
             early-exit break
 
@@ -174,10 +177,10 @@ async def load_filtered_transcript(
                 metadata=metadata,
                 on_early_exit=on_early_exit,
             )
-        return _resolve_attachments(transcript, attachment_refs)
+        return _resolve_attachments(transcript, attachment_refs, condensed=condensed)
     except ijson.JSONError:
         return await _load_with_json5_fallback(
-            sample_bytes, t, messages, events, metadata=metadata
+            sample_bytes, t, messages, events, metadata=metadata, condensed=condensed
         )
 
 
@@ -188,6 +191,7 @@ async def _load_with_json5_fallback(
     events: EventFilter,
     *,
     metadata: bool = True,
+    condensed: bool = False,
 ) -> Transcript:
     """Fallback parser using json5 for JSON5 features (NaN, Inf, etc.)."""
     if hasattr(sample_bytes, "__aiter__"):
@@ -235,8 +239,14 @@ async def _load_with_json5_fallback(
                 call_pool=call_pool,
             ),
             data.get("attachments", {}),
+            condensed=condensed,
         ),
-        TranscriptContent(messages, events, timeline="all" if keep_timelines else None),
+        TranscriptContent(
+            messages,
+            events,
+            timeline="all" if keep_timelines else None,
+            condensed=condensed,
+        ),
     )
 
 
@@ -521,7 +531,7 @@ async def _parse_and_filter(
 
 
 def _resolve_attachments(
-    transcript: RawTranscript, attachments: dict[str, str]
+    transcript: RawTranscript, attachments: dict[str, str], *, condensed: bool = False
 ) -> Transcript:
     """
     Phase 2: Replace attachment references with actual values.
@@ -529,6 +539,7 @@ def _resolve_attachments(
     Args:
         transcript: Transcript with attachment references
         attachments: Dict mapping attachment IDs to their values
+        condensed: Keep model events condensed (see ``load_filtered_transcript``)
 
     Returns:
         Transcript with resolved attachment references
@@ -597,24 +608,35 @@ def _resolve_attachments(
     # raw dicts first would validate (and attachment-walk) one copy per ref,
     # which is quadratic in conversation length. Pools are skipped when no
     # retained event references them (e.g. an events filter without "model").
+    events_data = EventsData(messages=[], calls=[])
     if (transcript.message_pool or transcript.call_pool) and any(
         event_has_pool_refs(event) for event in transcript.events
     ):
-        validated.events = expand_events(
-            validated.events,
-            EventsData(
-                messages=validate_chat_messages(
-                    [
-                        _resolve_dict_attachments(message, resolve_string)
-                        for message in transcript.message_pool
-                    ]
-                ),
-                calls=[
-                    _resolve_dict_attachments(call, resolve_string)
-                    for call in transcript.call_pool
-                ],
+        events_data = EventsData(
+            messages=validate_chat_messages(
+                [
+                    _resolve_dict_attachments(message, resolve_string)
+                    for message in transcript.message_pool
+                ]
             ),
+            calls=[
+                _resolve_dict_attachments(call, resolve_string)
+                for call in transcript.call_pool
+            ],
         )
+        if not condensed:
+            validated.events = expand_events(validated.events, events_data)
+    if condensed:
+        # Inputs stored inline (logs written before pooling, and `.json` logs,
+        # which inspect_ai expands on read) are condensed here, so every
+        # source keeps the contract, at a cost linear in the inputs as read.
+        if any(
+            isinstance(event, ModelEvent) and event.input for event in validated.events
+        ):
+            validated.events, events_data = condense_events(
+                expand_events(validated.events, events_data)
+            )
+        validated.events_data = events_data
 
     # Resolve timelines with event UUID context (events must be validated first)
     if transcript.timelines:

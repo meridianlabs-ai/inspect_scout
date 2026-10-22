@@ -17,7 +17,7 @@ import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import filesystem
 from inspect_ai._util.path import pretty_path
-from inspect_ai.log import condense_events
+from inspect_ai.log import condense_events, expand_events
 from inspect_ai.util import trace_action, trace_message
 from pydantic_core import to_json
 from typing_extensions import override
@@ -864,6 +864,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 content.messages,
                 events_filter,
                 metadata=content.metadata is not False,
+                condensed=content.condensed is True,
             )
 
             # Fallback: if timelines were requested but not stored, build from events
@@ -872,11 +873,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 and not transcript.timelines
                 and transcript.events
             ):
-                from inspect_ai.event import timeline_build
+                from ...util import build_timeline, filter_timelines
 
-                from ...util import filter_timelines
-
-                raw_timeline = timeline_build(transcript.events)
+                raw_timeline = build_timeline(transcript.events, transcript.events_data)
                 timelines = filter_timelines([raw_timeline], content.timeline)
                 transcript = transcript.model_copy(update={"timelines": timelines})
 
@@ -1053,15 +1052,24 @@ class ParquetTranscriptsDB(TranscriptsDB):
         messages_array = [msg.model_dump() for msg in transcript.messages]
 
         if pool_dedup:
-            condensed_events, events_data = condense_events(transcript.events)
+            # A condensed transcript already carries its pool (see
+            # `Transcript.events_data`).
+            condensed_events, events_data = (
+                (transcript.events, transcript.events_data)
+                if transcript.events_data is not None
+                else condense_events(transcript.events)
+            )
             # Compact JSON to reduce storage: pretty-printing significantly
             # increases the size of structures like range-encoded input_refs.
             events_json = to_json_str_compact(condensed_events)
             events_data_json = to_json_str_compact(events_data)
         else:
-            events_json = json.dumps(
-                [event.model_dump() for event in transcript.events]
+            events = (
+                expand_events(transcript.events, transcript.events_data)
+                if transcript.events_data is not None
+                else transcript.events
             )
+            events_json = json.dumps([event.model_dump() for event in events])
             events_data_json = None
 
         # Start with reserved fields

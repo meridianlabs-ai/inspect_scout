@@ -4,7 +4,7 @@ from typing import Any, Generic, Sequence, cast
 
 from inspect_ai._util.json import jsonable_python
 from inspect_ai.event._event import Event
-from inspect_ai.log import condense_events
+from inspect_ai.log import condense_events, expand_events
 from inspect_ai.model import ModelUsage
 from inspect_ai.scorer import Reference
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
@@ -291,6 +291,20 @@ def _serialize_input(
     """
     if isinstance(input, SerializedTranscript):
         return input.input_json, input.input_data_json
+
+    # A condensed transcript's refs index its own pool, which serialization
+    # excludes: record that pool, or expand the events where nothing is pooled.
+    if isinstance(input, Transcript) and input.events_data is not None:
+        if pool_dedup:
+            return to_json_bytes_compact(input), to_json_bytes_compact(
+                input.events_data
+            )
+        input = input.model_copy(
+            update={
+                "events": expand_events(input.events, input.events_data),
+                "events_data": None,
+            }
+        )
 
     if not pool_dedup or input_type not in ("transcript", "events"):
         return to_json_bytes_compact(input), None

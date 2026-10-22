@@ -6,11 +6,13 @@ from typing import Any, Literal, Protocol, Sequence, TypeAlias
 from inspect_ai._util.zip_common import ZipCompressionMethod
 from inspect_ai.event import Timeline
 from inspect_ai.event._event import Event
+from inspect_ai.log import EventsData
 from inspect_ai.log._file import (
     EvalLogInfo,
 )
 from inspect_ai.model._chat_message import ChatMessage
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from pydantic.json_schema import SkipJsonSchema
 
 MessageType = Literal["system", "user", "assistant", "tool"]
 """Message types."""
@@ -64,6 +66,7 @@ MessageFilter: TypeAlias = Literal["all"] | Sequence[MessageType] | None
 EventFilter: TypeAlias = Literal["all"] | Sequence[EventType | str] | None
 TimelineFilter: TypeAlias = Literal[True] | Literal["all"] | Sequence[EventType] | None
 MetadataFilter: TypeAlias = bool | None
+CondensedFilter: TypeAlias = bool | None
 
 LogPaths: TypeAlias = (
     PathLike[str] | str | EvalLogInfo | Sequence[PathLike[str] | str | EvalLogInfo]
@@ -96,6 +99,18 @@ class TranscriptContent:
     single string, and scores as ``score_*`` values only. Declining is
     honored when every scanner in the scan declines; a scanner sharing a
     read with one that wants metadata receives it anyway.
+    """
+
+    condensed: CondensedFilter = field(default=None)
+    """Deliver model events condensed rather than with each input expanded.
+
+    True gives each `ModelEvent` its `input_refs` (ranges into
+    `Transcript.events_data["messages"]`) and an empty `input`, as inspect_ai's
+    `condense_events()` does, so each pooled message is decoded once per
+    transcript rather than once per event that sent it. Call request messages
+    are pooled the same way in `events_data["calls"]` where the log pools
+    them. None and False (the default) expand every input. Only a scanner (or
+    loader) that takes a `Transcript` can ask for it.
     """
 
 
@@ -250,3 +265,12 @@ class Transcript(TranscriptInfo):
 
     timelines: list[Timeline] = Field(default_factory=list)
     """Timeline views over the transcript."""
+
+    events_data: SkipJsonSchema[EventsData | None] = Field(default=None, exclude=True)
+    """Message and call pools that condensed events refer to.
+
+    Set only when the transcript was read with `condensed=True`; `None`
+    otherwise. A condensed `ModelEvent`'s input is
+    `[m for start, end in event.input_refs for m in events_data["messages"][start:end]]`,
+    and `inspect_ai.log.expand_events(events, events_data)` expands them all.
+    In-memory only: excluded from serialization."""

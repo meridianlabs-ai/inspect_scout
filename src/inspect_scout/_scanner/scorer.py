@@ -18,11 +18,13 @@ from inspect_ai.scorer import (
 from inspect_ai.solver import TaskState
 from pydantic import JsonValue
 
+from inspect_scout._scanner.loader import config_for_loader
 from inspect_scout._scanner.metrics import as_score_value, metrics_for_scanner
 from inspect_scout._scanner.result import Result, as_resultset
 from inspect_scout._scanner.scanner import Scanner, ScannerConfig, config_for_scanner
 from inspect_scout._transcript.eval_log import EVAL_LOG_SOURCE_TYPE
-from inspect_scout._transcript.types import Transcript
+from inspect_scout._transcript.types import Transcript, TranscriptContent
+from inspect_scout._transcript.util import filter_transcript
 
 
 def as_scorer(
@@ -77,6 +79,14 @@ def as_scorer(
                 events=events,
                 timelines=timelines,
             )
+            # The loader's content governs, as in a scan (`_scan_one`).
+            if config_for_loader(config.loader).content.condensed:
+                transcript = filter_transcript(
+                    transcript,
+                    TranscriptContent(
+                        messages="all", events="all", timeline="all", condensed=True
+                    ),
+                )
 
             # call scanner
             result = await scanner(transcript)

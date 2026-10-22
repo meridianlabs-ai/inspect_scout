@@ -266,7 +266,8 @@ def message_numbering(
         label_for_id: When True, return a third function that maps real
             message IDs to their assigned labels (e.g. ``"M3"``).
         nonce: If set, written on every marker in the output: message
-            headers (e.g. ``[M2] USER (3f9a1c7e):``), ``Tool Call``, ``Tool Use`` and
+            headers (e.g. ``[M2] USER (3f9a1c7e):``), event entries (e.g.
+            ``[E1] (3f9a1c7e) SCORE``), ``Tool Call``, ``Tool Use`` and
             tool error lines, reasoning and prefill tags (e.g.
             ``<thinking 3f9a1c7e>``), and the start and end lines of a tool call
             argument that spans lines. A reader that knows the nonce can then
@@ -316,7 +317,7 @@ def message_numbering(
                 real_id = _message_id(message)
                 id_map[ordinal] = real_id
                 reverse_map[real_id] = ordinal
-                items.append(f"[{ordinal}] {message.text}")
+                items.append(f"[{ordinal}]{_marker_nonce(nonce)} {message.text}")
                 continue
             content = message_as_str(message, preprocessor, nonce=nonce)
             if content is not None:

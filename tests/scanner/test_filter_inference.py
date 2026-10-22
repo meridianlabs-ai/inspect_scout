@@ -388,6 +388,20 @@ def test_events_selection_widens_a_timeline_filter(
     assert {"score", "model"} <= set(timeline)
 
 
+def test_events_selection_widens_a_named_timelines_default_filter() -> None:
+    """`timeline="target"` loads the default timeline set, which has no `score`."""
+
+    @scanner(messages="all")
+    def target_scores() -> Scanner[Transcript]:
+        return llm_scanner(
+            question="q", answer="boolean", events=["score"], timeline="target"
+        )
+
+    timeline = config_for_scanner(target_scores()).content.timeline
+    assert isinstance(timeline, list)
+    assert {"score", "model"} <= set(timeline)
+
+
 def test_events_selection_does_not_force_a_timeline_on_message_scanners() -> None:
     """Widening must not drag a messages-only scanner onto the timeline path."""
 

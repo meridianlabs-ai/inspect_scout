@@ -1,5 +1,6 @@
 """Reading the transcript a reference-mode result row points at."""
 
+from collections.abc import AsyncIterable, AsyncIterator
 from dataclasses import dataclass
 from logging import getLogger
 from typing import Any, Literal, Mapping
@@ -99,6 +100,12 @@ async def read_referenced_transcript(
     calls, so a log rewritten in place is read fresh. Other locations go
     through the transcripts index, and `max_bytes` does not apply to them.
 
+    The returned transcript has identity fields only (`transcript_id`,
+    `source_type`, `source_uri`, `task_id`, `task_repeat`) plus the sample
+    body's metadata, target and scores; eval-level metadata and the
+    summary/header-derived top-level fields (model, date, score, ...) are not
+    populated.
+
     Args:
         location: Transcripts location to read from (e.g. an `.eval` log).
         ref: The reference to resolve.
@@ -172,12 +179,7 @@ async def _read_eval_sample(
             # Summarized but not yet written, as in a log still in progress.
             raise _not_found() from ex
         if max_bytes is not None and entry.uncompressed_size > max_bytes:
-            raise InputReferenceUnavailable(
-                "too_large",
-                f"The sample is {entry.uncompressed_size / 2**20:.1f} MiB, over "
-                f"this server's {max_bytes / 2**20:.1f} MiB limit for referenced "
-                "inputs.",
-            )
+            raise _too_large(entry.uncompressed_size, max_bytes)
         info = TranscriptInfo(
             transcript_id=ref.transcript_id,
             source_type=EVAL_LOG_SOURCE_TYPE,
@@ -187,15 +189,45 @@ async def _read_eval_sample(
         )
         # Timelines resolve against all events, as in `EvalLogTranscriptsView.read`.
         events = "all" if content.timeline is not None else content.events
-        async with await zip_reader.open_member(entry) as sample_bytes:
+        async with await zip_reader.open_member(entry) as member:
             transcript = await load_filtered_transcript(
-                sample_bytes,
+                _bounded(member, max_bytes),
                 info,
                 content.messages,
                 events,
                 metadata=content.metadata is not False,
             )
     return _resolve_timelines_and_filter_events(transcript, content)
+
+
+def _too_large(size: int, max_bytes: int) -> InputReferenceUnavailable:
+    return InputReferenceUnavailable(
+        "too_large",
+        f"The sample is {size / 2**20:.1f} MiB, over "
+        f"this server's {max_bytes / 2**20:.1f} MiB limit for referenced "
+        "inputs.",
+    )
+
+
+class _bounded:
+    """Re-iterable view of `chunks` that fails once more than `max_bytes` are produced.
+
+    The central directory's declared size is attacker-controlled, so the
+    decompressed stream is bounded as well. Re-iterable because the JSON5
+    fallback in `load_filtered_transcript` reads the stream a second time.
+    """
+
+    def __init__(self, chunks: AsyncIterable[bytes], max_bytes: int | None) -> None:
+        self._chunks = chunks
+        self._max_bytes = max_bytes
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        seen = 0
+        async for chunk in self._chunks:
+            seen += len(chunk)
+            if self._max_bytes is not None and seen > self._max_bytes:
+                raise _too_large(seen, self._max_bytes)
+            yield chunk
 
 
 def _not_found() -> InputReferenceUnavailable:

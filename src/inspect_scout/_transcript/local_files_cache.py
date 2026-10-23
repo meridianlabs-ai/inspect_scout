@@ -39,7 +39,7 @@ class LocalFilesCache:
         """
         self._cache_dir = cache_dir
         self._cache_dir.mkdir(parents=True, exist_ok=True)
-        # Not a directory scan per resolve: that raced with downloads renaming temp files.
+        # Listing the directory instead would race with off-loop downloads' temp files.
         self._cache_size = 0
 
     @property

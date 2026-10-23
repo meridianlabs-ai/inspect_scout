@@ -1,7 +1,4 @@
-"""`LocalFilesCache` copies remote transcript files to a local cache directory.
-
-A `memory://` location stands in for remote storage.
-"""
+"""A `memory://` location stands in for remote storage."""
 
 import threading
 import uuid

@@ -3,11 +3,12 @@ from collections.abc import Iterator
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Literal, Mapping, Sequence
+from typing import TYPE_CHECKING, Annotated, Any, Literal, Mapping, Sequence
 
 import duckdb
 import pandas as pd
 import pyarrow as pa
+from pydantic import Field
 
 if TYPE_CHECKING:
     from pyarrow import Scalar
@@ -58,9 +59,12 @@ class Status:
     errors: list[Error]
     """Errors during last scan attempt."""
 
-    interrupted: bool = field(default=False, kw_only=True)
+    interrupted: Annotated[bool, Field(exclude=True)] = field(
+        default=False, kw_only=True
+    )
     """The scan stopped early (an error or cancellation) rather than going through
-    every transcript. Set on the status a scan call returns; not saved with the scan."""
+    every transcript. Set on the status a scan call returns; not saved with the scan
+    or serialized."""
 
 
 @dataclass

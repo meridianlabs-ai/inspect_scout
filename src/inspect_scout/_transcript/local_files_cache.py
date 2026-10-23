@@ -35,9 +35,12 @@ class LocalFilesCache:
 
         Args:
             cache_dir: Directory to store cached files. Created immediately.
+                Only files this cache downloads count toward its size cap.
         """
         self._cache_dir = cache_dir
         self._cache_dir.mkdir(parents=True, exist_ok=True)
+        # Listing the directory instead would race with off-loop downloads' temp files.
+        self._cache_size = 0
 
     @property
     def cache_dir(self) -> Path:
@@ -62,12 +65,7 @@ class LocalFilesCache:
             return uri
 
         # Check total cache size - skip caching if cache is full
-        total_cache_size = sum(
-            f.stat().st_size
-            for f in self._cache_dir.iterdir()
-            if f.is_file() and not f.suffix == ".downloading"
-        )
-        if total_cache_size > self.MAX_CACHE_FILE_SIZE:
+        if self._cache_size > self.MAX_CACHE_FILE_SIZE:
             return uri
 
         # Generate unique cache filename from URI hash
@@ -88,7 +86,9 @@ class LocalFilesCache:
             with trace_action(logger, "Scout Cache Download", f"Downloading {uri}"):
                 try:
                     await _download_file(fs, uri, marker_file)
+                    size = marker_file.stat().st_size
                     marker_file.rename(cache_file)
+                    self._cache_size += size
                     return cache_file.as_posix()
                 except Exception:
                     marker_file.unlink(missing_ok=True)

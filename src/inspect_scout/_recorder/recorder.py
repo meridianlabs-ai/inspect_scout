@@ -62,9 +62,8 @@ class Status:
     interrupted: Annotated[bool, Field(exclude=True)] = field(
         default=False, kw_only=True
     )
-    """The scan stopped early (an error or cancellation) rather than going through
-    every transcript. Set on the status a scan call returns; not saved with the scan
-    or serialized."""
+    """Did the scan stop early (error or cancellation) instead of scanning every
+    transcript. Only set on the status a scan call returns; not saved or serialized."""
 
 
 @dataclass

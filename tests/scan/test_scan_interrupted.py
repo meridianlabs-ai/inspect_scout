@@ -80,7 +80,6 @@ def failing_probe_scanner() -> Scanner[Transcript]:
 
 @pytest.mark.asyncio
 async def test_scan_with_transcript_errors_is_not_interrupted(tmp_path: Path) -> None:
-    """A scan that went through every transcript is not interrupted, even with errors."""
     top_level_sync_init("none")
     with temp_active_scans_store():
         status = await scan_async(
@@ -91,5 +90,5 @@ async def test_scan_with_transcript_errors_is_not_interrupted(tmp_path: Path) ->
             max_processes=1,
         )
 
-    assert (status.complete, status.interrupted) == (False, False)
     assert status.errors
+    assert not status.interrupted

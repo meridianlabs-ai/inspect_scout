@@ -1,7 +1,7 @@
 import abc
 from collections.abc import Iterator
 from contextlib import AbstractContextManager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Literal, Mapping, Sequence
 
@@ -57,6 +57,10 @@ class Status:
 
     errors: list[Error]
     """Errors during last scan attempt."""
+
+    interrupted: bool = field(default=False, kw_only=True)
+    """The scan stopped early (an error or cancellation) rather than going through
+    every transcript. Set on the status a scan call returns; not saved with the scan."""
 
 
 @dataclass

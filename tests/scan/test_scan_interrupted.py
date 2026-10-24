@@ -91,4 +91,5 @@ async def test_scan_with_transcript_errors_is_not_interrupted(tmp_path: Path) ->
         )
 
     assert status.errors
+    assert not status.complete
     assert not status.interrupted

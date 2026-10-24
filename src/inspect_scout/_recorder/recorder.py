@@ -62,8 +62,8 @@ class Status:
     interrupted: Annotated[bool, Field(exclude=True)] = field(
         default=False, kw_only=True
     )
-    """Did the scan stop early (error or cancellation) instead of scanning every
-    transcript. Only set on the status a scan call returns; not saved or serialized."""
+    """Did the scan stop on an error or cancellation before finishing. Only set on the
+    status a scan call returns; not saved with the scan or in API responses."""
 
 
 @dataclass
@@ -156,8 +156,12 @@ class ScanResultsDF(Status):
         summary: Summary,
         errors: list[Error],
         scanners: Mapping[str, pd.DataFrame],
+        *,
+        interrupted: bool = False,
     ) -> None:
-        super().__init__(complete, spec, location, summary, errors)
+        super().__init__(
+            complete, spec, location, summary, errors, interrupted=interrupted
+        )
         self.scanners = scanners
 
 

@@ -21,6 +21,7 @@ from inspect_ai.model import (
 )
 from inspect_ai.tool import ToolCall, ToolCallError
 from inspect_scout._scanner.extract import (
+    EVENT_MARKER_KEY,
     MessagesPreprocessor,
     _extract_references,
     message_as_str,
@@ -1682,6 +1683,13 @@ async def test_message_numbering_nonce() -> None:
     assert first == "[M1] USER (3f9a1c7e):\nQ1\n"
     assert second == "[M2] ASSISTANT (3f9a1c7e):\nA1\n"
     assert [ref.id for ref in extract_refs("See [M2]")] == ["msg2"]
+
+    event = ChatMessageUser(
+        content="SCORE (match): value=C\n", id="e1", metadata={EVENT_MARKER_KEY: True}
+    )
+    assert (
+        await messages_as_str_fn([event]) == "[E1] (3f9a1c7e) SCORE (match): value=C\n"
+    )
 
 
 @pytest.mark.parametrize(

@@ -591,9 +591,17 @@ def _expand_resultset_rows(
     # validation is scoped per resultset row)
     resultset_rows[_RESULTSET_INDEX] = range(len(resultset_rows))
 
-    # Parse JSON strings in value column to lists
-    resultset_rows["value"] = resultset_rows["value"].apply(
-        lambda x: json.loads(x) if isinstance(x, str) and x else []
+    # Parse JSON strings in value column to lists. Keep the column object
+    # dtype: pandas 3.1 infers an Arrow list type from the parsed lists, and
+    # exploding an Arrow list<null> column (every resultset empty) raises
+    # ArrowNotImplementedError.
+    resultset_rows["value"] = pd.Series(
+        [
+            json.loads(x) if isinstance(x, str) and x else []
+            for x in resultset_rows["value"]
+        ],
+        index=resultset_rows.index,
+        dtype=object,
     )
 
     # Explode the value column to create one row per Result

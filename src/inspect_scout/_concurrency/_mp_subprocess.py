@@ -199,12 +199,18 @@ def subprocess_main(
 
     # Define callbacks to send results and metrics back to main process via upstream queue
     async def _record_to_queue(
-        transcript: TranscriptInfo, scanner: str, results: list[ResultReport]
+        transcript: TranscriptInfo,
+        scanner: str,
+        results: list[ResultReport],
+        complete: bool = True,
+        append: bool = False,
     ) -> None:
         # when the bounded queue is full, put() blocks (backpressure when the
         # main process records slower than workers scan), so run it in a
         # thread where only this task waits, not the worker's whole event loop
-        item = _mp_common.ResultItem(transcript, scanner, results)
+        item = _mp_common.ResultItem(
+            transcript, scanner, results, complete=complete, append=append
+        )
         try:
             ipc_ctx.upstream_queue.put_nowait(item)
         except Full:

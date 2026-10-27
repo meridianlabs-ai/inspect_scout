@@ -698,11 +698,15 @@ async def _scan_async_inner(
                             _reports_for_parse_error(job, ex, scanner_names_list),
                         )
 
-                async def _scan_function(job: ScannerJob) -> list[ResultReport]:
-                    return await _scan_one(
+                async def _scan_function(
+                    job: ScannerJob,
+                    report_result: Callable[[ResultReport], Awaitable[None]],
+                ) -> None:
+                    await _scan_one(
                         job,
                         validation=scan.validation,
                         fail_on_error=fail_on_error,
+                        report_result=report_result,
                     )
 
                 prefetch_multiple = 1.0
@@ -822,14 +826,26 @@ async def _scan_async_inner(
                         transcript: TranscriptInfo,
                         scanner: str,
                         results: Sequence[ResultReport],
+                        complete: bool = True,
+                        append: bool = False,
                     ) -> None:
                         metrics = accumulate_metrics(scanner, results)
-                        await recorder.record(transcript, scanner, results, metrics)
-                        scan_display.results(transcript, scanner, results, metrics)
-                        active_store.put_scanner_results(
-                            scan.spec.scan_id, scanner, results
+                        await recorder.record(
+                            transcript,
+                            scanner,
+                            results,
+                            metrics,
+                            complete=complete,
+                            append=append,
                         )
-                        maybe_start_results_sync()
+                        scan_display.results(
+                            transcript, scanner, results, metrics, complete=complete
+                        )
+                        active_store.put_scanner_results(
+                            scan.spec.scan_id, scanner, results, complete=complete
+                        )
+                        if results:
+                            maybe_start_results_sync()
 
                     # the store ignores writes once closed (see _Store); this
                     # guard additionally keeps a late trailing-edge fire away
@@ -1110,6 +1126,7 @@ async def _scan_one(
     *,
     validation: dict[str, ValidationSet] | None = None,
     fail_on_error: bool = False,
+    report_result: Callable[[ResultReport], Awaitable[None]] | None = None,
 ) -> list[ResultReport]:
     """Run a single scanner against a single transcript.
 
@@ -1118,6 +1135,9 @@ async def _scan_one(
     builds a `ResultReport` for each invocation. Captures inspect-side
     events and model usage per call. Errors are turned into Error records
     on the report unless `fail_on_error=True`.
+
+    With `report_result`, each completed item is handed off before advancing
+    the loader and is not retained in the returned list.
 
     A `TranscriptHandle` union transcript is passed straight to a
     handle-capable scanner (no materialization); errors raised lazily during
@@ -1147,6 +1167,12 @@ async def _scan_one(
     init_transcript(inspect_transcript)
 
     results: list[ResultReport] = []
+
+    async def report(result: ResultReport) -> None:
+        if report_result is None:
+            results.append(result)
+        else:
+            await report_result(result)
 
     scanner_config = config_for_scanner(job.scanner)
     loader = scanner_config.loader
@@ -1196,7 +1222,7 @@ async def _scan_one(
             except Exception as ex:  # pylint: disable=W0718
                 if fail_on_error:
                     raise
-                results.append(_stream_error_report(ex))
+                await report(_stream_error_report(ex))
                 return results
             loader_iterations = loader(transcript)
 
@@ -1222,7 +1248,7 @@ async def _scan_one(
             except Exception as ex:  # pylint: disable=W0718
                 if fail_on_error:
                     raise
-                results.append(_stream_error_report(ex))
+                await report(_stream_error_report(ex))
                 break
 
             result: Result | list[Result] | None = None
@@ -1335,7 +1361,7 @@ async def _scan_one(
 
             # always append a result (success or error) if we have type_and_ids
             if type_and_ids is not None:
-                results.append(
+                await report(
                     # all of this data needs to be pickleable (i.e. no async
                     # functions that capture the task group)
                     ResultReport(

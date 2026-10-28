@@ -1,6 +1,7 @@
 """Weave traces: message IDs, model call IDs and the transcript's conversation."""
 
 from datetime import datetime, timedelta
+from typing import Any
 
 import pytest
 from inspect_ai.event import ModelEvent
@@ -28,13 +29,16 @@ def _llm(
     call_id: str,
     parent_id: str,
     second: int,
-    messages: list[dict[str, str]],
+    messages: list[dict[str, Any]],
     reply: str,
 ) -> MockWeaveCall:
     call = create_openai_llm_call(call_id=call_id, trace_id="root", parent_id=parent_id)
     call.inputs = {"model": "gpt-4o-mini", "messages": messages}
     call.output = {
         "id": f"chatcmpl-{call_id}",
+        "object": "chat.completion",
+        "created": 0,
+        "model": "gpt-4o-mini",
         "choices": [
             {
                 "index": 0,
@@ -109,4 +113,42 @@ async def test_conversation_comes_from_root_agent(
 
     assert transcript.messages_from == ["llm-2"]
     assert transcript.messages[-1].text == "Why did..."
+    assert_message_ids_consistent(transcript)
+
+
+@pytest.mark.asyncio
+async def test_tool_call_turn_keeps_its_id_when_sent_back() -> None:
+    tool_calls = [
+        {
+            "id": "call_1",
+            "type": "function",
+            "function": {"name": "get_weather", "arguments": '{"city": "SF"}'},
+        }
+    ]
+    asks = _llm("llm-1", "root", 1, [SYSTEM, HELLO], "")
+    asks.output["choices"][0]["message"] = {
+        "role": "assistant",
+        "content": None,
+        "tool_calls": tool_calls,
+    }
+    asks.output["choices"][0]["finish_reason"] = "tool_calls"
+    answers = _llm(
+        "llm-2",
+        "root",
+        2,
+        [
+            SYSTEM,
+            HELLO,
+            {"role": "assistant", "content": None, "tool_calls": tool_calls},
+            {"role": "tool", "tool_call_id": "call_1", "content": "Foggy"},
+        ],
+        "It's foggy.",
+    )
+
+    transcript = await _transcript(
+        [_at(create_span_call(call_id="root", name="conversation"), 0), asks, answers]
+    )
+
+    llm_2 = [e for e in transcript.events if isinstance(e, ModelEvent)][-1]
+    assert ids(llm_2.input) == ["llm-1-0", "llm-1-1", "llm-1-2", "llm-2-3"]
     assert_message_ids_consistent(transcript)

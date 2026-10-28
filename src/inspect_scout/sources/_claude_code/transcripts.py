@@ -331,7 +331,7 @@ def _merge_transcripts(transcripts: list["Transcript"], slug: str) -> "Transcrip
         error=None,
         limit=None,
         messages=merged_messages,
-        messages_from=messages_from,
+        messages_from=messages_from or None,
         events=merged_events,
         metadata=metadata,
     )
@@ -491,7 +491,7 @@ async def _create_transcript(
         error=None,
         limit=None,
         messages=messages,
-        messages_from=[e.uuid for e in conversation.model_events if e.uuid],
+        messages_from=[e.uuid for e in conversation.model_events if e.uuid] or None,
         events=scout_events,
         metadata=metadata,
     )

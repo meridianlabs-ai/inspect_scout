@@ -14,12 +14,14 @@ def root_agent_calls(
     """Return the model calls made by the trace's root agent.
 
     A call made inside a tool belongs to whatever the tool ran (a sub-agent,
-    or a helper that calls a model), so it is left out. A sub-agent or helper
-    that isn't behind a tool runs in a nested span, so of the remaining calls
-    only those at the smallest depth are kept. Depth counts the spans and
-    tools above a call; a model call span wrapping another (a framework's
-    span around the SDK's) doesn't count, so both stay.
+    or a helper that calls a model), so it is left out. A sub-agent that
+    isn't behind a tool runs in a nested span, so of the remaining calls only
+    those at the smallest depth are kept. A lone call above the agent loop
+    (rewriting the query, a guardrail) is a helper, so the smallest depth
+    with more than one call wins over it.
 
+    Depth counts the spans and tools above a call; a model call span wrapping
+    another (a framework's span around the SDK's) doesn't count, so both stay.
     If every call is inside a tool, the tool rule is dropped.
 
     Args:
@@ -44,8 +46,12 @@ def root_agent_calls(
     def depth(i: int) -> int:
         return sum(1 for a in ancestry[i] if a in tools or a in spans)
 
-    least = min(depth(i) for i in candidates)
-    return [calls[i] for i in candidates if depth(i) == least]
+    by_depth: dict[int, list[ModelEvent]] = {}
+    for i in candidates:
+        by_depth.setdefault(depth(i), []).append(calls[i])
+    depths = sorted(by_depth)
+    loop = next((d for d in depths if len(by_depth[d]) > 1), depths[0])
+    return by_depth[loop]
 
 
 def _ancestors(node: str | None, parents: Mapping[str, str | None]) -> list[str]:

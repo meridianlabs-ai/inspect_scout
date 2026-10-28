@@ -96,5 +96,5 @@ class TraceMessageIds:
 
 
 def _content_hash(message: ChatMessage) -> str:
-    data = message.model_dump(exclude=_UNMATCHED_FIELDS, exclude_none=True)
+    data = message.model_dump(mode="json", exclude=_UNMATCHED_FIELDS, exclude_none=True)
     return mmh3.hash_bytes(json.dumps(data, sort_keys=True).encode()).hex()

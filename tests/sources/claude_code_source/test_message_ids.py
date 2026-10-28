@@ -1,6 +1,8 @@
 """Claude Code imports keep Claude Code's own message and call IDs."""
 
+import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 from inspect_scout import Transcript
@@ -75,3 +77,67 @@ async def test_merged_slug_sessions_record_each_sessions_call(
 
     assert merged.messages_from == ["s1-002", "s2-002"]
     assert_message_ids_consistent(merged)
+
+
+def _lines(name: str) -> list[dict[str, Any]]:
+    return [json.loads(line) for line in (FIXTURES / name).read_text().splitlines()]
+
+
+async def _import_lines(path: Path, lines: list[dict[str, Any]]) -> Transcript:
+    path.parent.mkdir()
+    path.write_text("".join(json.dumps(line) + "\n" for line in lines))
+    [transcript] = [t async for t in claude_code(path=path)]
+    return transcript
+
+
+@pytest.mark.asyncio
+async def test_repeated_tool_call_id_on_one_line_gets_two_ids(tmp_path: Path) -> None:
+    lines = _lines("tool_call_conversation.jsonl")
+    result = lines[2]
+    assert result["uuid"] == "tool-003"
+    result["message"]["content"].append(
+        {**result["message"]["content"][0], "content": "A second result."}
+    )
+
+    transcript = await _import_lines(tmp_path / "session" / "session.jsonl", lines)
+
+    assert ids(transcript.messages) == [
+        "tool-001",
+        "msg_assistant_010",
+        "tool-003",
+        "tool-003-1",
+        "msg_assistant_011",
+    ]
+    assert_message_ids_consistent(transcript)
+
+
+@pytest.mark.asyncio
+async def test_user_line_dropped_by_compaction_lends_no_id(tmp_path: Path) -> None:
+    first, reply = _lines("simple_conversation.jsonl")[:2]
+    boundary = _lines("compaction_session.jsonl")[2]
+    boundary.update(uuid="boundary", parentUuid="msg-001", sessionId=first["sessionId"])
+    again = {**first, "uuid": "after-compact", "parentUuid": "boundary"}
+    reply["parentUuid"] = "after-compact"
+
+    transcript = await _import_lines(
+        tmp_path / "session" / "session.jsonl", [first, boundary, again, reply]
+    )
+
+    assert ids(transcript.messages) == ["after-compact", "msg_assistant_001"]
+    assert_message_ids_consistent(transcript)
+
+
+@pytest.mark.asyncio
+async def test_reply_without_message_id_takes_its_line_uuid(tmp_path: Path) -> None:
+    lines = _lines("simple_conversation.jsonl")
+    for line in lines:
+        if line["type"] == "assistant":
+            del line["message"]["id"]
+
+    first = await _import_lines(tmp_path / "first" / "session.jsonl", lines)
+    second = await _import_lines(tmp_path / "second" / "session.jsonl", lines)
+
+    assert ids(first.messages) == ["msg-001", "msg-002", "msg-003", "msg-004"]
+    assert first.messages_from == ["msg-004"]
+    assert ids(second.messages) == ids(first.messages)
+    assert_message_ids_consistent(first)

@@ -1,9 +1,12 @@
 """Claude Code's own IDs for imported messages and model events."""
 
-from collections import deque
+import json
+from bisect import bisect_left
 from collections.abc import Sequence
+from typing import NamedTuple
 
-from inspect_ai.event import Event, ModelEvent
+import mmh3
+from inspect_ai.event import Event, ModelEvent, SpanBeginEvent, SpanEndEvent
 from inspect_ai.model import ChatMessage, ChatMessageTool, ChatMessageUser
 from inspect_swe._claude_code._events.extraction import extract_user_message
 from inspect_swe._claude_code._events.models import (
@@ -20,80 +23,136 @@ def apply_source_ids(
 
     - A model event's `uuid` is the `uuid` of its assistant line (the last
       line of the response, which is the one later lines' `parentUuid` names).
-    - An assistant message keeps the Anthropic `message.id` it was built with.
-    - A user message, or the first tool result on a line, takes the line's
-      `uuid`; further tool results on the same line add `-1`, `-2`, ....
+    - An assistant message keeps the Anthropic `message.id` it was built with,
+      or takes its line's `uuid` if it has none.
+    - The messages a user line adds (its text, then its tool results) take the
+      line's `uuid`, with `-1`, `-2`, ... added after the first. One that
+      matches no line takes its call's `uuid` plus its position.
 
     Events from nested agents are left alone; they get their IDs when their
     own conversation is loaded.
 
     Args:
-        conversation: The conversation's parsed Claude Code lines.
+        conversation: The conversation's parsed Claude Code lines, as they
+            were converted (assistant fragments already merged).
         events: The events converted from them.
     """
-    call_lines = {
-        line.message.id: line.uuid
-        for line in conversation
-        if isinstance(line, AssistantEvent) and line.message.id
-    }
-    model_events = [
-        event
-        for event in events
-        if isinstance(event, ModelEvent)
-        and event.output.choices
-        and event.output.message.id in call_lines
+    calls = [
+        (index, line)
+        for index, line in enumerate(conversation)
+        if isinstance(line, AssistantEvent)
     ]
-    for event in model_events:
-        event.uuid = call_lines[str(event.output.message.id)]
+    model_events = _own_model_events(events)
+    if len(calls) == len(model_events):
+        pairs = list(zip(model_events, calls, strict=True))
+    else:
+        # The converter makes one model event per assistant line; if that
+        # ever changes, fall back to the lines that name their response.
+        by_message_id = {line.message.id: (i, line) for i, line in calls}
+        pairs = [
+            (event, by_message_id[str(event.output.message.id)])
+            for event in model_events
+            if event.output.choices and event.output.message.id in by_message_id
+        ]
 
-    tool_ids, user_ids = _line_ids(conversation)
-    for message in _distinct_inputs(model_events):
-        if isinstance(message, ChatMessageTool):
-            if message.tool_call_id in tool_ids:
-                message.id = tool_ids[message.tool_call_id]
-        elif isinstance(message, ChatMessageUser) and isinstance(message.content, str):
-            ids = user_ids.get(message.content)
-            if ids:
-                message.id = ids.popleft()
+    sources = _line_messages(conversation)
+    starts = [source.line for source in sources]
+    seen: set[int] = set()
+    for event, (line_index, line) in pairs:
+        event.uuid = line.uuid
+        if event.output.choices and not line.message.id:
+            event.output.message.id = line.uuid
+        _apply_input_ids(event, sources, bisect_left(starts, line_index) - 1, seen)
+        seen.update(id(message) for message in event.input)
+        if event.output.choices:
+            seen.add(id(event.output.message))
 
 
-def _line_ids(
-    conversation: Sequence[BaseEvent],
-) -> tuple[dict[str, str], dict[str, deque[str]]]:
-    """Message IDs by tool call ID, and by user message text, in line order."""
-    tool_ids: dict[str, str] = {}
-    user_ids: dict[str, deque[str]] = {}
-    for line in conversation:
+class _LineMessage(NamedTuple):
+    """A message a user line adds to the conversation."""
+
+    line: int
+    key: str
+    id: str
+
+
+def _line_messages(conversation: Sequence[BaseEvent]) -> list[_LineMessage]:
+    """The messages user lines add, in the order the converter adds them."""
+    messages: list[_LineMessage] = []
+    for index, line in enumerate(conversation):
         if not isinstance(line, UserEvent):
             continue
+        keys: list[str] = []
+        user = extract_user_message(line)
+        if user is not None:
+            keys.append(_user_key(user))
         content = line.message.content
-        results = (
-            [
-                str(block.get("tool_use_id", ""))
+        if isinstance(content, list):
+            keys.extend(
+                _tool_key(str(block.get("tool_use_id", "")))
                 for block in content
                 if isinstance(block, dict) and block.get("type") == "tool_result"
-            ]
-            if isinstance(content, list)
-            else []
+            )
+        messages.extend(
+            _LineMessage(index, key, f"{line.uuid}-{k}" if k else line.uuid)
+            for k, key in enumerate(keys)
         )
-        for index, tool_call_id in enumerate(results):
-            tool_ids[tool_call_id] = f"{line.uuid}-{index}" if index else line.uuid
-        user = extract_user_message(line)
-        if user is not None and isinstance(user.content, str):
-            user_ids.setdefault(user.content, deque()).append(line.uuid)
-    return tool_ids, user_ids
-
-
-def _distinct_inputs(model_events: Sequence[ModelEvent]) -> list[ChatMessage]:
-    """Input messages in order of first appearance.
-
-    The converter shares one message object across every call it appears in.
-    """
-    seen: set[int] = set()
-    messages: list[ChatMessage] = []
-    for event in model_events:
-        for message in event.input:
-            if id(message) not in seen:
-                seen.add(id(message))
-                messages.append(message)
     return messages
+
+
+def _apply_input_ids(
+    event: ModelEvent, sources: list[_LineMessage], last: int, seen: set[int]
+) -> None:
+    """Match the messages new in a call's input to the lines before the call.
+
+    The input grows by appending (or restarts after a compaction), so its new
+    messages are a suffix, and each matches the nearest earlier line message
+    with the same key. Matching from the end keeps repeated keys (the same
+    text sent twice, a reused tool call ID) in order, and skips lines whose
+    messages were dropped before any call.
+    """
+    position = len(event.input)
+    for message in reversed(event.input):
+        if id(message) in seen:
+            break
+        position -= 1
+        key = _message_key(message)
+        if key is None:
+            continue
+        match = next((s for s in range(last, -1, -1) if sources[s].key == key), None)
+        if match is not None:
+            message.id = sources[match].id
+            last = match - 1
+        else:
+            message.id = f"{event.uuid}-{position}"
+
+
+def _message_key(message: ChatMessage) -> str | None:
+    if isinstance(message, ChatMessageTool):
+        return _tool_key(str(message.tool_call_id))
+    if isinstance(message, ChatMessageUser):
+        return _user_key(message)
+    return None
+
+
+def _tool_key(tool_call_id: str) -> str:
+    return f"tool:{tool_call_id}"
+
+
+def _user_key(message: ChatMessageUser) -> str:
+    data = message.model_dump(mode="json", exclude={"id"}, exclude_none=True)
+    return "user:" + mmh3.hash_bytes(json.dumps(data, sort_keys=True).encode()).hex()
+
+
+def _own_model_events(events: Sequence[Event]) -> list[ModelEvent]:
+    """Model events outside the spans of nested tools and agents."""
+    own: list[ModelEvent] = []
+    depth = 0
+    for event in events:
+        if isinstance(event, SpanBeginEvent):
+            depth += 1
+        elif isinstance(event, SpanEndEvent):
+            depth -= 1
+        elif depth == 0 and isinstance(event, ModelEvent):
+            own.append(event)
+    return own

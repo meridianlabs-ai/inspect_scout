@@ -1179,3 +1179,24 @@ async def test_multi_file_clear_limit_includes_standalones(
     assert len(transcripts) == 2
     assert transcripts[0].task_id == "multi-clear-slug"  # merged primary
     assert transcripts[1].source_id == "session-mc2"  # first chronological standalone
+
+
+@pytest.mark.asyncio
+async def test_subagent_calls_get_ids_from_their_own_lines(
+    streaming_events_with_subagent: list[dict[str, Any]],
+) -> None:
+    from inspect_ai.event import ModelEvent
+    from inspect_scout.sources._claude_code.events import claude_code_events
+
+    from tests.sources.message_id_checks import ids
+
+    events = [e async for e in claude_code_events(streaming_events_with_subagent)]
+
+    subagent = {
+        e.uuid: e
+        for e in events
+        if isinstance(e, ModelEvent) and e.uuid in ("sub-002", "sub-004")
+    }
+    assert ids(subagent["sub-002"].input) == ["sub-001"]
+    assert ids(subagent["sub-004"].input) == ["sub-001", "msg_sub_001", "sub-003"]
+    assert subagent["sub-004"].output.message.id == "msg_sub_002"

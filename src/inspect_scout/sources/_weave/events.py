@@ -142,6 +142,7 @@ async def to_model_event(call: Any) -> ModelEvent:
         timestamp=_get_timestamp(call, "started_at"),
         completed=_get_timestamp(call, "ended_at"),
         span_id=str(getattr(call, "parent_id", None) or ""),
+        uuid=str(call.id) if getattr(call, "id", None) else None,
     )
 
 
@@ -271,6 +272,13 @@ def _extract_call_metadata(call: Any) -> dict[str, Any] | None:
         metadata.update(attrs)
 
     return metadata if metadata else None
+
+
+def tool_call_ids(calls: list[Any]) -> set[str]:
+    """IDs of the calls that `calls_to_events()` makes tool events of."""
+    return {
+        str(call.id) for call in calls if not _is_llm_call(call) and _is_tool_call(call)
+    }
 
 
 async def calls_to_events(calls: list[Any]) -> list[Event]:

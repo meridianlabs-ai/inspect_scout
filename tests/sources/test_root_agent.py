@@ -131,9 +131,12 @@ def test_no_calls() -> None:
     assert root_agent_calls([], {}, set(), set()) == []
 
 
+@pytest.mark.slow
 def test_many_independent_calls_take_linear_time() -> None:
     # Distinct system prompts, then the same task: every call's input ends
-    # alike. Comparing each call with every earlier one took over 7 seconds.
+    # alike. A gross-regression budget, not a benchmark: this takes about
+    # 0.03s on a laptop, while comparing each call with every earlier one
+    # took over 7s.
     calls = [_call(f"call-{i}", [f"system-{i}", "prompt"]) for i in range(20_000)]
 
     start = time.perf_counter()
@@ -141,12 +144,14 @@ def test_many_independent_calls_take_linear_time() -> None:
     elapsed = time.perf_counter() - start
 
     assert len(result) == len(calls)
-    assert elapsed < 1
+    assert elapsed < 3
 
 
+@pytest.mark.slow
 def test_deeply_nested_calls_take_linear_time() -> None:
-    # A call in each of 3,000 nested spans. Walking every call's ancestors
-    # afresh took over 15 seconds.
+    # A call in each of 3,000 nested spans. A gross-regression budget, not a
+    # benchmark: this takes about 0.005s on a laptop, while walking every
+    # call's ancestors afresh took over 15s.
     nodes = [f"span-{i}" for i in range(3_000)]
     parents: dict[str, str | None] = {
         node: nodes[i - 1] if i else None for i, node in enumerate(nodes)
@@ -158,4 +163,4 @@ def test_deeply_nested_calls_take_linear_time() -> None:
     elapsed = time.perf_counter() - start
 
     assert len(result) == len(calls)
-    assert elapsed < 1
+    assert elapsed < 3

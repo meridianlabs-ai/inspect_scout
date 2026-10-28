@@ -553,7 +553,7 @@ class SpanConversation:
     """Merged message list, as returned by `span_messages()`."""
 
     model_events: list[ModelEvent]
-    """The model events whose input and output make up `messages`, in order."""
+    """The model events whose input and output `messages` is taken from, in order."""
 
 
 def span_conversation(

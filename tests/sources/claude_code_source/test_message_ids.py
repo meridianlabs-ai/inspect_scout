@@ -5,8 +5,12 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from inspect_ai.event import Event, ModelEvent
 from inspect_scout import Transcript
 from inspect_scout.sources import claude_code
+from inspect_scout.sources._claude_code.events import process_parsed_events
+from inspect_scout.sources._claude_code.message_ids import apply_source_ids
+from inspect_swe._claude_code._events.models import parse_events
 
 from tests.sources.message_id_checks import assert_message_ids_consistent, ids
 
@@ -180,3 +184,14 @@ async def test_response_split_by_another_line_gets_distinct_ids(
     ]
     assert transcript.messages[3].metadata == {"derived_from": ["msg_assistant_010"]}
     assert_message_ids_consistent(transcript)
+
+
+@pytest.mark.asyncio
+async def test_unpaired_model_events_are_an_error() -> None:
+    lines = parse_events(_lines("simple_conversation.jsonl"))
+    events: list[Event] = [e async for e in process_parsed_events(lines)]
+    first_call = next(i for i, e in enumerate(events) if isinstance(e, ModelEvent))
+    del events[first_call]
+
+    with pytest.raises(RuntimeError, match="1 model events from 2 assistant lines"):
+        apply_source_ids(lines, events)

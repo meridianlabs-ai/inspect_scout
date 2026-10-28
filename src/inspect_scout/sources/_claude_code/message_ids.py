@@ -39,6 +39,10 @@ def apply_source_ids(
         conversation: The conversation's parsed Claude Code lines, as they
             were converted (assistant fragments already merged).
         events: The events converted from them.
+
+    Raises:
+        RuntimeError: If the conversion didn't make one model event per
+            assistant line, so events can't be paired with their lines.
     """
     calls = [
         (index, line)
@@ -46,17 +50,15 @@ def apply_source_ids(
         if isinstance(line, AssistantEvent)
     ]
     model_events = _own_model_events(events)
-    if len(calls) == len(model_events):
-        pairs = list(zip(model_events, calls, strict=True))
-    else:
-        # The converter makes one model event per assistant line; if that
-        # ever changes, fall back to the lines that name their response.
-        by_message_id = {line.message.id: (i, line) for i, line in calls}
-        pairs = [
-            (event, by_message_id[str(event.output.message.id)])
-            for event in model_events
-            if event.output.choices and event.output.message.id in by_message_id
-        ]
+    if len(calls) != len(model_events):
+        # inspect_swe's converter makes exactly one model event per (merged)
+        # assistant line; pairing by position depends on it.
+        raise RuntimeError(
+            f"Claude Code session {_session_id(conversation)}: conversion made "
+            f"{len(model_events)} model events from {len(calls)} assistant "
+            "lines, so model events can't be matched to their lines."
+        )
+    pairs = list(zip(model_events, calls, strict=True))
 
     sources = _line_messages(conversation)
     starts = [source.line for source in sources]
@@ -70,6 +72,10 @@ def apply_source_ids(
         seen.update(id(message) for message in event.input)
         if event.output.choices:
             seen.add(id(event.output.message))
+
+
+def _session_id(conversation: Sequence[BaseEvent]) -> str | None:
+    return conversation[0].sessionId if conversation else None
 
 
 class _ReplyIds:

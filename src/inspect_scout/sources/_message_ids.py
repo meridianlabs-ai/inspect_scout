@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 import mmh3
 from inspect_ai.event import ModelEvent
-from inspect_ai.model import ChatMessage, ModelOutput
+from inspect_ai.model import ChatMessage
 
 # Fields that can differ between a model's output message and the copy of it
 # sent back as input on the next call.
@@ -43,6 +43,12 @@ class TraceMessageIds:
                 passes in. When False, every message gets an assigned ID.
         """
         self._source_ids = source_ids
+        # Each `_Message` is one message and holds every copy of it, so
+        # renaming it relabels them all. The indexes hold `_Message` objects,
+        # so they stay valid through a rename: `_first_positions` is a prefix
+        # tree of content hashes; `_by_content` lists messages per content
+        # hash; `_by_id` maps current IDs to messages; `_by_source` maps
+        # (source ID, content hash) to the message the source ID names there.
         self._first_positions: dict[str, _Position] = {}
         self._by_content: dict[str, list[_Message]] = {}
         self._by_id: dict[str, _Message] = {}
@@ -56,12 +62,7 @@ class TraceMessageIds:
             event: The model call.
             call_id: The source's ID for the call (e.g. span or run ID).
         """
-        output = event.output
-        reply = (
-            output.message
-            if isinstance(output, ModelOutput) and output.choices
-            else None
-        )
+        reply = event.output.message if event.output.choices else None
         self._apply(event.input, call_id, reply)
 
     def apply_messages(self, messages: Sequence[ChatMessage], call_id: str) -> None:
@@ -84,11 +85,15 @@ class TraceMessageIds:
         positions = self._first_positions
         for index, message in enumerate(messages):
             positions = self._place(
-                message, f"{call_id}-{index}", positions, conversation, True
+                message, f"{call_id}-{index}", positions, conversation, is_input=True
             )
         if reply is not None:
             self._place(
-                reply, f"{call_id}-{len(messages)}", positions, conversation, False
+                reply,
+                f"{call_id}-{len(messages)}",
+                positions,
+                conversation,
+                is_input=False,
             )
 
     def _place(
@@ -97,6 +102,7 @@ class TraceMessageIds:
         first_id: str,
         positions: dict[str, "_Position"],
         conversation: "_Conversation",
+        *,
         is_input: bool,
     ) -> dict[str, "_Position"]:
         """Identify one message; return the positions that can follow it."""

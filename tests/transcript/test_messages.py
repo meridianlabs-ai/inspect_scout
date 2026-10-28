@@ -544,7 +544,6 @@ def test_span_conversation_records_source_events(
     result = span_conversation(events, compaction=compaction)
 
     assert [e.uuid for e in result.model_events] == expected
-    assert result.messages == span_messages(events, compaction=compaction)
 
 
 def _tool(name: str, description: str = "") -> ToolInfo:

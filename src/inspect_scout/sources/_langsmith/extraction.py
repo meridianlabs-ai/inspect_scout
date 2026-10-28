@@ -235,6 +235,72 @@ def _is_langchain_serialized(messages: Any) -> bool:
     return False
 
 
+_LANGCHAIN_ROLES = {
+    "system": "system",
+    "human": "user",
+    "ai": "assistant",
+    "tool": "tool",
+}
+
+
+def apply_langchain_message_ids(
+    messages: list[ChatMessage], inputs: Any, output: ModelOutput, outputs: Any
+) -> None:
+    """Set each message's ID to its LangChain message ID, or None if it has none.
+
+    LangChain-serialized messages carry their own ID in `kwargs.id` (the AI
+    message's is the one it was given as output). An input message gets it
+    only when the serialized messages and the converted ones line up one to
+    one by role; conversion can merge or split messages.
+
+    Args:
+        messages: Converted input messages.
+        inputs: The run's raw inputs.
+        output: Converted output.
+        outputs: The run's raw outputs.
+    """
+    raw = inputs.get("messages") if isinstance(inputs, dict) else None
+    serialized = _langchain_messages(raw)
+    aligned = len(serialized) == len(messages) and all(
+        _LANGCHAIN_ROLES.get(str(kwargs.get("type"))) == message.role
+        for kwargs, message in zip(serialized, messages, strict=True)
+    )
+    for i, message in enumerate(messages):
+        message.id = _langchain_id(serialized[i]) if aligned else None
+
+    if output.choices:
+        generations = outputs.get("generations") if isinstance(outputs, dict) else None
+        generated = (
+            _langchain_messages(
+                [[g.get("message") for g in generations[0] if isinstance(g, dict)]]
+            )
+            if isinstance(generations, list)
+            and generations
+            and isinstance(generations[0], list)
+            else []
+        )
+        output.message.id = _langchain_id(generated[0]) if generated else None
+
+
+def _langchain_messages(messages: Any) -> list[dict[str, Any]]:
+    """`kwargs` of each LangChain-serialized message; empty if any isn't one."""
+    if not isinstance(messages, list):
+        return []
+    if messages and isinstance(messages[0], list):
+        messages = messages[0]
+    serialized = [
+        m["kwargs"]
+        for m in messages
+        if isinstance(m, dict) and "lc" in m and isinstance(m.get("kwargs"), dict)
+    ]
+    return serialized if len(serialized) == len(messages) else []
+
+
+def _langchain_id(kwargs: dict[str, Any]) -> str | None:
+    message_id = kwargs.get("id")
+    return str(message_id) if message_id else None
+
+
 def _convert_langchain_messages(
     messages: list[Any], for_anthropic: bool = False
 ) -> list[dict[str, Any]]:

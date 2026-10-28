@@ -279,6 +279,7 @@ def filter_transcript(transcript: Transcript, content: TranscriptContent) -> Tra
         error=transcript.error,
         limit=transcript.limit,
         trust_content=transcript.trust_content,
+        messages_from=transcript.messages_from,
         metadata=transcript.metadata,
         messages=filter_list(transcript.messages, content.messages),
         events=filter_list(transcript.events, content.events),

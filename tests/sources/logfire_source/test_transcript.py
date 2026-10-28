@@ -73,7 +73,12 @@ async def test_ids_come_from_each_messages_first_span() -> None:
     assert_message_ids_consistent(transcript)
 
 
-LONG = [SYSTEM, HELLO, HI, JOKE, HI, JOKE, HI, JOKE]
+# A sub-agent's own conversation, longer than the root agent's.
+LONG = [
+    {"role": "system", "content": "You are a researcher."},
+    *[JOKE, HI] * 3,
+    JOKE,
+]
 
 
 @pytest.mark.asyncio

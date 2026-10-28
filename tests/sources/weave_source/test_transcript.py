@@ -11,6 +11,7 @@ from inspect_scout.sources._weave import _trace_to_transcript
 from tests.sources.message_id_checks import assert_message_ids_consistent, ids
 from tests.sources.weave_source.mocks import (
     MockWeaveCall,
+    create_anthropic_llm_call,
     create_openai_llm_call,
     create_span_call,
     create_tool_call,
@@ -113,6 +114,108 @@ async def test_conversation_comes_from_root_agent(
 
     assert transcript.messages_from == ["llm-2"]
     assert transcript.messages[-1].text == "Why did..."
+    assert_message_ids_consistent(transcript)
+
+
+def _span(call_id: str, parent_id: str | None, second: int) -> MockWeaveCall:
+    return _at(
+        create_span_call(call_id=call_id, parent_id=parent_id, name="op"), second
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "calls,expected_call,expected_reply",
+    [
+        pytest.param(
+            [
+                _span("root", None, 0),
+                _llm("first", "root", 1, [SYSTEM, HELLO], HI["content"]),
+                _span("helper", "root", 2),
+                _llm("final", "helper", 3, [SYSTEM, HELLO, HI, JOKE], "final answer"),
+            ],
+            "final",
+            "final answer",
+            id="later_turn_through_a_helper_op",
+        ),
+        pytest.param(
+            [
+                _span("root", None, 0),
+                _llm("helper-framework", "root", 1, [HELLO], "rewritten"),
+                _llm("helper-sdk", "helper-framework", 2, [HELLO], "rewritten"),
+                _span("chain", "root", 3),
+                _llm("agent-1", "chain", 4, [SYSTEM, JOKE], HI["content"]),
+                _llm("agent-2", "chain", 5, [SYSTEM, JOKE, HI, JOKE], "actual final"),
+            ],
+            "agent-2",
+            "actual final",
+            id="helper_recorded_twice_above_the_agent_loop",
+        ),
+        pytest.param(
+            [
+                _span("root", None, 0),
+                _span("sub", "root", 1),
+                _llm("sub-1", "sub", 2, [JOKE], HI["content"]),
+                _llm("sub-2", "sub", 3, [JOKE, HI, JOKE], "sub2"),
+                _llm("final", "root", 4, [SYSTEM, HELLO], "root answer"),
+            ],
+            "final",
+            "root answer",
+            id="single_root_call_after_a_nested_sub_agent",
+        ),
+    ],
+)
+async def test_root_agent_conversation_in_ambiguous_traces(
+    calls: list[MockWeaveCall], expected_call: str, expected_reply: str
+) -> None:
+    transcript = await _transcript(calls)
+
+    assert transcript.messages_from == [expected_call]
+    assert transcript.messages[-1].text == expected_reply
+    assert_message_ids_consistent(transcript)
+
+
+@pytest.mark.asyncio
+async def test_equal_replies_to_separate_calls_are_different_messages() -> None:
+    transcript = await _transcript(
+        [
+            _span("root", None, 0),
+            _llm("a", "root", 1, [HELLO], "same reply"),
+            _llm("b", "root", 2, [HELLO], "same reply"),
+        ]
+    )
+
+    a, b = [e for e in transcript.events if isinstance(e, ModelEvent)]
+    assert ids(a.input) == ids(b.input) == ["a-0"]
+    assert (a.output.message.id, b.output.message.id) == ("a-1", "b-1")
+
+
+@pytest.mark.asyncio
+async def test_reply_sent_back_keeps_the_id_of_the_call_it_came_from() -> None:
+    transcript = await _transcript(
+        [
+            _span("root", None, 0),
+            _llm("a", "root", 1, [HELLO], HI["content"]),
+            _llm("b", "root", 2, [HELLO], HI["content"]),
+            _llm("c", "root", 3, [HELLO, HI, JOKE], "Why did..."),
+        ]
+    )
+
+    c = [e for e in transcript.events if isinstance(e, ModelEvent)][-1]
+    assert ids(c.input) == ["a-0", "b-1", "c-2"]
+
+
+@pytest.mark.asyncio
+async def test_anthropic_reply_keeps_its_message_id() -> None:
+    call = create_anthropic_llm_call(call_id="llm-1", trace_id="root", parent_id="root")
+    assert isinstance(call.output, dict)
+    call.output["model"] = "claude-3-haiku-20240307"
+
+    transcript = await _transcript([_span("root", None, 0), _at(call, 1)])
+
+    event = next(e for e in transcript.events if isinstance(e, ModelEvent))
+    assert event.output.message.id == "msg_123"
+    assert ids(transcript.messages)[-1] == "msg_123"
     assert_message_ids_consistent(transcript)
 
 

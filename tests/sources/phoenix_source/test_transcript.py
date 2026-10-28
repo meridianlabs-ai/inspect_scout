@@ -18,7 +18,12 @@ SYSTEM = {"role": "system", "content": "You are a helpful assistant."}
 HELLO = {"role": "user", "content": "Hello!"}
 HI = {"role": "assistant", "content": "Hi! How can I help?"}
 JOKE = {"role": "user", "content": "Tell me a joke."}
-LONG = [SYSTEM, HELLO, HI, JOKE, HI, JOKE, HI, JOKE]
+# A sub-agent's own conversation, longer than the root agent's.
+LONG = [
+    {"role": "system", "content": "You are a researcher."},
+    *[JOKE, HI] * 3,
+    JOKE,
+]
 
 
 def _time(second: int) -> str:

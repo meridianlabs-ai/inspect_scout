@@ -11,6 +11,7 @@ from inspect_scout.sources._langsmith import _trace_to_transcript
 
 from tests.sources.langsmith_source.mocks import (
     MockRun,
+    create_anthropic_llm_run,
     create_chain_run,
     create_openai_llm_run,
     create_tool_run,
@@ -145,6 +146,72 @@ async def test_langchain_message_ids_are_kept() -> None:
         "llm-2-2",
         "run-llm-2-0",
     ]
+    assert_message_ids_consistent(transcript)
+
+
+@pytest.mark.asyncio
+async def test_langchain_id_seen_later_names_earlier_copies() -> None:
+    runs = [
+        _at(create_chain_run(run_id="root"), 0),
+        _llm("a", "root", 1, [HELLO], "reply1"),
+        _langchain_llm(
+            "b",
+            2,
+            [
+                _langchain("human", "Hello!", None),
+                _langchain("ai", "reply1", "reply-a-id"),
+                _langchain("human", "And?", None),
+            ],
+            "reply-b-id",
+        ),
+        _llm(
+            "c",
+            "root",
+            3,
+            [HELLO, {"role": "assistant", "content": "reply1"}, JOKE],
+            "Why did...",
+        ),
+    ]
+
+    transcript = await _transcript(runs)
+
+    a, b, c = [e for e in transcript.events if isinstance(e, ModelEvent)]
+    assert a.output.message.id == "reply-a-id"
+    assert ids(b.input) == ["a-0", "reply-a-id", "b-2"]
+    assert ids(c.input) == ["a-0", "reply-a-id", "c-2"]
+    assert_message_ids_consistent(transcript)
+
+
+@pytest.mark.asyncio
+async def test_langchain_id_equal_to_a_positional_id_names_only_its_message() -> None:
+    runs = [
+        _at(create_chain_run(run_id="root"), 0),
+        _llm("a", "root", 1, [HELLO], "reply1"),
+        _langchain_llm(
+            "b", 2, [_langchain("human", "different content", "a-0")], "reply-b-id"
+        ),
+    ]
+
+    transcript = await _transcript(runs)
+
+    a, b = [e for e in transcript.events if isinstance(e, ModelEvent)]
+    assert ids(b.input) == ["a-0"]
+    assert ids(a.input) == ["a-0.1"]
+    assert_message_ids_consistent(transcript)
+
+
+@pytest.mark.asyncio
+async def test_anthropic_reply_keeps_its_message_id() -> None:
+    run = create_anthropic_llm_run(run_id="llm-1", parent_run_id="root")
+    assert run.outputs is not None
+    run.outputs.update(
+        id="msg_123", type="message", role="assistant", model="claude-3-5-haiku-latest"
+    )
+
+    transcript = await _transcript([_at(create_chain_run(run_id="root"), 0), run])
+
+    event = next(e for e in transcript.events if isinstance(e, ModelEvent))
+    assert event.output.message.id == "msg_123"
     assert_message_ids_consistent(transcript)
 
 

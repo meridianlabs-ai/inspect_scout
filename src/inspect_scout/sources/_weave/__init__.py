@@ -207,7 +207,7 @@ async def _trace_to_transcript(
     llm_calls = get_llm_calls(ordered_calls)
 
     model_events = [e for e in events if isinstance(e, ModelEvent)]
-    message_ids = TraceMessageIds()
+    message_ids = TraceMessageIds(source_ids=True)
     for event in model_events:
         message_ids.apply(event, str(event.uuid))
 
@@ -251,7 +251,9 @@ async def _trace_to_transcript(
                             messages.append(ChatMessageSystem(content=str(content)))
                         elif role == "assistant":
                             messages.append(ChatMessageAssistant(content=str(content)))
-            message_ids.apply_messages(messages, str(getattr(root_call, "id", "")))
+            TraceMessageIds().apply_messages(
+                messages, str(getattr(root_call, "id", ""))
+            )
 
     # Extract metadata from root call
     metadata = extract_metadata(root_call)

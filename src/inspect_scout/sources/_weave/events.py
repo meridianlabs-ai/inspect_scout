@@ -114,6 +114,12 @@ async def to_model_event(call: Any) -> ModelEvent:
     # Extract output
     output_data = getattr(call, "output", None)
     output = await extract_output(output_data, call, format_type)
+    # Of the providers' responses only Anthropic's is a message with its own
+    # ID; every other message the converters build has a random one.
+    for message in input_messages:
+        message.id = None
+    if output.choices:
+        output.message.id = output.response_id if format_type == "anthropic" else None
 
     # Extract model name
     model_name = get_model_name(call)

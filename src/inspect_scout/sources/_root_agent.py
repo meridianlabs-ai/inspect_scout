@@ -1,6 +1,8 @@
 """Which of a trace's model calls belong to its root agent."""
 
 from collections.abc import Mapping, Sequence, Set
+from dataclasses import dataclass, field
+from typing import NamedTuple
 
 from inspect_ai.event import ModelEvent
 
@@ -36,68 +38,120 @@ def root_agent_calls(
     Returns:
         The calls, in their original order.
     """
-    ancestry = [_ancestors(call.uuid, parents) for call in calls]
-    candidates = [
-        i
-        for i, ancestors in enumerate(ancestry)
-        if not any(a in tools for a in ancestors)
-    ] or list(range(len(calls)))
+    ancestry = _Ancestry(parents, tools, spans)
+    above = [ancestry.above(call.uuid) for call in calls]
+    candidates = [i for i, (in_tool, _) in enumerate(above) if not in_tool] or list(
+        range(len(calls))
+    )
     if not candidates:
         return []
 
-    depths = {
-        i: sum(1 for a in ancestry[i] if a in tools or a in spans) for i in candidates
-    }
-    shallowest = min(depths.values())
+    shallowest = min(above[i].depth for i in candidates)
     top = [
         conversation
         for conversation in _conversations(calls, candidates)
-        if any(depths[i] == shallowest for i in conversation)
+        if any(above[i].depth == shallowest for i in conversation.calls)
     ]
-    if len(top) == 1 and _turns(calls, top[0]) > 1:
-        return [calls[i] for i in top[0]]
+    if len(top) == 1 and top[0].turns > 1:
+        return [calls[i] for i in top[0].calls]
     return [calls[i] for i in candidates]
 
 
-def _conversations(calls: Sequence[ModelEvent], indexes: list[int]) -> list[list[int]]:
-    """Group calls into conversations, each continuing an earlier call's input."""
-    conversations: list[list[int]] = []
-    inputs: list[list[str | None]] = []
-    # Conversations by their latest input's length and last message ID; a
-    # match is confirmed by comparing the whole prefix.
-    by_end: dict[tuple[int, str | None], list[int]] = {}
+@dataclass
+class _Conversation:
+    calls: list[int] = field(default_factory=list)
+    turns: int = 0
+    latest: "_Prefix | None" = None
+
+
+@dataclass(eq=False)
+class _Prefix:
+    """A sequence of input message IDs, as a node of a prefix tree.
+
+    `conversation` is the conversation whose latest input it is, if any.
+    """
+
+    next: dict[str | None, "_Prefix"] = field(default_factory=dict)
+    conversation: _Conversation | None = None
+
+
+def _conversations(
+    calls: Sequence[ModelEvent], indexes: list[int]
+) -> list[_Conversation]:
+    """Group calls into conversations, each continuing an earlier call's input.
+
+    A call continues the conversation whose latest input is the longest
+    prefix of its own input. Inputs are indexed in a prefix tree, so grouping
+    takes time linear in the total input length.
+    """
+    conversations: list[_Conversation] = []
+    root = _Prefix()
     for i in indexes:
-        ids = [message.id for message in calls[i].input]
-        continued = next(
-            (
-                c
-                for k in range(len(ids), 0, -1)
-                for c in reversed(by_end.get((k, ids[k - 1]), []))
-                if inputs[c] == ids[:k]
-            ),
-            None,
-        )
-        if continued is None:
-            continued = len(conversations)
-            conversations.append([])
-            inputs.append([])
-        elif inputs[continued] != ids:
-            by_end[(len(inputs[continued]), inputs[continued][-1])].remove(continued)
-        conversations[continued].append(i)
-        if ids and inputs[continued] != ids:
-            inputs[continued] = ids
-            by_end.setdefault((len(ids), ids[-1]), []).append(continued)
+        prefix = root
+        continued: _Conversation | None = None
+        for message in calls[i].input:
+            prefix = prefix.next.setdefault(message.id, _Prefix())
+            continued = prefix.conversation or continued
+        if continued is None or not calls[i].input:
+            continued = _Conversation()
+            conversations.append(continued)
+        continued.calls.append(i)
+        if continued.latest is not prefix:
+            continued.turns += 1
+            if continued.latest and continued.latest.conversation is continued:
+                continued.latest.conversation = None
+            if calls[i].input:
+                continued.latest = prefix
+                prefix.conversation = continued
     return conversations
 
 
-def _turns(calls: Sequence[ModelEvent], conversation: list[int]) -> int:
-    return len({tuple(message.id for message in calls[i].input) for i in conversation})
+class _Above(NamedTuple):
+    """Whether a tool is above a node, and how many spans and tools are."""
+
+    in_tool: bool
+    depth: int
 
 
-def _ancestors(node: str | None, parents: Mapping[str, str | None]) -> list[str]:
-    ancestors: list[str] = []
-    parent = parents.get(node) if node else None
-    while parent and parent not in ancestors and parent != node:
-        ancestors.append(parent)
-        parent = parents.get(parent)
-    return ancestors
+class _Ancestry:
+    """`_Above` for nodes of one trace, cached as ancestors are walked."""
+
+    def __init__(
+        self, parents: Mapping[str, str | None], tools: Set[str], spans: Set[str]
+    ) -> None:
+        self._parents = parents
+        self._tools = tools
+        self._spans = spans
+        self._above: dict[str, _Above] = {}
+
+    def above(self, node: str | None) -> _Above:
+        if not node:
+            return _Above(False, 0)
+        if node in self._above:
+            return self._above[node]
+        path: list[str] = []
+        on_path = {node}
+        parent = self._parents.get(node)
+        while parent and parent not in on_path and parent not in self._above:
+            path.append(parent)
+            on_path.add(parent)
+            parent = self._parents.get(parent)
+        cycle = bool(parent) and parent in on_path
+        above = (
+            self._including(parent, self._above[parent])
+            if parent and not cycle
+            else _Above(False, 0)
+        )
+        for ancestor in reversed(path):
+            if not cycle:
+                self._above[ancestor] = above
+            above = self._including(ancestor, above)
+        return above
+
+    def _including(self, node: str, above: _Above) -> _Above:
+        """`above` for a node's child: the node's own `above`, plus the node."""
+        in_tool = node in self._tools
+        return _Above(
+            above.in_tool or in_tool,
+            above.depth + (1 if in_tool or node in self._spans else 0),
+        )

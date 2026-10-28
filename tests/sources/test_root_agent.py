@@ -1,5 +1,6 @@
 """Which of a trace's model calls belong to its root agent."""
 
+import time
 from datetime import datetime
 
 import pytest
@@ -128,3 +129,33 @@ def test_root_agent_calls(
 
 def test_no_calls() -> None:
     assert root_agent_calls([], {}, set(), set()) == []
+
+
+def test_many_independent_calls_take_linear_time() -> None:
+    # Distinct system prompts, then the same task: every call's input ends
+    # alike. Comparing each call with every earlier one took over 7 seconds.
+    calls = [_call(f"call-{i}", [f"system-{i}", "prompt"]) for i in range(20_000)]
+
+    start = time.perf_counter()
+    result = root_agent_calls(calls, {}, set(), set())
+    elapsed = time.perf_counter() - start
+
+    assert len(result) == len(calls)
+    assert elapsed < 1
+
+
+def test_deeply_nested_calls_take_linear_time() -> None:
+    # A call in each of 3,000 nested spans. Walking every call's ancestors
+    # afresh took over 15 seconds.
+    nodes = [f"span-{i}" for i in range(3_000)]
+    parents: dict[str, str | None] = {
+        node: nodes[i - 1] if i else None for i, node in enumerate(nodes)
+    }
+    calls = [_call(node, []) for node in nodes]
+
+    start = time.perf_counter()
+    result = root_agent_calls(calls, parents, set(), set(nodes))
+    elapsed = time.perf_counter() - start
+
+    assert len(result) == len(calls)
+    assert elapsed < 1

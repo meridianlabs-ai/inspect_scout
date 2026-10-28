@@ -174,14 +174,16 @@ async def test_response_split_by_another_line_gets_distinct_ids(
         [prompt, first, between, second, result, final],
     )
 
-    assert ids(transcript.messages) == [
+    message_ids = ids(transcript.messages)
+    split = message_ids.pop(3)
+    assert message_ids == [
         "tool-001",
         "msg_assistant_010",
         "between",
-        "msg_assistant_010.1",
         "tool-003",
         "msg_assistant_011",
     ]
+    assert split is not None and split.startswith("msg_assistant_010.")
     assert transcript.messages[3].metadata == transcript.messages[1].metadata
     assert_message_ids_consistent(transcript)
 

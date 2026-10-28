@@ -15,6 +15,8 @@ from inspect_swe._claude_code._events.models import (
     UserEvent,
 )
 
+from .._message_ids import edit_id
+
 
 def apply_source_ids(
     conversation: Sequence[BaseEvent], events: Sequence[Event]
@@ -26,7 +28,7 @@ def apply_source_ids(
     - An assistant message keeps the Anthropic `message.id` it was built with,
       or takes its line's `uuid` if it has none. Fragments of one response
       split apart by other lines become separate replies with the same
-      `message.id`; each later one takes it plus `.1`, `.2`, ....
+      `message.id`; each later one takes `edit_id(message.id, content)`.
     - The messages a user line adds (its text, then its tool results) take the
       line's `uuid`, with `-1`, `-2`, ... added after the first. One that
       matches no line takes its call's `uuid` plus its position.
@@ -81,16 +83,12 @@ class _ReplyIds:
     """Reply IDs, kept distinct for different replies sharing a source ID."""
 
     def __init__(self) -> None:
-        self._ids: dict[tuple[str, str], str] = {}
-        self._counts: dict[str, int] = {}
+        self._first: dict[str, str] = {}
 
     def apply(self, reply: ChatMessage, source_id: str) -> None:
-        key = (source_id, _content_key(reply))
-        if key not in self._ids:
-            count = self._counts.get(source_id, 0)
-            self._counts[source_id] = count + 1
-            self._ids[key] = f"{source_id}.{count}" if count else source_id
-        reply.id = self._ids[key]
+        content = _content_key(reply)
+        first = self._first.setdefault(source_id, content)
+        reply.id = source_id if content == first else edit_id(source_id, content)
 
 
 class _LineMessage(NamedTuple):

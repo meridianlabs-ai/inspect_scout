@@ -23,8 +23,8 @@ class TraceMessageIds:
     - A message with an ID from the source keeps it (when `source_ids` is True,
       a non-None `id` is taken to be one; the importer sets the rest to None).
       Copies already given another ID take it too. If the source gives one ID
-      to different contents (an edited copy), each later content takes the
-      ID plus a suffix.
+      to different contents (an edited copy), each later content takes
+      `edit_id(source ID, content)`.
     - A model's output is a new message.
     - An input message is the one at the same position in an earlier call
       that sent the same messages before it. Failing that, it is an earlier
@@ -140,8 +140,7 @@ class TraceMessageIds:
         holder = self._by_id.get(source_id)
         if holder is not None and holder.allocated and holder is not adopt:
             # An ID this assigner made up that happens to equal the source's.
-            base = holder.suffix_of or holder.id
-            self._rename(holder, self._unique(base))
+            self._rename(holder, self._unique(holder.id))
 
         identity = self._by_source.get((source_id, content))
         if identity is None:
@@ -151,8 +150,8 @@ class TraceMessageIds:
             else:
                 identity = self._new(source_id, content, from_source=True)
             if self._source_id_taken(source_id, identity):
-                identity.suffix_of = source_id
-                self._rename(identity, self._unique(source_id))
+                identity.edited = True
+                self._rename(identity, self._unique(edit_id(source_id, content)))
             else:
                 self._rename(identity, source_id)
             self._by_source[(source_id, content)] = identity
@@ -193,13 +192,12 @@ class _Message:
     id: str
     from_source: bool
     copies: list[ChatMessage] = field(default_factory=list)
-    # The source ID an edit's suffixed ID was made from.
-    suffix_of: str | None = None
+    edited: bool = False
 
     @property
     def allocated(self) -> bool:
-        """Whether the ID was made up here (positional, or an edit's suffix)."""
-        return not self.from_source or self.suffix_of is not None
+        """Whether the ID was made up here (positional, or an edit's)."""
+        return not self.from_source or self.edited
 
     def add_copy(self, message: ChatMessage) -> None:
         self.copies.append(message)
@@ -238,6 +236,17 @@ class _Conversation:
             index += 1
         self._skipped[content] = index
         return candidates[index] if index < len(candidates) else None
+
+
+def edit_id(source_id: str, content: str) -> str:
+    """ID of an edited copy: content the source gives `source_id` after another.
+
+    Args:
+        source_id: The source's ID for the message.
+        content: A hash or key of the edited copy's content.
+    """
+    digest = mmh3.hash_bytes(json.dumps([source_id, content]).encode()).hex()
+    return f"{source_id}.{digest[:8]}"
 
 
 def _content_hash(message: ChatMessage) -> str:

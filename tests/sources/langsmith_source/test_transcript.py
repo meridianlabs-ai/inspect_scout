@@ -204,7 +204,7 @@ async def test_langchain_id_equal_to_a_positional_id_names_only_its_message() ->
 
 
 @pytest.mark.asyncio
-async def test_langchain_id_on_edited_content_takes_a_suffixed_id() -> None:
+async def test_langchain_id_on_edited_content_takes_its_own_id() -> None:
     edited = _langchain("human", "Hello, edited", "human-1")
     runs = [
         _at(create_chain_run(run_id="root"), 0),
@@ -216,14 +216,40 @@ async def test_langchain_id_on_edited_content_takes_a_suffixed_id() -> None:
     ]
 
     transcript = await _transcript(runs)
+    again = await _transcript(runs)
 
     a, b, c = [e for e in transcript.events if isinstance(e, ModelEvent)]
+    edit = b.input[0].id
     assert ids(a.input) == ["human-1"]
-    assert ids(b.input) == ["human-1.1"]
-    assert ids(c.input) == ["human-1.1", "r-b"]
-    assert a.input[0].metadata is None
-    assert b.input[0].metadata is None
+    assert edit is not None and edit.startswith("human-1.")
+    assert ids(c.input) == [edit, "r-b"]
+    assert [m.metadata for m in [*a.input, *b.input]] == [None, None]
+    assert _input_ids(again) == _input_ids(transcript)
     assert_message_ids_consistent(transcript)
+
+
+@pytest.mark.asyncio
+async def test_langchain_edit_id_depends_only_on_its_source_id_and_content() -> None:
+    def trace(*contents: str) -> list[MockRun]:
+        return [
+            _at(create_chain_run(run_id="root"), 0),
+            *(
+                _langchain_llm(
+                    f"call-{i}", i + 1, [_langchain("human", text, "human-1")], "r"
+                )
+                for i, text in enumerate(contents)
+            ),
+        ]
+
+    one_edit = _input_ids(await _transcript(trace("original", "edit")))
+    two_edits = _input_ids(await _transcript(trace("original", "other", "edit")))
+
+    assert one_edit[1] == two_edits[2]
+    assert two_edits[1] != two_edits[2]
+
+
+def _input_ids(transcript: Transcript) -> list[list[str | None]]:
+    return [ids(e.input) for e in transcript.events if isinstance(e, ModelEvent)]
 
 
 @pytest.mark.asyncio
@@ -258,23 +284,25 @@ async def test_langchain_id_seen_later_names_only_the_reply_it_came_from(
 
 
 @pytest.mark.asyncio
-async def test_langchain_id_equal_to_an_edits_suffix_keeps_its_own_id() -> None:
+async def test_langchain_id_equal_to_an_edits_id_keeps_its_own_id() -> None:
     runs = [
         _at(create_chain_run(run_id="root"), 0),
         _langchain_llm("a", 1, [_langchain("human", "original", "source")], "out-a"),
         _langchain_llm("b", 2, [_langchain("human", "edited", "source")], "out-b"),
-        _langchain_llm(
-            "c", 3, [_langchain("human", "independent", "source.1")], "out-c"
-        ),
     ]
+    [edit] = _input_ids(await _transcript(runs))[1]
+    assert edit is not None
+    runs.append(
+        _langchain_llm("c", 3, [_langchain("human", "independent", edit)], "out-c")
+    )
 
     transcript = await _transcript(runs)
 
     a, b, c = [e for e in transcript.events if isinstance(e, ModelEvent)]
     assert [(m.id, m.metadata) for m in [*a.input, *b.input, *c.input]] == [
         ("source", None),
-        ("source.2", None),
-        ("source.1", None),
+        (f"{edit}.1", None),
+        (edit, None),
     ]
     assert_message_ids_consistent(transcript)
 

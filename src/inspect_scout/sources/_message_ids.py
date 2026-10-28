@@ -129,35 +129,30 @@ class TraceMessageIds:
     def _from_source(
         self, source_id: str, content: str, earlier: "_Message | None"
     ) -> "_Message":
+        # A message with a positional ID can be one the source names later.
+        adopt = earlier if earlier is not None and not earlier.from_source else None
         holder = self._by_id.get(source_id)
-        if holder is not None and not holder.from_source and holder is not earlier:
-            # A positional ID that happens to equal the source's ID.
-            self._rename(holder, self._unique(source_id))
+        if holder is not None and holder.allocated and holder is not adopt:
+            # An ID this assigner made up that happens to equal the source's.
+            base = holder.derived_from[0] if holder.derived_from else holder.id
+            self._rename(holder, self._unique(base))
+
         identity = self._by_source.get((source_id, content))
-        adopt = earlier is not None and not earlier.from_source
-        if identity is None and earlier is not None and adopt:
-            identity = earlier
-            identity.from_source = True
-            if self._source_id_taken(source_id, earlier):
+        if identity is None:
+            if adopt is not None:
+                identity = adopt
+                identity.from_source = True
+            else:
+                identity = self._new(source_id, content, from_source=True)
+            if self._source_id_taken(source_id, identity):
                 identity.derived_from = [source_id]
                 self._rename(identity, self._unique(source_id))
             else:
                 self._rename(identity, source_id)
-        elif identity is None:
-            if self._source_id_taken(source_id, None):
-                identity = self._new(self._unique(source_id), content, True)
-                identity.derived_from = [source_id]
-            else:
-                identity = self._new(source_id, content, True)
-        elif earlier is not None and adopt and earlier is not identity:
-            # Copies given a positional ID before the source named them.
-            earlier.from_source = True
-            earlier.derived_from = identity.derived_from
-            self._rename(earlier, identity.id)
-        self._by_source[(source_id, content)] = identity
+            self._by_source[(source_id, content)] = identity
         return identity
 
-    def _source_id_taken(self, source_id: str, by: "_Message | None") -> bool:
+    def _source_id_taken(self, source_id: str, by: "_Message") -> bool:
         holder = self._by_id.get(source_id)
         return holder is not None and holder is not by
 
@@ -193,6 +188,11 @@ class _Message:
     from_source: bool
     copies: list[ChatMessage] = field(default_factory=list)
     derived_from: list[str] | None = None
+
+    @property
+    def allocated(self) -> bool:
+        """Whether the ID was made up here (positional, or an edit's suffix)."""
+        return not self.from_source or self.derived_from is not None
 
     def add_copy(self, message: ChatMessage) -> None:
         self.copies.append(message)

@@ -236,7 +236,7 @@ class TranscriptInfo(BaseModel):
     messages_from: list[str] | None = Field(default=None)
     """`uuid`s of the `ModelEvent`s whose conversation `messages` is.
 
-    `messages` is these calls' input and output in order, possibly followed by messages added after the last call. Usually one call; more than one when the conversation is spliced together across compactions or sessions. `None` when the source doesn't say (e.g. eval logs, where `messages` is the sample's own conversation).
+    `messages` is taken from these calls' input and output, in order (a trimming compaction keeps only part of an earlier call's), possibly followed by messages added after the last call. Usually one call; more than one when the conversation is spliced together across compactions or sessions. `None` when the source doesn't say (e.g. eval logs, where `messages` is the sample's own conversation).
     """
 
     metadata: dict[str, Any] = Field(default_factory=dict)

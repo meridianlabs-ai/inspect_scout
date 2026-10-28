@@ -227,6 +227,70 @@ async def test_langchain_id_on_edited_content_takes_a_derived_id() -> None:
 
 
 @pytest.mark.asyncio
+async def test_langchain_id_seen_later_names_only_the_reply_it_came_from(
+    tmp_path: Path,
+) -> None:
+    hello = _langchain("human", "hello", "user")
+    runs = [
+        _at(create_chain_run(run_id="root"), 0),
+        _langchain_llm("a", 1, [hello], "reply-A"),
+        # Separately generates the same text as a's reply, with no source ID.
+        _llm("b", "root", 2, [{"role": "user", "content": "hello"}], "reply from a"),
+        _langchain_llm(
+            "c",
+            3,
+            [
+                hello,
+                _langchain("ai", "reply from a", "reply-A"),
+                _langchain("human", "next", "next"),
+            ],
+            "reply-C",
+        ),
+    ]
+
+    transcript = await _transcript(runs)
+    stored = await _store_and_read(transcript, tmp_path)
+
+    for imported in (transcript, stored):
+        a, b, c = [e for e in imported.events if isinstance(e, ModelEvent)]
+        assert (a.output.message.id, b.output.message.id) == ("reply-A", "b-1")
+        assert ids(c.input) == ["user", "reply-A", "next"]
+
+
+@pytest.mark.asyncio
+async def test_langchain_id_equal_to_an_edits_suffix_keeps_its_own_id() -> None:
+    runs = [
+        _at(create_chain_run(run_id="root"), 0),
+        _langchain_llm("a", 1, [_langchain("human", "original", "source")], "out-a"),
+        _langchain_llm("b", 2, [_langchain("human", "edited", "source")], "out-b"),
+        _langchain_llm(
+            "c", 3, [_langchain("human", "independent", "source.1")], "out-c"
+        ),
+    ]
+
+    transcript = await _transcript(runs)
+
+    a, b, c = [e for e in transcript.events if isinstance(e, ModelEvent)]
+    assert [(m.id, m.metadata) for m in [*a.input, *b.input, *c.input]] == [
+        ("source", None),
+        ("source.2", {"derived_from": ["source"]}),
+        ("source.1", None),
+    ]
+    assert_message_ids_consistent(transcript)
+
+
+async def _store_and_read(transcript: Transcript, location: Path) -> Transcript:
+    db = ParquetTranscriptsDB(str(location))
+    await db.connect()
+    try:
+        await db.insert([transcript])
+        [info] = [info async for info in db.select()]
+        return await db.read(info, TranscriptContent(messages="all", events="all"))
+    finally:
+        await db.disconnect()
+
+
+@pytest.mark.asyncio
 async def test_stored_import_keeps_ids_of_equal_messages(tmp_path: Path) -> None:
     transcript = await _transcript(
         [
@@ -236,14 +300,7 @@ async def test_stored_import_keeps_ids_of_equal_messages(tmp_path: Path) -> None
         ]
     )
 
-    db = ParquetTranscriptsDB(str(tmp_path))
-    await db.connect()
-    try:
-        await db.insert([transcript])
-        [info] = [info async for info in db.select()]
-        stored = await db.read(info, TranscriptContent(messages="all", events="all"))
-    finally:
-        await db.disconnect()
+    stored = await _store_and_read(transcript, tmp_path)
 
     a, b = [e for e in stored.events if isinstance(e, ModelEvent)]
     assert (ids(a.input), ids(b.input)) == (["human-a"], ["human-b"])

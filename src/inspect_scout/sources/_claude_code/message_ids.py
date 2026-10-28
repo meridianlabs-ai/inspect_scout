@@ -26,8 +26,7 @@ def apply_source_ids(
     - An assistant message keeps the Anthropic `message.id` it was built with,
       or takes its line's `uuid` if it has none. Fragments of one response
       split apart by other lines become separate replies with the same
-      `message.id`; each later one takes it plus `.1`, `.2`, ..., with the
-      `message.id` in `metadata["derived_from"]`.
+      `message.id`; each later one takes it plus `.1`, `.2`, ....
     - The messages a user line adds (its text, then its tool results) take the
       line's `uuid`, with `-1`, `-2`, ... added after the first. One that
       matches no line takes its call's `uuid` plus its position.
@@ -92,8 +91,6 @@ class _ReplyIds:
             self._counts[source_id] = count + 1
             self._ids[key] = f"{source_id}.{count}" if count else source_id
         reply.id = self._ids[key]
-        if reply.id != source_id:
-            reply.metadata = {**(reply.metadata or {}), "derived_from": [source_id]}
 
 
 class _LineMessage(NamedTuple):

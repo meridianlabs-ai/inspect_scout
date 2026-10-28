@@ -24,7 +24,7 @@ class TraceMessageIds:
       a non-None `id` is taken to be one; the importer sets the rest to None).
       Copies already given another ID take it too. If the source gives one ID
       to different contents (an edited copy), each later content takes the
-      ID plus a suffix, with the source ID in `metadata["derived_from"]`.
+      ID plus a suffix.
     - A model's output is a new message.
     - An input message is the one at the same position in an earlier call
       that sent the same messages before it. Failing that, it is an earlier
@@ -140,7 +140,7 @@ class TraceMessageIds:
         holder = self._by_id.get(source_id)
         if holder is not None and holder.allocated and holder is not adopt:
             # An ID this assigner made up that happens to equal the source's.
-            base = holder.derived_from[0] if holder.derived_from else holder.id
+            base = holder.suffix_of or holder.id
             self._rename(holder, self._unique(base))
 
         identity = self._by_source.get((source_id, content))
@@ -151,7 +151,7 @@ class TraceMessageIds:
             else:
                 identity = self._new(source_id, content, from_source=True)
             if self._source_id_taken(source_id, identity):
-                identity.derived_from = [source_id]
+                identity.suffix_of = source_id
                 self._rename(identity, self._unique(source_id))
             else:
                 self._rename(identity, source_id)
@@ -193,12 +193,13 @@ class _Message:
     id: str
     from_source: bool
     copies: list[ChatMessage] = field(default_factory=list)
-    derived_from: list[str] | None = None
+    # The source ID an edit's suffixed ID was made from.
+    suffix_of: str | None = None
 
     @property
     def allocated(self) -> bool:
         """Whether the ID was made up here (positional, or an edit's suffix)."""
-        return not self.from_source or self.derived_from is not None
+        return not self.from_source or self.suffix_of is not None
 
     def add_copy(self, message: ChatMessage) -> None:
         self.copies.append(message)
@@ -206,11 +207,6 @@ class _Message:
 
     def label(self, message: ChatMessage) -> None:
         message.id = self.id
-        if self.derived_from:
-            message.metadata = {
-                **(message.metadata or {}),
-                "derived_from": self.derived_from,
-            }
 
 
 @dataclass(eq=False)

@@ -182,7 +182,7 @@ async def test_response_split_by_another_line_gets_distinct_ids(
         "tool-003",
         "msg_assistant_011",
     ]
-    assert transcript.messages[3].metadata == {"derived_from": ["msg_assistant_010"]}
+    assert transcript.messages[3].metadata == transcript.messages[1].metadata
     assert_message_ids_consistent(transcript)
 
 

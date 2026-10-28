@@ -204,7 +204,7 @@ async def test_langchain_id_equal_to_a_positional_id_names_only_its_message() ->
 
 
 @pytest.mark.asyncio
-async def test_langchain_id_on_edited_content_takes_a_derived_id() -> None:
+async def test_langchain_id_on_edited_content_takes_a_suffixed_id() -> None:
     edited = _langchain("human", "Hello, edited", "human-1")
     runs = [
         _at(create_chain_run(run_id="root"), 0),
@@ -221,8 +221,8 @@ async def test_langchain_id_on_edited_content_takes_a_derived_id() -> None:
     assert ids(a.input) == ["human-1"]
     assert ids(b.input) == ["human-1.1"]
     assert ids(c.input) == ["human-1.1", "r-b"]
-    assert b.input[0].metadata == {"derived_from": ["human-1"]}
     assert a.input[0].metadata is None
+    assert b.input[0].metadata is None
     assert_message_ids_consistent(transcript)
 
 
@@ -273,7 +273,7 @@ async def test_langchain_id_equal_to_an_edits_suffix_keeps_its_own_id() -> None:
     a, b, c = [e for e in transcript.events if isinstance(e, ModelEvent)]
     assert [(m.id, m.metadata) for m in [*a.input, *b.input, *c.input]] == [
         ("source", None),
-        ("source.2", {"derived_from": ["source"]}),
+        ("source.2", None),
         ("source.1", None),
     ]
     assert_message_ids_consistent(transcript)

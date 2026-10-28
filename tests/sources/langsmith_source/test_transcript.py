@@ -1,12 +1,15 @@
 """LangSmith traces: message IDs, model call IDs and the transcript's conversation."""
 
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 from inspect_ai.event import ModelEvent
 from inspect_scout import Transcript
+from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
+from inspect_scout._transcript.types import TranscriptContent
 from inspect_scout.sources._langsmith import _trace_to_transcript
 
 from tests.sources.langsmith_source.mocks import (
@@ -198,6 +201,53 @@ async def test_langchain_id_equal_to_a_positional_id_names_only_its_message() ->
     assert ids(b.input) == ["a-0"]
     assert ids(a.input) == ["a-0.1"]
     assert_message_ids_consistent(transcript)
+
+
+@pytest.mark.asyncio
+async def test_langchain_id_on_edited_content_takes_a_derived_id() -> None:
+    edited = _langchain("human", "Hello, edited", "human-1")
+    runs = [
+        _at(create_chain_run(run_id="root"), 0),
+        _langchain_llm("a", 1, [_langchain("human", "Hello!", "human-1")], "r-a"),
+        _langchain_llm("b", 2, [edited], "r-b"),
+        _langchain_llm(
+            "c", 3, [edited, _langchain("ai", "reply from b", "r-b")], "r-c"
+        ),
+    ]
+
+    transcript = await _transcript(runs)
+
+    a, b, c = [e for e in transcript.events if isinstance(e, ModelEvent)]
+    assert ids(a.input) == ["human-1"]
+    assert ids(b.input) == ["human-1.1"]
+    assert ids(c.input) == ["human-1.1", "r-b"]
+    assert b.input[0].metadata == {"derived_from": ["human-1"]}
+    assert a.input[0].metadata is None
+    assert_message_ids_consistent(transcript)
+
+
+@pytest.mark.asyncio
+async def test_stored_import_keeps_ids_of_equal_messages(tmp_path: Path) -> None:
+    transcript = await _transcript(
+        [
+            _at(create_chain_run(run_id="root"), 0),
+            _langchain_llm("a", 1, [_langchain("human", "same", "human-a")], "r-a"),
+            _langchain_llm("b", 2, [_langchain("human", "same", "human-b")], "r-b"),
+        ]
+    )
+
+    db = ParquetTranscriptsDB(str(tmp_path))
+    await db.connect()
+    try:
+        await db.insert([transcript])
+        [info] = [info async for info in db.select()]
+        stored = await db.read(info, TranscriptContent(messages="all", events="all"))
+    finally:
+        await db.disconnect()
+
+    a, b = [e for e in stored.events if isinstance(e, ModelEvent)]
+    assert (ids(a.input), ids(b.input)) == (["human-a"], ["human-b"])
+    assert_message_ids_consistent(stored)
 
 
 @pytest.mark.asyncio

@@ -141,3 +141,42 @@ async def test_reply_without_message_id_takes_its_line_uuid(tmp_path: Path) -> N
     assert first.messages_from == ["msg-004"]
     assert ids(second.messages) == ids(first.messages)
     assert_message_ids_consistent(first)
+
+
+@pytest.mark.asyncio
+async def test_response_split_by_another_line_gets_distinct_ids(
+    tmp_path: Path,
+) -> None:
+    prompt, response, result, final = _lines("tool_call_conversation.jsonl")
+    text, tool_use = (
+        response["message"]["content"][:2],
+        response["message"]["content"][2:],
+    )
+    first = {**response, "uuid": "part-1", "message": {**response["message"]}}
+    first["message"]["content"] = text
+    second = {**response, "uuid": "part-2", "message": {**response["message"]}}
+    second["message"]["content"] = tool_use
+    between = {
+        **prompt,
+        "uuid": "between",
+        "parentUuid": "part-1",
+        "message": {"role": "user", "content": "go on"},
+    }
+    second["parentUuid"] = "between"
+    result["parentUuid"] = "part-2"
+
+    transcript = await _import_lines(
+        tmp_path / "session" / "session.jsonl",
+        [prompt, first, between, second, result, final],
+    )
+
+    assert ids(transcript.messages) == [
+        "tool-001",
+        "msg_assistant_010",
+        "between",
+        "msg_assistant_010.1",
+        "tool-003",
+        "msg_assistant_011",
+    ]
+    assert transcript.messages[3].metadata == {"derived_from": ["msg_assistant_010"]}
+    assert_message_ids_consistent(transcript)

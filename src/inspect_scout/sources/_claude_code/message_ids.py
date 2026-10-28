@@ -24,7 +24,10 @@ def apply_source_ids(
     - A model event's `uuid` is the `uuid` of its assistant line (the last
       line of the response, which is the one later lines' `parentUuid` names).
     - An assistant message keeps the Anthropic `message.id` it was built with,
-      or takes its line's `uuid` if it has none.
+      or takes its line's `uuid` if it has none. Fragments of one response
+      split apart by other lines become separate replies with the same
+      `message.id`; each later one takes it plus `.1`, `.2`, ..., with the
+      `message.id` in `metadata["derived_from"]`.
     - The messages a user line adds (its text, then its tool results) take the
       line's `uuid`, with `-1`, `-2`, ... added after the first. One that
       matches no line takes its call's `uuid` plus its position.
@@ -58,14 +61,33 @@ def apply_source_ids(
     sources = _line_messages(conversation)
     starts = [source.line for source in sources]
     seen: set[int] = set()
+    replies = _ReplyIds()
     for event, (line_index, line) in pairs:
         event.uuid = line.uuid
-        if event.output.choices and not line.message.id:
-            event.output.message.id = line.uuid
+        if event.output.choices:
+            replies.apply(event.output.message, line.message.id or line.uuid)
         _apply_input_ids(event, sources, bisect_left(starts, line_index) - 1, seen)
         seen.update(id(message) for message in event.input)
         if event.output.choices:
             seen.add(id(event.output.message))
+
+
+class _ReplyIds:
+    """Reply IDs, kept distinct for different replies sharing a source ID."""
+
+    def __init__(self) -> None:
+        self._ids: dict[tuple[str, str], str] = {}
+        self._counts: dict[str, int] = {}
+
+    def apply(self, reply: ChatMessage, source_id: str) -> None:
+        key = (source_id, _content_key(reply))
+        if key not in self._ids:
+            count = self._counts.get(source_id, 0)
+            self._counts[source_id] = count + 1
+            self._ids[key] = f"{source_id}.{count}" if count else source_id
+        reply.id = self._ids[key]
+        if reply.id != source_id:
+            reply.metadata = {**(reply.metadata or {}), "derived_from": [source_id]}
 
 
 class _LineMessage(NamedTuple):
@@ -140,8 +162,14 @@ def _tool_key(tool_call_id: str) -> str:
 
 
 def _user_key(message: ChatMessageUser) -> str:
-    data = message.model_dump(mode="json", exclude={"id"}, exclude_none=True)
-    return "user:" + mmh3.hash_bytes(json.dumps(data, sort_keys=True).encode()).hex()
+    return "user:" + _content_key(message)
+
+
+def _content_key(message: ChatMessage) -> str:
+    data = message.model_dump(
+        mode="json", exclude={"id", "metadata"}, exclude_none=True
+    )
+    return mmh3.hash_bytes(json.dumps(data, sort_keys=True).encode()).hex()
 
 
 def _own_model_events(events: Sequence[Event]) -> list[ModelEvent]:

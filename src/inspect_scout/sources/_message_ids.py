@@ -22,7 +22,9 @@ class TraceMessageIds:
 
     - A message with an ID from the source keeps it (when `source_ids` is True,
       a non-None `id` is taken to be one; the importer sets the rest to None).
-      Copies already given another ID take it too.
+      Copies already given another ID take it too. If the source gives one ID
+      to different contents (an edited copy), each later content takes the
+      ID plus a suffix, with the source ID in `metadata["derived_from"]`.
     - A model's output is a new message.
     - An input message is the one at the same position in an earlier call
       that sent the same messages before it. Failing that, it is an earlier
@@ -44,6 +46,7 @@ class TraceMessageIds:
         self._first_positions: dict[str, _Position] = {}
         self._by_content: dict[str, list[_Message]] = {}
         self._by_id: dict[str, _Message] = {}
+        self._by_source: dict[tuple[str, str], _Message] = {}
         self._suffixes: dict[str, int] = {}
 
     def apply(self, event: ModelEvent, call_id: str) -> None:
@@ -115,8 +118,7 @@ class TraceMessageIds:
         else:
             identity = self._new(self._unique(first_id), content, from_source=False)
 
-        message.id = identity.id
-        identity.copies.append(message)
+        identity.add_copy(message)
         conversation.add(identity)
         if position is None:
             position = positions[content] = _Position(identity)
@@ -127,18 +129,37 @@ class TraceMessageIds:
     def _from_source(
         self, source_id: str, content: str, earlier: "_Message | None"
     ) -> "_Message":
-        known = self._by_id.get(source_id)
-        if known is not None and not known.from_source and known is not earlier:
+        holder = self._by_id.get(source_id)
+        if holder is not None and not holder.from_source and holder is not earlier:
             # A positional ID that happens to equal the source's ID.
-            self._rename(known, self._unique(source_id))
-            known = None
-        if earlier is not None and not earlier.from_source:
-            self._rename(earlier, source_id)
+            self._rename(holder, self._unique(source_id))
+        identity = self._by_source.get((source_id, content))
+        adopt = earlier is not None and not earlier.from_source
+        if identity is None and earlier is not None and adopt:
+            identity = earlier
+            identity.from_source = True
+            if self._source_id_taken(source_id, earlier):
+                identity.derived_from = [source_id]
+                self._rename(identity, self._unique(source_id))
+            else:
+                self._rename(identity, source_id)
+        elif identity is None:
+            if self._source_id_taken(source_id, None):
+                identity = self._new(self._unique(source_id), content, True)
+                identity.derived_from = [source_id]
+            else:
+                identity = self._new(source_id, content, True)
+        elif earlier is not None and adopt and earlier is not identity:
+            # Copies given a positional ID before the source named them.
             earlier.from_source = True
-            return earlier
-        if known is not None:
-            return known
-        return self._new(source_id, content, from_source=True)
+            earlier.derived_from = identity.derived_from
+            self._rename(earlier, identity.id)
+        self._by_source[(source_id, content)] = identity
+        return identity
+
+    def _source_id_taken(self, source_id: str, by: "_Message | None") -> bool:
+        holder = self._by_id.get(source_id)
+        return holder is not None and holder is not by
 
     def _new(self, message_id: str, content: str, from_source: bool) -> "_Message":
         identity = _Message(message_id, from_source)
@@ -151,7 +172,7 @@ class TraceMessageIds:
             del self._by_id[identity.id]
         identity.id = message_id
         for copy in identity.copies:
-            copy.id = message_id
+            identity.label(copy)
         self._by_id.setdefault(message_id, identity)
 
     def _unique(self, candidate: str) -> str:
@@ -171,6 +192,19 @@ class _Message:
     id: str
     from_source: bool
     copies: list[ChatMessage] = field(default_factory=list)
+    derived_from: list[str] | None = None
+
+    def add_copy(self, message: ChatMessage) -> None:
+        self.copies.append(message)
+        self.label(message)
+
+    def label(self, message: ChatMessage) -> None:
+        message.id = self.id
+        if self.derived_from:
+            message.metadata = {
+                **(message.metadata or {}),
+                "derived_from": self.derived_from,
+            }
 
 
 @dataclass(eq=False)

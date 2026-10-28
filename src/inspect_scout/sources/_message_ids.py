@@ -24,7 +24,8 @@ class TraceMessageIds:
       a non-None `id` is taken to be one; the importer sets the rest to None).
       Copies already given another ID take it too. If the source gives one ID
       to different contents (an edited copy), each later content takes
-      `edit_id(source ID, content)`.
+      `edit_id(source ID, content)`, moved to a `.1` suffix if a real ID
+      equals it.
     - A model's output is a new message.
     - An input message is the one at the same position in an earlier call
       that sent the same messages before it. Failing that, it is an earlier
@@ -241,12 +242,17 @@ class _Conversation:
 def edit_id(source_id: str, content: str) -> str:
     """ID of an edited copy: content the source gives `source_id` after another.
 
+    The ID is the source ID plus the full 128-bit hash of the source ID and the
+    content, so it depends only on those two; different contents getting the
+    same hash is not a practical concern. Callers add a `.1`, `.2`, ... suffix
+    only when a real ID in the trace happens to equal it.
+
     Args:
         source_id: The source's ID for the message.
         content: A hash or key of the edited copy's content.
     """
     digest = mmh3.hash_bytes(json.dumps([source_id, content]).encode()).hex()
-    return f"{source_id}.{digest[:8]}"
+    return f"{source_id}.{digest}"
 
 
 def _content_hash(message: ChatMessage) -> str:

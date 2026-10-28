@@ -28,7 +28,8 @@ def apply_source_ids(
     - An assistant message keeps the Anthropic `message.id` it was built with,
       or takes its line's `uuid` if it has none. Fragments of one response
       split apart by other lines become separate replies with the same
-      `message.id`; each later one takes `edit_id(message.id, content)`.
+      `message.id`; each later one takes `edit_id(message.id, content)`,
+      plus a `.1`, `.2`, ... suffix if another line's ID equals it.
     - The messages a user line adds (its text, then its tool results) take the
       line's `uuid`, with `-1`, `-2`, ... added after the first. One that
       matches no line takes its call's `uuid` plus its position.
@@ -64,11 +65,13 @@ def apply_source_ids(
     sources = _line_messages(conversation)
     starts = [source.line for source in sources]
     seen: set[int] = set()
-    replies = _ReplyIds()
+    replies = _ReplyIds(
+        {_reply_source_id(line) for _, line in calls} | {s.id for s in sources}
+    )
     for event, (line_index, line) in pairs:
         event.uuid = line.uuid
         if event.output.choices:
-            replies.apply(event.output.message, line.message.id or line.uuid)
+            replies.apply(event.output.message, _reply_source_id(line))
         _apply_input_ids(event, sources, bisect_left(starts, line_index) - 1, seen)
         seen.update(id(message) for message in event.input)
         if event.output.choices:
@@ -79,16 +82,34 @@ def _session_id(conversation: Sequence[BaseEvent]) -> str | None:
     return conversation[0].sessionId if conversation else None
 
 
+def _reply_source_id(line: AssistantEvent) -> str:
+    return line.message.id or line.uuid
+
+
 class _ReplyIds:
     """Reply IDs, kept distinct for different replies sharing a source ID."""
 
-    def __init__(self) -> None:
+    def __init__(self, line_ids: set[str]) -> None:
+        """Create the reply IDs for one conversation.
+
+        Args:
+            line_ids: Every ID the conversation's lines give their messages,
+                which an edited reply's ID must not take.
+        """
+        self._line_ids = line_ids
         self._first: dict[str, str] = {}
 
     def apply(self, reply: ChatMessage, source_id: str) -> None:
         content = _content_key(reply)
         first = self._first.setdefault(source_id, content)
-        reply.id = source_id if content == first else edit_id(source_id, content)
+        if content == first:
+            reply.id = source_id
+            return
+        candidate = edit_id(source_id, content)
+        reply_id, suffix = candidate, 1
+        while reply_id in self._line_ids:
+            reply_id, suffix = f"{candidate}.{suffix}", suffix + 1
+        reply.id = reply_id
 
 
 class _LineMessage(NamedTuple):

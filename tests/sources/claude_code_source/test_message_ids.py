@@ -147,10 +147,8 @@ async def test_reply_without_message_id_takes_its_line_uuid(tmp_path: Path) -> N
     assert_message_ids_consistent(first)
 
 
-@pytest.mark.asyncio
-async def test_response_split_by_another_line_gets_distinct_ids(
-    tmp_path: Path,
-) -> None:
+def _split_response_lines() -> list[dict[str, Any]]:
+    """A response (`msg_assistant_010`) split in two by a user line."""
     prompt, response, result, final = _lines("tool_call_conversation.jsonl")
     text, tool_use = (
         response["message"]["content"][:2],
@@ -168,10 +166,15 @@ async def test_response_split_by_another_line_gets_distinct_ids(
     }
     second["parentUuid"] = "between"
     result["parentUuid"] = "part-2"
+    return [prompt, first, between, second, result, final]
 
+
+@pytest.mark.asyncio
+async def test_response_split_by_another_line_gets_distinct_ids(
+    tmp_path: Path,
+) -> None:
     transcript = await _import_lines(
-        tmp_path / "session" / "session.jsonl",
-        [prompt, first, between, second, result, final],
+        tmp_path / "session" / "session.jsonl", _split_response_lines()
     )
 
     message_ids = ids(transcript.messages)
@@ -185,6 +188,30 @@ async def test_response_split_by_another_line_gets_distinct_ids(
     ]
     assert split is not None and split.startswith("msg_assistant_010.")
     assert transcript.messages[3].metadata == transcript.messages[1].metadata
+    assert_message_ids_consistent(transcript)
+
+
+@pytest.mark.asyncio
+async def test_split_response_id_gives_way_to_a_reply_with_that_id(
+    tmp_path: Path,
+) -> None:
+    lines = _split_response_lines()
+    split = ids(
+        (await _import_lines(tmp_path / "first" / "session.jsonl", lines)).messages
+    )[3]
+    assert split is not None
+    lines[-1]["message"]["id"] = split
+
+    transcript = await _import_lines(tmp_path / "second" / "session.jsonl", lines)
+
+    assert ids(transcript.messages) == [
+        "tool-001",
+        "msg_assistant_010",
+        "between",
+        f"{split}.1",
+        "tool-003",
+        split,
+    ]
     assert_message_ids_consistent(transcript)
 
 

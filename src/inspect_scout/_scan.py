@@ -35,6 +35,7 @@ from inspect_ai.model._model_config import (
 from inspect_ai.model._util import resolve_model_roles
 from inspect_ai.util import span
 from inspect_ai.util._anyio import inner_exception
+from inspect_ai.util._concurrency import adaptive_active
 from pydantic import JsonValue, TypeAdapter
 from rich import box
 from rich.table import Column, Table
@@ -127,6 +128,42 @@ def certainly_single_process(*, limit: int | None, max_processes: int | None) ->
     connections can be left enabled, since adaptive is not supported across processes.
     """
     return limit == 1 or max_processes == 1 or os.name == "nt"
+
+
+def _use_adaptive_connections(
+    config: GenerateConfig,
+    *,
+    model: str | Model | None,
+    model_roles: ModelRoles | None,
+    limit: int | None,
+    max_processes: int | None,
+) -> bool:
+    """Should the scan leave `max_connections` unset so inspect's adaptive controller runs?
+
+    Only when the caller asked for adaptive connections, the scan certainly stays in
+    one process (adaptive isn't supported across processes), and adaptive would
+    activate for every model the scan can call. A pre-built model or role carrying
+    `batch` or its own `max_connections` would otherwise fall back to inspect's
+    default pool (10, or 10,000 for batch) rather than `max_transcripts`.
+    """
+    # models built from a string get `config` (the scan model) or a default config
+    # (roles), so only pre-built models can carry settings that block adaptive
+    prebuilt = [model] if isinstance(model, Model) else []
+    for role in (model_roles or {}).values():
+        members = [role] if isinstance(role, str | Model) else role
+        prebuilt.extend(m for m in members if isinstance(m, Model))
+
+    # roles inherit adaptive_connections but not batch from the active config; the
+    # active config's own batch is judged directly
+    inherited = GenerateConfig(adaptive_connections=config.adaptive_connections)
+    return (
+        bool(config.adaptive_connections)
+        and certainly_single_process(limit=limit, max_processes=max_processes)
+        and all(
+            adaptive_active(c.adaptive_connections, c.max_connections, c.batch)
+            for c in [config, *(m.config.merge(inherited) for m in prebuilt)]
+        )
+    )
 
 
 def scan(
@@ -353,27 +390,28 @@ async def scan_async(
         if scanjob._generate_config and model_config
         else model_config or scanjob._generate_config or GenerateConfig()
     )
-    # an explicit max_connections turns inspect's adaptive controller off, so leave
-    # it unset only when the caller asked for adaptive connections, isn't batching
-    # (which overrides adaptive) and the scan certainly stays in one process
-    # (adaptive isn't supported across processes)
-    config = scanjob._generate_config
-    if config.max_connections is None and not (
-        config.adaptive_connections
-        and not config.batch
-        and certainly_single_process(
-            limit=scanjob._limit, max_processes=scanjob._max_processes
-        )
+    scan_model = model or scanjob._model
+    scan_model_roles = model_roles or scanjob._model_roles
+    generate_config = scanjob._generate_config
+    if generate_config.max_connections is None and not _use_adaptive_connections(
+        generate_config,
+        model=scan_model,
+        model_roles=scan_model_roles,
+        limit=scanjob._limit,
+        max_processes=scanjob._max_processes,
     ):
-        config.max_connections = scanjob._max_transcripts
+        # stamp a copy so a reused config or ScanJob re-derives the limit next scan
+        generate_config = generate_config.model_copy(
+            update={"max_connections": scanjob._max_transcripts}
+        )
 
     # initialize runtime context
     resolved_model, resolved_model_args, resolved_model_roles = init_scan_model_context(
-        model=model or scanjob._model,
-        model_config=scanjob._generate_config,
+        model=scan_model,
+        model_config=generate_config,
         model_base_url=model_base_url or scanjob._model_base_url,
         model_args=model_args or scanjob._model_args,
-        model_roles=model_roles or scanjob._model_roles,
+        model_roles=scan_model_roles,
     )
     # only set the scanjob model if we have one
     if str(resolved_model) != "none/none":

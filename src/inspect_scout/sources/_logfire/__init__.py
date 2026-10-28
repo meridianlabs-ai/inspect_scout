@@ -322,17 +322,15 @@ async def _trace_to_transcript(
     # For traces with LLM calls, find the root agent's ModelEvent with the most
     # complete conversation. Some instrumentors create multiple spans (e.g.,
     # Pydantic AI creates both framework-level spans and SDK-level spans), so
-    # we need to pick the one with the full conversation history. Only agent
-    # and tool spans count toward depth, so those nested spans stay candidates.
-    tools = tool_span_ids(ordered_spans)
+    # we need to pick the one with the full conversation history.
     root_calls = root_agent_calls(
         model_events,
         parents={
             str(span.get("span_id")): span.get("parent_span_id")
             for span in ordered_spans
         },
-        tools=tools,
-        levels=agent_span_ids(ordered_spans) | tools,
+        tools=tool_span_ids(ordered_spans),
+        spans=agent_span_ids(ordered_spans),
     )
     if root_calls:
         # Find the model event with the most input messages

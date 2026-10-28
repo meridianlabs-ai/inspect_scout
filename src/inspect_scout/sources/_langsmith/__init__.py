@@ -31,7 +31,7 @@ from .client import (
     retry_api_call,
 )
 from .detection import detect_provider_format, get_model_name
-from .events import runs_to_events, tool_run_ids
+from .events import runs_to_events, span_run_ids, tool_run_ids
 from .extraction import (
     extract_bool,
     extract_dict,
@@ -304,6 +304,7 @@ async def _trace_to_transcript(
             for run in ordered_runs
         },
         tools=tool_run_ids(ordered_runs),
+        spans=span_run_ids(ordered_runs),
     )
     if root_calls:
         last_model = root_calls[-1]

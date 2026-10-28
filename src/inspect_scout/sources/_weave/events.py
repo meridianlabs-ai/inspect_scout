@@ -281,6 +281,15 @@ def tool_call_ids(calls: list[Any]) -> set[str]:
     }
 
 
+def span_call_ids(calls: list[Any]) -> set[str]:
+    """IDs of the calls that `calls_to_events()` makes spans of."""
+    return {
+        str(call.id)
+        for call in calls
+        if not _is_llm_call(call) and not _is_tool_call(call)
+    }
+
+
 async def calls_to_events(calls: list[Any]) -> list[Event]:
     """Convert Weave calls to Scout events by type.
 

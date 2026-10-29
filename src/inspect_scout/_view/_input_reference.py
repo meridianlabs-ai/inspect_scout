@@ -7,14 +7,17 @@ from typing import Any, Awaitable, Callable, Mapping, NamedTuple
 
 import anyio
 from inspect_ai._util._async import _anyio_run_released
+from inspect_ai.log import condense_events
+from pydantic import BaseModel
 from starlette.requests import Request
 
-from .._scanner.result import _serialize_input
 from .._transcript.reference import (
     InputReference,
     InputReferenceUnavailable,
+    input_too_large,
     read_referenced_transcript,
 )
+from .._util._json import to_json_bytes_compact
 
 logger = getLogger(__name__)
 
@@ -25,8 +28,7 @@ Row values are untrusted when a server shows scans other users wrote, so a
 multi-user host's locator must decide what the requesting user may read and
 return a location it has checked, never the row's URI as given.
 
-Return only `.eval` locations: `input_reference_max_bytes` bounds only those,
-and other locations use the transcripts index path, which is not server-safe.
+Only `.eval` locations can be read; any other is reported as `unavailable`.
 Raise `InputReferenceUnavailable` for row-level refusals; it is shown to the
 user with a 200. Any other exception propagates as a server error, deliberately,
 so an outage does not read as a refusal.
@@ -91,10 +93,8 @@ class InputReferenceResolver:
         except InputReferenceUnavailable:
             raise
         except Exception as ex:
-            logger.warning(
-                "Unable to resolve the input of transcript %s",
-                ref.transcript_id,
-                exc_info=True,
+            logger.exception(
+                "Unable to resolve the input of transcript %s", ref.transcript_id
             )
             raise InputReferenceUnavailable(
                 "unavailable", "The referenced input could not be read."
@@ -113,10 +113,48 @@ class InputReferenceResolver:
         transcript = await read_referenced_transcript(
             location, ref, max_bytes=self._max_bytes
         )
-        input_bytes, data_bytes = _serialize_input(
-            transcript, "transcript", pool_dedup=True
-        )
+        # Condensed as copy mode records a transcript (`_serialize_input`).
+        condensed_events, events_data = condense_events(transcript.events)
+        condensed = transcript.model_copy(update={"events": condensed_events})
+        # An attachment referenced many times is one string in memory but is
+        # written out once per reference, so the output can dwarf the sample.
+        if self._max_bytes is not None and _json_size_exceeds(
+            (condensed, events_data), self._max_bytes
+        ):
+            raise input_too_large(self._max_bytes)
         return ResolvedInput(
-            input_bytes.decode("utf-8"),
-            data_bytes.decode("utf-8") if data_bytes is not None else None,
+            to_json_bytes_compact(condensed).decode("utf-8"),
+            to_json_bytes_compact(events_data).decode("utf-8"),
         )
+
+
+def _json_size_exceeds(value: Any, limit: int) -> bool:
+    """Whether `value` serializes to more than about `limit` bytes of JSON.
+
+    Sums string lengths without serializing (a shared string counts once per
+    reference, as it is written), and stops as soon as the total passes
+    `limit`.
+    """
+    total = 0
+    stack: list[Any] = [value]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, str | bytes | bytearray):
+            total += len(item) + 2
+        elif isinstance(item, BaseModel):
+            total += 2
+            stack.extend(item.__dict__.values())
+            if item.__pydantic_extra__:
+                stack.extend(item.__pydantic_extra__.values())
+        elif isinstance(item, Mapping):
+            for key, child in item.items():
+                total += len(str(key)) + 4
+                stack.append(child)
+        elif isinstance(item, list | tuple | set | frozenset):
+            total += 2 + len(item)
+            stack.extend(item)
+        else:
+            total += 8
+        if total > limit:
+            return True
+    return False

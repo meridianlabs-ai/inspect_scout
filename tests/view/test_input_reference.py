@@ -179,3 +179,34 @@ async def test_unexpected_errors_are_unavailable(
         await InputReferenceResolver(source_uri_locator).resolve(_request(), ROW)
     assert ex.value.reason == "unavailable"
     assert str(EVAL_LOG) not in ex.value.message
+
+
+@pytest.mark.asyncio
+async def test_input_that_expands_past_max_bytes_is_too_large(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from inspect_ai.model import ChatMessageUser
+
+    # One string in memory, written out once per message that references it.
+    shared = "x" * 100_000
+
+    async def expanding(
+        location: str, ref: InputReference, *, max_bytes: int | None = None
+    ) -> Transcript:
+        return Transcript(
+            transcript_id=ref.transcript_id,
+            messages=[ChatMessageUser(content=shared) for _ in range(200)],
+            events=[],
+        )
+
+    def refuse(value: Any) -> bytes:
+        raise AssertionError("the input was serialized")
+
+    monkeypatch.setattr(_input_reference, "read_referenced_transcript", expanding)
+    monkeypatch.setattr(_input_reference, "to_json_bytes_compact", refuse)
+
+    with pytest.raises(InputReferenceUnavailable) as ex:
+        await InputReferenceResolver(source_uri_locator, max_bytes=1_000_000).resolve(
+            _request(), ROW
+        )
+    assert ex.value.reason == "too_large"

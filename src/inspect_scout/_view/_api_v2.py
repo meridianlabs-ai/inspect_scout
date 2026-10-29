@@ -41,10 +41,8 @@ def v2_api_app(
             result row so its input can be shown. Without one, such rows are
             not resolved. A server showing other users' scans must authorize
             and map the location itself (see `InputReferenceLocator`).
-        input_reference_max_bytes: Largest uncompressed sample to resolve.
-            Applies only to `.eval` locations; other locations fall back to
-            the transcripts index path, which is not server-safe, so hosts
-            should only return `.eval` locations from their locator.
+        input_reference_max_bytes: Largest sample, and largest resolved
+            input, to serve. Only `.eval` locations are read.
         input_reference_concurrency: Most references resolved at once.
     """
     view_config = view_config or ViewConfig()

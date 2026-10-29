@@ -424,7 +424,10 @@ async def scan_async(
     scanjob._model_args = resolved_model_args
     scanjob._model_roles = resolved_model_roles
 
-    scanjob._generate_config = resolve_connection_limit(
+    # Kept out of scanjob: a ScanJob holds the caller's own GenerateConfig, so
+    # storing the resolved copy there would leave the derived cap on the job and
+    # the next scan through it would inherit this scan's limit.
+    resolved_generate_config = resolve_connection_limit(
         scanjob._generate_config,
         model=resolved_model,
         model_roles=resolved_model_roles,
@@ -434,7 +437,7 @@ async def scan_async(
     )
     # init_scan_model_context() published the pre-resolution config; republish the
     # resolved one so spawned workers get it too
-    set_active_generate_config(scanjob._generate_config)
+    set_active_generate_config(resolved_generate_config)
 
     scan = await create_scan(scanjob)
     if dry_run:

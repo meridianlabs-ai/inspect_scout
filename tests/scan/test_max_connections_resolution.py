@@ -23,7 +23,7 @@ from inspect_ai.util._concurrency import (
     concurrency_semaphores,
     init_concurrency,
 )
-from inspect_scout import Result, Scanner, scan, scanner
+from inspect_scout import Result, ScanJob, Scanner, scan, scanner
 from inspect_scout._scan import (
     certainly_single_process,
     resolve_connection_limit,
@@ -253,6 +253,36 @@ def test_resolving_the_limit_does_not_mutate_the_config_it_was_given() -> None:
         )
     assert resolved.max_connections == DEFAULT_MAX_TRANSCRIPTS
     assert config.max_connections is None
+
+
+def test_a_reused_scanjob_re_derives_the_limit() -> None:
+    # Returning a copy is not sufficient on its own: a ScanJob holds the caller's
+    # own GenerateConfig, so storing the resolved copy back on the job leaves the
+    # derived cap there and the next scan inherits it instead of re-deriving.
+    # Case and repro from @theruviparambil on #622.
+    config = GenerateConfig(adaptive_connections=False)
+    job = ScanJob(scanners=[pool_probe()], generate_config=config)
+    observed: list[str] = []
+    with tempfile.TemporaryDirectory() as tmpdir:
+        for max_transcripts in (3, 200):
+            init_concurrency()
+            status = scan(
+                scanners=job,
+                transcripts=transcripts_from(LOGS_DIR),
+                scans=tmpdir,
+                model=MODEL,
+                max_transcripts=max_transcripts,
+                max_processes=1,
+                limit=1,
+                display="none",
+            )
+            assert status.complete
+            assert status.location is not None
+            observed.append(pool_from(status.location))
+    assert observed == ["static:3", "static:200"]
+    assert config.max_connections is None
+    assert job.generate_config is not None
+    assert job.generate_config.max_connections is None
 
 
 # --- multi-process ---

@@ -584,9 +584,29 @@ def _transcript_metadata_column(transcript: TranscriptInfo) -> Any:
             TRANSCRIPT_METADATA_MAX_CHARS,
         )
         serialized = _normalize_scalar(
-            "transcript_metadata", thin_metadata(transcript.metadata)
+            "transcript_metadata", _thin_metadata(transcript.metadata)
         )
     return serialized
+
+
+# inspect's `thin_metadata` keeps a value whose JSON is at most 1 KB and replaces
+# a larger one with this marker.
+_THIN_MAX_JSON_CHARS = 1024
+_THIN_REMOVED = "Key removed from summary (> 1k)"
+
+
+def _thin_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
+    if isinstance(metadata, LazyJSONDict):
+        # `thin_metadata` walks `.items()`, which yields an unread JSON value as
+        # its raw text, so the object would be recorded as a (truncated) string.
+        # Resolve those first; one too big to keep is dropped without parsing.
+        resolved: dict[str, Any] = {}
+        for key in metadata:
+            raw = metadata.unread_json(key)
+            too_big = raw is not None and len(raw) > _THIN_MAX_JSON_CHARS
+            resolved[key] = _THIN_REMOVED if too_big else metadata[key]
+        metadata = resolved
+    return thin_metadata(metadata)
 
 
 def _normalize_scalar(key: str, v: Any) -> Any:

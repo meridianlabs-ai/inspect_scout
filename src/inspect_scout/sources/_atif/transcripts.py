@@ -260,7 +260,8 @@ def _create_transcript(
             events.append(to_compaction_event(step))
         else:
             new_msgs = step_to_messages(step, tool_call_funcs, parent_path=parent_path)
-            _apply_step_ids(new_msgs, f"{transcript_id}-{step.step_id}")
+            step_id = f"{transcript_id}-{step.step_id}"
+            _apply_step_ids(new_msgs, step_id)
             # Synthesize a ModelEvent BEFORE adding the assistant message to
             # the running history, so `event.input` reflects what the model
             # actually saw. `to_model_event` returns None for steps without
@@ -272,6 +273,7 @@ def _create_transcript(
                     new_messages=new_msgs,
                 )
                 if event is not None:
+                    event.uuid = step_id
                     events.append(event)
                     model_events.append(event)
             messages.extend(new_msgs)

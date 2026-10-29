@@ -639,7 +639,8 @@ async def test_message_ids_come_from_step_ids(tmp_path: Path) -> None:
     first, last = [e for e in transcript.events if isinstance(e, ModelEvent)]
     assert ids(first.input) == ["traj-1"]
     assert ids(last.input) == ["traj-1", "traj-2", "traj-2-1", "traj-2-2"]
-    assert transcript.messages_from == [last.uuid]
+    assert (first.uuid, last.uuid) == ("traj-2", "traj-3")
+    assert transcript.messages_from == ["traj-3"]
     assert_message_ids_consistent(transcript)
 
 
@@ -695,6 +696,7 @@ async def test_subagent_message_ids_differ_from_parent(tmp_path: Path) -> None:
     [parent_call] = [e for e in calls if e.span_id is None]
     [sub_call] = [e for e in calls if e.span_id is not None]
     assert set(ids(parent_call.input)).isdisjoint(ids(sub_call.input))
+    assert parent_call.uuid != sub_call.uuid
     assert transcript.messages_from == [parent_call.uuid]
     assert_message_ids_consistent(transcript)
 

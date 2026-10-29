@@ -1,6 +1,10 @@
 """Tests for LazyJSONDict and SelectiveLazyJSONDict."""
 
-from inspect_scout._transcript.util import LazyJSONDict
+from datetime import datetime
+from typing import Any
+
+import pytest
+from inspect_scout._transcript.util import LazyJSONDict, merge_metadata
 
 
 def test_lazy_json_dict_parses_dict() -> None:
@@ -343,3 +347,98 @@ def test_to_json_string_preserves_json_number_formats() -> None:
     assert result["numbers"]["negative"] == -100
     assert result["plain_int"] == 100
     assert result["plain_float"] == 2.5
+
+
+def test_copy_preserves_lazy_parsing() -> None:
+    """``dict.copy()`` would strand unread keys as their raw JSON strings."""
+    data = LazyJSONDict({"cfg": '{"a": 1}', "name": "x"}, json_keys=["cfg"])
+    clone = data.copy()
+    assert isinstance(clone, LazyJSONDict)
+    assert clone["cfg"] == {"a": 1}
+
+
+def test_copy_carries_already_parsed_state() -> None:
+    """A key parsed before the copy stays parsed, and is not re-parsed."""
+    data = LazyJSONDict({"cfg": '{"a": 1}'}, json_keys=["cfg"])
+    data["cfg"]["a"] = 2
+    clone = data.copy()
+    assert clone["cfg"] == {"a": 2}
+
+
+def test_copy_does_not_alias_the_original() -> None:
+    data = LazyJSONDict({"cfg": '{"a": 1}'}, json_keys=["cfg"])
+    clone = data.copy()
+    clone["other"] = 1
+    assert "other" not in data
+
+
+def test_merge_metadata_preserves_lazy_parsing() -> None:
+    """The read path merges overrides over the index dict.
+
+    ``base.copy() | overrides`` cannot be used, because both halves drop back
+    to a plain dict and strand every key nobody has read.
+    """
+    base = LazyJSONDict({"cfg": '{"a": 1}'}, json_keys=["cfg"])
+    merged = merge_metadata(base, {"target": "yes"})
+    assert isinstance(merged, LazyJSONDict)
+    assert merged["cfg"] == {"a": 1}
+    assert merged["target"] == "yes"
+
+
+def test_merge_metadata_returns_base_untouched_when_no_overrides() -> None:
+    base = LazyJSONDict({"cfg": '{"a": 1}'}, json_keys=["cfg"])
+    assert merge_metadata(base, {}) is base
+
+
+def test_merge_metadata_does_not_mutate_either_operand() -> None:
+    base = LazyJSONDict({"cfg": '{"a": 1}'}, json_keys=["cfg"])
+    overrides = {"target": "yes"}
+    merge_metadata(base, overrides)
+    assert "target" not in base
+    assert overrides == {"target": "yes"}
+
+
+def test_merge_metadata_marks_overrides_as_final() -> None:
+    """An override is already a real value, so it must not be re-parsed."""
+    base = LazyJSONDict({"cfg": '{"a": 1}'}, json_keys=["cfg"])
+    merged = merge_metadata(base, {"cfg": '{"a": 1}'})
+    assert merged["cfg"] == '{"a": 1}'
+
+
+def test_merge_metadata_falls_back_for_a_plain_dict_base() -> None:
+    merged = merge_metadata({"a": 1}, {"b": 2})
+    assert merged == {"a": 1, "b": 2}
+
+
+def _with_added_datetime() -> LazyJSONDict:
+    data = LazyJSONDict({"config": "{}"})
+    data["when"] = datetime(2025, 1, 1)
+    return data
+
+
+def _with_datetime_in_parsed_value() -> LazyJSONDict:
+    data = LazyJSONDict({"config": "{}"})
+    data["config"]["when"] = datetime(2025, 1, 1)
+    return data
+
+
+@pytest.mark.parametrize(
+    ("data", "expected"),
+    [
+        (LazyJSONDict({"prompt": "[not JSON"}), {"prompt": "[not JSON"}),
+        (
+            LazyJSONDict({"input": "[1, 2] is my prompt"}, json_keys=["input"]),
+            {"input": "[1, 2] is my prompt"},
+        ),
+        (LazyJSONDict({"input": "42"}, json_keys=["input"]), {"input": "42"}),
+        (_with_added_datetime(), {"config": {}, "when": "2025-01-01T00:00:00"}),
+        (_with_datetime_in_parsed_value(), {"config": {"when": "2025-01-01T00:00:00"}}),
+    ],
+)
+def test_to_json_string_writes_valid_json(
+    data: LazyJSONDict, expected: dict[str, Any]
+) -> None:
+    """Text that only looks like JSON and non-JSON values still give valid JSON."""
+    import json
+
+    assert json.loads(data.to_json_string()) == expected

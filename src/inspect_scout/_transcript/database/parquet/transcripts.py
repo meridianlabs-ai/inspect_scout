@@ -17,7 +17,7 @@ import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import filesystem
 from inspect_ai._util.path import pretty_path
-from inspect_ai.log import condense_events, expand_events
+from inspect_ai.log import condense_events
 from inspect_ai.util import trace_action, trace_message
 from pydantic_core import to_json
 from typing_extensions import override
@@ -715,8 +715,10 @@ class ParquetTranscriptsDB(TranscriptsDB):
         ):
             # Determine which columns we need to read
             need_messages = content.messages is not None
-            need_events = content.events is not None
             need_timelines = content.timeline is not None
+            # Stored timelines reference events by UUID, so resolving them
+            # needs the events even when none were requested.
+            need_events = content.events is not None or need_timelines
 
             if not need_messages and not need_events and not need_timelines:
                 # No content needed - use model_construct to preserve LazyJSONDict
@@ -835,6 +837,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 else:
                     yield b"[]"
 
+                # Streamed rather than expanded afterwards: pools must resolve
+                # before stored timelines bind to the events.
+                if events_data_json:
+                    yield b', "events_data": '
+                    events_data_bytes = events_data_json.encode("utf-8")
+                    for i in range(0, len(events_data_bytes), chunk_size):
+                        yield events_data_bytes[i : i + chunk_size]
+
                 if timelines_json:
                     yield b', "timelines": '
                     timelines_bytes = timelines_json.encode("utf-8")
@@ -855,11 +865,6 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 events_filter,
                 metadata=content.metadata is not False,
             )
-
-            # Resolve pool references back to full messages/calls
-            if events_data_json:
-                resolved_events = expand_events(transcript.events, events_data_json)
-                transcript = transcript.model_copy(update={"events": resolved_events})
 
             # Fallback: if timelines were requested but not stored, build from events
             if (

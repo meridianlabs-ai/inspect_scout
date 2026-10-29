@@ -11,6 +11,7 @@ from inspect_ai.event import (
     InfoEvent,
     LoggerEvent,
     ModelEvent,
+    SentinelEvent,
     ToolEvent,
 )
 
@@ -40,6 +41,8 @@ def event_as_str(event: Event) -> str | None:
             return _logger_event_as_str(event)
         case "approval":
             return _approval_event_as_str(event)
+        case "sentinel":
+            return _sentinel_event_as_str(event)
         case _:
             warn_once(
                 logger,
@@ -137,5 +140,40 @@ def _approval_event_as_str(event: Event) -> str | None:
 
     if event.explanation:
         parts.append(f"Explanation: {event.explanation}")
+
+    return "\n".join(parts) + "\n"
+
+
+def _sentinel_event_as_str(event: Event) -> str | None:
+    """Format SentinelEvent with factory, decision, suspicion, and explanation."""
+    if not isinstance(event, SentinelEvent):
+        return None
+
+    parts = [f"SENTINEL ({event.kind}: {event.action or event.status}):"]
+    parts.append(f"Factory: {event.factory} ({event.path})")
+    parts.append(f"Stage: {event.stage}")
+
+    if event.suspicion is not None:
+        if isinstance(event.suspicion, dict):
+            suspicion_text = ", ".join(f"{k}={v}" for k, v in event.suspicion.items())
+            parts.append(f"Suspicion: {suspicion_text}")
+        else:
+            parts.append(f"Suspicion: {event.suspicion}")
+
+    if event.message:
+        parts.append(f"Message: {event.message}")
+
+    if event.modified is not None:
+        call = event.modified
+        parts.append(f"Modified: {call.function}")
+        if call.arguments:
+            args_text = ", ".join(f"{k}={v}" for k, v in call.arguments.items())
+            parts.append(f"Args: {args_text}")
+
+    if event.explanation:
+        parts.append(f"Explanation: {event.explanation}")
+
+    if event.error:
+        parts.append(f"Error: {event.error}")
 
     return "\n".join(parts) + "\n"

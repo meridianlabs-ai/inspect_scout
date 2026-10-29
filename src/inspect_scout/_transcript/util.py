@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Iterable, TypeVar
 
 from inspect_ai.event._event import Event
 from inspect_ai.model._chat_message import ChatMessage, ChatMessageBase
+from pydantic_core import from_json, to_json
 
 from .types import (
     EventFilter,
@@ -119,6 +120,23 @@ class LazyJSONDict(dict[str, Any]):
         # Not a candidate for parsing, return as-is
         return value
 
+    def copy(self) -> "LazyJSONDict":
+        """Copy preserving lazy-parse state.
+
+        ``dict.copy()`` returns a plain ``dict``, which strands every key nobody
+        has read yet as its raw JSON string for the life of the copy.
+        """
+        clone = LazyJSONDict(dict(self), json_keys=self._json_keys)
+        clone._parsed = set(self._parsed)
+        return clone
+
+    def mark_parsed(self, keys: Iterable[str]) -> None:
+        """Record ``keys`` as final, so they are never parsed on read.
+
+        Used when merging in values that are already real objects.
+        """
+        self._parsed |= set(keys)
+
     def _should_parse_value(self, key: str, value: Any) -> bool:
         """Determine if a value should be parsed as JSON.
 
@@ -139,6 +157,15 @@ class LazyJSONDict(dict[str, Any]):
             # Selective mode: only parse specified keys
             return key in self._json_keys
 
+    def _is_json_text(self, key: str, value: Any) -> bool:
+        if not (self._should_parse_value(key, value) and value[:1] in ("{", "[")):
+            return False
+        try:
+            from_json(value)
+        except ValueError:
+            return False
+        return True
+
     def get(self, key: str, default: Any = None) -> Any:
         """Get with default value, applying lazy parsing."""
         try:
@@ -150,9 +177,9 @@ class LazyJSONDict(dict[str, Any]):
         """Serialize to JSON string without parsing unparsed JSON values.
 
         Creates a JSON string representation efficiently by:
-        - For parsed keys: serializing the current value with json.dumps
-        - For unparsed keys with raw JSON strings: inserting them directly
-        - For unparsed keys with non-JSON values: serializing with json.dumps
+        - For unparsed keys holding valid JSON text: inserting it directly
+        - For everything else: serializing with pydantic ``to_json``, which
+          falls back to ``str`` for values JSON cannot represent
 
         This avoids unnecessary parse→serialize round-trips for JSON strings
         that are going to end up as JSON strings in the output anyway.
@@ -165,36 +192,33 @@ class LazyJSONDict(dict[str, Any]):
 
         parts = []
         for key in self.keys():
-            # Safely encode the key
             encoded_key = json.dumps(key, ensure_ascii=False)
-
-            if key in self._parsed:
-                # Already parsed - serialize the current value
-                value = super().__getitem__(key)
-                encoded_value = json.dumps(
-                    value, ensure_ascii=False, separators=(",", ":")
-                )
+            value = super().__getitem__(key)
+            if key not in self._parsed and self._is_json_text(key, value):
+                encoded_value = value
             else:
-                # Not yet parsed - use raw value directly
-                raw_value = super().__getitem__(key)
-
-                # If raw value is a JSON string, insert it directly (no parse/serialize round-trip)
-                # These strings come from json.dumps originally, so they're valid JSON
-                if (
-                    isinstance(raw_value, str)
-                    and raw_value
-                    and raw_value[0] in ("{", "[")
-                ):
-                    encoded_value = raw_value
-                else:
-                    # Not a JSON string - encode it normally
-                    encoded_value = json.dumps(
-                        raw_value, ensure_ascii=False, separators=(",", ":")
-                    )
-
+                encoded_value = to_json(value, fallback=str).decode("utf-8")
             parts.append(f"{encoded_key}:{encoded_value}")
 
         return "{" + ",".join(parts) + "}"
+
+
+def merge_metadata(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
+    """Merge ``overrides`` over ``base`` without stranding unread JSON keys.
+
+    ``base.copy() | overrides`` cannot be used: ``dict.copy()`` and
+    ``dict.__or__`` both return a plain ``dict`` even for a subclass, so every
+    :class:`LazyJSONDict` key nobody had read yet would stay a raw JSON string
+    for the life of the result.
+    """
+    if not overrides:
+        return base
+    if isinstance(base, LazyJSONDict):
+        merged = base.copy()
+        merged.update(overrides)
+        merged.mark_parsed(overrides.keys())
+        return merged
+    return base | overrides
 
 
 def union_transcript_contents(

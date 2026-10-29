@@ -13,4 +13,4 @@ def efficiency() -> Scanner[Transcript]:
 
 Note that we import the `mean` metric from `inspect_ai`. You can use any standard Inspect metric or create custom metrics, and can optionally include more than one metric (e.g. `stderr`). 
 
-See the Inspect documentation on [Built in Metrics](https://inspect.aisi.org.uk/scorers.html#built-in-metrics) and [Custom Metrics](https://inspect.aisi.org.uk/scorers.html#custom-metrics) for additional details.
+See the Inspect documentation on [Built in Metrics](https://inspect.aisi.org.uk/metrics.html#built-in-metrics) and [Custom Metrics](https://inspect.aisi.org.uk/metrics.html#custom-metrics) for additional details.

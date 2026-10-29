@@ -12,6 +12,7 @@ from inspect_scout._cli.common import (
     resolve_view_authorization,
     view_options,
 )
+from inspect_scout._view.network import ViewerNetworkPolicyError
 
 from .._view.view import view
 
@@ -63,6 +64,9 @@ def view_command(
     port: int,
     browser: bool | None,
     root_path: str,
+    trusted_origin: tuple[str, ...],
+    trusted_host: tuple[str, ...],
+    unsafe_allow_unauthenticated: bool,
     **common: Unpack[CommonOptions],
 ) -> None:
     """View scan results."""
@@ -70,16 +74,22 @@ def view_command(
     with chdir(project_dir or "."):
         process_common_options(ctx, common, init_logging=False)
 
-    view(
-        project_dir=project_dir,
-        transcripts=transcripts,
-        scans=scans,
-        trust_content=trust_content,
-        host=host,
-        port=port,
-        browser=browser is True,
-        mode=mode,
-        authorization=resolve_view_authorization(),
-        log_level=common["log_level"],
-        root_path=root_path,
-    )
+    try:
+        view(
+            project_dir=project_dir,
+            transcripts=transcripts,
+            scans=scans,
+            trust_content=trust_content,
+            host=host,
+            port=port,
+            browser=browser is True,
+            mode=mode,
+            authorization=resolve_view_authorization(),
+            log_level=common["log_level"],
+            root_path=root_path,
+            trusted_origins=trusted_origin,
+            trusted_hosts=trusted_host,
+            unsafe_allow_unauthenticated=unsafe_allow_unauthenticated,
+        )
+    except ViewerNetworkPolicyError as ex:
+        raise click.UsageError(str(ex)) from ex

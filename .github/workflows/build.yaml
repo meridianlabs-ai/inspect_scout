@@ -9,18 +9,12 @@ on:
       - main
       - "release/**"
   workflow_dispatch:
-  workflow_call:
 
 # Supersede in-flight PR runs when the branch is pushed again. Every other
-# trigger — pushes to main, manual dispatch, and the nightly, which calls this
-# file and so evaluates the group against its own event and run — keys on
-# run_id, giving each run a group of one. A shared group would let a batch of
-# merges leave an intermediate main commit unbuilt: only one run may pend per
-# group, and a third arrival cancels the pending second.
-#
-# Do not copy this group expression into nightly.yaml. Caller and called
-# workflow would compute the same string and the calling job would pend behind
-# the run that contains it.
+# trigger — pushes to main and manual dispatch — keys on run_id, giving each
+# run a group of one. A shared group would let a batch of merges leave an
+# intermediate main commit unbuilt: only one run may pend per group, and a
+# third arrival cancels the pending second.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -40,13 +34,13 @@ jobs:
     strategy:
       matrix:
         # rationale: test the supported floor and the latest release
-        python-version: &python-versions ["3.10", "3.14"]
+        python-version: &python-versions ["3.11", "3.14"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Lint with Ruff
-        uses: chartboost/ruff-action@e18ae971ccee1b2d7bbef113930f00c670b78da4 # v1.0.0
+        uses: astral-sh/ruff-action@278981a28ce3188b1e39527901f38254bf3aac89 # v4.1.0
       - name: Format with Ruff
-        uses: chartboost/ruff-action@e18ae971ccee1b2d7bbef113930f00c670b78da4 # v1.0.0
+        uses: astral-sh/ruff-action@278981a28ce3188b1e39527901f38254bf3aac89 # v4.1.0
         with:
           args: "format --check"
 
@@ -59,11 +53,11 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install uv
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
         with:
           version: "0.9.4"
       - name: Install dependencies
@@ -84,6 +78,16 @@ jobs:
         if: ${{ !cancelled() }}
         run: uv cache prune --ci
 
+  config-carveouts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # stdlib-only gate; the runner's default python3 (>= 3.11, has tomllib)
+      # is all it needs — no venv, no installs
+      - name: Check config carve-out ledger
+        run: python3 scripts/check_config_carveouts.py
+
   py-test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -96,11 +100,11 @@ jobs:
       # CPython 3.14.0, where a string member in a runtime `|` union raises
       # TypeError (fixed in a later 3.14 patch; hostedtoolcache has 3.14.7).
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install uv
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
         with:
           version: "0.9.4"
       - name: Install dependencies
@@ -132,11 +136,11 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install uv
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
         with:
           version: "0.9.4"
       - name: Install build dependencies
@@ -170,7 +174,7 @@ jobs:
           submodules: true
 
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
       - name: Cache pip dependencies
@@ -197,7 +201,7 @@ jobs:
         with:
           package_json_file: src/inspect_scout/_view/ts-mono/package.json
       - name: Install Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: pnpm
@@ -289,7 +293,7 @@ jobs:
           package_json_file: src/inspect_scout/_view/ts-mono/package.json
 
       - name: Install Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: pnpm
@@ -320,7 +324,7 @@ jobs:
           package_json_file: src/inspect_scout/_view/ts-mono/package.json
 
       - name: Install Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: pnpm

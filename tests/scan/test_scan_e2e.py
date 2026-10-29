@@ -5,6 +5,8 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 
 import pytest
+from inspect_ai.event import timeline_build
+from inspect_ai.log import read_eval_log, write_eval_log
 from inspect_ai.model import ModelOutput, get_model
 from inspect_ai.model._chat_message import ChatMessageUser
 from inspect_scout import (
@@ -13,13 +15,15 @@ from inspect_scout import (
     Scanner,
     llm_scanner,
     loader,
+    message_numbering,
     scan,
     scanner,
+    transcript_messages,
     transcripts_db,
 )
 from inspect_scout._scanresults import scan_results_df
 from inspect_scout._transcript.factory import transcripts_from
-from inspect_scout._transcript.types import Transcript
+from inspect_scout._transcript.types import Transcript, TranscriptContent
 
 # Test data location
 LOGS_DIR = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
@@ -519,3 +523,149 @@ def test_scan_model_usage_is_per_loader_item(tmp_path: Path) -> None:
     assert status.summary.scanners["multi_item_model_usage_scanner"].tokens == (
         3 * first_tokens
     )
+
+
+def _write_log_with_stored_timelines(tmp_path: Path, names: list[str]) -> Path:
+    """Write a two-sample log whose samples store timelines with the given names."""
+    log = read_eval_log(str(sorted(LOGS_DIR.glob("*.eval"))[0]))
+    log.samples = (log.samples or [])[:2]
+    for sample in log.samples:
+        built = timeline_build(sample.events)
+        sample.timelines = [built.model_copy(update={"name": n}) for n in names]
+    logs_dir = tmp_path / "logs"
+    logs_dir.mkdir()
+    write_eval_log(log, str(logs_dir / "timelines.eval"))
+    return logs_dir
+
+
+@scanner(name="model_events_scanner", events=["model"])
+def model_events_scanner_factory() -> Scanner[Transcript]:
+    """Scanner that reads only model events."""
+
+    async def scan_transcript(transcript: Transcript) -> Result:
+        return Result(value=len(transcript.events))
+
+    return scan_transcript
+
+
+def test_scan_event_filter_on_log_with_stored_timelines(tmp_path: Path) -> None:
+    """An event-filtered scanner scans samples that store timelines.
+
+    Petri stores timelines referencing every event type. Loading them against a
+    filtered event list failed validation, and since scanners share one read per
+    transcript, the messages scanner failed alongside the event-filtered one.
+    """
+    logs_dir = _write_log_with_stored_timelines(tmp_path, ["Default"])
+
+    status = scan(
+        scanners=[model_events_scanner_factory(), simple_scanner_factory()],
+        transcripts=transcripts_from(str(logs_dir)),
+        scans=str(tmp_path / "scans"),
+        max_processes=1,
+        display="none",
+    )
+
+    assert status.complete
+    assert status.location is not None
+    results = scan_results_df(status.location).scanners
+    for name in ["model_events_scanner", "simple_scanner"]:
+        df = results[name]
+        assert len(df) == 2
+        assert df["scan_error"].isna().all(), df["scan_error"].tolist()
+    assert all(value > 0 for value in results["model_events_scanner"]["value"])
+
+
+@pytest.mark.parametrize("source", ["log", "db"])
+@pytest.mark.parametrize(
+    ("timeline", "expected_error"),
+    [
+        pytest.param("target", None, id="stored-name"),
+        pytest.param(
+            "missing",
+            "Timeline 'missing' not found in transcript",
+            id="unknown-name",
+        ),
+    ],
+)
+def test_llm_scanner_selects_stored_timeline_by_name(
+    tmp_path: Path, source: str, timeline: str, expected_error: str | None
+) -> None:
+    """`llm_scanner(timeline=...)` finds a stored timeline without `content=`.
+
+    Petri stores "target" and "auditor" timelines on every sample. Readers return
+    stored timelines only when the content requests them, so naming one used to
+    fail with "Transcript has no timelines".
+    """
+    import asyncio
+
+    transcripts_path = _write_log_with_stored_timelines(tmp_path, ["target", "auditor"])
+    if source == "db":
+        db_path = tmp_path / "db"
+
+        async def insert_transcripts() -> None:
+            async with transcripts_db(str(db_path)) as db:
+                await db.insert(transcripts_from(str(transcripts_path)))
+
+        asyncio.run(insert_transcripts())
+        transcripts_path = db_path
+
+    status = scan(
+        scanners={
+            "judge": llm_scanner(
+                question="Did the target refuse?", answer="boolean", timeline=timeline
+            )
+        },
+        transcripts=transcripts_from(str(transcripts_path)),
+        scans=str(tmp_path / "scans"),
+        model="mockllm/model",
+        max_processes=1,
+        display="none",
+    )
+
+    assert status.location is not None
+    df = scan_results_df(status.location).scanners["judge"]
+    assert len(df) == 2
+    errors = df["scan_error"].tolist()
+    if expected_error is None:
+        assert df["scan_error"].isna().all(), errors
+    else:
+        assert all(expected_error in e for e in errors), errors
+        assert all("'target', 'auditor'" in e for e in errors), errors
+
+
+@pytest.mark.asyncio
+async def test_stored_timelines_read_the_same_from_log_and_db(tmp_path: Path) -> None:
+    """A parquet DB yields the same judge input from stored timelines as the log.
+
+    The DB stores model inputs in a pool. Stored timelines used to bind to the
+    events before the pool was expanded, so their model events had empty inputs
+    and a timeline scan of a DB showed the judge almost nothing.
+    """
+    logs_dir = _write_log_with_stored_timelines(tmp_path, ["target", "auditor"])
+    db_path = tmp_path / "db"
+    async with transcripts_db(str(db_path)) as db:
+        await db.insert(transcripts_from(str(logs_dir)))
+
+    async def judge_inputs(location: Path) -> dict[tuple[str, str], list[str]]:
+        content = TranscriptContent(messages="all", timeline=True)
+        rendered: dict[tuple[str, str], list[str]] = {}
+        async with transcripts_from(str(location)).reader() as reader:
+            async for info in reader.index():
+                transcript = await reader.read(info, content)
+                for name in ["target", "auditor"]:
+                    messages_as_str, _ = message_numbering()
+                    rendered[(info.transcript_id, name)] = [
+                        segment.messages_str
+                        async for segment in transcript_messages(
+                            transcript,
+                            messages_as_str=messages_as_str,
+                            model="mockllm/model",
+                            timeline=name,
+                        )
+                    ]
+        return rendered
+
+    from_log = await judge_inputs(logs_dir)
+    assert len(from_log) == 4
+    assert all(segments for segments in from_log.values())
+    assert await judge_inputs(db_path) == from_log

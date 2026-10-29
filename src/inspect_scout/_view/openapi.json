@@ -3853,6 +3853,7 @@
                         "compaction",
                         "branch",
                         "approval",
+                        "sentinel",
                         "sandbox",
                         "info",
                         "store",
@@ -4939,6 +4940,7 @@
                         "compaction",
                         "branch",
                         "approval",
+                        "sentinel",
                         "sandbox",
                         "info",
                         "store",
@@ -5684,6 +5686,17 @@
             "title": "Model",
             "type": "string"
           },
+          "origin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin"
+          },
           "output": {
             "$ref": "#/components/schemas/ModelOutput"
           },
@@ -5919,6 +5932,17 @@
                 "type": "null"
               }
             ]
+          },
+          "input_context_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Context Tokens"
           },
           "metadata": {
             "anyOf": [
@@ -9791,7 +9815,7 @@
             "anyOf": [
               {
                 "enum": [
-                  "continue",
+                  "proceed",
                   "modify",
                   "reject",
                   "terminate",
@@ -11090,7 +11114,7 @@
         "type": "object"
       },
       "ToolEvent": {
-        "description": "Call to a tool.",
+        "description": "Call to a tool.\n\nA host tool that `sandbox_agent_bridge(bridged_tools=...)` runs for a\nsandboxed agent is recorded with `metadata[\"bridge\"]`: `server` and `tool`\n(the bridged server and the tool name within it, also the event's\n`function`), `function` (the name the model called it by, or `None`),\n`proposal_id` (the id of the model's proposing tool call, or `None`) and\n`grant` (`\"consumed\"` when a proposal matched, `\"denied\"` when the call\nwas refused for lack of one, `\"exempt\"` when a server registered with\n`require_proposal=False` ran it without one, or `None` when the request\nwas rejected before that check).",
         "properties": {
           "agent": {
             "anyOf": [

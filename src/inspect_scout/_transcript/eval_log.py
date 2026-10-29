@@ -619,10 +619,7 @@ class EvalLogTranscriptsView(TranscriptsView):
         ):
             return MaterializedTranscriptHandle(load, t)
 
-        # A subdirectory of the files cache, not the cache root: on Windows
-        # the spool files stay listed until their fds close, and the cache's
-        # size accounting (`LocalFilesCache.resolve_remote_uri_to_local`)
-        # would count multi-GB spools against its own budget.
+        # Inside the files cache, so its cleanup removes the spools too.
         spool_dir = (
             self._files_cache.cache_dir / "spool"
             if self._files_cache

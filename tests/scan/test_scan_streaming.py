@@ -192,21 +192,6 @@ def _scan_input_column(monkeypatch: pytest.MonkeyPatch, *, spool_threshold: int)
         return str(results.scanners["attachment_scanner"]["input"].tolist()[0])
 
 
-def _materialized_read_drops_score_explanation() -> bool:
-    """True until load_filtered.py carries `TranscriptInfo.score_explanation`.
-
-    That fix is made against `main` in a separate PR rather than in this series,
-    so two PRs do not edit the same lines. While it is true, the test below
-    tolerates exactly that one key; once it lands and the series is rebased this
-    returns False and the tolerance switches itself off.
-    """
-    from dataclasses import fields
-
-    from inspect_scout._transcript.json.load_filtered import RawTranscript
-
-    return "score_explanation" not in {f.name for f in fields(RawTranscript)}
-
-
 def test_recorded_input_resolves_attachments_like_materialized(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -232,12 +217,6 @@ def test_recorded_input_resolves_attachments_like_materialized(
     assert "attachment://" not in streamed_input
     streamed = json.loads(streamed_input)
     control = json.loads(control_input)
-    if _materialized_read_drops_score_explanation():
-        # Known gap, fixed against main in its own PR: the materialized read
-        # drops score_explanation. Tolerate exactly that key; anything else
-        # must still fail.
-        assert set(streamed) ^ set(control) == {"score_explanation"}
-        streamed.pop("score_explanation")
     assert streamed == control
 
 

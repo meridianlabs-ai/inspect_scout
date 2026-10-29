@@ -1,5 +1,76 @@
 # Changelog
 
+## [0.6.1](https://github.com/meridianlabs-ai/inspect_scout/compare/0.6.0...0.6.1) (2026-10-21)
+
+
+### Features
+
+* scout view serves the viewer's Content-Security-Policy ([#712](https://github.com/meridianlabs-ai/inspect_scout/issues/712)) ([f0a0133](https://github.com/meridianlabs-ai/inspect_scout/commit/f0a0133f34a3bd46514551417e81e5d068e46ef5))
+
+
+### Bug Fixes
+
+* a monitored agent can forge tool calls, tool errors, reasoning and transcript end lines past the scanner nonce ([#726](https://github.com/meridianlabs-ai/inspect_scout/issues/726)) ([c2dac24](https://github.com/meridianlabs-ai/inspect_scout/commit/c2dac241b79325901f681bcc0394ddd2a4e013d8))
+* block DNS-rebinding and cross-site requests to scout view ([#482](https://github.com/meridianlabs-ai/inspect_scout/issues/482)) ([d6baf23](https://github.com/meridianlabs-ai/inspect_scout/commit/d6baf238fd0029f3592c6052ae50661ca50c4a81))
+* compare the scout view token in constant time ([#720](https://github.com/meridianlabs-ai/inspect_scout/issues/720)) ([01ce170](https://github.com/meridianlabs-ai/inspect_scout/commit/01ce170b4854f67981575d33ef736ffbfdcb38a0))
+* discover eval logs with prefix-scoped S3 access ([#678](https://github.com/meridianlabs-ai/inspect_scout/issues/678)) ([867cc7c](https://github.com/meridianlabs-ai/inspect_scout/commit/867cc7c54f7798592453112e3bd8f12560b2af5a))
+* **examples:** eval_awareness no longer counts topic vocabulary as awareness ([#679](https://github.com/meridianlabs-ai/inspect_scout/issues/679)) ([2653f93](https://github.com/meridianlabs-ai/inspect_scout/commit/2653f933d634f3f7e8f20c7d49ba3ff26f30fd16))
+* llm_scanner fails on Petri logs when scanning a named timeline ([8c8e789](https://github.com/meridianlabs-ai/inspect_scout/commit/8c8e789593d14db0788f92831a1dd08c64aaabe6))
+* saving project settings no longer deletes scout.yaml fields the settings page doesn't show ([4bff241](https://github.com/meridianlabs-ai/inspect_scout/commit/4bff2418ca2a5f627ae87c00d43dc34c361ee2af))
+* scout no longer installs DuckDB 2.0, which broke reading transcript databases ([96c2575](https://github.com/meridianlabs-ai/inspect_scout/commit/96c25756ddbd0c17112de20dc8e439daad931c6c))
+* scout view fails to load scans behind Posit Workbench and other Host-rewriting proxies ([#723](https://github.com/meridianlabs-ai/inspect_scout/issues/723)) ([9f95ff9](https://github.com/meridianlabs-ai/inspect_scout/commit/9f95ff97d23748eb42808b539ac3930b89dad9d5))
+* timeline scans of transcript databases gave the judge nearly empty stored timelines, so earlier results from those scans may be wrong ([8c8e789](https://github.com/meridianlabs-ai/inspect_scout/commit/8c8e789593d14db0788f92831a1dd08c64aaabe6))
+
+## [0.6.0](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.5...0.6.0) (2026-10-15)
+
+
+### Breaking Changes
+
+* require Python 3.11 and test on Python 3.14 ([#703](https://github.com/meridianlabs-ai/inspect_scout/issues/703))
+
+### Features
+
+* optional nonce marks real message headers in transcripts rendered into scanner prompts ([#709](https://github.com/meridianlabs-ai/inspect_scout/issues/709)) ([c7f3486](https://github.com/meridianlabs-ai/inspect_scout/commit/c7f34861c8a305a798cdf1b07a1b8f3ac2ca4683))
+* require Python 3.11 and test on Python 3.14 ([#703](https://github.com/meridianlabs-ai/inspect_scout/issues/703)) ([b9d16f8](https://github.com/meridianlabs-ai/inspect_scout/commit/b9d16f852d84560cb1d38c71f84770d9f723f386))
+
+
+### Bug Fixes
+
+* default transcript read hands scanners raw JSON strings for index metadata ([#645](https://github.com/meridianlabs-ai/inspect_scout/issues/645)) ([59a6171](https://github.com/meridianlabs-ai/inspect_scout/commit/59a6171439064eab646bb0fe8f5c170cc9a586b9))
+* importing eval logs with long agent transcripts runs out of memory ([#700](https://github.com/meridianlabs-ai/inspect_scout/issues/700)) ([2e2332b](https://github.com/meridianlabs-ai/inspect_scout/commit/2e2332bcd06e7a96d213dd321982274ea90e0c48))
+* scan results load under a host Content-Security-Policy without 'unsafe-eval' ([#710](https://github.com/meridianlabs-ai/inspect_scout/issues/710)) ([5d3b3fc](https://github.com/meridianlabs-ai/inspect_scout/commit/5d3b3fcd9df987b8c10c6b71419fb289e6dc14dc))
+* scan results record invalid transcript metadata, or recording fails, for some metadata values ([#706](https://github.com/meridianlabs-ai/inspect_scout/issues/706)) ([228af05](https://github.com/meridianlabs-ai/inspect_scout/commit/228af05c1da0ed67f793360938f628cc6a812ac6))
+* scans fail on Petri logs when a scanner filters events ([#702](https://github.com/meridianlabs-ai/inspect_scout/issues/702)) ([0ff478f](https://github.com/meridianlabs-ai/inspect_scout/commit/0ff478fd4cc8b50962a3b71c424f65274d765a75))
+* scorer explanations are no longer dropped when reading or recording transcripts ([#635](https://github.com/meridianlabs-ai/inspect_scout/issues/635)) ([d2b1376](https://github.com/meridianlabs-ai/inspect_scout/commit/d2b13766e942964d9461170bf9b8afd66c38cba7))
+* show sentinel proceed actions correctly in the transcript view ([#698](https://github.com/meridianlabs-ai/inspect_scout/issues/698)) ([3178de3](https://github.com/meridianlabs-ai/inspect_scout/commit/3178de324b8a42770b99df0213cdfdaa9061c326))
+
+## [0.5.5](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.4...0.5.5) (2026-10-11)
+
+
+### Features
+
+* show untrusted model output as plain text in Scout View ([#690](https://github.com/meridianlabs-ai/inspect_scout/issues/690)) ([b0133f4](https://github.com/meridianlabs-ai/inspect_scout/commit/b0133f48bf269283dd6e416318d2a15515a04b31))
+* support inspect_ai sentinel events in scanners and grep_scanner ([#697](https://github.com/meridianlabs-ai/inspect_scout/issues/697)) ([bb56a40](https://github.com/meridianlabs-ai/inspect_scout/commit/bb56a402510d4566eca439c4c4cf721dc52b441c))
+
+
+### Bug Fixes
+
+* scan results record transcript_success as text when the first transcript has no score ([#689](https://github.com/meridianlabs-ai/inspect_scout/issues/689)) ([5f2881d](https://github.com/meridianlabs-ai/inspect_scout/commit/5f2881d1c0217829653e6bdb60c7430d3670569d))
+* scanners and transcript databases lose the scorer's explanation ([d746d2a](https://github.com/meridianlabs-ai/inspect_scout/commit/d746d2a323b96307705a918505ccf303b56547da))
+
+## [0.5.4](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.3...0.5.4) (2026-10-06)
+
+
+### Bug Fixes
+
+* allow scanners with postponed annotations ([#617](https://github.com/meridianlabs-ai/inspect_scout/issues/617)) ([8660a28](https://github.com/meridianlabs-ai/inspect_scout/commit/8660a28217ff8934d3aa9b719642bf9a302151db))
+* record each loader item's own events on its ResultReport ([#663](https://github.com/meridianlabs-ai/inspect_scout/issues/663)) ([1d5f774](https://github.com/meridianlabs-ai/inspect_scout/commit/1d5f77402c7b4e24bfaccb3259ddc677870c7523))
+
+
+### Performance Improvements
+
+* **examples/openclaw_telemetry_hal:** assign message ids once per lane, not per model event ([#652](https://github.com/meridianlabs-ai/inspect_scout/issues/652)) ([b8ff1bc](https://github.com/meridianlabs-ai/inspect_scout/commit/b8ff1bcaa29a4e0dd9b1e3868bbc1e46dbc8adae))
+
 ## [0.5.3](https://github.com/meridianlabs-ai/inspect_scout/compare/0.5.2...0.5.3) (2026-09-16)
 
 

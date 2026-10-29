@@ -229,11 +229,12 @@ def call_pool_item_coroutine(state: ParseState, item_prefix: str) -> CoroutineGe
     return _unfiltered_item_coroutine(state.call_pool, item_prefix)
 
 
-def _event_has_pool_refs(event_dict: dict[str, Any]) -> bool:
+def event_has_pool_refs(event_dict: dict[str, Any]) -> bool:
     """Does this event dict carry an unresolved message/call pool ref?
 
-    Must stay in step with the conditions `pool.py`'s `_resolve_events_pools`
-    checks before expanding a ref.
+    Must cover every ref the materialized load (`expand_events`) and the
+    spooled replay (`stream_parse.resolve_item_dict`) expand; a false
+    positive only retains more attachments.
     """
     if event_dict.get("input_refs"):
         return True
@@ -267,7 +268,7 @@ def attachments_coroutine(
         if retain_all is None:
             retain_all = collecting_events and (
                 not state.events_seen
-                or any(_event_has_pool_refs(e) for e in state.events)
+                or any(event_has_pool_refs(e) for e in state.events)
             )
         end = prefix.find(".", attachments_prefix_len)
         attachment_id = (
@@ -452,6 +453,7 @@ __all__ = [
     "timeline_item_coroutine",
     "message_pool_item_coroutine",
     "call_pool_item_coroutine",
+    "event_has_pool_refs",
     "attachments_coroutine",
     "metadata_coroutine",
     "scores_coroutine",

@@ -13,12 +13,9 @@ def _reject_bare_string(filter: object, param: str) -> None:
     the right advice for it.
     """
     if isinstance(filter, str) and filter:
-        # str.__str__ so that a str-mixin enum renders its value rather than its
-        # member name, keeping the quoted value and the worked example in step.
-        value = str.__str__(filter)
         raise ValueError(
-            f'{param}={value!r} is not a valid filter. Use "all", or a list, '
-            f'for example ["{value}"].'
+            f'{param}={filter!r} is not a valid filter. Use "all", or a list, '
+            f'for example ["{filter}"].'
         )
 
 

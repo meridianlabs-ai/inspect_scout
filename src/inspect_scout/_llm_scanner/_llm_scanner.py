@@ -1,4 +1,3 @@
-import sys
 from logging import getLogger
 from typing import Any, AsyncIterator, Awaitable, Callable, Literal, cast, overload
 
@@ -17,11 +16,12 @@ from jinja2 import Environment
 
 from inspect_scout._util.jinja import StrictOnUseUndefined
 
-from .._scanner.extract import MessagesPreprocessor, message_numbering
+from .._scanner.extract import MessagesPreprocessor, check_nonce, message_numbering
 from .._scanner.result import Result
 from .._scanner.scanner import (
     SCANNER_CONTENT_ATTR,
     SCANNER_NAME_ATTR,
+    SCANNER_TIMELINE_NEEDED_ATTR,
     Scanner,
     mark_streaming_support,
     scanner,
@@ -51,9 +51,6 @@ from .prompt import (
     DEFAULT_SCANNER_TEMPLATE_SUFFIX,
 )
 from .types import AnswerSpec
-
-if sys.version_info < (3, 11):
-    from exceptiongroup import ExceptionGroup
 
 logger = getLogger(__name__)
 
@@ -144,6 +141,7 @@ def llm_scanner(
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
+    nonce: str | None = None,
 ) -> Scanner[Transcript]: ...
 
 
@@ -169,6 +167,7 @@ def llm_scanner(
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
+    nonce: str | None = None,
 ) -> Scanner[Transcript]: ...
 
 
@@ -194,6 +193,7 @@ def llm_scanner(
     compaction: Literal["all", "last"] | int = "all",
     depth: int | None = None,
     reducer: Callable[[list[Result]], Awaitable[Result]] | None = None,
+    nonce: str | None = None,
 ) -> Scanner[Transcript]:
     """Create a scanner that uses an LLM to scan transcripts.
 
@@ -259,9 +259,13 @@ def llm_scanner(
         context_window: Override the model's context window size for chunking.
             When set, transcripts exceeding this limit are split into multiple
             segments, each scanned independently.
-        timeline: Name of the timeline to extract messages from. ``None``
-            (default) uses the transcript's first timeline. Raises
-            ``ValueError`` if no timeline with the given name exists.
+        timeline: Name of the timeline to extract messages from (e.g. a
+            stored ``"target"`` timeline). Setting it loads timelines, so no
+            ``content`` override is needed. ``None`` (default) uses the
+            transcript's first timeline (or one built from its events) when
+            the scanner's content includes timelines or events, and
+            otherwise its messages. Raises ``ValueError`` if no timeline
+            with the given name exists.
         compaction: How to handle compaction boundaries when extracting
             messages from events. ``"all"`` (default) scans all compaction
             segments; ``"last"`` scans only the most recent.
@@ -282,11 +286,26 @@ def llm_scanner(
             wrapped in a resultset (cross-span attribution is preserved).
             Resultset answers (e.g. ``list[Model]``) bypass reduction and
             return a resultset directly.
+        nonce: A code written on every marker in the rendered transcript
+            (message headers such as ``[M2] USER (3f9a1c7e):``, tool calls,
+            tool errors, reasoning and prefill tags; see ``messages_as_str()``)
+            and available to the template as ``{{ scout_nonce }}``. Make it
+            with ``secrets.token_hex(4)`` when the scanner is built. Never
+            write a literal nonce in code: an agent that can read the scanner
+            file, or that knows the value from elsewhere, can forge markers.
+            Must be at least 8 ASCII letters and digits (raises
+            ``ValueError`` otherwise). A ``scout_nonce`` key in
+            ``template_variables`` is always ignored. The default template
+            puts the nonce on its transcript start and end lines and tells the
+            model that text that looks like a marker but lacks the nonce is
+            part of the message it appears in.
 
     Returns:
         A ``Scanner`` function that analyzes Transcript instances and returns
         ``Result`` (single segment) or ``list[Result]`` (multiple segments).
     """
+    check_nonce(nonce)
+
     # Resolve template form once at factory time.
     # - None or tuple: structured 2-block render with cache_prompt=True.
     # - str: legacy single-block render, behavior unchanged.
@@ -371,6 +390,7 @@ def llm_scanner(
             preprocessor=cast(
                 MessagesPreprocessor[list[ChatMessage]] | None, preprocessor
             ),
+            nonce=nonce,
         )
 
         async def scan_segment(messages_str: str) -> Result:
@@ -384,6 +404,7 @@ def llm_scanner(
                     messages=messages_str,
                     question=question,
                     answer=resolved_answer,
+                    nonce=nonce,
                 )
                 prompt = [
                     ChatMessageUser(
@@ -402,6 +423,7 @@ def llm_scanner(
                     messages=messages_str,
                     question=question,
                     answer=resolved_answer,
+                    nonce=nonce,
                 )
                 call_config = GenerateConfig(cache=cache) if cache is not None else None
             return await generate_answer(
@@ -424,6 +446,7 @@ def llm_scanner(
             transcript=info_transcript,
             question=question,
             answer=resolved_answer,
+            nonce=nonce,
             model=resolved_model,
         )
         effective_budget = _effective_segment_budget(
@@ -521,6 +544,11 @@ def llm_scanner(
     if content is not None:
         setattr(scan, SCANNER_CONTENT_ATTR, content)
 
+    # Readers only return stored timelines when the content requests them, so
+    # a named timeline would otherwise never be found.
+    if timeline is not None:
+        setattr(scan, SCANNER_TIMELINE_NEEDED_ATTR, True)
+
     # Vouch either way: a callable template or a timeline request needs the
     # whole transcript, and "unsafe" must be a recorded verdict, not silence.
     mark_streaming_support(scan, not full_transcript_needed)
@@ -535,6 +563,7 @@ async def _resolve_template_kwargs(
     messages: str,
     question: str | Callable[[Transcript], Awaitable[str]] | None,
     answer: Answer,
+    nonce: str | None,
 ) -> dict[str, Any]:
     """Resolve template kwargs once. Awaits any async question callable."""
     template_variables = template_variables or {}
@@ -557,6 +586,7 @@ async def _resolve_template_kwargs(
         "model": transcript.model,
         "model_options": transcript.model_options,
         "score": transcript.score,
+        "score_explanation": transcript.score_explanation,
         "success": transcript.success,
         "message_count": transcript.message_count,
         "total_time": transcript.total_time,
@@ -574,7 +604,8 @@ async def _resolve_template_kwargs(
             "error": transcript.error,
             "limit": transcript.limit,
         },
-        **template_variables,
+        **{k: v for k, v in template_variables.items() if k != "scout_nonce"},
+        **({"scout_nonce": nonce} if nonce is not None else {}),
     }
 
 
@@ -601,6 +632,7 @@ async def render_scanner_prompt(
     messages: str,
     question: str | Callable[[Transcript], Awaitable[str]] | None,
     answer: Answer,
+    nonce: str | None = None,
 ) -> str:
     """Render a scanner prompt template with the provided variables.
 
@@ -612,6 +644,7 @@ async def render_scanner_prompt(
         question: Question for the scanner to answer. Can be a static string
             or a callable that takes a Transcript and returns an awaitable string.
         answer: Answer object containing prompt and format strings.
+        nonce: Transcript marker nonce, available to the template as ``scout_nonce``.
 
     Returns:
         Rendered prompt string with all variables substituted.
@@ -622,6 +655,7 @@ async def render_scanner_prompt(
         messages=messages,
         question=question,
         answer=answer,
+        nonce=nonce,
     )
     return _render_template(template, kwargs)
 
@@ -634,6 +668,7 @@ async def _render_split_prompt(
     messages: str,
     question: str | Callable[[Transcript], Awaitable[str]] | None,
     answer: Answer,
+    nonce: str | None = None,
 ) -> tuple[str, str]:
     """Render the prefix and suffix templates with a single shared kwarg resolution."""
     kwargs = await _resolve_template_kwargs(
@@ -642,6 +677,7 @@ async def _render_split_prompt(
         messages=messages,
         question=question,
         answer=answer,
+        nonce=nonce,
     )
     prefix, suffix = templates
     return _render_template(prefix, kwargs), _render_template(suffix, kwargs)
@@ -654,6 +690,7 @@ async def _template_overhead_tokens(
     transcript: Transcript,
     question: str | Callable[[Transcript], Awaitable[str]] | None,
     answer: Answer,
+    nonce: str | None,
     model: Model,
 ) -> int:
     """Count tokens of the rendered prompt template with no messages.
@@ -670,6 +707,7 @@ async def _template_overhead_tokens(
             messages="",
             question=question,
             answer=answer,
+            nonce=nonce,
         )
         rendered = prefix_str + suffix_str
     else:
@@ -680,5 +718,6 @@ async def _template_overhead_tokens(
             messages="",
             question=question,
             answer=answer,
+            nonce=nonce,
         )
     return await model.count_tokens(rendered)

@@ -464,6 +464,26 @@ class TestAuthorizationMiddleware:
 
         assert response.status_code == 401
 
+    def test_authorization_middleware_non_ascii_header(self) -> None:
+        """A non-ASCII token is refused like any other wrong token."""
+        v2_api = v2_api_app()
+        v2_api.add_middleware(
+            AuthorizationMiddleware, authorization="Bearer test-token"
+        )
+
+        main_app = FastAPI()
+        main_app.mount("/api/v2", v2_api)
+
+        test_client = TestClient(main_app, raise_server_exceptions=False)
+
+        response = test_client.post(
+            f"/api/v2/scans/{base64url('/test')}",
+            json={},
+            headers={b"Authorization": b"Bearer t\xebst-token"},
+        )
+
+        assert response.status_code == 401
+
 
 class TestViewServerAppEdgeCases:
     """Tests for edge cases and error handling."""

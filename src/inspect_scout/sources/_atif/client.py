@@ -33,7 +33,7 @@ def import_trajectory_model() -> type["Trajectory"]:
     """Import harbor's `Trajectory` model lazily.
 
     `harbor` is an optional dependency (it requires Python >=3.12, while
-    Scout supports >=3.10), so it is never imported at module load time —
+    Scout supports >=3.11), so it is never imported at module load time —
     only when the `atif` source is actually used. Raises a friendly
     `ImportError` when harbor is not installed.
     """

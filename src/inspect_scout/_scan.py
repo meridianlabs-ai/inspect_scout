@@ -312,6 +312,11 @@ async def scan_async(
         scanjob._validation = _resolve_validation(validation, scanjob)
 
     # initialize scan config
+    scanjob._generate_config = (
+        scanjob._generate_config.merge(model_config)
+        if scanjob._generate_config and model_config
+        else model_config or scanjob._generate_config or GenerateConfig()
+    )
     scanjob._max_transcripts = (
         max_transcripts
         or scanjob._max_transcripts
@@ -333,11 +338,6 @@ async def scan_async(
     scanjob._metadata = metadata or scanjob._metadata
 
     # derive max_connections if not specified
-    scanjob._generate_config = (
-        scanjob._generate_config.merge(model_config)
-        if scanjob._generate_config and model_config
-        else model_config or scanjob._generate_config or GenerateConfig()
-    )
     if scanjob._generate_config.max_connections is None:
         scanjob._generate_config.max_connections = scanjob._max_transcripts
 
@@ -1205,6 +1205,14 @@ async def _scan_one(
         # still re-raises.
         it = aiter(loader_iterations)
         while True:
+            # Each yielded item gets its own Inspect transcript, so the
+            # report's `events` describe that invocation alone (the loader
+            # work that produced the item plus its scan) rather than a
+            # snapshot of every earlier item's history; the shared
+            # transcript grew the recorded events quadratically in the
+            # item count.
+            inspect_transcript = InspectTranscript()
+            init_transcript(inspect_transcript)
             try:
                 loader_result = await anext(it)
             except StopAsyncIteration:

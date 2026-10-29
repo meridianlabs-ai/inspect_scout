@@ -21,6 +21,7 @@ from inspect_ai.scorer import ValueToFloat
 from inspect_ai.tool import Tool, ToolDef, ToolInfo, ToolSource
 from jinja2 import Environment
 
+from .._scanner.extract import check_nonce
 from .._scanner.result import Reference, Result
 from .._util.jinja import StrictOnUseUndefined
 from .._util.refusal import generate_retry_refusals
@@ -390,6 +391,8 @@ def scanner_prompt(
     messages: str,
     question: str,
     answer: AnswerSpec | Answer,
+    *,
+    nonce: str | None = None,
 ) -> str:
     """Render the default scanner prompt template.
 
@@ -406,10 +409,17 @@ def scanner_prompt(
             or ``message_numbering``).
         question: Question for the scanner to answer.
         answer: Answer specification or resolved ``Answer`` object.
+        nonce: The nonce that ``messages`` was rendered with, if any. The
+            prompt then carries it on its transcript start and end lines and
+            tells the model that every marker contains it.
 
     Returns:
         Rendered prompt string.
+
+    Raises:
+        ValueError: If `nonce` is not at least 8 ASCII letters and digits.
     """
+    check_nonce(nonce)
     resolved = answer if isinstance(answer, Answer) else answer_from_argument(answer)
     return (
         Environment(undefined=StrictOnUseUndefined)
@@ -419,5 +429,6 @@ def scanner_prompt(
             question=question,
             answer_prompt=resolved.prompt,
             answer_format=resolved.format,
+            **({"scout_nonce": nonce} if nonce is not None else {}),
         )
     )

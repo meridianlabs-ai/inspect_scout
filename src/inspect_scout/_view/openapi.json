@@ -212,7 +212,7 @@
       },
       "AppConfig": {
         "additionalProperties": false,
-        "description": "Application configuration returned by GET /config.",
+        "description": "Application configuration returned by GET /config.\n\n`trust_content` is the viewer-wide cap: the lowest of the `scout view`\noption (or `SCOUT_VIEW_TRUST_CONTENT`) and the project's setting.",
         "properties": {
           "filter": {
             "anyOf": [
@@ -463,6 +463,17 @@
                 "type": "null"
               }
             ]
+          },
+          "trust_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Content"
           },
           "validation": {
             "anyOf": [
@@ -2177,6 +2188,17 @@
       "ContentText": {
         "description": "Text content.",
         "properties": {
+          "cache_breakpoint": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Breakpoint"
+          },
           "citations": {
             "anyOf": [
               {
@@ -3831,6 +3853,7 @@
                         "compaction",
                         "branch",
                         "approval",
+                        "sentinel",
                         "sandbox",
                         "info",
                         "store",
@@ -4917,6 +4940,7 @@
                         "compaction",
                         "branch",
                         "approval",
+                        "sentinel",
                         "sandbox",
                         "info",
                         "store",
@@ -5290,6 +5314,9 @@
                   "$ref": "#/components/schemas/ReviewEvent"
                 },
                 {
+                  "$ref": "#/components/schemas/SentinelEvent"
+                },
+                {
                   "$ref": "#/components/schemas/BranchEvent"
                 },
                 {
@@ -5659,6 +5686,17 @@
             "title": "Model",
             "type": "string"
           },
+          "origin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin"
+          },
           "output": {
             "$ref": "#/components/schemas/ModelOutput"
           },
@@ -5672,6 +5710,31 @@
               }
             ],
             "title": "Pending"
+          },
+          "request_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ModelRequestId"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Ids"
+          },
+          "requested_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Model"
           },
           "retries": {
             "anyOf": [
@@ -5870,6 +5933,17 @@
               }
             ]
           },
+          "input_context_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Context Tokens"
+          },
           "metadata": {
             "anyOf": [
               {
@@ -5885,6 +5959,17 @@
           "model": {
             "title": "Model",
             "type": "string"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
           },
           "time": {
             "anyOf": [
@@ -5914,6 +5999,30 @@
           "completion"
         ],
         "title": "ModelOutput",
+        "type": "object"
+      },
+      "ModelRequestId": {
+        "description": "Provider request id from an HTTP response.",
+        "properties": {
+          "header": {
+            "title": "Header",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "header",
+          "status"
+        ],
+        "title": "ModelRequestId",
         "type": "object"
       },
       "ModelUsage": {
@@ -6360,6 +6469,17 @@
             ],
             "title": "Transcripts"
           },
+          "trust_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Content"
+          },
           "validation": {
             "anyOf": [
               {
@@ -6656,6 +6776,17 @@
               }
             ],
             "title": "Transcripts"
+          },
+          "trust_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Content"
           },
           "validation": {
             "anyOf": [
@@ -7156,6 +7287,17 @@
               }
             ],
             "title": "Choices"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
           },
           "files": {
             "anyOf": [
@@ -8684,6 +8826,9 @@
                 "$ref": "#/components/schemas/ReviewEvent"
               },
               {
+                "$ref": "#/components/schemas/SentinelEvent"
+              },
+              {
                 "$ref": "#/components/schemas/BranchEvent"
               },
               {
@@ -8757,6 +8902,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/ReviewEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SentinelEvent"
                     },
                     {
                       "$ref": "#/components/schemas/BranchEvent"
@@ -9658,6 +9806,233 @@
           "result"
         ],
         "title": "SearchResponse",
+        "type": "object"
+      },
+      "SentinelEvent": {
+        "description": "Report from a sentinel monitor or protocol about one step.\n\nA report's metadata is recorded in the event's `metadata` field.\n\nExperimental: not yet a stable API; may change without notice.",
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "enum": [
+                  "proceed",
+                  "modify",
+                  "reject",
+                  "terminate",
+                  "escalate"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "audit": {
+            "default": false,
+            "title": "Audit",
+            "type": "boolean"
+          },
+          "conversation": {
+            "title": "Conversation",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "event": {
+            "const": "sentinel",
+            "default": "sentinel",
+            "title": "Event",
+            "type": "string"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "factory": {
+            "title": "Factory",
+            "type": "string"
+          },
+          "function": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Function"
+          },
+          "kind": {
+            "enum": [
+              "observation",
+              "decision"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "modified": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolCall"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/Reference"
+            },
+            "title": "References",
+            "type": "array"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "stage": {
+            "enum": [
+              "model_input",
+              "model_output",
+              "tool_call",
+              "tool_result"
+            ],
+            "title": "Stage",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "reported",
+              "cancelled",
+              "bypassed",
+              "superseded",
+              "error"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "step_id": {
+            "title": "Step Id",
+            "type": "string"
+          },
+          "suspicion": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "minProperties": 1,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suspicion"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "timestamp",
+          "working_start",
+          "event",
+          "factory",
+          "path",
+          "step_id",
+          "conversation",
+          "stage",
+          "kind",
+          "status",
+          "audit",
+          "references"
+        ],
+        "title": "SentinelEvent",
         "type": "object"
       },
       "SnapshotDetails": {
@@ -10739,7 +11114,7 @@
         "type": "object"
       },
       "ToolEvent": {
-        "description": "Call to a tool.",
+        "description": "Call to a tool.\n\nA host tool that `sandbox_agent_bridge(bridged_tools=...)` runs for a\nsandboxed agent is recorded with `metadata[\"bridge\"]`: `server` and `tool`\n(the bridged server and the tool name within it, also the event's\n`function`), `function` (the name the model called it by, or `None`),\n`proposal_id` (the id of the model's proposing tool call, or `None`) and\n`grant` (`\"consumed\"` when a proposal matched, `\"denied\"` when the call\nwas refused for lack of one, `\"exempt\"` when a server registered with\n`require_proposal=False` ran it without one, or `None` when the request\nwas rejected before that check).",
         "properties": {
           "agent": {
             "anyOf": [
@@ -11213,6 +11588,9 @@
                   "$ref": "#/components/schemas/ReviewEvent"
                 },
                 {
+                  "$ref": "#/components/schemas/SentinelEvent"
+                },
+                {
                   "$ref": "#/components/schemas/BranchEvent"
                 },
                 {
@@ -11459,6 +11837,17 @@
           "transcript_id": {
             "title": "Transcript Id",
             "type": "string"
+          },
+          "trust_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Content"
           }
         },
         "required": [
@@ -11716,6 +12105,17 @@
           "transcript_id": {
             "title": "Transcript Id",
             "type": "string"
+          },
+          "trust_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Content"
           }
         },
         "required": [

@@ -125,9 +125,6 @@ jobs:
     secrets:
       MARVIN_APP_CLIENT_ID: ${{ secrets.MARVIN_APP_CLIENT_ID }}
       MARVIN_APP_PRIVATE_KEY: ${{ secrets.MARVIN_APP_PRIVATE_KEY }}
-      # codex engine (design/codex-engine.md in the agents repo):
-      # consumed only on items labeled engine:codex; optional.
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     # Agent runs restore caches, never save them (agents repo: design/agent-cache-scope.md).
     cache-mode: read
     permissions:

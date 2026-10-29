@@ -56,7 +56,7 @@ from .client import (
     read_jsonl_events,
 )
 from .events import process_parsed_events
-from .message_ids import apply_source_ids
+from .message_ids import apply_edit_ids, apply_source_ids
 
 logger = getLogger(__name__)
 
@@ -127,6 +127,7 @@ async def claude_code(
             # Multi-file slug group — merge and mark as processed
             processed_slugs.add(slug)
             async for transcript in _merge_slug_group(slug_groups[slug], slug):
+                apply_edit_ids(transcript.events)
                 yield transcript
                 count += 1
                 if limit and count >= limit:
@@ -136,6 +137,7 @@ async def claude_code(
             if slug is not None:
                 processed_slugs.add(slug)
             async for transcript in _process_session_file(f):
+                apply_edit_ids(transcript.events)
                 yield transcript
                 count += 1
                 if limit and count >= limit:

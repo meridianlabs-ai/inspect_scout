@@ -27,9 +27,8 @@ def apply_source_ids(
       line of the response, which is the one later lines' `parentUuid` names).
     - An assistant message keeps the Anthropic `message.id` it was built with,
       or takes its line's `uuid` if it has none. Fragments of one response
-      split apart by other lines become separate replies with the same
-      `message.id`; each later one takes `edit_id(message.id, content)`,
-      plus a `.1`, `.2`, ... suffix if another line's ID equals it.
+      split apart by other lines become separate replies that share the
+      `message.id` until `apply_edit_ids` runs over the whole transcript.
     - The messages a user line adds (its text, then its tool results) take the
       line's `uuid`, with `-1`, `-2`, ... added after the first. One that
       matches no line takes its call's `uuid` plus its position.
@@ -65,13 +64,10 @@ def apply_source_ids(
     sources = _line_messages(conversation)
     starts = [source.line for source in sources]
     seen: set[int] = set()
-    replies = _ReplyIds(
-        {_reply_source_id(line) for _, line in calls} | {s.id for s in sources}
-    )
     for event, (line_index, line) in pairs:
         event.uuid = line.uuid
         if event.output.choices:
-            replies.apply(event.output.message, _reply_source_id(line))
+            event.output.message.id = line.message.id or line.uuid
         _apply_input_ids(event, sources, bisect_left(starts, line_index) - 1, seen)
         seen.update(id(message) for message in event.input)
         if event.output.choices:
@@ -82,34 +78,46 @@ def _session_id(conversation: Sequence[BaseEvent]) -> str | None:
     return conversation[0].sessionId if conversation else None
 
 
-def _reply_source_id(line: AssistantEvent) -> str:
-    return line.message.id or line.uuid
+def apply_edit_ids(events: Sequence[Event]) -> None:
+    """Give replies that share an ID but differ in content their own IDs.
+
+    Runs once over a finished transcript's events (nested agents' and merged
+    sessions' included), after `apply_source_ids` has labelled each
+    conversation, so every real ID is known before any edit ID is chosen.
+    In event order, the first content under an ID keeps it; each other
+    content takes `edit_id(ID, content)`, plus a `.1`, `.2`, ... suffix if
+    that equals another ID in the transcript. Running it again changes
+    nothing.
+
+    Args:
+        events: All of the transcript's events.
+    """
+    model_events = [event for event in events if isinstance(event, ModelEvent)]
+    taken = {
+        message.id
+        for event in model_events
+        for message in [*event.input, *_replies(event)]
+        if message.id is not None
+    }
+    first: dict[str, str] = {}
+    for event in model_events:
+        for reply in _replies(event):
+            if reply.id is None:
+                continue
+            content = _content_key(reply)
+            if first.setdefault(reply.id, content) == content:
+                continue
+            candidate = edit_id(reply.id, content)
+            reply_id, suffix = candidate, 1
+            while reply_id in taken:
+                reply_id, suffix = f"{candidate}.{suffix}", suffix + 1
+            taken.add(reply_id)
+            first[reply_id] = content
+            reply.id = reply_id
 
 
-class _ReplyIds:
-    """Reply IDs, kept distinct for different replies sharing a source ID."""
-
-    def __init__(self, line_ids: set[str]) -> None:
-        """Create the reply IDs for one conversation.
-
-        Args:
-            line_ids: Every ID the conversation's lines give their messages,
-                which an edited reply's ID must not take.
-        """
-        self._line_ids = line_ids
-        self._first: dict[str, str] = {}
-
-    def apply(self, reply: ChatMessage, source_id: str) -> None:
-        content = _content_key(reply)
-        first = self._first.setdefault(source_id, content)
-        if content == first:
-            reply.id = source_id
-            return
-        candidate = edit_id(source_id, content)
-        reply_id, suffix = candidate, 1
-        while reply_id in self._line_ids:
-            reply_id, suffix = f"{candidate}.{suffix}", suffix + 1
-        reply.id = reply_id
+def _replies(event: ModelEvent) -> list[ChatMessage]:
+    return [event.output.message] if event.output.choices else []
 
 
 class _LineMessage(NamedTuple):

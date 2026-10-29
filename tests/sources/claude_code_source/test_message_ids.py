@@ -215,6 +215,109 @@ async def test_split_response_id_gives_way_to_a_reply_with_that_id(
     assert_message_ids_consistent(transcript)
 
 
+def _split_reply(lines: list[dict[str, Any]], index: int) -> list[dict[str, Any]]:
+    """Split the one-text-block reply at `index` in two around a user line."""
+    reply = lines[index]
+    text = reply["message"]["content"][0]["text"]
+    first, second = (
+        {
+            **reply,
+            "uuid": f"{reply['uuid']}-{part}",
+            "message": {**reply["message"], "content": [{"type": "text", "text": t}]},
+        }
+        for part, t in (("a", text[:20]), ("b", text[20:]))
+    )
+    user = next(line for line in lines if line["type"] == "user")
+    between = {
+        **user,
+        "uuid": f"{reply['uuid']}-between",
+        "parentUuid": first["uuid"],
+        "message": {"role": "user", "content": "go on"},
+    }
+    second["parentUuid"] = between["uuid"]
+    for line in lines[index + 1 :]:
+        if line.get("parentUuid") == reply["uuid"]:
+            line["parentUuid"] = second["uuid"]
+    return [*lines[:index], first, between, second, *lines[index + 1 :]]
+
+
+AGENT = "a7e501"
+
+
+def _agent_session_lines() -> list[dict[str, Any]]:
+    """`agent_session.jsonl`, with a hex agent ID so its Task agent loads."""
+    session = _lines("agent_session.jsonl")
+    session[2]["message"]["content"][0]["content"][1]["text"] = f"agentId: {AGENT}"
+    session[2]["toolUseResult"]["agentId"] = AGENT
+    return session
+
+
+async def _reply_ids(
+    directory: Path, files: dict[str, list[dict[str, Any]]]
+) -> dict[str, str | None]:
+    """Import a directory's sessions as one transcript; map call uuids to reply IDs."""
+    directory.mkdir()
+    for name, lines in files.items():
+        (directory / f"{name}.jsonl").write_text(
+            "".join(json.dumps(line) + "\n" for line in lines)
+        )
+    [transcript] = [t async for t in claude_code(path=directory)]
+    assert_message_ids_consistent(transcript)
+    return {
+        e.uuid: e.output.message.id
+        for e in transcript.events
+        if isinstance(e, ModelEvent) and e.output.choices and e.uuid
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("split_in_agent", [False, True])
+async def test_split_response_id_gives_way_to_a_real_id_across_agents(
+    tmp_path: Path, split_in_agent: bool
+) -> None:
+    session = _agent_session_lines()
+    agent = _lines("agent-atest01.jsonl")
+    # One side splits its final reply; the other's real reply ID will equal
+    # the second fragment's edit ID.
+    if split_in_agent:
+        agent, real = _split_reply(agent, 3), session[3]
+        split = "sidechain-004-b"
+    else:
+        session, real = _split_reply(session, 3), agent[1]
+        split = "agent-004-b"
+    files = {"session": session, f"agent-{AGENT}": agent}
+    edit = (await _reply_ids(tmp_path / "first", files))[split]
+    assert edit is not None
+    real["message"]["id"] = edit
+
+    replies = await _reply_ids(tmp_path / "second", files)
+
+    assert replies[real["uuid"]] == edit
+    assert replies[split] == f"{edit}.1"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("split_in_first", [True, False])
+async def test_split_response_id_gives_way_to_a_real_id_across_merged_sessions(
+    tmp_path: Path, split_in_first: bool
+) -> None:
+    plan = _lines("slug_session_1.jsonl")
+    execute = _lines("slug_session_2.jsonl")
+    if split_in_first:
+        plan, real, split = _split_reply(plan, 1), execute[1], "s1-002-b"
+    else:
+        execute, real, split = _split_reply(execute, 1), plan[1], "s2-002-b"
+    files = {"plan": plan, "execute": execute}
+    edit = (await _reply_ids(tmp_path / "first", files))[split]
+    assert edit is not None
+    real["message"]["id"] = edit
+
+    replies = await _reply_ids(tmp_path / "second", files)
+
+    assert replies[real["uuid"]] == edit
+    assert replies[split] == f"{edit}.1"
+
+
 @pytest.mark.asyncio
 async def test_unpaired_model_events_are_an_error() -> None:
     lines = parse_events(_lines("simple_conversation.jsonl"))

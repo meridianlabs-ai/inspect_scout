@@ -686,3 +686,48 @@ async def test_record_thins_oversized_transcript_metadata(
     stored = json.loads(table.column("transcript_metadata")[0].as_py())
     assert stored["model"] == "gpt-4"
     assert len(stored["test_files"]) <= 1024
+
+
+@pytest.mark.asyncio
+async def test_thinned_metadata_keeps_unread_json_values_as_objects(
+    recorder_buffer: RecorderBuffer,
+    sample_results: list[ResultReport],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from inspect_scout._recorder import buffer as buffer_module
+    from inspect_scout._transcript.util import LazyJSONDict
+
+    monkeypatch.setattr(buffer_module, "TRANSCRIPT_METADATA_MAX_CHARS", 200)
+    scanner_name = "test_scanner"
+    metadata = LazyJSONDict(
+        {
+            "model": "gpt-4",
+            "config": '{"temperature": 0.7}',
+            "files": json.dumps(["x" * 2000]),
+        },
+        json_keys=["config", "files"],
+    )
+    transcript = TranscriptInfo(
+        transcript_id="lazy-metadata-1",
+        source_type="test",
+        source_id="src-1",
+        source_uri="/path/to/src.log",
+    )
+    # As the transcript readers do: validation would turn it into a plain dict.
+    object.__setattr__(transcript, "metadata", metadata)
+
+    await recorder_buffer.record(transcript, scanner_name, sample_results, None)
+
+    parquet_path = (
+        recorder_buffer._buffer_dir
+        / f"scanner={scanner_name}"
+        / "lazy-metadata-1.parquet"
+    )
+    table = pq.read_table(parquet_path.as_posix())
+    stored = json.loads(table.column("transcript_metadata")[0].as_py())
+    assert stored == {
+        "model": "gpt-4",
+        "config": {"temperature": 0.7},
+        "files": "Key removed from summary (> 1k)",
+    }
+    assert metadata.unread_json("files") is not None

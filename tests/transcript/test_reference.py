@@ -3,12 +3,17 @@
 import math
 import shutil
 import zipfile
+import zlib
 from dataclasses import replace
 from pathlib import Path
 from typing import Any, Callable
 
 import pytest
-from inspect_ai._util.async_zip import AsyncZipReader
+import zstandard
+from inspect_ai._util.async_zip import AsyncZipReader, CentralDirectory
+from inspect_ai._util.zip_common import ZipCompressionMethod
+from inspect_ai.analysis._dataframe.extract import auto_id
+from inspect_ai.event import timeline_build
 from inspect_ai.log import (
     read_eval_log_async,
     read_eval_log_sample_summaries,
@@ -23,6 +28,7 @@ from inspect_scout._transcript.reference import (
     read_referenced_transcript,
 )
 from inspect_scout._transcript.types import TranscriptContent
+from inspect_scout._transcript.util import filter_transcript
 
 EVAL_LOG = (
     Path(__file__).parent.parent
@@ -55,11 +61,28 @@ async def _rewrite(path: Path, edit: Any) -> None:
     await write_eval_log_async(log, str(path))
 
 
-def _drop_member(path: Path, member: str) -> None:
+def _drop_member(path: Path, member: str, rename: dict[str, str] | None = None) -> None:
     with zipfile.ZipFile(EVAL_LOG) as src, zipfile.ZipFile(path, "w") as dst:
         for item in src.infolist():
             if item.filename != member:
-                dst.writestr(item, src.read(item))
+                data = src.read(item)
+                item.filename = (rename or {}).get(item.filename, item.filename)
+                dst.writestr(item, data)
+
+
+def _understate(monkeypatch: pytest.MonkeyPatch, prefixes: tuple[str, ...]) -> None:
+    """Make the central directory claim 1 byte for members under `prefixes`."""
+    real = reference._central_directory
+
+    async def understated(fs: Any, location: str) -> CentralDirectory:
+        cd = await real(fs, location)
+        entries = [
+            replace(e, uncompressed_size=1) if e.filename.startswith(prefixes) else e
+            for e in cd.entries
+        ]
+        return CentralDirectory(entries, cd.etag)
+
+    monkeypatch.setattr(reference, "_central_directory", understated)
 
 
 @pytest.fixture
@@ -162,7 +185,7 @@ async def test_over_cap_is_too_large_without_reading_the_body(
         await read_referenced_transcript(str(EVAL_LOG), _ref(), max_bytes=100)
     assert ex.value.reason == "too_large"
     assert ex.value.message == (
-        "The sample is 0.0 MiB, over this server's 0.0 MiB limit for referenced inputs."
+        "The input is larger than this server's 100 bytes limit for referenced inputs."
     )
 
 
@@ -170,20 +193,38 @@ async def test_over_cap_is_too_large_without_reading_the_body(
 async def test_understated_directory_size_cannot_bypass_the_cap(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    real = AsyncZipReader.get_member_entry
+    _understate(monkeypatch, ("samples/",))
 
-    async def understate(self: AsyncZipReader, name: str) -> Any:
-        entry = await real(self, name)
-        if name.startswith("samples/"):
-            assert entry.uncompressed_size > 100
-            return replace(entry, uncompressed_size=1)
-        return entry
-
-    monkeypatch.setattr(AsyncZipReader, "get_member_entry", understate)
-
+    # Past the compressed-size check, so the decompressed stream is what fails.
     with pytest.raises(InputReferenceUnavailable) as ex:
-        await read_referenced_transcript(str(EVAL_LOG), _ref(), max_bytes=100)
+        await read_referenced_transcript(str(EVAL_LOG), _ref(), max_bytes=2000)
     assert ex.value.reason == "too_large"
+
+
+@pytest.mark.parametrize(
+    "method",
+    [
+        ZipCompressionMethod.STORED,
+        ZipCompressionMethod.DEFLATE,
+        ZipCompressionMethod.ZSTD,
+    ],
+)
+def test_decompression_output_is_bounded_per_chunk(
+    method: ZipCompressionMethod,
+) -> None:
+    plain = b"\0" * (20 * reference._DECOMPRESS_CHUNK)
+    if method == ZipCompressionMethod.DEFLATE:
+        compressor = zlib.compressobj(wbits=-15)
+        data = compressor.compress(plain) + compressor.flush()
+    elif method == ZipCompressionMethod.ZSTD:
+        data = zstandard.ZstdCompressor().compress(plain)
+    else:
+        data = plain
+
+    chunks = list(reference._decompressed(data, method))
+
+    assert max(len(c) for c in chunks) <= reference._DECOMPRESS_CHUNK
+    assert b"".join(chunks) == plain
 
 
 @pytest.mark.parametrize(
@@ -200,11 +241,8 @@ async def test_oversized_sample_index_is_too_large(
     if dropped:
         _drop_member(log_copy, dropped)
     monkeypatch.setattr(reference, "SUMMARIES_MAX_BYTES", 100)
-
-    async def refuse(location: str) -> Any:
-        raise AssertionError("the summaries were read")
-
-    monkeypatch.setattr(reference, "read_eval_log_sample_summaries_async", refuse)
+    # What is decompressed counts, not what the directory declares.
+    _understate(monkeypatch, ("summaries.json", "_journal/summaries/"))
 
     with pytest.raises(InputReferenceUnavailable) as ex:
         await read_referenced_transcript(str(log_copy), _ref())
@@ -262,12 +300,101 @@ async def test_log_rewritten_in_place_is_read_fresh(log_copy: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_non_eval_location_reads_through_the_index() -> None:
-    transcript = await read_referenced_transcript(
-        str(EVAL_LOG.parent), _ref(TranscriptContent(messages="all"))
+async def test_non_eval_location_is_unavailable() -> None:
+    with pytest.raises(InputReferenceUnavailable) as ex:
+        await read_referenced_transcript(str(EVAL_LOG.parent), _ref())
+    assert ex.value.reason == "unavailable"
+
+
+@pytest.mark.asyncio
+async def test_oversized_central_directory_is_too_large(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(reference, "CENTRAL_DIRECTORY_MAX_BYTES", 10)
+
+    async def refuse(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("the central directory was read")
+
+    monkeypatch.setattr(reference, "_parse_central_directory", refuse)
+
+    with pytest.raises(InputReferenceUnavailable) as ex:
+        await read_referenced_transcript(str(EVAL_LOG), _ref())
+    assert ex.value.reason == "too_large"
+
+
+@pytest.mark.asyncio
+async def test_journal_summaries_are_read_as_listed(log_copy: Path) -> None:
+    # A sparse name must not make the reader expect members 1..5000.
+    _drop_member(
+        log_copy,
+        "summaries.json",
+        rename={"_journal/summaries/1.json": "_journal/summaries/5000.json"},
     )
+
+    transcript = await read_referenced_transcript(str(log_copy), _ref())
+
     assert transcript.transcript_id == SAMPLE_UUID
-    assert len(transcript.messages) == 2
+
+
+@pytest.mark.asyncio
+async def test_too_many_journal_summaries_is_too_large(
+    monkeypatch: pytest.MonkeyPatch, log_copy: Path
+) -> None:
+    _drop_member(log_copy, "summaries.json")
+    monkeypatch.setattr(reference, "JOURNAL_SUMMARIES_MAX_MEMBERS", 0)
+
+    with pytest.raises(InputReferenceUnavailable) as ex:
+        await read_referenced_transcript(str(log_copy), _ref())
+    assert ex.value.reason == "too_large"
+
+
+@pytest.mark.asyncio
+async def test_sample_without_uuid_resolves_by_scouts_id(log_copy: Path) -> None:
+    def drop_uuid(sample: Any) -> None:
+        sample.uuid = None
+
+    await _rewrite(log_copy, drop_uuid)
+    async with EvalLogTranscriptsView(str(log_copy)) as view:
+        info = [i async for i in view.select()][0]
+    log = await read_eval_log_async(str(log_copy), header_only=True)
+    assert info.transcript_id == auto_id(
+        log.eval.eval_id, f"{SAMPLE.id}_{SAMPLE.epoch}"
+    )
+
+    transcript = await read_referenced_transcript(
+        str(log_copy), _ref(transcript_id=info.transcript_id)
+    )
+
+    assert transcript.messages
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        pytest.param(TranscriptContent(messages="all", events="all"), id="no-timeline"),
+        pytest.param(
+            TranscriptContent(messages="all", events="all", timeline=["model"]),
+            id="model-timeline",
+        ),
+    ],
+)
+@pytest.mark.asyncio
+async def test_stored_timelines_are_filtered_as_in_copy_mode(
+    log_copy: Path, content: TranscriptContent
+) -> None:
+    def store_timeline(sample: Any) -> None:
+        sample.timelines = [timeline_build(sample.events)]
+
+    await _rewrite(log_copy, store_timeline)
+    async with EvalLogTranscriptsView(str(log_copy)) as view:
+        info = [i async for i in view.select()][0]
+        # As the scanner's identity loader filters it in copy mode.
+        expected = filter_transcript(await view.read(info, content), content)
+
+    transcript = await read_referenced_transcript(str(log_copy), _ref(content))
+
+    assert transcript.timelines == expected.timelines
+    assert transcript.events == expected.events
 
 
 @pytest.mark.parametrize(

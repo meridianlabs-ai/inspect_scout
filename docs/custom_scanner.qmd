@@ -281,7 +281,7 @@ This is useful when a scanner is capable of making several types of observation.
 
 When a list is returned, each individual result will yield its own row in the [results data frame](results.qmd#data-frames).
 
-When validating scanners that return lists of results, you can use [result set validation](validation.qmd#result-set-validation) to specify expected values for each label independently.
+When validating scanners that return lists of results, you can use [result set validation](validation.qmd#file-formats) to specify expected values for each label independently.
 
 ## Custom Loaders {#loaders}
 

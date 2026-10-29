@@ -31,6 +31,8 @@ scout view
 
 ![](images/scout-view.png){.border}
 
+To show model output as plain text when you're reviewing content from models you don't trust, see [Untrusted Content](projects.qmd#untrusted-content).
+
 To get programmatic access to the results, pass the scan directory to the `scan_results_df()` function:
 
 ``` python

@@ -9,6 +9,7 @@ from inspect_scout._project._project import read_project
 from inspect_scout._scan import top_level_async_init
 from inspect_scout._util.appdirs import scout_data_dir
 from inspect_scout._util.constants import DEFAULT_SERVER_HOST, DEFAULT_VIEW_PORT
+from inspect_scout._view.network import resolve_viewer_network_policy
 from inspect_scout._view.server import view_server, view_url
 from inspect_scout._view.types import ViewConfig
 
@@ -19,6 +20,7 @@ def view(
     project_dir: str | None = None,
     transcripts: str | None = None,
     scans: str | None = None,
+    trust_content: bool | None = None,
     mode: Literal["default", "scans"] = "default",
     host: str = DEFAULT_SERVER_HOST,
     port: int = DEFAULT_VIEW_PORT,
@@ -27,7 +29,20 @@ def view(
     log_level: str | None = None,
     fs_options: dict[str, Any] | None = None,
     root_path: str = "",
+    trusted_origins: tuple[str, ...] = (),
+    trusted_hosts: tuple[str, ...] = (),
+    unsafe_allow_unauthenticated: bool = False,
 ) -> None:
+    network_policy = resolve_viewer_network_policy(
+        bind_host=host,
+        port=port,
+        trusted_hosts=trusted_hosts,
+        trusted_origins=trusted_origins,
+        authorization=authorization,
+        unsafe_allow_unauthenticated=unsafe_allow_unauthenticated,
+        root_path=root_path,
+    )
+
     with chdir(project_dir or "."):
         # top level init
         project = read_project()
@@ -46,6 +61,7 @@ def view(
                 project=project,
                 transcripts_cli=transcripts,
                 scans_cli=scans,
+                trust_content_cli=trust_content,
             ),
             host=host,
             port=port,
@@ -53,4 +69,5 @@ def view(
             authorization=authorization,
             fs_options=fs_options,
             root_path=root_path,
+            network_policy=network_policy,
         )

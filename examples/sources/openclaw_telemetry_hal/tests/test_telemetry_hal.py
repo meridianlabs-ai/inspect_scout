@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import mmh3
 import pytest
 from inspect_ai.event import (
     CompactionEvent,
@@ -2593,6 +2594,69 @@ class TestTranscript:
         f = tmp_path / "empty.jsonl"
         f.write_text("")
         assert await _transcripts(f) == []
+
+
+class TestMessageIds:
+    """Stable message ids on the built transcript (``_apply_message_ids``).
+
+    Every message carries one, and assignment hashes each message object once
+    rather than re-hashing the growing conversation per model event.
+    """
+
+    @staticmethod
+    def _model_events(transcript: Transcript) -> list[ModelEvent]:
+        return [e for e in transcript.events if isinstance(e, ModelEvent)]
+
+    @staticmethod
+    def _message_objects(transcript: Transcript) -> dict[int, ChatMessage]:
+        """Every distinct message object reachable from the transcript, by identity."""
+        objects = {id(m): m for m in transcript.messages}
+        for event in TestMessageIds._model_events(transcript):
+            objects.update({id(m): m for m in event.input})
+            if event.output.choices:
+                objects[id(event.output.message)] = event.output.message
+        return objects
+
+    @pytest.mark.parametrize("fixture", [FIXTURE, CRUX1_FIXTURE])
+    def test_every_message_carries_an_id(self, fixture: Path) -> None:
+        from ..transcripts import _create_transcript
+
+        transcript = _create_transcript(read_telemetry_events(fixture), fixture)
+        assert transcript is not None
+        assert all(m.id for m in self._message_objects(transcript).values())
+        # the thread and the events agree: a message shared between them is
+        # one object, so it can only carry one id
+        thread_ids = {id(m) for m in transcript.messages}
+        for event in self._model_events(transcript):
+            if not event.span_id:
+                assert all(id(m) in thread_ids for m in event.input)
+                assert id(event.output.message) in thread_ids
+
+    @pytest.mark.parametrize("fixture", [FIXTURE, CRUX1_FIXTURE])
+    def test_ids_are_assigned_once_per_message_object(
+        self, fixture: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from ..transcripts import _create_transcript
+
+        hashes = 0
+        real_hash = mmh3.hash_bytes
+
+        def counting_hash(data: bytes) -> bytes:
+            nonlocal hashes
+            hashes += 1
+            return real_hash(data)
+
+        # stable_message_ids hashes a message's content exactly once per id
+        # lookup, so the mmh3 call count is the number of message hashings
+        monkeypatch.setattr(mmh3, "hash_bytes", counting_hash)
+        transcript = _create_transcript(read_telemetry_events(fixture), fixture)
+        assert transcript is not None
+        distinct = len(self._message_objects(transcript))
+        per_event = sum(len(e.input) + 1 for e in self._model_events(transcript))
+        # linear in messages (each object hashed once), not in the per-event
+        # conversation snapshots the old per-ModelEvent application walked
+        assert hashes == distinct
+        assert hashes < per_event
 
 
 class TestCrux1SampleExtract:

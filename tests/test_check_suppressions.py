@@ -7,9 +7,12 @@ so this file adds nothing to the ledger.
 """
 
 import importlib.util
+import json
 import pathlib
 import subprocess
 import sys
+
+import pytest
 
 SCRIPTS_DIR = pathlib.Path(__file__).parents[1] / "scripts"
 
@@ -441,23 +444,23 @@ def render(base: Ledger, head: Ledger) -> str | None:
 
 
 def test_delta_renders_nothing_when_unchanged() -> None:
-    ledger = {"a.py": {"r": {"count": 1, "undescribed": 1}}}
+    ledger = {"a.py": {"noqa": {"count": 1, "undescribed": 1}}}
     assert render(ledger, ledger) is None
 
 
 def test_delta_growth_renders_marker_warning_row_and_footer() -> None:
-    body = render({}, {"a.py": {"r": {"count": 1}}})
+    body = render({}, {"a.py": {"noqa": {"count": 1}}})
     assert body is not None
     assert body.startswith(delta.MARKER)
     assert "⚠️ Suppression ledger grew: 0 → 1 (+1)" in body
-    assert "| <code>a.py</code> | <code>r</code> | +1 |" in body
+    assert "| `a.py` | `noqa` | +1 |" in body
     assert "maintainer sign-off" in body
 
 
 def test_delta_shrink_renders_plain_heading_without_footer() -> None:
     body = render(
-        {"a.py": {"r": {"count": 2}}},
-        {"a.py": {"r": {"count": 1}}},
+        {"a.py": {"noqa": {"count": 2}}},
+        {"a.py": {"noqa": {"count": 1}}},
     )
     assert body is not None
     assert "Suppression ledger changed: 2 → 1 (-1)" in body
@@ -466,29 +469,104 @@ def test_delta_shrink_renders_plain_heading_without_footer() -> None:
 
 def test_delta_undescribed_only_change_still_renders() -> None:
     body = render(
-        {"a.py": {"r": {"count": 1, "undescribed": 1}}},
-        {"a.py": {"r": {"count": 1}}},
+        {"a.py": {"noqa": {"count": 1, "undescribed": 1}}},
+        {"a.py": {"noqa": {"count": 1}}},
     )
     assert body is not None
-    assert "| <code>a.py</code> | <code>r</code> | ±0 (reason-less 1 → 0) |" in body
+    assert "| `a.py` | `noqa` | ±0 (reason-less 1 → 0) |" in body
     assert "Reason-less (baselined) suppressions: 1 → 0" in body
 
 
 def test_delta_warns_when_reasonless_count_grows_without_total_growth() -> None:
     body = render(
-        {"a.py": {"r": {"count": 1}}},
-        {"a.py": {"r": {"count": 1, "undescribed": 1}}},
+        {"a.py": {"noqa": {"count": 1}}},
+        {"a.py": {"noqa": {"count": 1, "undescribed": 1}}},
     )
     assert body is not None
     assert "⚠️ Reason-less suppressions grew: 0 → 1 (+1)" in body
     assert "maintainer sign-off" in body
 
 
-def test_delta_escapes_untrusted_table_cell_text() -> None:
-    body = render({}, {"a`\n@team|.py": {"r`\n@team|": {"count": 1}}})
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("a.py", "`a.py`"),
+        ("[x](https://example.com)", "`[x](https://example.com)`"),
+        ("![](https://example.com/a.png)", "`![](https://example.com/a.png)`"),
+        ("https://example.com", "`https://example.com`"),
+        ("a`b", "``a`b``"),
+        ("a``b`", "``` a``b` ```"),
+        ("`x`", "`` `x` ``"),
+        (" x", "`  x `"),
+        ("", "`  `"),
+        ("a|b", "`a\\|b`"),
+        ("a\\|b", "`a\\\\|b`"),
+        ("a\n@team\r", "` a @team  `"),
+    ],
+)
+def test_delta_cell_is_a_literal_code_span(value: str, expected: str) -> None:
+    assert delta._cell(value) == expected
+
+
+@pytest.mark.parametrize(
+    "file,rule",
+    [
+        ("[x](https://example.com)", "noqa"),
+        ("a.py", "![](https://example.com/a.png)"),
+        ("https://example.com", "noqa"),
+        ("a.py", "https://example.com"),
+        ("a`b.py", "noqa"),
+        ("a.py", "type: ignore[a`b]"),
+        ("/abs/a.py", "noqa"),
+        ("../a.py", "noqa"),
+        ("src/../a.py", "noqa"),
+        ("a.py\n@team", "noqa"),
+        ("a|b.py", "noqa"),
+        ("a.txt", "noqa"),
+        ("a.py", "noqa:E501 [x](https://example.com)"),
+        ("a.py", "type: ignore[x](https://example.com)"),
+        ("a.py", "unknown"),
+    ],
+)
+def test_delta_shows_placeholder_for_unrecognised_keys(file: str, rule: str) -> None:
+    body = render({}, {file: {rule: {"count": 1}}})
     assert body is not None
-    assert "<code>a` @team&#124;.py</code>" in body
-    assert "<code>r` @team&#124;</code>" in body
+    file_cell = "`a.py`" if file == "a.py" else delta.UNRECOGNISED_KEY
+    rule_cell = "`noqa`" if rule == "noqa" else delta.UNRECOGNISED_KEY
+    assert f"\n| {file_cell} | {rule_cell} | +1 |\n" in body
+    assert "example.com" not in body
+
+
+def test_delta_accepts_every_key_the_scanner_writes() -> None:
+    source = "\n".join(
+        [
+            "# ruff: noqa",
+            "# flake8: noqa: E402, F401",
+            "# mypy: ignore-errors",
+            "# mypy: disable-error-code=overload-overlap",
+            "x = 1  # noqa",
+            "x = 1  # noqa: E501",
+            "x = 1  # type: ignore",
+            "x = 1  # type: ignore[arg-type, no-any-return]",
+            "x = 1  # pyright: ignore",
+            "x = 1  # pyright: ignore[reportInvalidTypeForm]",
+        ]
+    )
+    rules = {s.rule for s in cs.scan_source(source)}
+    assert len(rules) == 12
+    ledger = {
+        ".github/scripts/a-b_c.pyi": {rule: {"count": 1} for rule in rules},
+    }
+    body = render({}, ledger)
+    assert body is not None
+    assert delta.UNRECOGNISED_KEY not in body
+
+
+def test_delta_accepts_the_repo_ledger() -> None:
+    ledger = json.loads((SCRIPTS_DIR.parent / "suppressions.json").read_text())
+    body = render({}, ledger)
+    assert body is not None
+    assert delta.UNRECOGNISED_KEY not in body
 
 
 # --- CLI: bootstrap, ratchet refusal, and --allow-growth (throwaway git repo) ---

@@ -5,8 +5,9 @@ consumed by inspect_ai's per-sample scan dispatch. These tests pin the
 field mappings and the small set of fallback behaviors they implement.
 """
 
-from typing import Any
+from typing import Any, Callable
 
+import pytest
 from inspect_ai._util.error import EvalError
 from inspect_ai.event import ModelEvent
 from inspect_ai.log import EvalSample
@@ -17,6 +18,7 @@ from inspect_scout._transcript.eval_log import (
     transcript_from_eval_sample,
     transcript_info_from_eval_sample,
 )
+from inspect_scout._transcript.types import TranscriptInfo
 
 # --- helpers ---------------------------------------------------------------
 
@@ -268,3 +270,24 @@ def test_transcript_keeps_stored_timelines_unchanged() -> None:
     sample = _make_eval_sample(events=[], timelines=stored)
     t = transcript_from_eval_sample(sample, eval_id="e", log_location=None, model=None)
     assert list(t.timelines) == stored
+
+
+@pytest.mark.parametrize(
+    "builder", [transcript_info_from_eval_sample, transcript_from_eval_sample]
+)
+@pytest.mark.parametrize("trust_content", [None, True, False])
+def test_builders_carry_the_evals_trust_content(
+    builder: Callable[..., TranscriptInfo], trust_content: bool | None
+) -> None:
+    """The parent eval's ViewerConfig.trust_content is recorded on the transcript."""
+    kwargs: dict[str, Any] = {
+        "eval_id": "eval-1",
+        "log_location": "/path/to/log.eval",
+        "model": "mockllm/model",
+    }
+    if trust_content is not None:
+        kwargs["trust_content"] = trust_content
+
+    transcript = builder(_make_eval_sample(), **kwargs)
+
+    assert transcript.trust_content is trust_content

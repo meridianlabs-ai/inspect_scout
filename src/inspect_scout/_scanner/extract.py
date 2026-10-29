@@ -32,6 +32,8 @@ logger = getLogger(__name__)
 
 T = TypeVar("T", Transcript, list[ChatMessage])
 
+MIN_NONCE_LENGTH = 8
+
 
 @dataclass(frozen=True)
 class MessageFormatOptions:
@@ -77,6 +79,7 @@ async def messages_as_str(
     *,
     preprocessor: MessagesPreprocessor[T] | None = None,
     format: Literal["text", "json"] = "text",
+    nonce: str | None = None,
     **deprecated: Unpack[DeprecatedArgs],
 ) -> str: ...
 
@@ -87,6 +90,7 @@ async def messages_as_str(
     *,
     preprocessor: MessagesPreprocessor[T] | None = None,
     format: Literal["list"],
+    nonce: str | None = None,
     **deprecated: Unpack[DeprecatedArgs],
 ) -> list[str]: ...
 
@@ -98,6 +102,7 @@ async def messages_as_str(
     preprocessor: MessagesPreprocessor[T] | None = None,
     include_ids: Literal[True],
     format: Literal["text", "json"] = "text",
+    nonce: str | None = None,
     **deprecated: Unpack[DeprecatedArgs],
 ) -> tuple[str, Callable[[str], list[Reference]]]: ...
 
@@ -109,6 +114,7 @@ async def messages_as_str(
     preprocessor: MessagesPreprocessor[T] | None = None,
     include_ids: Literal[True],
     format: Literal["list"],
+    nonce: str | None = None,
     **deprecated: Unpack[DeprecatedArgs],
 ) -> tuple[list[str], Callable[[str], list[Reference]]]: ...
 
@@ -119,6 +125,7 @@ async def messages_as_str(
     preprocessor: MessagesPreprocessor[T] | None = None,
     include_ids: Literal[True] | None = None,
     format: Literal["text", "json", "list"] = "text",
+    nonce: str | None = None,
     **deprecated: Unpack[DeprecatedArgs],
 ) -> str | list[str] | tuple[str | list[str], Callable[[str], list[Reference]]]:
     """Concatenate list of chat messages into a string.
@@ -132,13 +139,25 @@ async def messages_as_str(
        format: Output format. `"text"` (default) joins messages with newlines,
           `"json"` returns a JSON string, `"list"` returns individual
           formatted strings as a list.
+       nonce: If set, written on every marker in the output: message
+          headers (e.g. `USER (3f9a1c7e):`), `Tool Call`, `Tool Use` and
+          tool error lines, reasoning and prefill tags (e.g.
+          `<thinking 3f9a1c7e>`), and the start and end lines of a tool call
+          argument that spans lines. A reader that knows the nonce can then
+          tell real markers from text in a message that imitates one. Must
+          be at least 8 characters, all ASCII letters and digits.
 
     Returns:
        If include_ids is None: Messages as `str` (text/json) or `list[str]` (list).
        If include_ids is True: Tuple of (formatted output, function that takes text
           and returns list of Reference objects for any [M1], [M2], etc. references
           found in the text).
+
+    Raises:
+       ValueError: If `nonce` is not at least 8 ASCII letters and digits.
     """
+    check_nonce(nonce)
+
     # handle deprecated as_json parameter
     if "as_json" in deprecated:
         warn_once(logger, "'as_json' is deprecated, please use 'format' instead")
@@ -157,7 +176,7 @@ async def messages_as_str(
         acc: tuple[list[dict[str, str]], dict[str, str]], message: ChatMessage
     ) -> tuple[list[dict[str, str]], dict[str, str]]:
         items, id_map = acc
-        if (content := message_as_str(message, preprocessor)) is not None:
+        if (content := message_as_str(message, preprocessor, nonce=nonce)) is not None:
             item: dict[str, str] = {
                 "role": _role_label(message, upper_fallback=False),
                 "content": content,
@@ -201,6 +220,8 @@ LabelForId: TypeAlias = Callable[[str], str | None]
 @overload
 def message_numbering(
     preprocessor: MessagesPreprocessor[list[ChatMessage]] | None = None,
+    *,
+    nonce: str | None = None,
 ) -> tuple[MessagesAsStr, ExtractReferences]: ...
 
 
@@ -209,6 +230,7 @@ def message_numbering(
     preprocessor: MessagesPreprocessor[list[ChatMessage]] | None = None,
     *,
     label_for_id: Literal[True],
+    nonce: str | None = None,
 ) -> tuple[MessagesAsStr, ExtractReferences, LabelForId]: ...
 
 
@@ -216,6 +238,7 @@ def message_numbering(
     preprocessor: MessagesPreprocessor[list[ChatMessage]] | None = None,
     *,
     label_for_id: bool = False,
+    nonce: str | None = None,
 ) -> (
     tuple[MessagesAsStr, ExtractReferences]
     | tuple[MessagesAsStr, ExtractReferences, LabelForId]
@@ -235,13 +258,25 @@ def message_numbering(
             system messages when no preprocessor is provided.
         label_for_id: When True, return a third function that maps real
             message IDs to their assigned labels (e.g. ``"M3"``).
+        nonce: If set, written on every marker in the output: message
+            headers (e.g. ``[M2] USER (3f9a1c7e):``), ``Tool Call``, ``Tool Use`` and
+            tool error lines, reasoning and prefill tags (e.g.
+            ``<thinking 3f9a1c7e>``), and the start and end lines of a tool call
+            argument that spans lines. A reader that knows the nonce can then
+            tell real markers from text in a message that imitates one. Must
+            be at least 8 characters, all ASCII letters and digits.
 
     Returns:
         Tuple of:
             - messages_as_str: takes list[ChatMessage], returns formatted string with globally unique [M1], [M2], etc. prefixes.
             - extract_refs: takes text, returns list of Reference objects for any [M1], [M2], etc. references found across all prior calls.
             - label_for_id (when requested): takes a real message ID, returns its label (e.g. ``"M3"``) or None if not yet seen.
+
+    Raises:
+        ValueError: If `nonce` is not at least 8 ASCII letters and digits.
     """
+    check_nonce(nonce)
+
     counter = [0]
     id_map: dict[str, str] = {}
     reverse_map: dict[str, str] = {}
@@ -252,7 +287,7 @@ def message_numbering(
 
         items: list[str] = []
         for message in messages:
-            content = message_as_str(message, preprocessor)
+            content = message_as_str(message, preprocessor, nonce=nonce)
             if content is not None:
                 counter[0] += 1
                 ordinal = f"M{counter[0]}"
@@ -278,6 +313,8 @@ def message_numbering(
 def message_as_str(
     message: ChatMessage,
     preprocessor: MessageFormatOptions | None = None,
+    *,
+    nonce: str | None = None,
 ) -> str | None:
     """Convert a ChatMessage to a formatted string representation.
 
@@ -289,21 +326,36 @@ def message_as_str(
     Args:
         message: The `ChatMessage` to convert.
         preprocessor: Content filter for messages. Defaults to removing system messages.
+        nonce: If set, written on every marker in the output: message
+            headers (e.g. ``USER (3f9a1c7e):``), ``Tool Call``, ``Tool Use`` and
+            tool error lines, reasoning and prefill tags (e.g.
+            ``<thinking 3f9a1c7e>``), and the start and end lines of a tool call
+            argument that spans lines. A reader that knows the nonce can then
+            tell real markers from text in a message that imitates one. Must
+            be at least 8 characters, all ASCII letters and digits.
 
     Returns:
         A formatted string with the message role and content, or None if the message
         should be excluded based on the provided flags.
+
+    Raises:
+        ValueError: If `nonce` is not at least 8 ASCII letters and digits.
     """
+    check_nonce(nonce)
     preprocessor = preprocessor or MessageFormatOptions()
 
     if preprocessor.exclude_system and message.role == "system":
         return None
 
     content = _better_content_text(
-        message.content, preprocessor.exclude_tool_usage, preprocessor.exclude_reasoning
+        message.content,
+        preprocessor.exclude_tool_usage,
+        preprocessor.exclude_reasoning,
+        nonce,
     )
 
-    role_label = _role_label(message, upper_fallback=True)
+    mark = _marker_nonce(nonce)
+    role_label = _role_label(message, upper_fallback=True) + mark
 
     if (
         not preprocessor.exclude_tool_usage
@@ -317,17 +369,21 @@ def message_as_str(
             args = tool.arguments
 
             if isinstance(args, dict):
-                args_text = "\n".join(f"{k}: {v}" for k, v in args.items())
-                entry += f"\nTool Call: {func_name}\nArguments:\n{args_text}\n"
+                args_text = "\n".join(
+                    _argument_str(k, v, nonce) for k, v in args.items()
+                )
+                entry += f"\nTool Call{mark}: {func_name}\nArguments:\n{args_text}\n"
             else:
-                entry += f"\nTool Call: {func_name}\nArguments: {args}\n"
+                entry += f"\nTool Call{mark}: {func_name}\nArguments: {args}\n"
 
     elif isinstance(message, ChatMessageTool):
         if preprocessor.exclude_tool_usage:
             return None
         func_name = message.function or "unknown"
+        # with a nonce, repr() keeps a line break in the name off the nonce line
+        quoted_name = repr(func_name) if nonce is not None else f"'{func_name}'"
         error_part = (
-            f"\n\nError in tool call '{func_name}':\n{message.error.message}\n"
+            f"\n\nError in tool call {quoted_name}{mark}:\n{message.error.message}\n"
             if message.error
             else ""
         )
@@ -341,9 +397,46 @@ def message_as_str(
         and message.metadata
         and message.metadata.get("prefill")
     ):
-        entry = f"<prefill>\n{entry}</prefill>"
+        tag = _tag_nonce(nonce)
+        entry = f"<prefill{tag}>\n{entry}</prefill{tag}>"
 
     return entry
+
+
+def check_nonce(nonce: str | None) -> None:
+    """Raise `ValueError` if `nonce` is set and is not `MIN_NONCE_LENGTH` or more ASCII letters and digits."""
+    if nonce is not None and not (
+        len(nonce) >= MIN_NONCE_LENGTH and nonce.isascii() and nonce.isalnum()
+    ):
+        raise ValueError(
+            f"nonce must be at least {MIN_NONCE_LENGTH} characters, all ASCII "
+            f"letters and digits, got {nonce!r}"
+        )
+
+
+def _marker_nonce(nonce: str | None) -> str:
+    """The nonce as written on a marker line (e.g. `USER (3f9a1c7e):`), or `""`."""
+    return f" ({nonce})" if nonce is not None else ""
+
+
+def _tag_nonce(nonce: str | None) -> str:
+    """The nonce as written inside a tag (e.g. `<thinking 3f9a1c7e>`), or `""`."""
+    return f" {nonce}" if nonce is not None else ""
+
+
+def _argument_str(key: str, value: object, nonce: str | None) -> str:
+    """One tool call argument as `key: value`.
+
+    With a nonce, an argument that spans lines goes between `[BEGIN 'key' (nonce)]`
+    and `[END 'key' (nonce)]` lines, so its lines cannot pass for other
+    arguments or tool calls. The key is written with `repr()` so that a key
+    with a line break cannot start a line that ends in the nonce.
+    """
+    text = str(value)
+    line = f"{key}: {text}"
+    if nonce is None or line.splitlines() == [line]:
+        return line
+    return f"[BEGIN {key!r} ({nonce})]\n{text}\n[END {key!r} ({nonce})]"
 
 
 def _role_label(message: ChatMessage, *, upper_fallback: bool) -> str:
@@ -363,8 +456,16 @@ def _role_label(message: ChatMessage, *, upper_fallback: bool) -> str:
 
 
 def _text_from_content(
-    content: Content, exclude_tool_usage: bool, exclude_reasoning: bool
+    content: Content,
+    exclude_tool_usage: bool,
+    exclude_reasoning: bool,
+    nonce: str | None,
 ) -> str | None:
+    tag = _tag_nonce(nonce)
+    mark = _marker_nonce(nonce)
+    # with a nonce, a closing tag starts its own line, so reasoning text that
+    # ends in a partial line cannot precede the nonce on that line
+    close_break = "\n" if nonce is not None else ""
     match content.type:
         case "text":
             return content.text
@@ -373,11 +474,13 @@ def _text_from_content(
                 return None
             if content.redacted:
                 if content.summary:
-                    return f"\n<thinking_summary>{content.summary}</thinking_summary>"
+                    return f"\n<thinking_summary{tag}>{content.summary}{close_break}</thinking_summary{tag}>"
                 else:
-                    return "\n<thinking_redacted/>"
+                    return f"\n<thinking_redacted{tag}/>"
             elif content.reasoning:
-                return f"\n<thinking>{content.reasoning}</thinking>"
+                return (
+                    f"\n<thinking{tag}>{content.reasoning}{close_break}</thinking{tag}>"
+                )
             else:
                 return None
 
@@ -385,7 +488,7 @@ def _text_from_content(
             return (
                 None
                 if exclude_tool_usage
-                else f"\nTool Use: {content.name}({content.arguments}) -> {content.result} {content.error if content.error else ''}"
+                else f"\nTool Use{mark}: {content.name}({content.arguments}) -> {content.result} {content.error if content.error else ''}"
             )
         case "image" | "audio" | "video" | "data" | "document":
             return f"<{content.type} />"
@@ -395,6 +498,7 @@ def _better_content_text(
     content: str | list[Content],
     exclude_tool_usage: bool,
     exclude_reasoning: bool,
+    nonce: str | None,
 ) -> str:
     if isinstance(content, str):
         return content
@@ -402,7 +506,11 @@ def _better_content_text(
         all_text = [
             text
             for c in content
-            if (text := _text_from_content(c, exclude_tool_usage, exclude_reasoning))
+            if (
+                text := _text_from_content(
+                    c, exclude_tool_usage, exclude_reasoning, nonce
+                )
+            )
             is not None
         ]
         return "\n".join(all_text)

@@ -891,10 +891,17 @@ async def test_messages_after_events_resolve_attachments() -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("events_filter", [None, "all"])
-async def test_timelines_without_scores_and_filtered_events(
-    events_filter: EventFilter,
+@pytest.mark.parametrize("events_filter", [None, ["model"], "all"])
+@pytest.mark.parametrize("nan_in_body", [False, True], ids=["ijson", "json5-fallback"])
+async def test_stored_timelines_load_only_with_all_events(
+    events_filter: EventFilter, nan_in_body: bool
 ) -> None:
+    """Stored timelines come back only when every event they may reference is loaded.
+
+    A timeline node referencing an event the filter dropped fails validation, which
+    failed every scan of a Petri log (which stores timelines) when a scanner set
+    `events=[...]`.
+    """
     timestamp = datetime(2026, 9, 11, tzinfo=timezone.utc)
     event = InfoEvent(data="example", uuid="example-event", timestamp=timestamp)
     timeline = Timeline(
@@ -912,22 +919,27 @@ async def test_timelines_without_scores_and_filtered_events(
         "target": "",
         "messages": [{"role": "user", "content": "Hello"}],
         "metadata": {},
+        "output": {},
         "events": [event.model_dump(mode="json")],
         "timelines": [timeline.model_dump(mode="json")],
     }
+    body = json.dumps(sample)
+    if nan_in_body:
+        # ijson rejects NaN, so this routes through the json5 fallback.
+        body = body.replace('"output": {}', '"output": {"x": NaN}')
     result = await load_filtered_transcript(
-        create_json_stream(sample),
+        io.BytesIO(body.encode()),
         TranscriptInfo(transcript_id="timeline-repro"),
         "all",
         events_filter,
     )
     assert [message.text for message in result.messages] == ["Hello"]
-    if events_filter is None:
-        assert result.events == []
-        assert result.timelines == []
-    else:
+    if events_filter == "all":
         assert result.events == [event]
         assert result.timelines == [timeline]
+    else:
+        assert result.events == []
+        assert result.timelines == []
 
 
 @pytest.mark.asyncio

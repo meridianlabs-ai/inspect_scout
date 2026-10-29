@@ -16,6 +16,7 @@ from typing import Any, Callable
 from unittest.mock import patch
 
 import pytest
+from inspect_ai._util.constants import DEFAULT_MAX_CONNECTIONS_BATCH
 from inspect_ai.model import GenerateConfig, get_model
 from inspect_ai.util._concurrency import (
     AdaptiveConcurrency,
@@ -39,6 +40,10 @@ LOGS_DIR = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
 MODEL = "mockllm/model"
 ADAPTIVE = f"adaptive:{AdaptiveConcurrency().start}"
 FIXED = f"static:{DEFAULT_MAX_TRANSCRIPTS}"
+# Since #696 a batch config on the scan itself selects the batch default for
+# max_transcripts. Batch on a model or role config never reaches the scanjob's, so
+# those cases still land on FIXED.
+BATCH_CEILING = f"static:{DEFAULT_MAX_CONNECTIONS_BATCH}"
 
 # set by the resume test so the first pass fails, leaving a scan to resume
 INTERRUPT = {"active": False}
@@ -152,7 +157,7 @@ def test_single_process_is_not_certain_for_an_ordinary_scan() -> None:
         ),
         pytest.param(
             lambda: {"model": MODEL, "model_config": GenerateConfig(batch=True)},
-            FIXED,
+            BATCH_CEILING,
             id="batch",
         ),
         pytest.param(
@@ -216,12 +221,19 @@ def test_connection_pool(
 def test_a_resumed_scan_re_derives_the_limit() -> None:
     # The spec records the model's own config, which carries no max_connections, so a
     # resumed scan has to re-derive the limit rather than inherit its absence and
-    # fall through to the batch ceiling.
+    # fall through to the batch ceiling. The cap is given explicitly, and matches
+    # neither default, because since #696 a batch scan's own default *is* the
+    # ceiling: re-deriving and falling through would otherwise give the same number
+    # and this would pin nothing.
+    explicit_cap = 11
     with tempfile.TemporaryDirectory() as tmpdir:
         INTERRUPT["active"] = True
         try:
             first = run_scan(
-                tmpdir, model=MODEL, model_config=GenerateConfig(batch=True)
+                tmpdir,
+                model=MODEL,
+                model_config=GenerateConfig(batch=True),
+                max_transcripts=explicit_cap,
             )
         finally:
             INTERRUPT["active"] = False
@@ -231,7 +243,7 @@ def test_a_resumed_scan_re_derives_the_limit() -> None:
         init_concurrency()
         resumed = scan_resume(first.location, display="none")
         assert resumed.location is not None
-        assert pool_from(resumed.location) == FIXED
+        assert pool_from(resumed.location) == f"static:{explicit_cap}"
 
 
 # --- the no-mutation contract ---

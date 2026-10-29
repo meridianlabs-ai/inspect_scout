@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.2](https://github.com/meridianlabs-ai/inspect_scout/compare/0.6.1...0.6.2) (2026-10-29)
+
+
+### Bug Fixes
+
+* empty resultsets fail to expand on pandas 3.1 ([#747](https://github.com/meridianlabs-ai/inspect_scout/issues/747)) ([269fa69](https://github.com/meridianlabs-ai/inspect_scout/commit/269fa69b0be39688ec5775db4baff555d02a3229))
+* messages=["all"] and events=["all"] scanned nothing instead of everything ([#660](https://github.com/meridianlabs-ai/inspect_scout/issues/660)) ([82b48f4](https://github.com/meridianlabs-ai/inspect_scout/commit/82b48f4c37379fbc614987f19077ddaf73a16840))
+* say what to write when a filter is given as a bare string ([#654](https://github.com/meridianlabs-ai/inspect_scout/issues/654)) ([bc1156d](https://github.com/meridianlabs-ai/inspect_scout/commit/bc1156d28bfc7aa55ec672cec25a4170b8bbbaa4))
+
 ## [0.6.1](https://github.com/meridianlabs-ai/inspect_scout/compare/0.6.0...0.6.1) (2026-10-21)
 
 

@@ -137,6 +137,16 @@ class LazyJSONDict(dict[str, Any]):
         """
         self._parsed |= set(keys)
 
+    def unread_json(self, key: str) -> str | None:
+        """Raw text of ``key`` if it holds JSON nobody has parsed yet, else None.
+
+        Decided without parsing, so it stays cheap for huge values.
+        """
+        value = super().__getitem__(key)
+        if key in self._parsed or not self._should_parse_value(key, value):
+            return None
+        return value if value[:1] in ("{", "[") else None
+
     def _should_parse_value(self, key: str, value: Any) -> bool:
         """Determine if a value should be parsed as JSON.
 

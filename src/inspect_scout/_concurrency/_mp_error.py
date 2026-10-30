@@ -1,8 +1,9 @@
 """Normalize fatal worker exceptions before multiprocessing serialization."""
 
+import signal
 import traceback
 
-from ._mp_common import WorkerError
+from ._mp_common import WorkerError, WorkerExited
 
 
 def worker_error(worker_id: int, exception: Exception) -> WorkerError:
@@ -59,3 +60,21 @@ class WorkerProcessError(RuntimeError):
             details.append(f"Request ID: {error.request_id}")
         details.append(f"Remote traceback:\n{error.traceback}")
         super().__init__("\n".join(details))
+
+
+class WorkerProcessExitError(RuntimeError):
+    """A worker process died without completing its work or reporting an error."""
+
+    def __init__(self, exited: WorkerExited) -> None:
+        if exited.exitcode > 0:
+            how = f"exit code {exited.exitcode}"
+        else:
+            try:
+                how = f"killed by {signal.Signals(-exited.exitcode).name}"
+            except ValueError:
+                how = f"killed by signal {-exited.exitcode}"
+            if exited.exitcode == -signal.SIGKILL:
+                how += ", possibly out of memory"
+        super().__init__(
+            f"Scan worker process {exited.worker_id} exited unexpectedly ({how})"
+        )

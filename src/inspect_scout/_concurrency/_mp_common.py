@@ -218,6 +218,14 @@ class WorkerError:
 
 
 @dataclass(frozen=True)
+class WorkerExited:
+    """Parent-side notice that a worker process died before completing its work."""
+
+    worker_id: int
+    exitcode: int
+
+
+@dataclass(frozen=True)
 class ShutdownSentinel:
     """Emergency shutdown signal injected by parent during forced termination."""
 
@@ -233,6 +241,7 @@ UpstreamQueueItem: TypeAlias = (
     | WorkerComplete
     | ShutdownSentinel
     | WorkerError
+    | WorkerExited
 )
 
 

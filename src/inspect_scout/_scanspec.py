@@ -79,6 +79,10 @@ class ScanOptions(BaseModel):
     when the scan completes (or is interrupted).
     """
 
+    record_input: Literal["copy", "reference"] = Field(default="copy")
+    """How scanner input is recorded in results: a self-contained copy
+    (default), or a reference to the source transcript resolved on read."""
+
 
 class TranscriptField(TypedDict, total=False):
     """Field in transcript data frame."""

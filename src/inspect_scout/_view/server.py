@@ -39,6 +39,7 @@ from ._csp import (
     inline_script_source,
     read_content_security_policy,
 )
+from ._input_reference import source_uri_locator
 
 _IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
 _DIST_DIR = Path(__file__).parent / "dist"
@@ -199,7 +200,11 @@ def standalone_view_app(
     root_path = _normalize_root_path(root_path)
     directory = directory or _resolve_dist_directory()
     return _view_app(
-        v2_api_app(view_config=view_config, dist_path=directory),
+        v2_api_app(
+            view_config=view_config,
+            dist_path=directory,
+            input_reference_locator=source_uri_locator,
+        ),
         directory,
         root_path,
         network_policy,

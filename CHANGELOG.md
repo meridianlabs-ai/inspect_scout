@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.3](https://github.com/meridianlabs-ai/inspect_scout/compare/0.6.2...0.6.3) (2026-10-30)
+
+
+### Bug Fixes
+
+* scans stall on a transcript whose cache download was cancelled ([#755](https://github.com/meridianlabs-ai/inspect_scout/issues/755)) ([a130ded](https://github.com/meridianlabs-ai/inspect_scout/commit/a130dedb404f45560f32bb74fd6c8289076348a2))
+
 ## [0.6.2](https://github.com/meridianlabs-ai/inspect_scout/compare/0.6.1...0.6.2) (2026-10-29)
 
 

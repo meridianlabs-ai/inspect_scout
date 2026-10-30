@@ -165,6 +165,13 @@ TRANSCRIPT_SCHEMA_FIELDS: list[SchemaField] = [
         description="Whether model output may be rendered richly (False shows it as plain text).",
     ),
     SchemaField(
+        name="messages_from",
+        pyarrow_type=pa.large_string(),
+        required=False,
+        description="List of uuids of the model events whose conversation `messages` is.",
+        json_serialized=True,
+    ),
+    SchemaField(
         name="messages",
         pyarrow_type=pa.large_string(),
         required=False,

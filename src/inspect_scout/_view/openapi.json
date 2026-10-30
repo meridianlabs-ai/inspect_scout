@@ -2127,7 +2127,7 @@
         "type": "object"
       },
       "ContentReasoning": {
-        "description": "Reasoning content.\n\nSee the specification for [thinking blocks](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#understanding-thinking-blocks) for Claude models.",
+        "description": "Reasoning content.\n\nSee the specification for [thinking blocks](https://platform.claude.com/docs/en/build-with-claude/extended-thinking) for Claude models.",
         "properties": {
           "internal": {
             "anyOf": [
@@ -11679,6 +11679,20 @@
             "title": "Messages",
             "type": "array"
           },
+          "messages_from": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Messages From"
+          },
           "metadata": {
             "additionalProperties": true,
             "title": "Metadata",
@@ -11953,6 +11967,20 @@
               }
             ],
             "title": "Message Count"
+          },
+          "messages_from": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Messages From"
           },
           "metadata": {
             "additionalProperties": true,

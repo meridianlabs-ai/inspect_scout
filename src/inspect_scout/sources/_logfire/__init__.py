@@ -24,18 +24,19 @@ from inspect_ai.model import (
     ChatMessage,
     ChatMessageAssistant,
     ChatMessageUser,
-    stable_message_ids,
 )
 
 from inspect_scout._transcript.types import Transcript
 
+from .._message_ids import TraceMessageIds
+from .._root_agent import root_agent_calls
 from .client import (
     LOGFIRE_SOURCE_TYPE,
     get_logfire_client,
     retry_api_call_async,
 )
 from .detection import detect_instrumentor, get_model_name
-from .events import spans_to_events
+from .events import agent_span_ids, spans_to_events, tool_span_ids
 from .extraction import sum_latency, sum_tokens
 from .tree import build_span_tree, flatten_tree_chronological, get_llm_spans
 
@@ -309,36 +310,44 @@ async def _trace_to_transcript(
     # Get LLM spans for message extraction and metadata
     llm_spans = get_llm_spans(ordered_spans)
 
+    model_events = [e for e in events if isinstance(e, ModelEvent)]
+    message_ids = TraceMessageIds()
+    for event in model_events:
+        message_ids.apply(event, str(event.uuid))
+
     # Build messages from LLM inputs + outputs
     messages: list[ChatMessage] = []
+    messages_from: list[str] | None = None
 
-    # For traces with LLM calls, find the ModelEvent with the most complete
-    # conversation. Some instrumentors create multiple spans (e.g., Pydantic AI
-    # creates both framework-level spans and SDK-level spans), so we need to
-    # pick the one with the full conversation history.
-    if llm_spans:
-        model_events = [e for e in events if isinstance(e, ModelEvent)]
-        if model_events:
-            # Find the model event with the most input messages
-            best_model = max(model_events, key=lambda e: len(e.input))
-            # Use the LLM's input which has the full conversation
-            messages = list(best_model.input)
-            # Append the final assistant response from output
-            if best_model.output and best_model.output.message:
-                messages.append(best_model.output.message)
+    # For traces with LLM calls, find the root agent's ModelEvent with the most
+    # complete conversation. Some instrumentors create multiple spans (e.g.,
+    # Pydantic AI creates both framework-level spans and SDK-level spans), so
+    # we need to pick the one with the full conversation history.
+    root_calls = root_agent_calls(
+        model_events,
+        parents={
+            str(span.get("span_id")): span.get("parent_span_id")
+            for span in ordered_spans
+        },
+        tools=tool_span_ids(ordered_spans),
+        spans=agent_span_ids(ordered_spans),
+    )
+    if root_calls:
+        # Find the model event with the most input messages
+        best_model = max(root_calls, key=lambda e: len(e.input))
+        # Use the LLM's input which has the full conversation
+        messages = list(best_model.input)
+        # Append the final assistant response from output
+        if best_model.output and best_model.output.choices:
+            messages.append(best_model.output.message)
+        messages_from = [str(best_model.uuid)]
 
     # Fallback: try to extract from root span
     if not messages:
         root_span = ordered_spans[0] if ordered_spans else None
         if root_span:
             messages = _extract_root_messages(root_span)
-
-    # Apply stable message IDs
-    apply_ids = stable_message_ids()
-    for event in events:
-        if isinstance(event, ModelEvent):
-            apply_ids(event)
-    apply_ids(messages)
+            message_ids.apply_messages(messages, str(root_span.get("span_id")))
 
     # Extract metadata from root span
     root_span = ordered_spans[0] if ordered_spans else {}
@@ -384,6 +393,7 @@ async def _trace_to_transcript(
         error=error,
         limit=None,
         messages=messages,
+        messages_from=messages_from,
         events=events,
         metadata=metadata,
     )

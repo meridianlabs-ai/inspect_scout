@@ -47,6 +47,7 @@ _VALUE_BY_ANNOTATION: dict[Any, Callable[[str, int], Any]] = {
     int | None: lambda name, i: 100 + i,
     float | None: lambda name, i: 100.5 + i,
     bool | None: lambda name, i: True,
+    list[str] | None: lambda name, i: [f"{name}-value", f"{name}-{i}"],
     dict[str, Any] | None: lambda name, i: {"field": name, "nested": {"n": i}},
     dict[str, Any]: lambda name, i: {f"{name}_key": f"{name}-value"},
     JsonValue | None: lambda name, i: {"field": name, "points": i},

@@ -4,7 +4,6 @@ from typing import Any, Generic, Sequence, cast
 
 from inspect_ai._util.json import jsonable_python
 from inspect_ai.event._event import Event
-from inspect_ai.log import condense_events
 from inspect_ai.model import ModelUsage
 from inspect_ai.scorer import Reference
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
@@ -13,6 +12,7 @@ from shortuuid import uuid
 from typing_extensions import TypeVar
 
 from inspect_scout._scanner.types import ScannerInput, ScannerInputNames
+from inspect_scout._transcript.condense import condense_events
 from inspect_scout._transcript.types import Transcript
 from inspect_scout._util._json import to_json_bytes_compact, to_json_str_compact
 

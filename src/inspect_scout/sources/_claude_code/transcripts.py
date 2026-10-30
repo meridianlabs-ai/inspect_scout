@@ -19,8 +19,8 @@ from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, AsyncIterator
 
-from inspect_ai.event import Event, ModelEvent
-from inspect_ai.model import ChatMessage, stable_message_ids
+from inspect_ai.event import Event
+from inspect_ai.model import ChatMessage
 
 if TYPE_CHECKING:
     from inspect_scout import Transcript
@@ -56,6 +56,7 @@ from .client import (
     read_jsonl_events,
 )
 from .events import process_parsed_events
+from .message_ids import apply_edit_ids, apply_source_ids
 
 logger = getLogger(__name__)
 
@@ -126,6 +127,7 @@ async def claude_code(
             # Multi-file slug group — merge and mark as processed
             processed_slugs.add(slug)
             async for transcript in _merge_slug_group(slug_groups[slug], slug):
+                apply_edit_ids(transcript.events)
                 yield transcript
                 count += 1
                 if limit and count >= limit:
@@ -135,6 +137,7 @@ async def claude_code(
             if slug is not None:
                 processed_slugs.add(slug)
             async for transcript in _process_session_file(f):
+                apply_edit_ids(transcript.events)
                 yield transcript
                 count += 1
                 if limit and count >= limit:
@@ -261,6 +264,7 @@ def _merge_transcripts(transcripts: list["Transcript"], slug: str) -> "Transcrip
     first = transcripts[0]
     merged_events: list[Event] = list(first.events)
     merged_messages: list[ChatMessage] = list(first.messages)
+    messages_from: list[str] = list(first.messages_from or [])
     total_tokens = first.total_tokens or 0
 
     # Deduplicate session IDs while preserving order
@@ -283,6 +287,7 @@ def _merge_transcripts(transcripts: list["Transcript"], slug: str) -> "Transcrip
         merged_events.append(boundary_event)
         merged_events.extend(transcript.events)
         merged_messages.extend(transcript.messages)
+        messages_from.extend(transcript.messages_from or [])
 
         if transcript.total_tokens:
             total_tokens += transcript.total_tokens
@@ -328,6 +333,7 @@ def _merge_transcripts(transcripts: list["Transcript"], slug: str) -> "Transcrip
         error=None,
         limit=None,
         messages=merged_messages,
+        messages_from=messages_from or None,
         events=merged_events,
         metadata=metadata,
     )
@@ -422,7 +428,7 @@ async def _create_transcript(
     from inspect_ai.event import timeline_build
 
     from inspect_scout import Transcript
-    from inspect_scout._transcript.messages import span_messages
+    from inspect_scout._transcript.messages import span_conversation
 
     session_path = session_file
     project_dir = session_path.parent
@@ -440,20 +446,16 @@ async def _create_transcript(
     ):
         scout_events.append(event)
 
+    apply_source_ids(events, scout_events)
+
     # Extract messages via timeline (excludes subagent messages, handles compaction)
     timeline = timeline_build(scout_events)
-    messages: list[ChatMessage] = span_messages(timeline.root, compaction="all")
+    conversation = span_conversation(timeline.root, compaction="all")
+    messages = conversation.messages
 
     # Skip transcripts with no messages (e.g., system-only segments)
     if not messages:
         return None
-
-    # Apply stable message IDs
-    apply_ids = stable_message_ids()
-    for event in scout_events:
-        if isinstance(event, ModelEvent):
-            apply_ids(event)
-    apply_ids(messages)
 
     # Extract metadata
     metadata = extract_session_metadata(events)
@@ -491,6 +493,7 @@ async def _create_transcript(
         error=None,
         limit=None,
         messages=messages,
+        messages_from=[e.uuid for e in conversation.model_events if e.uuid] or None,
         events=scout_events,
         metadata=metadata,
     )

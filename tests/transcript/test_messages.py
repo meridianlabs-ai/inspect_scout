@@ -22,6 +22,7 @@ from inspect_scout._scanner.extract import message_numbering
 from inspect_scout._transcript.messages import (
     MessagesSegment,
     segment_messages,
+    span_conversation,
     span_messages,
     span_tools,
     stream_segment_messages,
@@ -478,6 +479,71 @@ def test_span_messages_compaction_last_with_trim() -> None:
 
 
 # -- span_tools tests --
+
+
+@pytest.mark.parametrize(
+    "events,compaction,expected",
+    [
+        pytest.param(
+            [
+                _make_model_event([_sys, _user1], uuid="m1"),
+                _make_model_event([_sys, _user1, _asst1, _user2], uuid="m2"),
+            ],
+            "all",
+            ["m2"],
+            id="no_compaction",
+        ),
+        pytest.param(
+            [
+                _make_model_event([_sys, _user1], uuid="m1"),
+                _make_compaction_event("summary"),
+                _make_model_event([_sys, _user2], uuid="m2"),
+            ],
+            "all",
+            ["m1", "m2"],
+            id="summary",
+        ),
+        pytest.param(
+            [
+                _make_model_event([_sys, _user1, _asst1, _user2], uuid="m1"),
+                _make_compaction_event("trim"),
+                _make_model_event([_asst1, _user2, _user3], uuid="m2"),
+            ],
+            "all",
+            ["m1", "m2"],
+            id="trim",
+        ),
+        pytest.param(
+            [
+                _make_model_event([_sys, _user1], uuid="m1"),
+                _make_compaction_event("trim"),
+                _make_model_event([_sys, _user1, _user2], uuid="m2"),
+            ],
+            "all",
+            ["m2"],
+            id="trim_nothing_trimmed",
+        ),
+        pytest.param(
+            [
+                _make_model_event([_sys, _user1], uuid="m1"),
+                _make_compaction_event("summary"),
+                _make_model_event([_sys, _user2], uuid="m2"),
+            ],
+            "last",
+            ["m2"],
+            id="last",
+        ),
+        pytest.param([], "all", [], id="no_events"),
+    ],
+)
+def test_span_conversation_records_source_events(
+    events: list[Event],
+    compaction: Literal["all", "last"],
+    expected: list[str],
+) -> None:
+    result = span_conversation(events, compaction=compaction)
+
+    assert [e.uuid for e in result.model_events] == expected
 
 
 def _tool(name: str, description: str = "") -> ToolInfo:

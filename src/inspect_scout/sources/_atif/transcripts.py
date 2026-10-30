@@ -24,7 +24,7 @@ from inspect_ai.event import (
     SpanEndEvent,
     timeline_build,
 )
-from inspect_ai.model import ChatMessage, stable_message_ids
+from inspect_ai.model import ChatMessage
 from pydantic import ValidationError
 
 from .client import (
@@ -204,9 +204,28 @@ def _create_transcript(
             for tc in step.tool_calls:
                 tool_call_funcs[tc.tool_call_id] = tc.function_name
 
+    # transcript_id must uniquely identify this trajectory DOCUMENT. ATIF's
+    # document-unique id is `trajectory_id`; `session_id` is run-scoped and MAY be
+    # shared across a run's continuation segments / subagents (keying on it alone
+    # collapses base + continuation into one id, and the parquet insert then
+    # silently drops the later segment). So prefer `trajectory_id`. It is optional
+    # on standalone trajectories and absent on all current Harbor output, so fall
+    # back to the run id + file stem; `source_id` keeps the run identity so the
+    # segments stay linkable as one session.
+    # KNOWN LIMITATION: without `trajectory_id`, the stem is unique only within a
+    # directory — files sharing a `session_id` and filename across directories
+    # still collide (the parquet insert silently drops the later one).
+    run_id = trajectory.session_id or trajectory.trajectory_id
+    if trajectory.trajectory_id:
+        transcript_id = trajectory.trajectory_id
+    else:
+        stem = Path(source_uri).stem if source_uri else None
+        parts = [p for p in (run_id, stem) if p]
+        transcript_id = "-".join(parts) or "unknown"
     # Convert steps to messages and events
     messages: list[ChatMessage] = []
     events: list[Event] = []
+    model_events: list[ModelEvent] = []
     has_copied_context = False
     has_unsupported_embedded_subagent = False
 
@@ -241,6 +260,8 @@ def _create_transcript(
             events.append(to_compaction_event(step))
         else:
             new_msgs = step_to_messages(step, tool_call_funcs, parent_path=parent_path)
+            step_id = f"{transcript_id}-{step.step_id}"
+            _apply_step_ids(new_msgs, step_id)
             # Synthesize a ModelEvent BEFORE adding the assistant message to
             # the running history, so `event.input` reflects what the model
             # actually saw. `to_model_event` returns None for steps without
@@ -252,7 +273,9 @@ def _create_transcript(
                     new_messages=new_msgs,
                 )
                 if event is not None:
+                    event.uuid = step_id
                     events.append(event)
+                    model_events.append(event)
             messages.extend(new_msgs)
 
         # Subagent inlining: when this step's observations carry
@@ -277,13 +300,6 @@ def _create_transcript(
                             max_depth=max_depth,
                         )
                     )
-
-    # Apply stable message IDs
-    apply_ids = stable_message_ids()
-    for evt in events:
-        if isinstance(evt, ModelEvent):
-            apply_ids(evt)
-    apply_ids(messages)
 
     # Extract metadata
     metadata: dict[str, Any] = {
@@ -317,24 +333,6 @@ def _create_transcript(
         wall_clock = (root.end_time() - root.start_time()).total_seconds()
         total_time = wall_clock - root.idle_time()
 
-    # transcript_id must uniquely identify this trajectory DOCUMENT. ATIF's
-    # document-unique id is `trajectory_id`; `session_id` is run-scoped and MAY be
-    # shared across a run's continuation segments / subagents (keying on it alone
-    # collapses base + continuation into one id, and the parquet insert then
-    # silently drops the later segment). So prefer `trajectory_id`. It is optional
-    # on standalone trajectories and absent on all current Harbor output, so fall
-    # back to the run id + file stem; `source_id` keeps the run identity so the
-    # segments stay linkable as one session.
-    # KNOWN LIMITATION: without `trajectory_id`, the stem is unique only within a
-    # directory — files sharing a `session_id` and filename across directories
-    # still collide (the parquet insert silently drops the later one).
-    run_id = trajectory.session_id or trajectory.trajectory_id
-    if trajectory.trajectory_id:
-        transcript_id = trajectory.trajectory_id
-    else:
-        stem = Path(source_uri).stem if source_uri else None
-        parts = [p for p in (run_id, stem) if p]
-        transcript_id = "-".join(parts) or "unknown"
     return Transcript(
         transcript_id=transcript_id,
         source_type=ATIF_SOURCE_TYPE,
@@ -347,9 +345,18 @@ def _create_transcript(
         total_time=total_time if total_time and total_time > 0 else None,
         total_tokens=total_tokens,
         messages=messages,
+        messages_from=[model_events[-1].uuid]
+        if model_events and model_events[-1].uuid
+        else None,
         events=events,
         metadata=metadata,
     )
+
+
+def _apply_step_ids(messages: list[ChatMessage], step_id: str) -> None:
+    """Give a step's messages IDs from the step: its own message, then results."""
+    for index, message in enumerate(messages):
+        message.id = f"{step_id}-{index}" if index else step_id
 
 
 def _trajectory_time_bounds(

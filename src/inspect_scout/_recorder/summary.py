@@ -138,7 +138,7 @@ class Summary(BaseModel):
             for model, usage in result.model_usage.items():
                 if model not in agg_model_usage:
                     agg_model_usage[model] = ModelUsage()
-                agg_model_usage[model] = add_model_usage(agg_model_usage[model], usage)
+                agg_model_usage[model] = agg_model_usage[model] + usage
 
         # insert if required
         if scanner not in self.scanners:
@@ -154,9 +154,7 @@ class Summary(BaseModel):
         for model, usage in agg_model_usage.items():
             if model not in tot_results.model_usage:
                 tot_results.model_usage[model] = ModelUsage()
-            tot_results.model_usage[model] = add_model_usage(
-                tot_results.model_usage[model], usage
-            )
+            tot_results.model_usage[model] = tot_results.model_usage[model] + usage
 
         # Aggregate validation entries and rebuild ValidationResults with metrics
         if new_entries:
@@ -177,16 +175,3 @@ class Summary(BaseModel):
 
     def __getitem__(self, scanner: str) -> ScannerSummary:
         return self.scanners[scanner]
-
-
-def add_model_usage(a: ModelUsage, b: ModelUsage) -> ModelUsage:
-    return ModelUsage(
-        input_tokens=a.input_tokens + b.input_tokens,
-        output_tokens=a.output_tokens + b.output_tokens,
-        total_tokens=a.total_tokens + b.total_tokens,
-        input_tokens_cache_write=(a.input_tokens_cache_write or 0)
-        + (b.input_tokens_cache_write or 0),
-        input_tokens_cache_read=(a.input_tokens_cache_read or 0)
-        + (b.input_tokens_cache_read or 0),
-        reasoning_tokens=(a.reasoning_tokens or 0) + (b.reasoning_tokens or 0),
-    )

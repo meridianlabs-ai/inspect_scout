@@ -256,11 +256,21 @@ class RecorderBuffer:
             self._state.summary._report(transcript, scanner, results, metrics)
             _persist_scan_summary(self._buffer_dir, self._state.summary)
 
-        # record errors (open(..., "at") gives OS-atomic appends)
         for result in results:
             if result.error is not None:
-                with open(str(self._error_file), "at") as f:
-                    f.write(result.error.model_dump_json(warnings=False) + "\n")
+                self._append_error(result.error)
+
+    async def record_error(self, error: Error) -> None:
+        async with self._state.lock:
+            assert self._state.summary is not None  # set in __init__
+            self._state.summary._report_error(error.scanner)
+            _persist_scan_summary(self._buffer_dir, self._state.summary)
+        self._append_error(error)
+
+    def _append_error(self, error: Error) -> None:
+        # open(..., "at") gives OS-atomic appends
+        with open(str(self._error_file), "at") as f:
+            f.write(error.model_dump_json(warnings=False) + "\n")
 
     async def record_metrics(
         self,

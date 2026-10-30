@@ -242,6 +242,10 @@ class FileRecorder(ScanRecorder):
         await self._scan_buffer.record(transcript, scanner, results, metrics)
 
     @override
+    async def record_error(self, error: Error) -> None:
+        await self._scan_buffer.record_error(error)
+
+    @override
     async def record_metrics(
         self,
         scanner: str,

@@ -10,9 +10,15 @@ import pyarrow.parquet as pq
 import pytest
 from inspect_ai.model import ChatMessageUser
 from inspect_scout._recorder.buffer import RecorderBuffer, scanner_table
-from inspect_scout._scanner.result import Reference, Result, ResultReport
-from inspect_scout._scanspec import ScannerSpec, ScanSpec
+from inspect_scout._scanner.result import (
+    Reference,
+    ReferenceTranscript,
+    Result,
+    ResultReport,
+)
+from inspect_scout._scanspec import ScannerSpec, ScanOptions, ScanSpec
 from inspect_scout._transcript.types import TranscriptInfo
+from inspect_scout._util.constants import TRANSCRIPT_METADATA_MAX_CHARS
 
 
 @pytest.fixture
@@ -655,3 +661,202 @@ async def test_compaction_keeps_transcript_trust_content_from_older_buffer_files
         )
     )
     assert by_tid == {"old": None, "untrusted": False}
+
+
+@pytest.mark.asyncio
+async def test_scanner_table_promotes_null_input_to_large_string(
+    recorder_buffer: RecorderBuffer,
+    sample_results: list[ResultReport],
+    tmp_path: Path,
+) -> None:
+    """An all-NULL `input` fragment (reference rows) must not downgrade large_string.
+
+    The dataset adopts the first fragment's schema, so a null-typed fragment
+    first would otherwise cast later large inline cells to 32-bit offsets.
+    """
+    from upath import UPath
+
+    scanner_name = "test_scanner"
+
+    # Compacted on its own so `extra_inputs` pins it after the null fragment,
+    # whatever the glob order.
+    await recorder_buffer.record(
+        TranscriptInfo(
+            transcript_id="big-transcript",
+            source_type="test",
+            source_id="src-big",
+            source_uri="/path/big.log",
+        ),
+        scanner_name,
+        sample_results,
+        None,
+    )
+    large_string_path = tmp_path / "large_string_fragment.parquet"
+    assert scanner_table(
+        recorder_buffer._buffer_dir, scanner_name, str(large_string_path)
+    )
+    large_string_table = pq.read_table(large_string_path)
+    assert large_string_table.schema.field("input").type == pa.large_string()
+
+    sdir = recorder_buffer._buffer_dir / f"scanner={scanner_name}"
+    for f in sdir.glob("*.parquet"):
+        f.unlink()
+    reference_result = ResultReport(
+        input_type="transcript",
+        input_ids=[],
+        input=ReferenceTranscript(
+            source_uri="/path/ref.log",
+            transcript_id="ref-transcript",
+            content_json=None,
+        ),
+        result=Result(value="ok", references=[]),
+        validation=None,
+        error=None,
+        events=[],
+        model_usage={},
+    )
+    await recorder_buffer.record(
+        TranscriptInfo(
+            transcript_id="ref-transcript",
+            source_type="test",
+            source_id="src-ref",
+            source_uri="/path/ref.log",
+        ),
+        scanner_name,
+        [reference_result],
+        None,
+    )
+
+    out_path = tmp_path / "out.parquet"
+    assert scanner_table(
+        recorder_buffer._buffer_dir,
+        scanner_name,
+        str(out_path),
+        extra_inputs=[UPath(large_string_path)],
+    )
+
+    table = pq.read_table(out_path)
+    assert table.schema.field("input").type == pa.large_string()
+    assert set(table.column("transcript_id").to_pylist()) == {
+        "ref-transcript",
+        "big-transcript",
+    }
+
+
+@pytest.mark.asyncio
+async def test_record_thins_oversized_transcript_metadata(
+    recorder_buffer: RecorderBuffer,
+    sample_results: list[ResultReport],
+) -> None:
+    scanner_name = "test_scanner"
+    transcript = TranscriptInfo(
+        transcript_id="big-metadata-1",
+        source_type="test",
+        source_id="src-1",
+        source_uri="/path/to/src.log",
+        metadata={
+            "model": "gpt-4",
+            "test_files": "x" * (TRANSCRIPT_METADATA_MAX_CHARS + 1),
+        },
+    )
+
+    await recorder_buffer.record(transcript, scanner_name, sample_results, None)
+
+    parquet_path = (
+        recorder_buffer._buffer_dir
+        / f"scanner={scanner_name}"
+        / "big-metadata-1.parquet"
+    )
+    table = pq.read_table(parquet_path.as_posix())
+    stored = json.loads(table.column("transcript_metadata")[0].as_py())
+    assert stored["model"] == "gpt-4"
+    assert len(stored["test_files"]) <= 1024
+
+
+@pytest.mark.asyncio
+async def test_thinned_metadata_keeps_unread_json_values_as_objects(
+    recorder_buffer: RecorderBuffer,
+    sample_results: list[ResultReport],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from inspect_scout._recorder import buffer as buffer_module
+    from inspect_scout._transcript.util import LazyJSONDict
+
+    monkeypatch.setattr(buffer_module, "TRANSCRIPT_METADATA_MAX_CHARS", 200)
+    scanner_name = "test_scanner"
+    metadata = LazyJSONDict(
+        {
+            "model": "gpt-4",
+            "config": '{"temperature": 0.7}',
+            "files": json.dumps(["x" * 2000]),
+        },
+        json_keys=["config", "files"],
+    )
+    transcript = TranscriptInfo(
+        transcript_id="lazy-metadata-1",
+        source_type="test",
+        source_id="src-1",
+        source_uri="/path/to/src.log",
+    )
+    # As the transcript readers do: validation would turn it into a plain dict.
+    object.__setattr__(transcript, "metadata", metadata)
+
+    await recorder_buffer.record(transcript, scanner_name, sample_results, None)
+
+    parquet_path = (
+        recorder_buffer._buffer_dir
+        / f"scanner={scanner_name}"
+        / "lazy-metadata-1.parquet"
+    )
+    table = pq.read_table(parquet_path.as_posix())
+    stored = json.loads(table.column("transcript_metadata")[0].as_py())
+    assert stored == {
+        "model": "gpt-4",
+        "config": {"temperature": 0.7},
+        "files": "Key removed from summary (> 1k)",
+    }
+    assert metadata.unread_json("files") is not None
+
+
+@pytest.mark.asyncio
+async def test_reference_scan_records_thinned_transcript_metadata(
+    sample_results: list[ResultReport],
+) -> None:
+    """Reference rows re-read their transcript, so they carry only summary-sized metadata."""
+    from inspect_scout._transcript.util import LazyJSONDict
+
+    metadata = LazyJSONDict(
+        {
+            "model": "gpt-4",
+            "config": '{"temperature": 0.7}',
+            "files": json.dumps({"fixture.py": "x" * 2_000}),
+        },
+        json_keys=["config", "files"],
+    )
+    transcript = TranscriptInfo(
+        transcript_id="ref-1",
+        source_type="test",
+        source_id="src-1",
+        source_uri="/path/to/src.log",
+    )
+    # As the transcript readers do: validation would turn it into a plain dict.
+    object.__setattr__(transcript, "metadata", metadata)
+    spec = ScanSpec(
+        scan_name="myscan",
+        scanners={"test_scanner": ScannerSpec(name="test_scanner")},
+        options=ScanOptions(record_input="reference"),
+    )
+    with tempfile.TemporaryDirectory() as tmpdir:
+        buffer = RecorderBuffer(tmpdir, spec)
+        await buffer.record(transcript, "test_scanner", sample_results, None)
+        table = pq.read_table(
+            (buffer._buffer_dir / "scanner=test_scanner" / "ref-1.parquet").as_posix()
+        )
+        buffer.cleanup()
+
+    stored = json.loads(table.column("transcript_metadata")[0].as_py())
+    assert stored == {
+        "model": "gpt-4",
+        "config": {"temperature": 0.7},
+        "files": "Key removed from summary (> 1k)",
+    }

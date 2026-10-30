@@ -38,12 +38,12 @@ from inspect_ai.model import (
 from inspect_scout.sources._atif.events import (
     _extract_content_blocks,
     _image_as_data_uri,
-    _parse_timestamp,
     step_to_messages,
     to_compaction_event,
     to_model_event,
 )
 from inspect_scout.sources._atif.transcripts import _create_subagent_span_events
+from inspect_scout.sources._util import parse_timestamp
 
 from tests.sources.atif_source.helpers import write_trajectory
 
@@ -78,6 +78,7 @@ class TestModelEventConversion:
         assert result.tool_choice == "auto"
         assert result.output.usage is not None
         assert result.output.usage.input_tokens == 100
+        assert result.completed == result.timestamp
         assert result.output.usage.output_tokens == 50
         assert result.output.usage.total_tokens == 150
         assert result.output.metadata == {"atif_synthesized": True}
@@ -403,8 +404,8 @@ class TestCreateSubagentSpanEvents:
 
         span_begin = next(e for e in events if isinstance(e, SpanBeginEvent))
         span_end = next(e for e in events if isinstance(e, SpanEndEvent))
-        assert span_begin.timestamp == _parse_timestamp("2026-01-01T00:00:00Z")
-        assert span_end.timestamp == _parse_timestamp("2026-01-01T00:05:00Z")
+        assert span_begin.timestamp == parse_timestamp("2026-01-01T00:00:00Z")
+        assert span_end.timestamp == parse_timestamp("2026-01-01T00:05:00Z")
 
     def test_inner_events_are_reparented_to_span(self, tmp_path: Path) -> None:
         """Inner subagent events → span_id set to new agent span's id."""

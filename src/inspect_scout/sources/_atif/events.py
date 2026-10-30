@@ -12,7 +12,6 @@ parses a `Trajectory`), so this module never imports harbor at runtime.
 from __future__ import annotations
 
 import base64
-from datetime import datetime, timezone
 from logging import getLogger
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -34,6 +33,8 @@ from inspect_ai.model import (
     ModelUsage,
 )
 from inspect_ai.tool import ToolCall
+
+from .._util import parse_timestamp, utcnow
 
 if TYPE_CHECKING:
     from harbor.models.trajectories import ContentPart, Step
@@ -77,7 +78,7 @@ def to_model_event(
     )
 
     model_name = step.model_name or "unknown"
-    timestamp = _parse_timestamp(step.timestamp) or utcnow()
+    timestamp = parse_timestamp(step.timestamp) or utcnow()
 
     output = ModelOutput(
         model=model_name,
@@ -94,6 +95,10 @@ def to_model_event(
         config=GenerateConfig(),
         output=output,
         timestamp=timestamp,
+        # ATIF records completion instants, not call durations — set
+        # completed so the zero duration is explicit rather than left to
+        # consumers' missing-completed fallback.
+        completed=timestamp,
     )
 
 
@@ -108,7 +113,7 @@ def to_compaction_event(step: "Step") -> CompactionEvent:
     return CompactionEvent(
         source="atif",
         metadata=(step.extra or {}).get("context_management") or None,
-        timestamp=_parse_timestamp(step.timestamp) or utcnow(),
+        timestamp=parse_timestamp(step.timestamp) or utcnow(),
     )
 
 
@@ -235,30 +240,3 @@ def _image_as_data_uri(
         logger.warning("ATIF image not loadable %s: %s", image_path, e)
         return None
     return f"data:{source.media_type};base64,{data}"
-
-
-def _parse_timestamp(ts_str: str | None) -> datetime | None:
-    """Parse an ISO 8601 timestamp string to a tz-aware UTC datetime.
-
-    Handles the common 'Z' suffix.
-
-    Args:
-        ts_str: ISO format timestamp string (with optional 'Z' suffix)
-
-    Returns:
-        Parsed UTC datetime, or None if parsing fails or input is empty
-    """
-    if not ts_str:
-        return None
-    try:
-        dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-    except ValueError:
-        logger.warning("Invalid ATIF timestamp: %r", ts_str)
-        return None
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
-
-
-def utcnow() -> datetime:
-    return datetime.now(timezone.utc)

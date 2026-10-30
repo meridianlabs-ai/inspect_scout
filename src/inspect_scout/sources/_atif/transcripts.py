@@ -27,17 +27,16 @@ from inspect_ai.event import (
 from inspect_ai.model import ChatMessage, stable_message_ids
 from pydantic import ValidationError
 
+from .._util import apply_working_start, parse_timestamp, utcnow
 from .client import (
     ATIF_SOURCE_TYPE,
     discover_trajectory_files,
     import_trajectory_model,
 )
 from .events import (
-    _parse_timestamp,
     step_to_messages,
     to_compaction_event,
     to_model_event,
-    utcnow,
 )
 
 if TYPE_CHECKING:
@@ -278,6 +277,8 @@ def _create_transcript(
                         )
                     )
 
+    apply_working_start(events)
+
     # Apply stable message IDs
     apply_ids = stable_message_ids()
     for evt in events:
@@ -358,7 +359,7 @@ def _trajectory_time_bounds(
     """Return the (earliest, latest) parsed step timestamps of a trajectory."""
     timestamps: list[datetime] = []
     for step in trajectory.steps:
-        ts = _parse_timestamp(step.timestamp)
+        ts = parse_timestamp(step.timestamp)
         if ts is not None:
             timestamps.append(ts)
     if not timestamps:

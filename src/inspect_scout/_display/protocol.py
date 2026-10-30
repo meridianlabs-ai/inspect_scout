@@ -60,6 +60,8 @@ class ScanDisplay(abc.ABC):
         scanner: str,
         results: Sequence[ResultReport],
         metrics: dict[str, dict[str, float]] | None,
+        *,
+        complete: bool = True,
     ) -> None: ...
 
     @abc.abstractmethod
@@ -74,6 +76,8 @@ class ScanDisplayNone(ScanDisplay):
         scanner: str,
         results: Sequence[ResultReport],
         metrics: dict[str, dict[str, float]] | None,
+        *,
+        complete: bool = True,
     ) -> None:
         pass
 

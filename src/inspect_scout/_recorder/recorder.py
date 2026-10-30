@@ -292,6 +292,9 @@ class ScanRecorder(abc.ABC):
         scanner: str,
         results: Sequence[ResultReport],
         metrics: dict[str, dict[str, float]] | None,
+        *,
+        complete: bool = True,
+        append: bool = False,
     ) -> None: ...
 
     @abc.abstractmethod

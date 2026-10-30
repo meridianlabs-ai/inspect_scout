@@ -180,8 +180,12 @@ class ScanDisplayRich(
         scanner: str,
         results: Sequence[ResultReport],
         metrics: dict[str, dict[str, float]] | None,
+        *,
+        complete: bool = True,
     ) -> None:
-        self._scan_summary._report(transcript, scanner, results, metrics)
+        self._scan_summary._report(
+            transcript, scanner, results, metrics, complete=complete
+        )
 
     @override
     def metrics(self, metrics: ScanMetrics) -> None:

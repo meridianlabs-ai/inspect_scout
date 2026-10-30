@@ -139,6 +139,23 @@ worker creates its own.
 """
 
 
+ReportResult = Callable[[ResultReport], Awaitable[None]]
+ScanFunction = Callable[[ScannerJob, ReportResult], Awaitable[None]]
+
+
+class RecordResults(Protocol):
+    """Record an atomic batch, distinguishing loader progress from completion."""
+
+    async def __call__(
+        self,
+        transcript: TranscriptInfo,
+        scanner: str,
+        results: list[ResultReport],
+        complete: bool = True,
+        append: bool = False,
+    ) -> None: ...
+
+
 class ConcurrencyStrategy(Protocol):
     """Callable strategy interface (Strategy Pattern) for executing scanner work.
 
@@ -156,10 +173,8 @@ class ConcurrencyStrategy(Protocol):
         parse_function: Callable[
             [ParseJob, TranscriptsReader], Awaitable[ParseFunctionResult]
         ],
-        scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]],
-        record_results: Callable[
-            [TranscriptInfo, str, list[ResultReport]], Awaitable[None]
-        ],
+        scan_function: ScanFunction,
+        record_results: RecordResults,
         update_metrics: Callable[[ScanMetrics], None],
         reader_cm_factory: ReaderCMFactory,
     ) -> None: ...

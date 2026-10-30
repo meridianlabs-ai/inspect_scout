@@ -238,8 +238,13 @@ class FileRecorder(ScanRecorder):
         scanner: str,
         results: Sequence[ResultReport],
         metrics: dict[str, dict[str, float]] | None,
+        *,
+        complete: bool = True,
+        append: bool = False,
     ) -> None:
-        await self._scan_buffer.record(transcript, scanner, results, metrics)
+        await self._scan_buffer.record(
+            transcript, scanner, results, metrics, complete=complete, append=append
+        )
 
     @override
     async def record_metrics(

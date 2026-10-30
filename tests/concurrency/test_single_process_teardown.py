@@ -12,7 +12,12 @@ from typing import cast
 
 import pytest
 from inspect_scout import scanner
-from inspect_scout._concurrency.common import ParseFunctionResult, ParseJob, ScannerJob
+from inspect_scout._concurrency.common import (
+    ParseFunctionResult,
+    ParseJob,
+    ReportResult,
+    ScannerJob,
+)
 from inspect_scout._concurrency.single_process import single_process_strategy
 from inspect_scout._scanner.result import Result, ResultReport
 from inspect_scout._scanner.scanner import Scanner
@@ -87,11 +92,15 @@ async def _run_until_parse_crash(lead: ScannerJob) -> None:
             raise RuntimeError("worker crashed")
         return True, lead
 
-    async def scan_function(job: ScannerJob) -> list[ResultReport]:
-        return []
+    async def scan_function(job: ScannerJob, report_result: ReportResult) -> None:
+        pass
 
     async def record_results(
-        info: TranscriptInfo, scanner_name: str, results: list[ResultReport]
+        transcript: TranscriptInfo,
+        scanner: str,
+        results: list[ResultReport],
+        complete: bool = True,
+        append: bool = False,
     ) -> None:
         return None
 

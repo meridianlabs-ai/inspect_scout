@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Sequence, cast
+from typing import Any, Iterable, Literal, Sequence, cast
 
 import importlib_metadata
 from inspect_ai._util.constants import PKG_NAME as INSPECT_PKG_NAME
@@ -70,7 +70,9 @@ class ScanContext:
     """Validation cases to apply for scanners."""
 
 
-async def create_scan(scanjob: ScanJob) -> ScanContext:
+async def create_scan(
+    scanjob: ScanJob, record_input: Literal["copy", "reference"] = "copy"
+) -> ScanContext:
     if scanjob.transcripts is None:
         raise PrerequisiteError("No transcripts specified for scan.")
 
@@ -91,6 +93,7 @@ async def create_scan(scanjob: ScanJob) -> ScanContext:
         limit=scanjob.limit,
         shuffle=scanjob.shuffle,
         results_buffer=scanjob.results_buffer,
+        record_input=record_input,
     )
 
     # resolve model

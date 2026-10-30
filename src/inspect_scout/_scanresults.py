@@ -1,6 +1,6 @@
 import asyncio
 import json
-from collections.abc import AsyncIterator, Iterator, Sequence
+from collections.abc import AsyncIterator, Iterator, Mapping, Sequence
 from logging import getLogger
 from typing import Any, Literal
 
@@ -18,14 +18,68 @@ from ._recorder.recorder import (
     ScanResultsDF,
     Status,
 )
+from ._transcript.factory import transcripts_from
 from ._transcript.json.reducer import (
     ATTACHMENT_PREFIX,
     ATTACHMENT_PREFIX_LEN,
     ATTACHMENT_REF_LEN,
 )
+from ._transcript.types import Transcript, TranscriptContent
 from ._validation.validate import is_positive_value
 
 logger = getLogger(__name__)
+
+
+async def resolve_input_reference(
+    row: Mapping[str, Any], transcripts: str | None = None
+) -> Transcript:
+    """Resolve a reference result row back into the transcript the scanner saw.
+
+    Re-reads the transcript from `transcript_source_uri`, selecting the sample
+    by `transcript_id` (the sample uuid) and applying the content filters in
+    `input_content`. A NULL `input_content` resolves to full content; filters
+    that are all `null` resolve to an empty transcript, as the scan saw it.
+
+    Args:
+        row: A result row (any mapping of column name to value).
+        transcripts: Transcripts location to resolve from instead of the
+            row's `transcript_source_uri`. Pass the scan's transcripts
+            database location when the scan read a transcript database:
+            there `transcript_source_uri` is the transcript's original
+            source (e.g. the `.eval` it was imported from), which may have
+            moved or not be readable as a transcripts location at all.
+
+    Raises:
+        ValueError: If `row` is not a reference row (`input_storage !=
+            "reference"`), the row has no `transcript_id` or
+            `transcript_source_uri` to resolve from, or `transcript_id` is
+            not found in the source (e.g. the source was replaced since the
+            scan ran). Genuine read errors from the source (missing file,
+            credentials, etc.) propagate as themselves.
+    """
+    if row.get("input_storage") != "reference":
+        raise ValueError("row is not a reference (input_storage != 'reference')")
+    source_uri = transcripts or row.get("transcript_source_uri")
+    if not source_uri:
+        raise ValueError("reference row has no transcript_source_uri to resolve from")
+    transcript_id = row.get("transcript_id")
+    if not transcript_id:
+        raise ValueError("reference row has no transcript_id to resolve from")
+    content_json = row.get("input_content")
+    # A DataFrame row surfaces NULL as NaN, which is truthy.
+    content = (
+        TranscriptContent.from_json(content_json)
+        if isinstance(content_json, str) and content_json
+        else TranscriptContent(messages="all", events="all", timeline=None)
+    )
+    async with transcripts_from(str(source_uri)).reader() as reader:
+        async for info in reader.index():
+            if info.transcript_id == transcript_id:
+                return await reader.read(info, content)
+    raise ValueError(
+        f"transcript {transcript_id} not found in {source_uri} "
+        "(the source may have been replaced)"
+    )
 
 
 def scan_status(scan_location: str) -> Status:

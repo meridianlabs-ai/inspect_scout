@@ -4,7 +4,16 @@ import traceback
 from contextlib import asynccontextmanager
 from logging import getLogger
 from pathlib import Path
-from typing import Any, AsyncIterator, Awaitable, Callable, Mapping, Sequence, cast
+from typing import (
+    Any,
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Literal,
+    Mapping,
+    Sequence,
+    cast,
+)
 
 import anyio
 import yaml
@@ -19,6 +28,7 @@ from inspect_ai._util.error import PrerequisiteError
 from inspect_ai._util.json import jsonable_python
 from inspect_ai._util.path import pretty_path
 from inspect_ai._util.platform import platform_init as init_platform
+from inspect_ai._util.registry import is_registry_object
 from inspect_ai._util.rich import clean_control_characters
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.model._model import (
@@ -81,6 +91,7 @@ from ._scanjob_config import ScanJobConfig
 from ._scanner.loader import config_for_loader
 from ._scanner.result import (
     Error,
+    ReferenceTranscript,
     ReportInput,
     Result,
     ResultReport,
@@ -105,6 +116,7 @@ from ._transcript.types import (
     Transcript,
     TranscriptContent,
     TranscriptInfo,
+    TranscriptTooLargeToRecordError,
 )
 from ._transcript.util import union_transcript_contents
 from ._util.constants import DEFAULT_MAX_TRANSCRIPTS
@@ -136,6 +148,7 @@ def scan(
     log_level: str | None = None,
     fail_on_error: bool = False,
     dry_run: bool = False,
+    record_input: Literal["copy", "reference"] = "copy",
     **deprecated: Unpack[ScanDeprecatedArgs],
 ) -> Status:
     """Scan transcripts.
@@ -172,6 +185,7 @@ def scan(
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
         fail_on_error: Re-raise exceptions instead of capturing them in results. Defaults to False.
         dry_run: Don't actually run the scan, just print the spec and return the status. Defaults to False.
+        record_input: How scanner input is recorded in results: a self-contained copy (default), or a reference to the source transcript resolved on read.
         deprecated: Deprecated arguments.
 
     Returns:
@@ -201,6 +215,7 @@ def scan(
             log_level=log_level,
             fail_on_error=fail_on_error,
             dry_run=dry_run,
+            record_input=record_input,
             **deprecated,
         )
     )
@@ -227,6 +242,7 @@ async def scan_async(
     log_level: str | None = None,
     fail_on_error: bool = False,
     dry_run: bool = False,
+    record_input: Literal["copy", "reference"] = "copy",
     **deprecated: Unpack[ScanDeprecatedArgs],
 ) -> Status:
     """Scan transcripts.
@@ -262,6 +278,7 @@ async def scan_async(
             "info", "warning", "error", "critical", or "notset" (defaults to "warning")
         fail_on_error: Re-raise exceptions instead of capturing them in results. Defaults to False.
         dry_run: Don't actually run the scan, just print the spec and return the status. Defaults to False.
+        record_input: How scanner input is recorded in results: a self-contained copy (default), or a reference to the source transcript resolved on read.
         deprecated: Deprecated arguments.
 
     Returns:
@@ -355,7 +372,7 @@ async def scan_async(
     scanjob._model_args = resolved_model_args
     scanjob._model_roles = resolved_model_roles
 
-    scan = await create_scan(scanjob)
+    scan = await create_scan(scanjob, record_input=record_input)
     if dry_run:
         return await _scan_dry_run(scan)
 
@@ -703,6 +720,7 @@ async def _scan_async_inner(
                         job,
                         validation=scan.validation,
                         fail_on_error=fail_on_error,
+                        record_input=scan.spec.options.record_input,
                     )
 
                 prefetch_multiple = 1.0
@@ -1105,11 +1123,33 @@ async def _transcript_for_record(handle: TranscriptHandle) -> ReportInput:
     return await handle.load()
 
 
+def _reference_for_record(
+    transcript: TranscriptHandle | Transcript, scanner: Scanner[Any]
+) -> ReferenceTranscript:
+    # The scanner's own filters, not the shared handle's union, so resolving
+    # the reference reproduces exactly what this scanner saw.
+    info = transcript if isinstance(transcript, Transcript) else transcript.info
+    config = config_for_scanner(scanner)
+    # An unregistered (non-@loader) custom loader has no loader config; fall
+    # back to the scanner's declared filters rather than failing the record.
+    content = (
+        config_for_loader(config.loader).content
+        if is_registry_object(config.loader)
+        else config.content
+    )
+    return ReferenceTranscript(
+        source_uri=info.source_uri,
+        transcript_id=info.transcript_id,
+        content_json=content.to_json(),
+    )
+
+
 async def _scan_one(
     job: ScannerJob,
     *,
     validation: dict[str, ValidationSet] | None = None,
     fail_on_error: bool = False,
+    record_input: Literal["copy", "reference"] = "copy",
 ) -> list[ResultReport]:
     """Run a single scanner against a single transcript.
 
@@ -1124,6 +1164,9 @@ async def _scan_one(
     iteration are contained per-transcript as Error reports. `job.on_complete`,
     if set, is awaited exactly once in a finally block to close the shared
     handle after the last job.
+
+    `record_input="reference"` records transcript inputs (handle or
+    materialized) as references without serializing them.
     """
     from inspect_ai.log._transcript import (
         Transcript as InspectTranscript,
@@ -1155,7 +1198,9 @@ async def _scan_one(
         """Error report for an exception raised lazily during iteration."""
         union = job.union_transcript
         report_input: ReportInput
-        if isinstance(union, Transcript):
+        if record_input == "reference":
+            report_input = _reference_for_record(union, job.scanner)
+        elif isinstance(union, Transcript):
             report_input = union
         else:
             # The stream raised, so the content is unreadable; record an
@@ -1245,12 +1290,10 @@ async def _scan_one(
                 )
                 else None
             )
-            report_input: ReportInput
             loader_input: ScannerInput | None = None
             if handle_input is None:
                 # mypy can't subtract the protocol, so cast the narrowed value.
                 loader_input = cast(ScannerInput, loader_result)
-                report_input = loader_input
 
             try:
                 if handle_input is not None:
@@ -1305,33 +1348,57 @@ async def _scan_one(
             # parquet cell is an atomic value, so the transcript has to exist
             # in full at write time. Doing it here -- after the scan, success
             # or error -- keeps it out of memory for the scan itself.
+            # `record_input="reference"` skips all of that (see the docstring).
+            report_input: ReportInput
             if handle_input is not None:
-                try:
-                    report_input = await _transcript_for_record(handle_input)
-                except PrerequisiteError:
-                    raise
-                except Exception as ex:  # pylint: disable=W0718
-                    if fail_on_error:
+                if record_input == "reference":
+                    report_input = _reference_for_record(handle_input, job.scanner)
+                else:
+                    try:
+                        report_input = await _transcript_for_record(handle_input)
+                    except PrerequisiteError:
                         raise
-                    # The scan ran, but its transcript can't be read back for
-                    # the record. Keep whatever the scan produced and surface
-                    # the read failure as this row's error -- never a clean
-                    # result over an info-only placeholder.
-                    report_input = _info_placeholder_transcript(handle_input.info)
-                    logger.warning(
-                        "Unable to read transcript %s for the result record; "
-                        "recording metadata only.",
-                        job.transcript_info.transcript_id,
-                        exc_info=True,
-                    )
-                    if error is None:
-                        error = Error(
-                            transcript_id=job.transcript_info.transcript_id,
-                            scanner=job.scanner_name,
-                            error=f"Unable to read transcript for the result record: {ex}",
-                            traceback=traceback.format_exc(),
-                            refusal=False,
+                    except TranscriptTooLargeToRecordError as ex:
+                        # A storage limit, not a scan failure, so fail_on_error does
+                        # not apply (the parent-side backstop in
+                        # `ResultReport.to_df_columns` cannot raise either).
+                        logger.warning(
+                            "Transcript %s: serialized '%s' is %d bytes, over the "
+                            "parquet cell cap; recording a reference to the source "
+                            "instead.",
+                            ex.transcript_id,
+                            ex.cell,
+                            ex.size,
                         )
+                        report_input = _reference_for_record(handle_input, job.scanner)
+                    except Exception as ex:  # pylint: disable=W0718
+                        if fail_on_error:
+                            raise
+                        # The scan ran, but its transcript can't be read back for
+                        # the record. Keep whatever the scan produced and surface
+                        # the read failure as this row's error -- never a clean
+                        # result over a reference to unreadable content.
+                        report_input = _reference_for_record(handle_input, job.scanner)
+                        logger.warning(
+                            "Unable to read transcript %s for the result record; "
+                            "recording a reference to the source instead.",
+                            job.transcript_info.transcript_id,
+                            exc_info=True,
+                        )
+                        if error is None:
+                            error = Error(
+                                transcript_id=job.transcript_info.transcript_id,
+                                scanner=job.scanner_name,
+                                error=f"Unable to read transcript for the result record: {ex}",
+                                traceback=traceback.format_exc(),
+                                refusal=False,
+                            )
+            elif record_input == "reference" and isinstance(loader_input, Transcript):
+                report_input = _reference_for_record(loader_input, job.scanner)
+            else:
+                # Not an assert: a loader yielding None is contained above and
+                # this value goes unused, so it must not raise here.
+                report_input = cast(ScannerInput, loader_result)
 
             # always append a result (success or error) if we have type_and_ids
             if type_and_ids is not None:

@@ -2,7 +2,7 @@ import io
 import json
 from collections.abc import AsyncIterable
 from dataclasses import dataclass, field
-from typing import IO, Any, Callable
+from typing import IO, Any, Callable, NamedTuple
 
 import ijson
 from inspect_ai._util.async_bytes_reader import AsyncBytesReader, adapt_to_reader
@@ -127,6 +127,14 @@ class RawTranscript:
     call_pool: list[Any] = field(default_factory=list)
 
 
+class SampleIdentity(NamedTuple):
+    """A sample body's own `uuid`, `id` and `epoch` (each None if absent)."""
+
+    uuid: Any
+    id: Any
+    epoch: Any
+
+
 async def load_filtered_transcript(
     sample_bytes: IO[bytes] | AsyncIterable[bytes],
     t: TranscriptInfo,
@@ -134,7 +142,8 @@ async def load_filtered_transcript(
     events: EventFilter,
     *,
     metadata: bool = True,
-    on_uuid: Callable[[str | None], None] | None = None,
+    on_identity: Callable[[SampleIdentity], None] | None = None,
+    on_attachments: Callable[[dict[str, str]], None] | None = None,
     on_early_exit: Callable[[], None] | None = None,
 ) -> Transcript:
     """Transform and filter JSON sample data into a Transcript.
@@ -152,9 +161,11 @@ async def load_filtered_transcript(
             list=include matching)
         metadata: Whether to read the sample's metadata, target and scores from
             the body; when False the summary values already on ``t`` are kept.
-        on_uuid: Called with the sample's own ``uuid`` (None if it has none),
-            e.g. to check the sample is the one expected. Requesting it
-            reads at least as far as the ``uuid`` field.
+        on_identity: Called with the sample body's own ``uuid``, ``id`` and
+            ``epoch``, e.g. to check the sample is the one expected.
+            Requesting it reads at least as far as the ``uuid`` field.
+        on_attachments: When given, attachment references are left in place
+            and the attachments they name are passed here instead.
         on_early_exit: Test-only callback invoked immediately before the
             early-exit break
 
@@ -176,13 +187,22 @@ async def load_filtered_transcript(
                 messages,
                 events,
                 metadata=metadata,
-                on_uuid=on_uuid,
+                on_identity=on_identity,
                 on_early_exit=on_early_exit,
             )
+        if on_attachments is not None:
+            on_attachments(attachment_refs)
+            return _resolve_attachments(transcript, {})
         return _resolve_attachments(transcript, attachment_refs)
     except ijson.JSONError:
         return await _load_with_json5_fallback(
-            sample_bytes, t, messages, events, metadata=metadata, on_uuid=on_uuid
+            sample_bytes,
+            t,
+            messages,
+            events,
+            metadata=metadata,
+            on_identity=on_identity,
+            on_attachments=on_attachments,
         )
 
 
@@ -193,7 +213,8 @@ async def _load_with_json5_fallback(
     events: EventFilter,
     *,
     metadata: bool = True,
-    on_uuid: Callable[[str | None], None] | None = None,
+    on_identity: Callable[[SampleIdentity], None] | None = None,
+    on_attachments: Callable[[dict[str, str]], None] | None = None,
 ) -> Transcript:
     """Fallback parser using json5 for JSON5 features (NaN, Inf, etc.)."""
     if hasattr(sample_bytes, "__aiter__"):
@@ -204,8 +225,12 @@ async def _load_with_json5_fallback(
         io_source = sample_bytes
     io_source.seek(0)
     data = json.load(io.TextIOWrapper(io_source, encoding="utf-8"))
-    if on_uuid is not None:
-        on_uuid(data.get("uuid"))
+    if on_identity is not None:
+        on_identity(SampleIdentity(data.get("uuid"), data.get("id"), data.get("epoch")))
+    attachments = data.get("attachments", {})
+    if on_attachments is not None:
+        on_attachments(attachments)
+        attachments = {}
     message_pool, call_pool = _pools_from_dict(data)
     keep_timelines = events == "all"
 
@@ -242,7 +267,7 @@ async def _load_with_json5_fallback(
                 message_pool=message_pool,
                 call_pool=call_pool,
             ),
-            data.get("attachments", {}),
+            attachments,
         ),
         TranscriptContent(messages, events, timeline="all" if keep_timelines else None),
     )
@@ -296,7 +321,7 @@ async def _parse_and_filter(
     events_filter: EventFilter,
     *,
     metadata: bool = True,
-    on_uuid: Callable[[str | None], None] | None = None,
+    on_identity: Callable[[SampleIdentity], None] | None = None,
     on_early_exit: Callable[[], None] | None = None,
 ) -> tuple[RawTranscript, dict[str, str]]:
     """Single-pass stream parse, filter, and collect attachment references.
@@ -359,7 +384,7 @@ async def _parse_and_filter(
     pending_fields = {"target", "scores", "metadata"}
     if messages_filter is not None:
         pending_fields.add("messages")
-    if on_uuid is not None:
+    if on_identity is not None:
         # `uuid` follows events, so wanting it rules out the early exit.
         pending_fields.add("uuid")
 
@@ -393,10 +418,12 @@ async def _parse_and_filter(
             p_len = len(prefix)
             if p_len == 0 or prefix[0] not in ("m", "e", "a", "t", "s", "c"):
                 current_section = _SECTION_OTHER
-                # A top-level scalar: its only value event is the one that
-                # changes the prefix to it.
+                # Top-level scalars: each one's only value event is the one
+                # that changes the prefix to it.
                 if p_len == 4 and prefix == "uuid":
                     state.uuid = value
+                elif p_len == 2 and prefix == "id":
+                    state.sample_id = value
             elif p_len < _MIN_SECTION_PREFIX_LEN:
                 # Short prefixes: "events" (6), "scores" (6), "target" (6)
                 if prefix == "scores":
@@ -409,6 +436,8 @@ async def _parse_and_filter(
                     state.events_seen = True
                     current_section = _SECTION_OTHER
                 else:
+                    if prefix == "epoch":
+                        state.epoch = value
                     current_section = _SECTION_OTHER
             elif prefix[0] == "m":
                 # "messages" vs "metadata": both start "me", discriminate on 3rd char.
@@ -502,8 +531,8 @@ async def _parse_and_filter(
             for coro in call_pool_coros:
                 coro.send((prefix, event, value))
 
-    if on_uuid is not None:
-        on_uuid(state.uuid)
+    if on_identity is not None:
+        on_identity(SampleIdentity(state.uuid, state.sample_id, state.epoch))
     return (
         RawTranscript(
             id=t.transcript_id,

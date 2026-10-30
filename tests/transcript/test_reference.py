@@ -1,5 +1,6 @@
 """Tests for reading the transcript a reference-mode result row points at."""
 
+import json
 import math
 import shutil
 import zipfile
@@ -11,7 +12,8 @@ from typing import Any, Callable
 import pytest
 import zstandard
 from inspect_ai._util.async_zip import AsyncZipReader, CentralDirectory
-from inspect_ai._util.zip_common import ZipCompressionMethod
+from inspect_ai._util.asyncfiles import ObjectChangedError
+from inspect_ai._util.zip_common import ZipCompressionMethod, ZipEntry
 from inspect_ai.analysis._dataframe.extract import auto_id
 from inspect_ai.event import timeline_build
 from inspect_ai.log import (
@@ -87,6 +89,31 @@ def _understate(monkeypatch: pytest.MonkeyPatch, prefixes: tuple[str, ...]) -> N
         return CentralDirectory(entries, cd.etag)
 
     monkeypatch.setattr(reference, "_central_directory", understated)
+
+
+def _build_log(
+    path: Path, edit: Callable[[dict[str, bytes]], None], source: Path = EVAL_LOG
+) -> None:
+    """Write `source`'s members, as changed by `edit`, to `path`."""
+    with zipfile.ZipFile(source) as src:
+        members = {item.filename: src.read(item) for item in src.infolist()}
+    edit(members)
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as dst:
+        for name, data in members.items():
+            dst.writestr(name, data)
+
+
+def _edit_json(
+    members: dict[str, bytes], name: str, edit: Callable[[Any], None]
+) -> None:
+    value = json.loads(members[name])
+    edit(value)
+    members[name] = json.dumps(value).encode()
+
+
+def _for_summaries(members: dict[str, bytes], edit: Callable[[Any], None]) -> None:
+    for name in ("summaries.json", "_journal/summaries/1.json"):
+        _edit_json(members, name, lambda summaries: edit(summaries[0]))
 
 
 @pytest.fixture
@@ -326,6 +353,194 @@ async def test_member_named_by_the_row_is_not_returned_for_another_sample() -> N
             str(EVAL_LOG), _ref(transcript_id="not-this-sample")
         )
     assert ex.value.reason == "not_found"
+
+
+@pytest.mark.parametrize("direct", [True, False], ids=["direct", "index"])
+@pytest.mark.asyncio
+async def test_member_disagreeing_with_its_summary_is_not_returned(
+    log_copy: Path, direct: bool
+) -> None:
+    # The summary claims a uuid that the member's own body doesn't carry.
+    _build_log(log_copy, lambda m: _for_summaries(m, lambda s: s.update(uuid="wanted")))
+
+    with pytest.raises(InputReferenceUnavailable) as ex:
+        await read_referenced_transcript(
+            str(log_copy), _ref(transcript_id="wanted", direct=direct)
+        )
+    assert ex.value.reason == "not_found"
+
+
+@pytest.mark.asyncio
+async def test_body_of_another_sample_without_uuid_is_not_returned(
+    log_copy: Path,
+) -> None:
+    def edit(members: dict[str, bytes]) -> None:
+        def other_sample(sample: Any) -> None:
+            sample["id"] = 2
+            sample.pop("uuid", None)
+
+        _edit_json(members, SAMPLE_MEMBER, other_sample)
+        _for_summaries(members, lambda s: s.pop("uuid", None))
+
+    _build_log(log_copy, edit)
+    log = await read_eval_log_async(str(log_copy), header_only=True)
+    transcript_id = auto_id(log.eval.eval_id, f"{SAMPLE.id}_{SAMPLE.epoch}")
+
+    with pytest.raises(InputReferenceUnavailable) as ex:
+        await read_referenced_transcript(
+            str(log_copy), _ref(transcript_id=transcript_id)
+        )
+    assert ex.value.reason == "not_found"
+
+
+@pytest.mark.asyncio
+async def test_direct_member_over_the_cap_falls_back_to_the_index(
+    monkeypatch: pytest.MonkeyPatch, log_copy: Path
+) -> None:
+    # The row's coordinates name a larger, different sample whose directory
+    # entry understates its size; the index finds the referenced one.
+    def edit(members: dict[str, bytes]) -> None:
+        other = json.loads(members[SAMPLE_MEMBER])
+        other.update(id=2, uuid="other", metadata={"pad": "x" * 20_000})
+        members["samples/2_epoch_1.json"] = json.dumps(other).encode()
+
+    _build_log(log_copy, edit)
+    _understate(monkeypatch, ("samples/2_",))
+
+    transcript = await read_referenced_transcript(
+        str(log_copy), replace(_ref(), transcript_task_id="2"), max_bytes=20_000
+    )
+
+    assert transcript.task_id == str(SAMPLE.id)
+
+
+@pytest.mark.asyncio
+async def test_repeated_metadata_reads_are_served_once() -> None:
+    # So a log changing between the directory's size check and its parse
+    # cannot hand the parse a different directory.
+    calls: list[Any] = []
+
+    class Storage:
+        async def read_file_suffix(self, filename: str, length: int) -> Any:
+            calls.append("suffix")
+            return object()
+
+        async def read_file_bytes_fully(
+            self, filename: str, start: int, end: int, **kwargs: Any
+        ) -> bytes:
+            calls.append((start, end))
+            return bytes(len(calls))
+
+    view = reference._ReadOnce(Storage())  # type: ignore[arg-type]
+    first = (
+        await view.read_file_suffix("f", 10),
+        await view.read_file_bytes_fully("f", 0, 56),
+    )
+    again = (
+        await view.read_file_suffix("f", 10),
+        await view.read_file_bytes_fully("f", 0, 56),
+    )
+
+    assert first == again
+    assert calls == ["suffix", (0, 56)]
+
+
+@pytest.mark.parametrize("start_eval_id", ["", "stale"], ids=["missing", "stale-start"])
+@pytest.mark.asyncio
+async def test_eval_id_is_read_as_inspect_reads_it(
+    log_copy: Path, start_eval_id: str
+) -> None:
+    def edit(members: dict[str, bytes]) -> None:
+        _edit_json(members, SAMPLE_MEMBER, lambda s: s.pop("uuid", None))
+        _for_summaries(members, lambda s: s.pop("uuid", None))
+        _edit_json(
+            members,
+            "_journal/start.json",
+            lambda h: h["eval"].update(eval_id=start_eval_id),
+        )
+        if not start_eval_id:
+            _edit_json(members, "header.json", lambda h: h["eval"].update(eval_id=""))
+
+    _build_log(log_copy, edit)
+    async with EvalLogTranscriptsView(str(log_copy)) as view:
+        info = [i async for i in view.select()][0]
+
+    transcript = await read_referenced_transcript(
+        str(log_copy), _ref(transcript_id=info.transcript_id)
+    )
+
+    assert transcript.messages
+
+
+@pytest.mark.asyncio
+async def test_journal_summaries_past_the_shared_budget_are_too_large(
+    monkeypatch: pytest.MonkeyPatch, log_copy: Path
+) -> None:
+    def edit(members: dict[str, bytes]) -> None:
+        del members["summaries.json"]
+        members["_journal/summaries/2.json"] = members["_journal/summaries/1.json"]
+
+    _build_log(log_copy, edit)
+    # Each member fits on its own; together they don't.
+    monkeypatch.setattr(reference, "SUMMARIES_MAX_BYTES", 1_000)
+
+    with pytest.raises(InputReferenceUnavailable) as ex:
+        await read_referenced_transcript(str(log_copy), _ref(direct=False))
+    assert ex.value.reason == "too_large"
+
+
+@pytest.mark.asyncio
+async def test_a_refusal_wins_over_other_journal_failures(
+    monkeypatch: pytest.MonkeyPatch, log_copy: Path
+) -> None:
+    def edit(members: dict[str, bytes]) -> None:
+        del members["summaries.json"]
+        members["_journal/summaries/2.json"] = members["_journal/summaries/1.json"]
+
+    _build_log(log_copy, edit)
+    real = reference._read_member
+
+    async def failing(zip_reader: Any, entry: Any, limit: int, too_large: Any) -> bytes:
+        if entry.filename.endswith("/1.json"):
+            raise too_large()
+        if entry.filename.endswith("/2.json"):
+            raise ValueError("corrupt member")
+        return await real(zip_reader, entry, limit, too_large)
+
+    monkeypatch.setattr(reference, "_read_member", failing)
+
+    with pytest.raises(InputReferenceUnavailable) as ex:
+        await read_referenced_transcript(str(log_copy), _ref(direct=False))
+    assert ex.value.reason == "too_large"
+
+
+def test_journal_order_tolerates_any_member_name() -> None:
+    names = ["\u00b2", "9" * 5_000, "10", "2"]
+    entries = [
+        ZipEntry(
+            f"_journal/summaries/{n}.json", ZipCompressionMethod.DEFLATE, 1, 1, 0, 0
+        )
+        for n in names
+    ]
+
+    ordered = sorted(entries, key=reference._journal_order)
+
+    assert [e.filename.split("/")[-1] for e in ordered[:2]] == ["2.json", "10.json"]
+
+
+@pytest.mark.asyncio
+async def test_log_replaced_mid_read_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def changed(fs: Any, location: str) -> Any:
+        raise ObjectChangedError(location, "etag")
+
+    monkeypatch.setattr(reference, "_central_directory", changed)
+
+    with pytest.raises(InputReferenceUnavailable) as ex:
+        await read_referenced_transcript(str(EVAL_LOG), _ref())
+    assert ex.value.reason == "unavailable"
+    assert "changed" in ex.value.message
 
 
 @pytest.mark.asyncio

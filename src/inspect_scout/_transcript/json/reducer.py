@@ -78,8 +78,10 @@ class ParseState:
     call_pool: list[dict[str, Any]] = field(default_factory=list)
     # Set once the events section starts streaming (see attachments_coroutine).
     events_seen: bool = False
-    # The sample's own top-level `uuid` (collected only on request).
-    uuid: str | None = None
+    # The sample's own top-level identity fields (collected only on request).
+    uuid: Any = None
+    sample_id: Any = None
+    epoch: Any = None
 
 
 # ---------------------------------------------------------------------------

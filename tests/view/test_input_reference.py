@@ -4,6 +4,7 @@ import asyncio
 import gc
 import json
 import threading
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -50,6 +51,17 @@ def _request() -> Request:
     return Request({"type": "http"})
 
 
+def _resolve_refs(value: Any, attachments: dict[str, str]) -> Any:
+    """Substitute `attachment://<id>` strings, as the viewer does."""
+    if isinstance(value, str) and value.startswith("attachment://"):
+        return attachments.get(value.removeprefix("attachment://"), value)
+    if isinstance(value, list):
+        return [_resolve_refs(v, attachments) for v in value]
+    if isinstance(value, dict):
+        return {k: _resolve_refs(v, attachments) for k, v in value.items()}
+    return value
+
+
 @pytest.mark.asyncio
 async def test_resolves_the_same_messages_and_events_as_copy_mode() -> None:
     async with EvalLogTranscriptsView(str(EVAL_LOG)) as view:
@@ -61,27 +73,30 @@ async def test_resolves_the_same_messages_and_events_as_copy_mode() -> None:
 
     resolved = await InputReferenceResolver(source_uri_locator).resolve(_request(), ROW)
 
-    actual = json.loads(resolved.input)
+    # Attachments stay referenced, resolved from `input_data` as the viewer does.
+    assert resolved.input_data is not None
+    data = json.loads(resolved.input_data)
+    attachments = data.pop("attachments")
+    assert attachments
+    actual = _resolve_refs(json.loads(resolved.input), attachments)
     copied = json.loads(expected_input)
     assert actual["transcript_id"] == SAMPLE_UUID
     assert actual["messages"] == copied["messages"]
     assert actual["events"] == copied["events"]
     assert expected_data is not None
-    assert resolved.input_data == expected_data.decode()
+    assert _resolve_refs(data, attachments) == json.loads(expected_data)
 
 
 @pytest.mark.asyncio
 async def test_reads_off_the_server_loop(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, Any] = {}
 
-    async def spy(
-        location: str, ref: InputReference, *, max_bytes: int | None = None
-    ) -> Transcript:
+    async def spy(location: str, ref: InputReference, **kwargs: Any) -> Transcript:
         seen["thread"] = threading.get_ident()
         seen["loop"] = asyncio.get_running_loop()
         async with AsyncFilesystem() as fs:
             seen["fs"] = fs
-        return await read_referenced_transcript(location, ref, max_bytes=max_bytes)
+        return await read_referenced_transcript(location, ref, **kwargs)
 
     monkeypatch.setattr(_input_reference, "read_referenced_transcript", spy)
 
@@ -118,9 +133,7 @@ async def test_concurrency_is_limited(monkeypatch: pytest.MonkeyPatch) -> None:
     active = 0
     peak = 0
 
-    async def slow(
-        location: str, ref: InputReference, *, max_bytes: int | None = None
-    ) -> Transcript:
+    async def slow(location: str, ref: InputReference, **kwargs: Any) -> Transcript:
         nonlocal active, peak
         with lock:
             active += 1
@@ -168,9 +181,7 @@ async def test_other_locator_errors_propagate() -> None:
 async def test_unexpected_errors_are_unavailable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    async def boom(
-        location: str, ref: InputReference, *, max_bytes: int | None = None
-    ) -> Transcript:
+    async def boom(location: str, ref: InputReference, **kwargs: Any) -> Transcript:
         raise RuntimeError(f"secret detail about {location}")
 
     monkeypatch.setattr(_input_reference, "read_referenced_transcript", boom)
@@ -182,31 +193,56 @@ async def test_unexpected_errors_are_unavailable(
 
 
 @pytest.mark.asyncio
-async def test_input_that_expands_past_max_bytes_is_too_large(
+async def test_repeated_attachments_are_sent_once(tmp_path: Path) -> None:
+    # One stored attachment that each of 200 messages references, written
+    # into the sample member directly (inspect's writer inlines messages).
+    attachment_id = "0" * 32
+    log_path = tmp_path / EVAL_LOG.name
+    with (
+        zipfile.ZipFile(EVAL_LOG) as src,
+        zipfile.ZipFile(log_path, "w", zipfile.ZIP_DEFLATED) as dst,
+    ):
+        for item in src.infolist():
+            data = src.read(item)
+            if item.filename.startswith("samples/"):
+                sample = json.loads(data)
+                sample["messages"] = [
+                    {"role": "user", "content": f"attachment://{attachment_id}"}
+                ] * 200
+                sample["attachments"] = {attachment_id: "x" * 5_000}
+                data = json.dumps(sample).encode()
+            dst.writestr(item, data)
+    row = {**ROW, "transcript_source_uri": str(log_path)}
+
+    # Written out per reference, the input would be about 1 MB.
+    resolved = await InputReferenceResolver(
+        source_uri_locator, max_bytes=100_000
+    ).resolve(_request(), row)
+
+    assert resolved.input_data is not None
+    attachments = json.loads(resolved.input_data)["attachments"]
+    messages = json.loads(resolved.input)["messages"]
+    assert len(messages) == 200
+    assert _resolve_refs(messages[0]["content"], attachments) == "x" * 5_000
+
+
+@pytest.mark.asyncio
+async def test_input_serialized_past_max_bytes_is_too_large(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from inspect_ai.model import ChatMessageUser
 
-    # One string in memory, written out once per message that references it.
-    shared = "x" * 100_000
-
-    async def expanding(
-        location: str, ref: InputReference, *, max_bytes: int | None = None
-    ) -> Transcript:
+    async def large(location: str, ref: InputReference, **kwargs: Any) -> Transcript:
         return Transcript(
             transcript_id=ref.transcript_id,
-            messages=[ChatMessageUser(content=shared) for _ in range(200)],
+            messages=[ChatMessageUser(content="x" * 10_000)],
             events=[],
         )
 
-    def refuse(value: Any) -> bytes:
-        raise AssertionError("the input was serialized")
-
-    monkeypatch.setattr(_input_reference, "read_referenced_transcript", expanding)
-    monkeypatch.setattr(_input_reference, "to_json_bytes_compact", refuse)
+    monkeypatch.setattr(_input_reference, "read_referenced_transcript", large)
 
     with pytest.raises(InputReferenceUnavailable) as ex:
-        await InputReferenceResolver(source_uri_locator, max_bytes=1_000_000).resolve(
+        await InputReferenceResolver(source_uri_locator, max_bytes=5_000).resolve(
             _request(), ROW
         )
     assert ex.value.reason == "too_large"

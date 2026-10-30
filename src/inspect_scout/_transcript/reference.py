@@ -15,12 +15,14 @@ from inspect_ai._util.async_zip import (
     _find_central_directory,
     _parse_central_directory,
 )
-from inspect_ai._util.asyncfiles import AsyncFilesystem
+from inspect_ai._util.asyncfiles import AsyncFilesystem, ObjectChangedError
+from inspect_ai._util.constants import DESERIALIZING
 from inspect_ai._util.zip_common import ZipCompressionMethod, ZipEntry
 from inspect_ai.analysis._dataframe.extract import auto_id
+from inspect_ai.log import EvalSpec
 
 from .eval_log import EVAL_LOG_SOURCE_TYPE, _resolve_timelines_and_filter_events
-from .json.load_filtered import load_filtered_transcript
+from .json.load_filtered import SampleIdentity, load_filtered_transcript
 from .types import Transcript, TranscriptContent, TranscriptInfo
 from .util import filter_transcript
 
@@ -111,7 +113,11 @@ class InputReference:
 
 
 async def read_referenced_transcript(
-    location: str, ref: InputReference, *, max_bytes: int | None = None
+    location: str,
+    ref: InputReference,
+    *,
+    max_bytes: int | None = None,
+    attachments: dict[str, str] | None = None,
 ) -> Transcript:
     """Read the transcript `ref` points at from the `.eval` log at `location`.
 
@@ -134,6 +140,8 @@ async def read_referenced_transcript(
         ref: The reference to resolve.
         max_bytes: Largest uncompressed sample to read, counting what is
             actually decompressed.
+        attachments: When given, attachment references are left in place
+            and the attachments they name are added to it.
 
     Raises:
         InputReferenceUnavailable: With reason `not_found`, `too_large` or
@@ -145,11 +153,16 @@ async def read_referenced_transcript(
         )
     content = ref.content or TranscriptContent(messages="all", events="all")
     try:
-        return await _read_eval_sample(location, ref, content, max_bytes)
+        return await _read_eval_sample(location, ref, content, max_bytes, attachments)
     except InputReferenceUnavailable:
         raise
     except FileNotFoundError as ex:
         raise _not_found() from ex
+    except ObjectChangedError as ex:
+        logger.warning("Log %s changed while it was being read", location)
+        raise InputReferenceUnavailable(
+            "unavailable", "The log changed while it was being read; try again."
+        ) from ex
     except Exception as ex:
         logger.exception("Unable to read referenced transcript %s", ref.transcript_id)
         raise InputReferenceUnavailable(
@@ -173,6 +186,7 @@ async def _read_eval_sample(
     ref: InputReference,
     content: TranscriptContent,
     max_bytes: int | None,
+    attachments: dict[str, str] | None,
 ) -> Transcript:
     async with AsyncFilesystem() as fs:
         # A plain AsyncZipReader: the caching subclass keeps central
@@ -180,10 +194,9 @@ async def _read_eval_sample(
         # is rewritten in place.
         cd = await _central_directory(fs, location)
         zip_reader = AsyncZipReader(fs, location, central_directory=cd)
-        # The row names the sample's member, so read it directly and check it
-        # is still the sample the row recorded. Only a member that is missing,
-        # doesn't match (a sample moved, or was re-run), or is over the cap
-        # needs the sample index, which is read whole.
+        # The row names the sample's member, so read it directly. Only a
+        # member that is missing, holds another sample (one moved, or re-run),
+        # or is over the cap needs the sample index, which is read whole.
         transcript = None
         if (
             ref.transcript_task_id is not None
@@ -195,9 +208,10 @@ async def _read_eval_sample(
                 ref,
                 content,
                 max_bytes,
+                attachments,
                 ref.transcript_task_id,
                 ref.transcript_task_repeat,
-                verify=True,
+                direct=True,
             )
         if transcript is None:
             summary = await _find_summary(zip_reader, cd, ref.transcript_id)
@@ -207,13 +221,12 @@ async def _read_eval_sample(
                 ref,
                 content,
                 max_bytes,
-                summary["id"],
-                summary["epoch"],
-                verify=False,
+                attachments,
+                summary.get("id"),
+                summary.get("epoch"),
+                direct=False,
             )
-            if transcript is None:
-                # Summarized but not yet written, as in a log still in progress.
-                raise _not_found()
+            assert transcript is not None
     # Copy mode passes the transcript through the scanner's loader, whose
     # `filter_transcript` also filters timelines stored in the log.
     return filter_transcript(
@@ -227,22 +240,28 @@ async def _read_sample(
     ref: InputReference,
     content: TranscriptContent,
     max_bytes: int | None,
+    attachments: dict[str, str] | None,
     sample_id: Any,
     epoch: Any,
     *,
-    verify: bool,
+    direct: bool,
 ) -> Transcript | None:
-    """The sample's transcript, or None if its member is absent.
+    """The transcript of the sample `ref` names, read from its member.
 
-    With `verify`, also None when the member is over `max_bytes` (only the
-    index can tell an over-cap sample from a different one) or is not the
-    sample `ref` names.
+    Its body must be that sample, whichever way the member was found: a
+    summary can be stale or disagree with its member. With `direct`, a
+    member that is absent, over `max_bytes` or another sample gives None, so
+    the caller can fall back to the index (only the index can tell an
+    over-cap sample from a different one); otherwise those raise.
     """
     entry = cd.entry(f"samples/{sample_id}_epoch_{epoch}.json")
     if entry is None:
-        return None
+        if direct:
+            return None
+        # Summarized but not yet written, as in a log still in progress.
+        raise _not_found()
     if max_bytes is not None and entry.uncompressed_size > max_bytes:
-        if verify:
+        if direct:
             return None
         raise input_too_large(max_bytes)
     info = TranscriptInfo(
@@ -255,34 +274,47 @@ async def _read_sample(
     # Timelines resolve against all events, as in `EvalLogTranscriptsView.read`.
     events = "all" if content.timeline is not None else content.events
     metadata = content.metadata is not False
-    sample_uuid: list[str | None] = []
-    on_uuid = sample_uuid.append if verify else None
-    if max_bytes is None:
-        async with await zip_reader.open_member(entry) as member:
+    identity: list[SampleIdentity] = []
+    found: dict[str, str] = {}
+    on_attachments = found.update if attachments is not None else None
+    try:
+        if max_bytes is None:
+            async with await zip_reader.open_member(entry) as member:
+                transcript = await load_filtered_transcript(
+                    member,
+                    info,
+                    content.messages,
+                    events,
+                    metadata=metadata,
+                    on_identity=identity.append,
+                    on_attachments=on_attachments,
+                )
+        else:
+            data = await _read_compressed(
+                zip_reader, entry, max_bytes, lambda: input_too_large(max_bytes)
+            )
             transcript = await load_filtered_transcript(
-                member,
+                _BoundedMember(data, entry.compression_method, max_bytes),
                 info,
                 content.messages,
                 events,
                 metadata=metadata,
-                on_uuid=on_uuid,
+                on_identity=identity.append,
+                on_attachments=on_attachments,
             )
-    else:
-        data = await _read_compressed(
-            zip_reader, entry, max_bytes, lambda: input_too_large(max_bytes)
-        )
-        transcript = await load_filtered_transcript(
-            _BoundedMember(data, entry.compression_method, max_bytes),
-            info,
-            content.messages,
-            events,
-            metadata=metadata,
-            on_uuid=on_uuid,
-        )
-    if verify and not await _is_referenced_sample(
-        zip_reader, cd, ref.transcript_id, sample_uuid, sample_id, epoch
+    except InputReferenceUnavailable as ex:
+        # The directory understated the member's size.
+        if direct and ex.reason == "too_large":
+            return None
+        raise
+    if not identity or not await _is_referenced_sample(
+        zip_reader, cd, ref.transcript_id, identity[0], sample_id, epoch
     ):
-        return None
+        if direct:
+            return None
+        raise _not_found()
+    if attachments is not None:
+        attachments.update(found)
     return transcript
 
 
@@ -290,39 +322,54 @@ async def _is_referenced_sample(
     zip_reader: AsyncZipReader,
     cd: CentralDirectory,
     transcript_id: str,
-    sample_uuid: list[str | None],
+    body: SampleIdentity,
     sample_id: Any,
     epoch: Any,
 ) -> bool:
-    if sample_uuid and sample_uuid[0]:
-        return sample_uuid[0] == transcript_id
+    # The body must be the member's own sample, and that sample the row's.
+    if str(body.id) != str(sample_id) or body.epoch != epoch:
+        return False
+    if body.uuid:
+        return bool(body.uuid == transcript_id)
     # Scout identifies a sample without a uuid by an id derived from the
     # eval's id, as inspect's sample dataframes do.
     eval_id = await _eval_id(zip_reader, cd)
-    return auto_id(eval_id, f"{sample_id}_{epoch}") == transcript_id
+    return auto_id(eval_id, f"{body.id}_{body.epoch}") == transcript_id
 
 
-class _OneSuffixRead:
-    """Filesystem view that answers every suffix read from the first one."""
+class _ReadOnce:
+    """Filesystem view that answers a repeated read from its first response."""
 
     def __init__(self, fs: AsyncFilesystem) -> None:
         self._fs = fs
-        self._suffix: Any = None
+        self._reads: dict[tuple[Any, ...], Any] = {}
 
     async def read_file_suffix(self, filename: str, suffix_length: int) -> Any:
-        if self._suffix is None:
-            self._suffix = await self._fs.read_file_suffix(filename, suffix_length)
-        return self._suffix
+        key = ("suffix", filename, suffix_length)
+        if key not in self._reads:
+            self._reads[key] = await self._fs.read_file_suffix(filename, suffix_length)
+        return self._reads[key]
+
+    async def read_file_bytes_fully(
+        self, filename: str, start: int, end: int, **kwargs: Any
+    ) -> bytes:
+        key = ("bytes", filename, start, end)
+        if key not in self._reads:
+            self._reads[key] = await self._fs.read_file_bytes_fully(
+                filename, start, end, **kwargs
+            )
+        return cast(bytes, self._reads[key])
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._fs, name)
 
 
 async def _central_directory(fs: AsyncFilesystem, location: str) -> CentralDirectory:
-    # The parse locates the directory again from the end of the file. Serving
-    # both from one suffix read, with the directory read pinned to that
-    # response, means the directory parsed is the one whose size was checked.
-    view = cast(AsyncFilesystem, _OneSuffixRead(fs))
+    # The parse locates the directory again from the end of the file (and a
+    # ZIP64 end record). Serving both from the same responses, with the
+    # directory read pinned to them on S3, means the directory parsed is the
+    # one whose size was checked, even on storage without ETags.
+    view = cast(AsyncFilesystem, _ReadOnce(fs))
     found = await _find_central_directory(view, location, pin_version=True)
     if found.size > CENTRAL_DIRECTORY_MAX_BYTES:
         raise _index_too_large()
@@ -334,9 +381,10 @@ async def _find_summary(
 ) -> dict[str, Any]:
     # Like inspect's reader, a later summary supersedes an earlier one for the
     # same sample (a re-run of a requeued sample).
-    latest: dict[tuple[Any, Any], dict[str, Any]] = {}
+    # Keyed as the member name is, so ids 1 and "1" are one sample.
+    latest: dict[tuple[str, Any], dict[str, Any]] = {}
     for summary in await _read_summaries(zip_reader, cd):
-        latest[(summary.get("id"), summary.get("epoch"))] = summary
+        latest[(str(summary.get("id")), summary.get("epoch"))] = summary
     summaries = list(latest.values())
     match = next((s for s in summaries if s.get("uuid") == transcript_id), None)
     if match is None and any(not s.get("uuid") for s in summaries):
@@ -394,30 +442,46 @@ async def _read_summaries(
             limit = min(_JOURNAL_SUMMARY_MAX_BYTES, remaining)
             data = await _read_member(zip_reader, entry, limit, _index_too_large)
             remaining -= len(data)
+            if remaining < 0:
+                raise _index_too_large()
             per_member[index] = _json_list(data)
 
     try:
         async with anyio.create_task_group() as tg:
             for index, entry in enumerate(journal):
                 tg.start_soon(read, index, entry)
-    except* InputReferenceUnavailable as group:
-        raise group.exceptions[0] from None
+    except BaseExceptionGroup as group:
+        # A refusal wins over any other failure in the same group.
+        refusals = group.subgroup(InputReferenceUnavailable)
+        if refusals is None:
+            raise
+        refusal: BaseException = refusals
+        while isinstance(refusal, BaseExceptionGroup):
+            refusal = refusal.exceptions[0]
+        raise refusal from None
     return [summary for summaries in per_member for summary in summaries]
 
 
 def _journal_order(entry: ZipEntry) -> tuple[int, int, str]:
     stem = entry.filename.rsplit("/", 1)[-1].removesuffix(".json")
-    return (0, int(stem), "") if stem.isdigit() else (1, 0, stem)
+    if stem.isascii() and stem.isdecimal() and len(stem) <= 18:
+        return (0, int(stem), "")
+    return (1, 0, stem)
 
 
 async def _eval_id(zip_reader: AsyncZipReader, cd: CentralDirectory) -> str:
-    entry = cd.entry("_journal/start.json") or cd.entry("header.json")
+    # As inspect reads a log: the finished header, else the journal's start.
+    entry = cd.entry("header.json") or cd.entry("_journal/start.json")
     if entry is None:
         raise _not_found()
     header = json.loads(
         await _read_member(zip_reader, entry, SUMMARIES_MAX_BYTES, _index_too_large)
     )
-    return str(header["eval"]["eval_id"])
+    # Validated as inspect reads a log, which derives a stable eval_id when
+    # it is missing or empty.
+    return EvalSpec.model_validate(
+        header["eval"], context={DESERIALIZING: True}
+    ).eval_id
 
 
 def _json_list(data: bytes) -> list[dict[str, Any]]:

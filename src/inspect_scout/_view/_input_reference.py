@@ -8,7 +8,6 @@ from typing import Any, Awaitable, Callable, Mapping, NamedTuple
 import anyio
 from inspect_ai._util._async import _anyio_run_released
 from inspect_ai.log import condense_events
-from pydantic import BaseModel
 from starlette.requests import Request
 
 from .._transcript.reference import (
@@ -65,6 +64,13 @@ class InputReferenceResolver:
     Reads run in worker threads, each on a private event loop with a fresh
     context, at most `concurrency` at a time, so a large parse neither blocks
     the server's loop nor touches objects bound to it (it may be uvloop).
+
+    Args:
+        locator: Where to read a reference from (see `InputReferenceLocator`).
+        max_bytes: Largest sample, and largest resolved input, to serve.
+            Without it nothing bounds a read, so set it on any server that
+            resolves references for other users.
+        concurrency: Most references resolved at once.
     """
 
     def __init__(
@@ -110,51 +116,24 @@ class InputReferenceResolver:
         )
 
     async def _read_async(self, location: str, ref: InputReference) -> ResolvedInput:
+        attachments: dict[str, str] = {}
         transcript = await read_referenced_transcript(
-            location, ref, max_bytes=self._max_bytes
+            location, ref, max_bytes=self._max_bytes, attachments=attachments
         )
         # Condensed as copy mode records a transcript (`_serialize_input`).
+        # Attachments stay referenced and travel once in `input_data`, as
+        # copy mode records a streamed transcript: written out per reference,
+        # an attachment used many times could dwarf the sample.
         condensed_events, events_data = condense_events(transcript.events)
         condensed = transcript.model_copy(update={"events": condensed_events})
-        # An attachment referenced many times is one string in memory but is
-        # written out once per reference, so the output can dwarf the sample.
-        if self._max_bytes is not None and _json_size_exceeds(
-            (condensed, events_data), self._max_bytes
+        data: dict[str, Any] = dict(events_data)
+        if attachments:
+            data["attachments"] = attachments
+        input_bytes = to_json_bytes_compact(condensed)
+        data_bytes = to_json_bytes_compact(data)
+        if (
+            self._max_bytes is not None
+            and len(input_bytes) + len(data_bytes) > self._max_bytes
         ):
             raise input_too_large(self._max_bytes)
-        return ResolvedInput(
-            to_json_bytes_compact(condensed).decode("utf-8"),
-            to_json_bytes_compact(events_data).decode("utf-8"),
-        )
-
-
-def _json_size_exceeds(value: Any, limit: int) -> bool:
-    """Whether `value` serializes to more than about `limit` bytes of JSON.
-
-    Sums string lengths without serializing (a shared string counts once per
-    reference, as it is written), and stops as soon as the total passes
-    `limit`.
-    """
-    total = 0
-    stack: list[Any] = [value]
-    while stack:
-        item = stack.pop()
-        if isinstance(item, str | bytes | bytearray):
-            total += len(item) + 2
-        elif isinstance(item, BaseModel):
-            total += 2
-            stack.extend(item.__dict__.values())
-            if item.__pydantic_extra__:
-                stack.extend(item.__pydantic_extra__.values())
-        elif isinstance(item, Mapping):
-            for key, child in item.items():
-                total += len(str(key)) + 4
-                stack.append(child)
-        elif isinstance(item, list | tuple | set | frozenset):
-            total += 2 + len(item)
-            stack.extend(item)
-        else:
-            total += 8
-        if total > limit:
-            return True
-    return False
+        return ResolvedInput(input_bytes.decode("utf-8"), data_bytes.decode("utf-8"))

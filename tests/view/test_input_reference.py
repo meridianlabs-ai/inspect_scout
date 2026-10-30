@@ -227,6 +227,37 @@ async def test_repeated_attachments_are_sent_once(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_only_referenced_attachments_are_sent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from inspect_ai.model import ChatMessageUser
+
+    used, unused = "a" * 32, "b" * 32
+
+    async def read(
+        location: str,
+        ref: InputReference,
+        *,
+        attachments: dict[str, str],
+        **kwargs: Any,
+    ) -> Transcript:
+        # As the reader hands over a pooled log's whole attachments table.
+        attachments.update({used: "used", unused: "unused"})
+        return Transcript(
+            transcript_id=ref.transcript_id,
+            messages=[ChatMessageUser(content=f"attachment://{used}")],
+            events=[],
+        )
+
+    monkeypatch.setattr(_input_reference, "read_referenced_transcript", read)
+
+    resolved = await InputReferenceResolver(source_uri_locator).resolve(_request(), ROW)
+
+    assert resolved.input_data is not None
+    assert json.loads(resolved.input_data)["attachments"] == {used: "used"}
+
+
+@pytest.mark.asyncio
 async def test_input_serialized_past_max_bytes_is_too_large(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

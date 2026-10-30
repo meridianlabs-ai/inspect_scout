@@ -10,6 +10,7 @@ from inspect_ai._util._async import _anyio_run_released
 from inspect_ai.log import condense_events
 from starlette.requests import Request
 
+from .._transcript.json.reducer import ATTACHMENT_REF_JSON_BYTES
 from .._transcript.reference import (
     InputReference,
     InputReferenceUnavailable,
@@ -67,9 +68,8 @@ class InputReferenceResolver:
 
     Args:
         locator: Where to read a reference from (see `InputReferenceLocator`).
-        max_bytes: Largest sample, and largest resolved input, to serve.
-            Without it nothing bounds a read, so set it on any server that
-            resolves references for other users.
+        max_bytes: Largest sample, and largest resolved input, to serve
+            (see `v2_api_app`).
         concurrency: Most references resolved at once.
     """
 
@@ -126,10 +126,16 @@ class InputReferenceResolver:
         # an attachment used many times could dwarf the sample.
         condensed_events, events_data = condense_events(transcript.events)
         condensed = transcript.model_copy(update={"events": condensed_events})
-        data: dict[str, Any] = dict(events_data)
-        if attachments:
-            data["attachments"] = attachments
         input_bytes = to_json_bytes_compact(condensed)
+        data: dict[str, Any] = dict(events_data)
+        # Only those the output references, as `pooled_passthrough` prunes them.
+        referenced = {
+            match.decode("ascii")
+            for value in (input_bytes, to_json_bytes_compact(data))
+            for match in ATTACHMENT_REF_JSON_BYTES.findall(value)
+        }
+        if pruned := {k: v for k, v in attachments.items() if k in referenced}:
+            data["attachments"] = pruned
         data_bytes = to_json_bytes_compact(data)
         if (
             self._max_bytes is not None

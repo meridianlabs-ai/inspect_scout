@@ -385,8 +385,9 @@ async def _parse_and_filter(
     if messages_filter is not None:
         pending_fields.add("messages")
     if on_identity is not None:
-        # `uuid` follows events, so wanting it rules out the early exit.
-        pending_fields.add("uuid")
+        # `uuid` follows events (and a body may order `id` and `epoch` that
+        # way too), so wanting them rules out the early exit.
+        pending_fields.update(("uuid", "id", "epoch"))
 
     last_prefix = ""
     current_section = _SECTION_OTHER

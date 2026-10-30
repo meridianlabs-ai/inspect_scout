@@ -1,18 +1,18 @@
 """Reading the transcript a reference-mode result row points at."""
 
+import functools
+import io
 import json
 import zlib
-from collections.abc import AsyncIterator, Callable, Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from logging import getLogger
 from typing import Any, Literal, Mapping, cast
 
-import anyio
 import zstandard
 from inspect_ai._util.async_zip import (
     AsyncZipReader,
     CentralDirectory,
-    _find_central_directory,
     _parse_central_directory,
 )
 from inspect_ai._util.asyncfiles import AsyncFilesystem, ObjectChangedError
@@ -31,20 +31,17 @@ logger = getLogger(__name__)
 SUMMARIES_MAX_BYTES = 64 * 1024 * 1024
 """Largest sample index read to find a referenced sample, counted decompressed.
 
-The index (`summaries.json`, or the journal's summaries while a log is being
-written) is parsed whole, so it is bounded whatever `max_bytes` is. The same
-bound applies to the log header read for a sample without a uuid.
+The index (`summaries.json`) is parsed whole, so it is bounded whatever
+`max_bytes` is. The same bound applies to the log header read for a sample
+without a uuid.
 """
 
 CENTRAL_DIRECTORY_MAX_BYTES = 8 * 1024 * 1024
 """Largest zip central directory read to find a log's members."""
 
-JOURNAL_SUMMARIES_MAX_MEMBERS = 20_000
-"""Most journal summary members (one per sample) read from a log being written."""
-
-_JOURNAL_SUMMARY_MAX_BYTES = 1024 * 1024
-_JOURNAL_READ_CONCURRENCY = 25
 _DECOMPRESS_CHUNK = 1024 * 1024
+# inspect writes zstd at level 3, which uses a 2 MiB window.
+_ZSTD_MAX_WINDOW = 8 * 1024 * 1024
 
 InputReferenceReason = Literal[
     "not_resolved", "forbidden", "not_found", "too_large", "unavailable"
@@ -121,25 +118,16 @@ async def read_referenced_transcript(
 ) -> Transcript:
     """Read the transcript `ref` points at from the `.eval` log at `location`.
 
-    The sample's own zip member, named by the row, is read with range reads
-    and checked against the row's transcript id; when it is missing or
-    doesn't match, the sample is located by uuid through the log's sample
-    summaries (so a sample that moved within the log still resolves). Nothing is cached across calls, so a log rewritten in
-    place is read fresh. The central directory and sample index are bounded
-    whatever `max_bytes` is (`CENTRAL_DIRECTORY_MAX_BYTES`,
-    `SUMMARIES_MAX_BYTES`), counting what is actually decompressed.
-
-    The returned transcript has identity fields only (`transcript_id`,
-    `source_type`, `source_uri`, `task_id`, `task_repeat`) plus the sample
-    body's metadata, target and scores; eval-level metadata and the
-    summary/header-derived top-level fields (model, date, score, ...) are not
-    populated.
+    The sample is read from the member the row names, or found by uuid in the
+    log's sample index when that member is missing, over `max_bytes` or holds
+    another sample. Nothing is cached across calls, so a log rewritten in
+    place is read fresh.
 
     Args:
         location: An `.eval` log.
         ref: The reference to resolve.
-        max_bytes: Largest uncompressed sample to read, counting what is
-            actually decompressed.
+        max_bytes: Largest sample to read, counted decompressed. The central
+            directory and sample index are bounded regardless.
         attachments: When given, attachment references are left in place
             and the attachments they name are added to it.
 
@@ -198,23 +186,31 @@ async def _read_eval_sample(
         # member that is missing, holds another sample (one moved, or re-run),
         # or is over the cap needs the sample index, which is read whole.
         transcript = None
+        missed = _not_found()
         if (
             ref.transcript_task_id is not None
             and ref.transcript_task_repeat is not None
         ):
-            transcript = await _read_sample(
-                zip_reader,
-                cd,
-                ref,
-                content,
-                max_bytes,
-                attachments,
-                ref.transcript_task_id,
-                ref.transcript_task_repeat,
-                direct=True,
-            )
+            try:
+                transcript = await _read_sample(
+                    zip_reader,
+                    cd,
+                    ref,
+                    content,
+                    max_bytes,
+                    attachments,
+                    ref.transcript_task_id,
+                    ref.transcript_task_repeat,
+                )
+            except InputReferenceUnavailable as ex:
+                missed = ex
         if transcript is None:
-            summary = await _find_summary(zip_reader, cd, ref.transcript_id)
+            # A log still being written has no index yet, but only appends,
+            # so its sample can only be in the member the row names.
+            index = cd.entry("summaries.json")
+            if index is None:
+                raise missed
+            summary = await _find_summary(zip_reader, cd, index, ref.transcript_id)
             transcript = await _read_sample(
                 zip_reader,
                 cd,
@@ -224,9 +220,7 @@ async def _read_eval_sample(
                 attachments,
                 summary.get("id"),
                 summary.get("epoch"),
-                direct=False,
             )
-            assert transcript is not None
     # Copy mode passes the transcript through the scanner's loader, whose
     # `filter_transcript` also filters timelines stored in the log.
     return filter_transcript(
@@ -243,26 +237,16 @@ async def _read_sample(
     attachments: dict[str, str] | None,
     sample_id: Any,
     epoch: Any,
-    *,
-    direct: bool,
-) -> Transcript | None:
+) -> Transcript:
     """The transcript of the sample `ref` names, read from its member.
 
     Its body must be that sample, whichever way the member was found: a
-    summary can be stale or disagree with its member. With `direct`, a
-    member that is absent, over `max_bytes` or another sample gives None, so
-    the caller can fall back to the index (only the index can tell an
-    over-cap sample from a different one); otherwise those raise.
+    summary can be stale or disagree with its member.
     """
     entry = cd.entry(f"samples/{sample_id}_epoch_{epoch}.json")
     if entry is None:
-        if direct:
-            return None
-        # Summarized but not yet written, as in a log still in progress.
         raise _not_found()
     if max_bytes is not None and entry.uncompressed_size > max_bytes:
-        if direct:
-            return None
         raise input_too_large(max_bytes)
     info = TranscriptInfo(
         transcript_id=ref.transcript_id,
@@ -271,47 +255,29 @@ async def _read_sample(
         task_id=str(sample_id),
         task_repeat=epoch,
     )
-    # Timelines resolve against all events, as in `EvalLogTranscriptsView.read`.
-    events = "all" if content.timeline is not None else content.events
-    metadata = content.metadata is not False
     identity: list[SampleIdentity] = []
     found: dict[str, str] = {}
-    on_attachments = found.update if attachments is not None else None
-    try:
-        if max_bytes is None:
-            async with await zip_reader.open_member(entry) as member:
-                transcript = await load_filtered_transcript(
-                    member,
-                    info,
-                    content.messages,
-                    events,
-                    metadata=metadata,
-                    on_identity=identity.append,
-                    on_attachments=on_attachments,
-                )
-        else:
-            data = await _read_compressed(
-                zip_reader, entry, max_bytes, lambda: input_too_large(max_bytes)
-            )
-            transcript = await load_filtered_transcript(
-                _BoundedMember(data, entry.compression_method, max_bytes),
-                info,
-                content.messages,
-                events,
-                metadata=metadata,
-                on_identity=identity.append,
-                on_attachments=on_attachments,
-            )
-    except InputReferenceUnavailable as ex:
-        # The directory understated the member's size.
-        if direct and ex.reason == "too_large":
-            return None
-        raise
+    load = functools.partial(
+        load_filtered_transcript,
+        t=info,
+        messages=content.messages,
+        # Timelines resolve against all events, as in `EvalLogTranscriptsView.read`.
+        events="all" if content.timeline is not None else content.events,
+        metadata=content.metadata is not False,
+        on_identity=identity.append,
+        on_attachments=found.update if attachments is not None else None,
+    )
+    if max_bytes is None:
+        async with await zip_reader.open_member(entry) as member:
+            transcript = await load(member)
+    else:
+        data = await _read_member(
+            zip_reader, entry, max_bytes, lambda: input_too_large(max_bytes)
+        )
+        transcript = await load(io.BytesIO(data))
     if not identity or not await _is_referenced_sample(
         zip_reader, cd, ref.transcript_id, identity[0], sample_id, epoch
     ):
-        if direct:
-            return None
         raise _not_found()
     if attachments is not None:
         attachments.update(found)
@@ -337,53 +303,42 @@ async def _is_referenced_sample(
     return auto_id(eval_id, f"{body.id}_{body.epoch}") == transcript_id
 
 
-class _ReadOnce:
-    """Filesystem view that answers a repeated read from its first response."""
+class _CappedReads:
+    """Filesystem view that refuses a range read past `CENTRAL_DIRECTORY_MAX_BYTES`."""
 
     def __init__(self, fs: AsyncFilesystem) -> None:
         self._fs = fs
-        self._reads: dict[tuple[Any, ...], Any] = {}
-
-    async def read_file_suffix(self, filename: str, suffix_length: int) -> Any:
-        key = ("suffix", filename, suffix_length)
-        if key not in self._reads:
-            self._reads[key] = await self._fs.read_file_suffix(filename, suffix_length)
-        return self._reads[key]
 
     async def read_file_bytes_fully(
         self, filename: str, start: int, end: int, **kwargs: Any
     ) -> bytes:
-        key = ("bytes", filename, start, end)
-        if key not in self._reads:
-            self._reads[key] = await self._fs.read_file_bytes_fully(
-                filename, start, end, **kwargs
-            )
-        return cast(bytes, self._reads[key])
+        if end - start > CENTRAL_DIRECTORY_MAX_BYTES:
+            raise _index_too_large()
+        return await self._fs.read_file_bytes_fully(filename, start, end, **kwargs)
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._fs, name)
 
 
 async def _central_directory(fs: AsyncFilesystem, location: str) -> CentralDirectory:
-    # The parse locates the directory again from the end of the file (and a
-    # ZIP64 end record). Serving both from the same responses, with the
-    # directory read pinned to them on S3, means the directory parsed is the
-    # one whose size was checked, even on storage without ETags.
-    view = cast(AsyncFilesystem, _ReadOnce(fs))
-    found = await _find_central_directory(view, location, pin_version=True)
-    if found.size > CENTRAL_DIRECTORY_MAX_BYTES:
-        raise _index_too_large()
+    # The end records come from a fixed-size suffix read, so the directory is
+    # the parse's only large range read.
+    view = cast(AsyncFilesystem, _CappedReads(fs))
     return await _parse_central_directory(view, location, pin_version=True)
 
 
 async def _find_summary(
-    zip_reader: AsyncZipReader, cd: CentralDirectory, transcript_id: str
+    zip_reader: AsyncZipReader,
+    cd: CentralDirectory,
+    index: ZipEntry,
+    transcript_id: str,
 ) -> dict[str, Any]:
     # Like inspect's reader, a later summary supersedes an earlier one for the
     # same sample (a re-run of a requeued sample).
     # Keyed as the member name is, so ids 1 and "1" are one sample.
     latest: dict[tuple[str, Any], dict[str, Any]] = {}
-    for summary in await _read_summaries(zip_reader, cd):
+    data = await _read_member(zip_reader, index, SUMMARIES_MAX_BYTES, _index_too_large)
+    for summary in _json_list(data):
         latest[(str(summary.get("id")), summary.get("epoch"))] = summary
     summaries = list(latest.values())
     match = next((s for s in summaries if s.get("uuid") == transcript_id), None)
@@ -403,70 +358,6 @@ async def _find_summary(
     if match is None:
         raise _not_found()
     return match
-
-
-async def _read_summaries(
-    zip_reader: AsyncZipReader, cd: CentralDirectory
-) -> list[dict[str, Any]]:
-    consolidated = cd.entry("summaries.json")
-    if consolidated is not None:
-        return _json_list(
-            await _read_member(
-                zip_reader, consolidated, SUMMARIES_MAX_BYTES, _index_too_large
-            )
-        )
-
-    # A log being written has one journal member per sample instead. Read the
-    # members the directory lists rather than a count, so a sparse file name
-    # cannot make the reader expect members that don't exist.
-    journal = sorted(
-        (
-            e
-            for e in cd.entries
-            if e.filename.startswith("_journal/summaries/")
-            and e.filename.endswith(".json")
-        ),
-        key=_journal_order,
-    )
-    if len(journal) > JOURNAL_SUMMARIES_MAX_MEMBERS:
-        raise _index_too_large()
-    remaining = SUMMARIES_MAX_BYTES
-    per_member: list[list[dict[str, Any]]] = [[] for _ in journal]
-    limiter = anyio.Semaphore(_JOURNAL_READ_CONCURRENCY)
-
-    async def read(index: int, entry: ZipEntry) -> None:
-        nonlocal remaining
-        async with limiter:
-            if remaining <= 0:
-                raise _index_too_large()
-            limit = min(_JOURNAL_SUMMARY_MAX_BYTES, remaining)
-            data = await _read_member(zip_reader, entry, limit, _index_too_large)
-            remaining -= len(data)
-            if remaining < 0:
-                raise _index_too_large()
-            per_member[index] = _json_list(data)
-
-    try:
-        async with anyio.create_task_group() as tg:
-            for index, entry in enumerate(journal):
-                tg.start_soon(read, index, entry)
-    except BaseExceptionGroup as group:
-        # A refusal wins over any other failure in the same group.
-        refusals = group.subgroup(InputReferenceUnavailable)
-        if refusals is None:
-            raise
-        refusal: BaseException = refusals
-        while isinstance(refusal, BaseExceptionGroup):
-            refusal = refusal.exceptions[0]
-        raise refusal from None
-    return [summary for summaries in per_member for summary in summaries]
-
-
-def _journal_order(entry: ZipEntry) -> tuple[int, int, str]:
-    stem = entry.filename.rsplit("/", 1)[-1].removesuffix(".json")
-    if stem.isascii() and stem.isdecimal() and len(stem) <= 18:
-        return (0, int(stem), "")
-    return (1, 0, stem)
 
 
 async def _eval_id(zip_reader: AsyncZipReader, cd: CentralDirectory) -> str:
@@ -491,12 +382,13 @@ def _json_list(data: bytes) -> list[dict[str, Any]]:
     return [item for item in value if isinstance(item, dict)]
 
 
-async def _read_compressed(
+async def _read_member(
     zip_reader: AsyncZipReader,
     entry: ZipEntry,
     limit: int,
     too_large: Callable[[], InputReferenceUnavailable],
 ) -> bytes:
+    """A whole member, failing once more than `limit` bytes are decompressed."""
     # Compressed data is never more than slightly larger than what it
     # decompresses to, so a member compressed past the limit cannot fit under it.
     if entry.compressed_size > limit + limit // 64 + 1024:
@@ -505,19 +397,8 @@ async def _read_compressed(
     async with await zip_reader.open_member_raw(entry) as raw:
         async for chunk in raw:
             data += chunk
-    return bytes(data)
-
-
-async def _read_member(
-    zip_reader: AsyncZipReader,
-    entry: ZipEntry,
-    limit: int,
-    too_large: Callable[[], InputReferenceUnavailable],
-) -> bytes:
-    """A whole member, failing once more than `limit` bytes are decompressed."""
-    data = await _read_compressed(zip_reader, entry, limit, too_large)
     out = bytearray()
-    for chunk in _decompressed(data, entry.compression_method):
+    for chunk in _decompressed(bytes(data), entry.compression_method):
         out += chunk
         if len(out) > limit:
             raise too_large()
@@ -529,7 +410,8 @@ def _decompressed(data: bytes, method: int) -> Iterator[bytes]:
 
     The directory's sizes are attacker-controlled and inspect's decompressors
     have no output limit, so a small member could otherwise expand without
-    bound before any check runs.
+    bound before any check runs. A zstd frame also declares the window its
+    decoder allocates, so that is capped at `_ZSTD_MAX_WINDOW`.
     """
     if method == ZipCompressionMethod.STORED:
         for start in range(0, len(data), _DECOMPRESS_CHUNK):
@@ -545,34 +427,13 @@ def _decompressed(data: bytes, method: int) -> Iterator[bytes]:
             elif not pending:
                 break
     elif method == ZipCompressionMethod.ZSTD:
-        with zstandard.ZstdDecompressor().stream_reader(
+        with zstandard.ZstdDecompressor(max_window_size=_ZSTD_MAX_WINDOW).stream_reader(
             data, read_across_frames=True
         ) as reader:
             while chunk := reader.read(_DECOMPRESS_CHUNK):
                 yield chunk
     else:
         raise NotImplementedError(f"Unsupported zip compression method: {method}")
-
-
-class _BoundedMember:
-    """Re-iterable decompressed view of a member that fails past `max_bytes`.
-
-    Re-iterable because the JSON5 fallback in `load_filtered_transcript` reads
-    the stream a second time.
-    """
-
-    def __init__(self, data: bytes, method: int, max_bytes: int) -> None:
-        self._data = data
-        self._method = method
-        self._max_bytes = max_bytes
-
-    async def __aiter__(self) -> AsyncIterator[bytes]:
-        seen = 0
-        for chunk in _decompressed(self._data, self._method):
-            seen += len(chunk)
-            if seen > self._max_bytes:
-                raise input_too_large(self._max_bytes)
-            yield chunk
 
 
 def _index_too_large() -> InputReferenceUnavailable:

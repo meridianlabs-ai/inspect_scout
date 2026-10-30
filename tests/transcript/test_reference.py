@@ -13,7 +13,7 @@ import pytest
 import zstandard
 from inspect_ai._util.async_zip import AsyncZipReader, CentralDirectory
 from inspect_ai._util.asyncfiles import ObjectChangedError
-from inspect_ai._util.zip_common import ZipCompressionMethod, ZipEntry
+from inspect_ai._util.zip_common import ZipCompressionMethod
 from inspect_ai.analysis._dataframe.extract import auto_id
 from inspect_ai.event import timeline_build
 from inspect_ai.log import (
@@ -112,8 +112,7 @@ def _edit_json(
 
 
 def _for_summaries(members: dict[str, bytes], edit: Callable[[Any], None]) -> None:
-    for name in ("summaries.json", "_journal/summaries/1.json"):
-        _edit_json(members, name, lambda summaries: edit(summaries[0]))
+    _edit_json(members, "summaries.json", lambda summaries: edit(summaries[0]))
 
 
 @pytest.fixture
@@ -258,25 +257,16 @@ def test_decompression_output_is_bounded_per_chunk(
     assert b"".join(chunks) == plain
 
 
-@pytest.mark.parametrize(
-    "dropped",
-    [
-        pytest.param(None, id="summaries-json"),
-        pytest.param("summaries.json", id="journal-summaries"),
-    ],
-)
 @pytest.mark.asyncio
 async def test_oversized_sample_index_is_too_large(
-    monkeypatch: pytest.MonkeyPatch, log_copy: Path, dropped: str | None
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    if dropped:
-        _drop_member(log_copy, dropped)
     monkeypatch.setattr(reference, "SUMMARIES_MAX_BYTES", 100)
     # What is decompressed counts, not what the directory declares.
-    _understate(monkeypatch, ("summaries.json", "_journal/summaries/"))
+    _understate(monkeypatch, ("summaries.json",))
 
     with pytest.raises(InputReferenceUnavailable) as ex:
-        await read_referenced_transcript(str(log_copy), _ref(direct=False))
+        await read_referenced_transcript(str(EVAL_LOG), _ref(direct=False))
     assert ex.value.reason == "too_large"
     assert ex.value.message == (
         "This log's sample index is too large to look up referenced inputs."
@@ -337,22 +327,12 @@ async def test_member_named_by_the_row_is_read_without_the_index(
     async def refuse(*args: Any) -> Any:
         raise AssertionError("the sample index was read")
 
-    monkeypatch.setattr(reference, "_read_summaries", refuse)
+    monkeypatch.setattr(reference, "_find_summary", refuse)
 
     transcript = await read_referenced_transcript(str(EVAL_LOG), _ref())
 
     assert transcript.transcript_id == SAMPLE_UUID
     assert transcript.messages
-
-
-@pytest.mark.asyncio
-async def test_member_named_by_the_row_is_not_returned_for_another_sample() -> None:
-    # The row's member exists but holds a different sample, as after a re-run.
-    with pytest.raises(InputReferenceUnavailable) as ex:
-        await read_referenced_transcript(
-            str(EVAL_LOG), _ref(transcript_id="not-this-sample")
-        )
-    assert ex.value.reason == "not_found"
 
 
 @pytest.mark.parametrize("direct", [True, False], ids=["direct", "index"])
@@ -414,37 +394,6 @@ async def test_direct_member_over_the_cap_falls_back_to_the_index(
     assert transcript.task_id == str(SAMPLE.id)
 
 
-@pytest.mark.asyncio
-async def test_repeated_metadata_reads_are_served_once() -> None:
-    # So a log changing between the directory's size check and its parse
-    # cannot hand the parse a different directory.
-    calls: list[Any] = []
-
-    class Storage:
-        async def read_file_suffix(self, filename: str, length: int) -> Any:
-            calls.append("suffix")
-            return object()
-
-        async def read_file_bytes_fully(
-            self, filename: str, start: int, end: int, **kwargs: Any
-        ) -> bytes:
-            calls.append((start, end))
-            return bytes(len(calls))
-
-    view = reference._ReadOnce(Storage())  # type: ignore[arg-type]
-    first = (
-        await view.read_file_suffix("f", 10),
-        await view.read_file_bytes_fully("f", 0, 56),
-    )
-    again = (
-        await view.read_file_suffix("f", 10),
-        await view.read_file_bytes_fully("f", 0, 56),
-    )
-
-    assert first == again
-    assert calls == ["suffix", (0, 56)]
-
-
 @pytest.mark.parametrize("start_eval_id", ["", "stale"], ids=["missing", "stale-start"])
 @pytest.mark.asyncio
 async def test_eval_id_is_read_as_inspect_reads_it(
@@ -473,62 +422,6 @@ async def test_eval_id_is_read_as_inspect_reads_it(
 
 
 @pytest.mark.asyncio
-async def test_journal_summaries_past_the_shared_budget_are_too_large(
-    monkeypatch: pytest.MonkeyPatch, log_copy: Path
-) -> None:
-    def edit(members: dict[str, bytes]) -> None:
-        del members["summaries.json"]
-        members["_journal/summaries/2.json"] = members["_journal/summaries/1.json"]
-
-    _build_log(log_copy, edit)
-    # Each member fits on its own; together they don't.
-    monkeypatch.setattr(reference, "SUMMARIES_MAX_BYTES", 1_000)
-
-    with pytest.raises(InputReferenceUnavailable) as ex:
-        await read_referenced_transcript(str(log_copy), _ref(direct=False))
-    assert ex.value.reason == "too_large"
-
-
-@pytest.mark.asyncio
-async def test_a_refusal_wins_over_other_journal_failures(
-    monkeypatch: pytest.MonkeyPatch, log_copy: Path
-) -> None:
-    def edit(members: dict[str, bytes]) -> None:
-        del members["summaries.json"]
-        members["_journal/summaries/2.json"] = members["_journal/summaries/1.json"]
-
-    _build_log(log_copy, edit)
-    real = reference._read_member
-
-    async def failing(zip_reader: Any, entry: Any, limit: int, too_large: Any) -> bytes:
-        if entry.filename.endswith("/1.json"):
-            raise too_large()
-        if entry.filename.endswith("/2.json"):
-            raise ValueError("corrupt member")
-        return await real(zip_reader, entry, limit, too_large)
-
-    monkeypatch.setattr(reference, "_read_member", failing)
-
-    with pytest.raises(InputReferenceUnavailable) as ex:
-        await read_referenced_transcript(str(log_copy), _ref(direct=False))
-    assert ex.value.reason == "too_large"
-
-
-def test_journal_order_tolerates_any_member_name() -> None:
-    names = ["\u00b2", "9" * 5_000, "10", "2"]
-    entries = [
-        ZipEntry(
-            f"_journal/summaries/{n}.json", ZipCompressionMethod.DEFLATE, 1, 1, 0, 0
-        )
-        for n in names
-    ]
-
-    ordered = sorted(entries, key=reference._journal_order)
-
-    assert [e.filename.split("/")[-1] for e in ordered[:2]] == ["2.json", "10.json"]
-
-
-@pytest.mark.asyncio
 async def test_log_replaced_mid_read_is_unavailable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -552,44 +445,60 @@ async def test_non_eval_location_is_unavailable() -> None:
 
 @pytest.mark.asyncio
 async def test_oversized_central_directory_is_too_large(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(reference, "CENTRAL_DIRECTORY_MAX_BYTES", 10)
-
-    async def refuse(*args: Any, **kwargs: Any) -> Any:
-        raise AssertionError("the central directory was read")
-
-    monkeypatch.setattr(reference, "_parse_central_directory", refuse)
-
-    with pytest.raises(InputReferenceUnavailable) as ex:
-        await read_referenced_transcript(str(EVAL_LOG), _ref())
-    assert ex.value.reason == "too_large"
-
-
-@pytest.mark.asyncio
-async def test_journal_summaries_are_read_as_listed(log_copy: Path) -> None:
-    # A sparse name must not make the reader expect members 1..5000.
-    _drop_member(
-        log_copy,
-        "summaries.json",
-        rename={"_journal/summaries/1.json": "_journal/summaries/5000.json"},
-    )
-
-    transcript = await read_referenced_transcript(str(log_copy), _ref(direct=False))
-
-    assert transcript.transcript_id == SAMPLE_UUID
-
-
-@pytest.mark.asyncio
-async def test_too_many_journal_summaries_is_too_large(
     monkeypatch: pytest.MonkeyPatch, log_copy: Path
 ) -> None:
-    _drop_member(log_copy, "summaries.json")
-    monkeypatch.setattr(reference, "JOURNAL_SUMMARIES_MAX_MEMBERS", 0)
+    # Enough members that the directory lies outside the end-of-file read.
+    _build_log(
+        log_copy, lambda m: m.update({f"pad/{i:0100}": b"" for i in range(1_000)})
+    )
+    assert await read_referenced_transcript(str(log_copy), _ref())
+    monkeypatch.setattr(reference, "CENTRAL_DIRECTORY_MAX_BYTES", 100_000)
 
     with pytest.raises(InputReferenceUnavailable) as ex:
-        await read_referenced_transcript(str(log_copy), _ref(direct=False))
+        await read_referenced_transcript(str(log_copy), _ref())
     assert ex.value.reason == "too_large"
+
+
+@pytest.mark.asyncio
+async def test_log_being_written_reads_the_member_the_row_names(
+    log_copy: Path,
+) -> None:
+    # Such a log has no sample index yet.
+    _drop_member(log_copy, "summaries.json")
+
+    transcript = await read_referenced_transcript(str(log_copy), _ref())
+    assert transcript.transcript_id == SAMPLE_UUID
+
+    with pytest.raises(InputReferenceUnavailable) as ex:
+        await read_referenced_transcript(str(log_copy), _ref(), max_bytes=100)
+    assert ex.value.reason == "too_large"
+
+
+@pytest.mark.asyncio
+async def test_identity_after_the_events_is_read(log_copy: Path) -> None:
+    # Everything else precedes the events, so only the identity can keep a
+    # messages-only read from stopping at them.
+    def reorder(members: dict[str, bytes]) -> None:
+        sample = json.loads(members[SAMPLE_MEMBER])
+        tail = {key: sample.pop(key) for key in ("events", "id", "epoch")}
+        members[SAMPLE_MEMBER] = json.dumps({**sample, **tail}).encode()
+
+    _build_log(log_copy, reorder)
+
+    transcript = await read_referenced_transcript(
+        str(log_copy), _ref(TranscriptContent(messages="all", events=None))
+    )
+
+    assert transcript.messages
+
+
+def test_zstd_window_is_capped() -> None:
+    params = zstandard.ZstdCompressionParameters.from_level(3, window_log=27)
+    compressor = zstandard.ZstdCompressor(compression_params=params).compressobj()
+    data = compressor.compress(b"{}") + compressor.flush()
+
+    with pytest.raises(zstandard.ZstdError):
+        list(reference._decompressed(data, ZipCompressionMethod.ZSTD))
 
 
 @pytest.mark.parametrize("direct", [True, False], ids=["direct", "index"])

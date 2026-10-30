@@ -43,13 +43,17 @@ SAMPLE_MEMBER = f"samples/{SAMPLE.id}_epoch_{SAMPLE.epoch}.json"
 
 
 def _ref(
-    content: TranscriptContent | None = None, transcript_id: str = SAMPLE_UUID
+    content: TranscriptContent | None = None,
+    transcript_id: str = SAMPLE_UUID,
+    *,
+    direct: bool = True,
 ) -> InputReference:
+    """A reference to the fixture's sample; `direct=False` names no member."""
     return InputReference(
         transcript_id=transcript_id,
         transcript_source_uri=str(EVAL_LOG),
-        transcript_task_id=str(SAMPLE.id),
-        transcript_task_repeat=SAMPLE.epoch,
+        transcript_task_id=str(SAMPLE.id) if direct else None,
+        transcript_task_repeat=SAMPLE.epoch if direct else None,
         content=content,
     )
 
@@ -245,7 +249,7 @@ async def test_oversized_sample_index_is_too_large(
     _understate(monkeypatch, ("summaries.json", "_journal/summaries/"))
 
     with pytest.raises(InputReferenceUnavailable) as ex:
-        await read_referenced_transcript(str(log_copy), _ref())
+        await read_referenced_transcript(str(log_copy), _ref(direct=False))
     assert ex.value.reason == "too_large"
     assert ex.value.message == (
         "This log's sample index is too large to look up referenced inputs."
@@ -300,6 +304,31 @@ async def test_log_rewritten_in_place_is_read_fresh(log_copy: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_member_named_by_the_row_is_read_without_the_index(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def refuse(*args: Any) -> Any:
+        raise AssertionError("the sample index was read")
+
+    monkeypatch.setattr(reference, "_read_summaries", refuse)
+
+    transcript = await read_referenced_transcript(str(EVAL_LOG), _ref())
+
+    assert transcript.transcript_id == SAMPLE_UUID
+    assert transcript.messages
+
+
+@pytest.mark.asyncio
+async def test_member_named_by_the_row_is_not_returned_for_another_sample() -> None:
+    # The row's member exists but holds a different sample, as after a re-run.
+    with pytest.raises(InputReferenceUnavailable) as ex:
+        await read_referenced_transcript(
+            str(EVAL_LOG), _ref(transcript_id="not-this-sample")
+        )
+    assert ex.value.reason == "not_found"
+
+
+@pytest.mark.asyncio
 async def test_non_eval_location_is_unavailable() -> None:
     with pytest.raises(InputReferenceUnavailable) as ex:
         await read_referenced_transcript(str(EVAL_LOG.parent), _ref())
@@ -331,7 +360,7 @@ async def test_journal_summaries_are_read_as_listed(log_copy: Path) -> None:
         rename={"_journal/summaries/1.json": "_journal/summaries/5000.json"},
     )
 
-    transcript = await read_referenced_transcript(str(log_copy), _ref())
+    transcript = await read_referenced_transcript(str(log_copy), _ref(direct=False))
 
     assert transcript.transcript_id == SAMPLE_UUID
 
@@ -344,12 +373,15 @@ async def test_too_many_journal_summaries_is_too_large(
     monkeypatch.setattr(reference, "JOURNAL_SUMMARIES_MAX_MEMBERS", 0)
 
     with pytest.raises(InputReferenceUnavailable) as ex:
-        await read_referenced_transcript(str(log_copy), _ref())
+        await read_referenced_transcript(str(log_copy), _ref(direct=False))
     assert ex.value.reason == "too_large"
 
 
+@pytest.mark.parametrize("direct", [True, False], ids=["direct", "index"])
 @pytest.mark.asyncio
-async def test_sample_without_uuid_resolves_by_scouts_id(log_copy: Path) -> None:
+async def test_sample_without_uuid_resolves_by_scouts_id(
+    log_copy: Path, direct: bool
+) -> None:
     def drop_uuid(sample: Any) -> None:
         sample.uuid = None
 
@@ -362,7 +394,7 @@ async def test_sample_without_uuid_resolves_by_scouts_id(log_copy: Path) -> None
     )
 
     transcript = await read_referenced_transcript(
-        str(log_copy), _ref(transcript_id=info.transcript_id)
+        str(log_copy), _ref(transcript_id=info.transcript_id, direct=direct)
     )
 
     assert transcript.messages

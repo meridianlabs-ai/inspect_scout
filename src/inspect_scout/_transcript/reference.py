@@ -115,9 +115,10 @@ async def read_referenced_transcript(
 ) -> Transcript:
     """Read the transcript `ref` points at from the `.eval` log at `location`.
 
-    The sample's own zip member is read with range reads, located by uuid
-    through the log's sample summaries (so a sample that moved within the log
-    still resolves). Nothing is cached across calls, so a log rewritten in
+    The sample's own zip member, named by the row, is read with range reads
+    and checked against the row's transcript id; when it is missing or
+    doesn't match, the sample is located by uuid through the log's sample
+    summaries (so a sample that moved within the log still resolves). Nothing is cached across calls, so a log rewritten in
     place is read fresh. The central directory and sample index are bounded
     whatever `max_bytes` is (`CENTRAL_DIRECTORY_MAX_BYTES`,
     `SUMMARIES_MAX_BYTES`), counting what is actually decompressed.
@@ -179,44 +180,126 @@ async def _read_eval_sample(
         # is rewritten in place.
         cd = await _central_directory(fs, location)
         zip_reader = AsyncZipReader(fs, location, central_directory=cd)
-        summary = await _find_summary(zip_reader, cd, ref.transcript_id)
-        entry = cd.entry(f"samples/{summary['id']}_epoch_{summary['epoch']}.json")
-        if entry is None:
-            # Summarized but not yet written, as in a log still in progress.
-            raise _not_found()
-        if max_bytes is not None and entry.uncompressed_size > max_bytes:
-            raise input_too_large(max_bytes)
-        info = TranscriptInfo(
-            transcript_id=ref.transcript_id,
-            source_type=EVAL_LOG_SOURCE_TYPE,
-            source_uri=ref.transcript_source_uri,
-            task_id=str(summary["id"]),
-            task_repeat=summary["epoch"],
-        )
-        # Timelines resolve against all events, as in `EvalLogTranscriptsView.read`.
-        events = "all" if content.timeline is not None else content.events
-        metadata = content.metadata is not False
-        if max_bytes is None:
-            async with await zip_reader.open_member(entry) as member:
-                transcript = await load_filtered_transcript(
-                    member, info, content.messages, events, metadata=metadata
-                )
-        else:
-            data = await _read_compressed(
-                zip_reader, entry, max_bytes, lambda: input_too_large(max_bytes)
+        # The row names the sample's member, so read it directly and check it
+        # is still the sample the row recorded. Only a member that is missing,
+        # doesn't match (a sample moved, or was re-run), or is over the cap
+        # needs the sample index, which is read whole.
+        transcript = None
+        if (
+            ref.transcript_task_id is not None
+            and ref.transcript_task_repeat is not None
+        ):
+            transcript = await _read_sample(
+                zip_reader,
+                cd,
+                ref,
+                content,
+                max_bytes,
+                ref.transcript_task_id,
+                ref.transcript_task_repeat,
+                verify=True,
             )
-            transcript = await load_filtered_transcript(
-                _BoundedMember(data, entry.compression_method, max_bytes),
-                info,
-                content.messages,
-                events,
-                metadata=metadata,
+        if transcript is None:
+            summary = await _find_summary(zip_reader, cd, ref.transcript_id)
+            transcript = await _read_sample(
+                zip_reader,
+                cd,
+                ref,
+                content,
+                max_bytes,
+                summary["id"],
+                summary["epoch"],
+                verify=False,
             )
+            if transcript is None:
+                # Summarized but not yet written, as in a log still in progress.
+                raise _not_found()
     # Copy mode passes the transcript through the scanner's loader, whose
     # `filter_transcript` also filters timelines stored in the log.
     return filter_transcript(
         _resolve_timelines_and_filter_events(transcript, content), content
     )
+
+
+async def _read_sample(
+    zip_reader: AsyncZipReader,
+    cd: CentralDirectory,
+    ref: InputReference,
+    content: TranscriptContent,
+    max_bytes: int | None,
+    sample_id: Any,
+    epoch: Any,
+    *,
+    verify: bool,
+) -> Transcript | None:
+    """The sample's transcript, or None if its member is absent.
+
+    With `verify`, also None when the member is over `max_bytes` (only the
+    index can tell an over-cap sample from a different one) or is not the
+    sample `ref` names.
+    """
+    entry = cd.entry(f"samples/{sample_id}_epoch_{epoch}.json")
+    if entry is None:
+        return None
+    if max_bytes is not None and entry.uncompressed_size > max_bytes:
+        if verify:
+            return None
+        raise input_too_large(max_bytes)
+    info = TranscriptInfo(
+        transcript_id=ref.transcript_id,
+        source_type=EVAL_LOG_SOURCE_TYPE,
+        source_uri=ref.transcript_source_uri,
+        task_id=str(sample_id),
+        task_repeat=epoch,
+    )
+    # Timelines resolve against all events, as in `EvalLogTranscriptsView.read`.
+    events = "all" if content.timeline is not None else content.events
+    metadata = content.metadata is not False
+    sample_uuid: list[str | None] = []
+    on_uuid = sample_uuid.append if verify else None
+    if max_bytes is None:
+        async with await zip_reader.open_member(entry) as member:
+            transcript = await load_filtered_transcript(
+                member,
+                info,
+                content.messages,
+                events,
+                metadata=metadata,
+                on_uuid=on_uuid,
+            )
+    else:
+        data = await _read_compressed(
+            zip_reader, entry, max_bytes, lambda: input_too_large(max_bytes)
+        )
+        transcript = await load_filtered_transcript(
+            _BoundedMember(data, entry.compression_method, max_bytes),
+            info,
+            content.messages,
+            events,
+            metadata=metadata,
+            on_uuid=on_uuid,
+        )
+    if verify and not await _is_referenced_sample(
+        zip_reader, cd, ref.transcript_id, sample_uuid, sample_id, epoch
+    ):
+        return None
+    return transcript
+
+
+async def _is_referenced_sample(
+    zip_reader: AsyncZipReader,
+    cd: CentralDirectory,
+    transcript_id: str,
+    sample_uuid: list[str | None],
+    sample_id: Any,
+    epoch: Any,
+) -> bool:
+    if sample_uuid and sample_uuid[0]:
+        return sample_uuid[0] == transcript_id
+    # Scout identifies a sample without a uuid by an id derived from the
+    # eval's id, as inspect's sample dataframes do.
+    eval_id = await _eval_id(zip_reader, cd)
+    return auto_id(eval_id, f"{sample_id}_{epoch}") == transcript_id
 
 
 class _OneSuffixRead:

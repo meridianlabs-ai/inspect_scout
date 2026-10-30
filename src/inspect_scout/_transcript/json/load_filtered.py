@@ -134,6 +134,7 @@ async def load_filtered_transcript(
     events: EventFilter,
     *,
     metadata: bool = True,
+    on_uuid: Callable[[str | None], None] | None = None,
     on_early_exit: Callable[[], None] | None = None,
 ) -> Transcript:
     """Transform and filter JSON sample data into a Transcript.
@@ -151,6 +152,9 @@ async def load_filtered_transcript(
             list=include matching)
         metadata: Whether to read the sample's metadata, target and scores from
             the body; when False the summary values already on ``t`` are kept.
+        on_uuid: Called with the sample's own ``uuid`` (None if it has none),
+            e.g. to check the sample is the one expected. Requesting it
+            reads at least as far as the ``uuid`` field.
         on_early_exit: Test-only callback invoked immediately before the
             early-exit break
 
@@ -172,12 +176,13 @@ async def load_filtered_transcript(
                 messages,
                 events,
                 metadata=metadata,
+                on_uuid=on_uuid,
                 on_early_exit=on_early_exit,
             )
         return _resolve_attachments(transcript, attachment_refs)
     except ijson.JSONError:
         return await _load_with_json5_fallback(
-            sample_bytes, t, messages, events, metadata=metadata
+            sample_bytes, t, messages, events, metadata=metadata, on_uuid=on_uuid
         )
 
 
@@ -188,6 +193,7 @@ async def _load_with_json5_fallback(
     events: EventFilter,
     *,
     metadata: bool = True,
+    on_uuid: Callable[[str | None], None] | None = None,
 ) -> Transcript:
     """Fallback parser using json5 for JSON5 features (NaN, Inf, etc.)."""
     if hasattr(sample_bytes, "__aiter__"):
@@ -198,6 +204,8 @@ async def _load_with_json5_fallback(
         io_source = sample_bytes
     io_source.seek(0)
     data = json.load(io.TextIOWrapper(io_source, encoding="utf-8"))
+    if on_uuid is not None:
+        on_uuid(data.get("uuid"))
     message_pool, call_pool = _pools_from_dict(data)
     keep_timelines = events == "all"
 
@@ -288,6 +296,7 @@ async def _parse_and_filter(
     events_filter: EventFilter,
     *,
     metadata: bool = True,
+    on_uuid: Callable[[str | None], None] | None = None,
     on_early_exit: Callable[[], None] | None = None,
 ) -> tuple[RawTranscript, dict[str, str]]:
     """Single-pass stream parse, filter, and collect attachment references.
@@ -350,6 +359,9 @@ async def _parse_and_filter(
     pending_fields = {"target", "scores", "metadata"}
     if messages_filter is not None:
         pending_fields.add("messages")
+    if on_uuid is not None:
+        # `uuid` follows events, so wanting it rules out the early exit.
+        pending_fields.add("uuid")
 
     last_prefix = ""
     current_section = _SECTION_OTHER
@@ -381,6 +393,10 @@ async def _parse_and_filter(
             p_len = len(prefix)
             if p_len == 0 or prefix[0] not in ("m", "e", "a", "t", "s", "c"):
                 current_section = _SECTION_OTHER
+                # A top-level scalar: its only value event is the one that
+                # changes the prefix to it.
+                if p_len == 4 and prefix == "uuid":
+                    state.uuid = value
             elif p_len < _MIN_SECTION_PREFIX_LEN:
                 # Short prefixes: "events" (6), "scores" (6), "target" (6)
                 if prefix == "scores":
@@ -486,6 +502,8 @@ async def _parse_and_filter(
             for coro in call_pool_coros:
                 coro.send((prefix, event, value))
 
+    if on_uuid is not None:
+        on_uuid(state.uuid)
     return (
         RawTranscript(
             id=t.transcript_id,

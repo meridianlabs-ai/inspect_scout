@@ -6,7 +6,8 @@ on:
   # triggering on the release avoids a double-fire from tag creation.
   release:
     types: [published]
-  # Manual break-glass path (defaults to dry-run).
+  # Manual break-glass path (defaults to dry-run). To publish a release,
+  # dispatch on its version tag: the publish job checks the version against it.
   workflow_dispatch:
     inputs:
       dry-run:

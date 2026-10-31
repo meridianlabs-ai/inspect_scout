@@ -120,6 +120,23 @@ def test_publish_job_runs_nothing_from_the_repository() -> None:
     assert publish["run"].startswith('npm publish "$TARBALL" --ignore-scripts')
 
 
+def test_publish_job_publishes_only_a_checked_release() -> None:
+    # A dispatch defaults to dry-run, which must stop before the publish job.
+    publish_job = job("publish")
+    assert publish_job["if"] == "${{ !inputs.dry-run }}"
+
+    steps = job_steps("publish")
+    # On the release event inputs are empty, so the tarball must match the tag.
+    check = next(s for s in steps if s.get("id") == "package")
+    assert check["env"] == {
+        "TAG": "${{ github.ref_name }}",
+        "PRERELEASE": "${{ inputs.prerelease }}",
+    }
+    publish = next(s for s in steps if s.get("name") == "Publish to NPM")
+    assert publish["if"] == "${{ steps.npm-version.outputs.published != 'true' }}"
+    assert "${{ inputs.prerelease && '--tag beta' || '' }}" in publish["run"]
+
+
 def test_build_runs_prepublish_before_packing() -> None:
     # Publishing a tarball runs no lifecycle scripts, so the build job must run
     # prepublishOnly itself.
@@ -132,6 +149,7 @@ def test_build_runs_prepublish_before_packing() -> None:
 
 @pytest.mark.skipif(
     not (VIEWER_PACKAGE / "package.json").exists(),
+    # CI's py-test job checks out without submodules, so this runs locally.
     reason="ts-mono submodule not initialized",
 )
 def test_viewer_has_no_other_publish_lifecycle_scripts() -> None:

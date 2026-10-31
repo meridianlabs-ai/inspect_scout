@@ -247,6 +247,10 @@ If a scan job is interrupted either due to cancellation (Ctrl+C) or a runtime er
 scout scan resume "scans/scan_id=iGEYSF6N7J3AoxzQmGgrZs"
 ```
 
+::: {.callout-warning}
+Resuming a scan runs code the scan names. `scan resume` imports the scanner and validation predicate source files recorded in the scan, and builds its scanners, predicates and model (including the model's base URL and args) from values in the scan. Only resume scans you trust. Listing scans, checking their status, reading their results, and viewing them in Scout View never run code from the scan.
+:::
+
 By default, if errors occur during an individual scan, they are caught and reported. You can then either retry the failed scans with `scan resume` or complete the scan (ignoring errors) with `scan complete`:
 
 ![](images/scan-resume.png)

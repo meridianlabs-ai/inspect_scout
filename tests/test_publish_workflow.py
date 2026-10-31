@@ -55,6 +55,8 @@ def test_only_the_publish_job_holds_the_publish_token() -> None:
     assert workflow["permissions"] == {}
     assert set(jobs) == {"notify-approval", "build", "publish"}
     assert jobs["notify-approval"]["permissions"] == {}
+    # pinged only once the build passed and the publish job will wait
+    assert jobs["notify-approval"]["needs"] == "build"
     assert jobs["build"]["permissions"] == {"contents": "read"}
     assert "environment" not in jobs["build"]
     assert jobs["publish"]["permissions"] == {"contents": "read", "id-token": "write"}
@@ -160,7 +162,16 @@ def test_actions_are_pinned_to_commit_shas() -> None:
 
 
 def _git(repo: Path, *args: str) -> None:
-    subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
+    config = [
+        "user.name=t",
+        "user.email=t@t",
+        "commit.gpgsign=false",
+        "tag.gpgsign=false",
+    ]
+    flags = [arg for c in config for arg in ("-c", c)]
+    subprocess.run(
+        ["git", "-C", str(repo), *flags, *args], check=True, capture_output=True
+    )
 
 
 @pytest.fixture
@@ -169,54 +180,39 @@ def tagged_repo(tmp_path: Path) -> Path:
     repo = tmp_path / "repo"
     repo.mkdir()
     _git(repo, "init", "-q", "-b", "main")
-    _git(
-        repo,
-        "-c",
-        "user.name=t",
-        "-c",
-        "user.email=t@t",
-        "commit",
-        "-q",
-        "--allow-empty",
-        "-m",
-        "a",
-    )
+    _git(repo, "commit", "-q", "--allow-empty", "-m", "a")
     _git(repo, "tag", "1.2.3")
     _git(repo, "tag", "v1.2.3")
     _git(repo, "update-ref", "refs/remotes/origin/main", "HEAD")
-    _git(
-        repo,
-        "-c",
-        "user.name=t",
-        "-c",
-        "user.email=t@t",
-        "commit",
-        "-q",
-        "--allow-empty",
-        "-m",
-        "b",
-    )
+    _git(repo, "commit", "-q", "--allow-empty", "-m", "b")
     _git(repo, "tag", "1.2.4")
     return repo
 
 
 @pytest.mark.parametrize(
-    "event,ref_type,ref,release_tag,ok",
+    "event,ref_type,ref,release_tag,prerelease,ok",
     [
-        ("release", "tag", "1.2.3", "1.2.3", True),
-        ("release", "branch", "main", "1.2.3", False),
-        ("release", "tag", "v1.2.3", "v1.2.3", False),
-        ("release", "tag", "1.2.3", "1.2.4", False),
-        ("release", "tag", "1.2.4", "1.2.4", False),
+        ("release", "tag", "1.2.3", "1.2.3", "false", True),
+        ("release", "branch", "main", "1.2.3", "false", False),
+        ("release", "tag", "v1.2.3", "v1.2.3", "false", False),
+        ("release", "tag", "1.2.3", "1.2.4", "false", False),
+        ("release", "tag", "1.2.4", "1.2.4", "false", False),
+        ("release", "tag", "1.2.3", "1.2.3", "true", False),
         # the break-glass dispatch may publish a tag that is not on main
-        ("workflow_dispatch", "tag", "1.2.4", "", True),
-        ("workflow_dispatch", "branch", "main", "", False),
+        ("workflow_dispatch", "tag", "1.2.4", "", "", True),
+        ("workflow_dispatch", "branch", "main", "", "", False),
         # a branch named like a release
-        ("workflow_dispatch", "branch", "1.2.3", "", False),
+        ("workflow_dispatch", "branch", "1.2.3", "", "", False),
     ],
 )
 def test_build_refuses_anything_but_a_release_tag(
-    tagged_repo: Path, event: str, ref_type: str, ref: str, release_tag: str, ok: bool
+    tagged_repo: Path,
+    event: str,
+    ref_type: str,
+    ref: str,
+    release_tag: str,
+    prerelease: str,
+    ok: bool,
 ) -> None:
     _git(tagged_repo, "checkout", "-q", "--detach", ref)
     step = _step("build", "Check release tag")
@@ -229,6 +225,7 @@ def test_build_refuses_anything_but_a_release_tag(
             "GITHUB_REF_NAME": ref,
             "EVENT_NAME": event,
             "RELEASE_TAG": release_tag,
+            "PRERELEASE": prerelease,
         },
         capture_output=True,
         check=False,
@@ -253,14 +250,18 @@ LFS_POINTER = b"version https://git-lfs.github.com/spec/v1\noid sha256:00\nsize 
 
 
 def _write_dist(
-    dist: Path, wheel_members: dict[str, bytes], version: str = "1.2.3"
+    dist: Path,
+    wheel_members: dict[str, bytes],
+    version: str = "1.2.3",
+    sdist_version: str | None = None,
 ) -> None:
     dist.mkdir()
     with zipfile.ZipFile(dist / f"inspect_scout-{version}-py3-none-any.whl", "w") as zf:
         for name, data in wheel_members.items():
             zf.writestr(name, data)
-    with tarfile.open(dist / f"inspect_scout-{version}.tar.gz", "w:gz") as tf:
-        info = tarfile.TarInfo(f"inspect_scout-{version}/PKG-INFO")
+    sdist_version = sdist_version or version
+    with tarfile.open(dist / f"inspect_scout-{sdist_version}.tar.gz", "w:gz") as tf:
+        info = tarfile.TarInfo(f"inspect_scout-{sdist_version}/PKG-INFO")
         tf.addfile(info, io.BytesIO(b""))
 
 
@@ -318,11 +319,20 @@ def test_gate_rejects_a_wheel_without_the_viewer(
     assert error in result.stdout
 
 
-def test_gate_rejects_the_wrong_version(tmp_path: Path) -> None:
-    _write_dist(tmp_path / "dist", GOOD_WHEEL, version="1.2.4.dev3")
+@pytest.mark.parametrize(
+    "version,sdist_version,error",
+    [
+        ("1.2.4.dev3", None, "-py3-none-any.whl has version 1.2.4.dev3"),
+        ("1.2.3", "1.2.4.dev3", ".tar.gz has version 1.2.4.dev3"),
+    ],
+)
+def test_gate_rejects_the_wrong_version(
+    tmp_path: Path, version: str, sdist_version: str | None, error: str
+) -> None:
+    _write_dist(tmp_path / "dist", GOOD_WHEEL, version, sdist_version)
     result = _verify(tmp_path / "dist")
     assert result.returncode == 1
-    assert "has version 1.2.4.dev3, expected 1.2.3" in result.stdout
+    assert f"{error}, expected 1.2.3" in result.stdout
 
 
 def test_gate_rejects_extra_or_missing_files(tmp_path: Path) -> None:

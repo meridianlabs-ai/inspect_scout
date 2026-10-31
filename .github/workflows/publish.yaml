@@ -17,10 +17,16 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   # Post the "awaiting approval" Slack ping — un-gated, in this same run, so it
   # deep-links to the run whose publish job is paused on the pypi environment.
+  # After the build, so it is sent only when the publish job will wait.
   notify-approval:
+    needs: build
     if: ${{ github.event_name == 'release' }}
     runs-on: ubuntu-latest
     permissions: {}
@@ -53,6 +59,7 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
           fail() { echo "::error::$1"; exit 1; }
           [ "$GITHUB_REF_TYPE" = "tag" ] ||
@@ -62,6 +69,8 @@ jobs:
           if [ "$EVENT_NAME" = "release" ]; then
             [ "$RELEASE_TAG" = "$GITHUB_REF_NAME" ] ||
               fail "Release tag '$RELEASE_TAG' does not match ref '$GITHUB_REF_NAME'"
+            [ "$PRERELEASE" != "true" ] ||
+              fail "Release $GITHUB_REF_NAME is marked pre-release; not publishing to PyPI"
             git merge-base --is-ancestor HEAD origin/main ||
               fail "Tag $GITHUB_REF_NAME is not on main; to publish it anyway, dispatch this workflow on the tag"
           fi

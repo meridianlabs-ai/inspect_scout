@@ -69,9 +69,7 @@ def _assert_safe(text: str, *, require_after: bool = True) -> None:
 
 
 def _scan() -> tuple[ScanSpec, Summary]:
-    # model_construct: ScanSpec rejects '/', '\' and NUL in scanner names, but
-    # the display must strip controls from whatever name reaches it.
-    spec = ScanSpec.model_construct(
+    spec = ScanSpec(
         scan_name=PAYLOAD,
         scan_args={"metadata": PAYLOAD},
         scanners={PAYLOAD: ScannerSpec(name=PAYLOAD)},

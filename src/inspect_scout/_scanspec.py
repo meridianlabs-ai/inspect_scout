@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any, Type
 
 from inspect_ai.model._model_config import ModelConfig
@@ -212,17 +213,21 @@ class ScanSpec(BaseModel):
     def validate_scanner_names(
         cls, scanners: dict[str, ScannerSpec]
     ) -> dict[str, ScannerSpec]:
-        """Reject scanner names that aren't a single file name.
+        """Reject scanner names that would place results outside the scan.
 
         The recorder writes each scanner's results to `<scan dir>/<name>.parquet`,
-        and a scan's `_scan.json` may come from someone else, so a name with a
-        path separator could place that file outside the scan directory.
+        and a scan's `_scan.json` may come from someone else. Names that stay
+        inside the scan directory (including project scanner names such as
+        `pkg/scanner` or `refusal:v2`) are accepted.
         """
         for name in scanners:
-            if name in ("", ".", "..") or any(c in name for c in "/\\:\0"):
+            if any(
+                path.anchor or ".." in path.parts
+                for path in (PurePosixPath(name), PureWindowsPath(name))
+            ):
                 raise ValueError(
-                    f"{name!r} is not a valid scanner name: scanner names must "
-                    "not be empty, '.' or '..', or contain '/', '\\', ':' or NUL."
+                    f"{name!r} is not a valid scanner name: it must not be an "
+                    "absolute path or contain a '..' component."
                 )
         return scanners
 

@@ -41,21 +41,45 @@ async def test_sync_does_not_write_outside_the_scan_dir(
     spec["scanners"] = {escape: spec["scanners"]["s"]}
     spec_file.write_text(json.dumps(spec))
 
-    with pytest.raises(ValidationError, match="not a valid scanner name"):
+    with pytest.raises(ValueError, match="Invalid scan spec") as ex:
         await FileRecorder.sync(scan_dir.as_posix(), complete=True)
+    assert "_scan.json" in str(ex.value)
+    assert "not a valid scanner name" in str(ex.value)
 
     assert hashlib.sha256(victim.read_bytes()).hexdigest() == before
 
 
 @pytest.mark.parametrize(
-    "name", ["../victim", "a/b", "/abs/victim", "a\\b", "C:victim", "", ".", ".."]
+    "name",
+    [
+        "../victim",
+        "a/../../victim",
+        "..",
+        "/abs/victim",
+        "\\abs\\victim",
+        "a\\..\\..\\victim",
+        "C:victim",
+        "C:/victim",
+        "\\\\server\\share\\victim",
+    ],
 )
-def test_scan_spec_rejects_scanner_names_that_are_not_file_names(name: str) -> None:
+def test_scan_spec_rejects_scanner_names_that_leave_the_scan_dir(name: str) -> None:
     with pytest.raises(ValidationError, match="not a valid scanner name"):
         ScanSpec(scan_name="test", scanners={name: ScannerSpec(name="s")})
 
 
-@pytest.mark.parametrize("name", ["s", "my_scanner_2", "My-Scanner", "scanner.v2"])
-def test_scan_spec_accepts_plain_scanner_names(name: str) -> None:
+@pytest.mark.parametrize(
+    "name",
+    [
+        "s",
+        "my_scanner_2",
+        "My-Scanner",
+        "scanner.v2",
+        # project scanner names from scout.yaml are not sanitized
+        "refusal:v2",
+        "inspect_scout/llm_scanner",
+    ],
+)
+def test_scan_spec_accepts_scanner_names_inside_the_scan_dir(name: str) -> None:
     spec = ScanSpec(scan_name="test", scanners={name: ScannerSpec(name="s")})
     assert list(spec.scanners) == [name]

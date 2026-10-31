@@ -31,7 +31,7 @@ Scout reads transcripts that contain model output, and scanners are Python progr
 
 ### In scope
 
-- Code execution or file access triggered by viewing a transcript, eval log, or scan results in the Scout viewer
+- Code execution or file access triggered by reading or viewing a transcript, eval log, transcript database, or scan results, in the Scout viewer or through Scout's Python API or CLI
 - API keys, tokens, or other secrets written to scan results, logs, or error messages
 - Path traversal, unauthenticated access, or other flaws in the Scout viewer or its server
 - Model output that the viewer renders as active content (links, media, markup) when content trust is turned off

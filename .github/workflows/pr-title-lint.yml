@@ -4,8 +4,14 @@ on:
   pull_request:
     types: [opened, edited, reopened, synchronize]
 
+permissions: {}
+
 jobs:
   lint:
     permissions:
-      pull-requests: read
-    uses: meridianlabs-ai/actions/.github/workflows/pr-title-lint.yml@v1
+      pull-requests: read # read the PR title
+    # At this commit the reusable matches v1, except that its actions are pinned.
+    uses: meridianlabs-ai/actions/.github/workflows/pr-title-lint.yml@bb46f82b7b1980c1a7957506d71bebbc4e31da84 # main, 2026-10-14
+    with:
+      # read the type list from the same pinned commit
+      types-ref: bb46f82b7b1980c1a7957506d71bebbc4e31da84

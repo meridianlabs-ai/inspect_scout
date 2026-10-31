@@ -12,12 +12,69 @@ from inspect_ai.model import (
 )
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.tool import ToolChoice, ToolInfo
-from inspect_scout import llm_scanner
+from inspect_scout import Result, llm_scanner
 from inspect_scout._llm_scanner._llm_scanner import render_scanner_prompt
 from inspect_scout._llm_scanner.answer import answer_from_argument
 from inspect_scout._llm_scanner.prompt import DEFAULT_SCANNER_TEMPLATE
 from inspect_scout._scanner.scanner import SCANNER_CONTENT_ATTR
 from inspect_scout._transcript.types import Transcript, TranscriptContent
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("context_window", [300, 10000])
+@pytest.mark.parametrize("positive_index", [None, 0, 2])
+@pytest.mark.parametrize(
+    "true_score,false_score", [(1.0, 0.0), (0.0, 1.0), (-2.0, 3.0)]
+)
+async def test_boolean_conversion_survives_segmentation(
+    context_window: int,
+    positive_index: int | None,
+    true_score: float,
+    false_score: float,
+) -> None:
+    calls: list[bool] = []
+
+    def respond(
+        input: list[ChatMessage],
+        tools: list[ToolInfo],
+        tool_choice: ToolChoice,
+        config: GenerateConfig,
+    ) -> ModelOutput:
+        positive = any("POSITIVE" in message.text for message in input)
+        calls.append(positive)
+        return ModelOutput.from_content(
+            model="mockllm", content=f"ANSWER: {'yes' if positive else 'no'}"
+        )
+
+    scan = llm_scanner(
+        question="Does any message contain the behavior?",
+        answer="boolean",
+        template="{{ messages }}\n{{ question }}\n{{ answer_prompt }}",
+        model=get_model("mockllm/model", custom_outputs=respond, memoize=False),
+        context_window=context_window,
+        value_to_float=lambda value: true_score if value else false_score,
+    )
+    result = await scan(
+        Transcript(
+            transcript_id="converted-boolean",
+            messages=[
+                ChatMessageUser(
+                    content=("POSITIVE " if index == positive_index else "negative ")
+                    + "word " * 100
+                )
+                for index in range(3)
+            ],
+        )
+    )
+
+    positive = positive_index is not None
+    assert isinstance(result, Result)
+    assert result.value == (true_score if positive else false_score)
+    assert isinstance(result.value, float)
+    assert result.answer == ("Yes" if positive else "No")
+    assert result.parsed is positive
+    assert len(calls) > 1 if context_window == 300 else len(calls) == 1
+
 
 # ---------------------------------------------------------------------------
 # content parameter tests

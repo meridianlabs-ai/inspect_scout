@@ -5,12 +5,19 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions: {}
+
 jobs:
   release-please:
+    # Forks with Actions enabled would otherwise run Release Please on every
+    # push to their main.
+    if: github.repository == 'meridianlabs-ai/inspect_scout'
+    # Release Please itself runs with the App token.
     permissions:
-      contents: write
-      pull-requests: write
-    uses: meridianlabs-ai/actions/.github/workflows/release-please-python.yml@v1
+      contents: write # requested by the reusable workflow
+      pull-requests: write # requested by the reusable workflow
+    # A commit on main rather than v1: v1's reusables call their own actions by tag.
+    uses: meridianlabs-ai/actions/.github/workflows/release-please-python.yml@bb46f82b7b1980c1a7957506d71bebbc4e31da84 # commit on main
     with:
       # Both publishes (PyPI + the npm viewer lib) run in separate `on: release`
       # workflows, each with its own environment gate — so each posts its own

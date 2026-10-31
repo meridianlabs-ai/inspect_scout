@@ -12,10 +12,11 @@ jobs:
     # Forks with Actions enabled would otherwise run Release Please on every
     # push to their main.
     if: github.repository == 'meridianlabs-ai/inspect_scout'
-    # The reusable workflow's job requests these; it releases with the App token.
+    # The reusable workflow's job requests these, so the caller must grant
+    # them; Release Please itself runs with the App token.
     permissions:
-      contents: write
-      pull-requests: write
+      contents: write # requested by the reusable workflow
+      pull-requests: write # requested by the reusable workflow
     # At this commit the reusable matches v1, except that its actions are pinned.
     uses: meridianlabs-ai/actions/.github/workflows/release-please-python.yml@bb46f82b7b1980c1a7957506d71bebbc4e31da84 # main, 2026-10-14
     with:

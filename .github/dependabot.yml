@@ -25,9 +25,9 @@ updates:
   # Bumps uv.lock. The cooldown matches `exclude-newer` in pyproject.toml, and
   # its exclude list matches `exclude-newer-package` there: Dependabot's
   # cooldown counts whole days, so those packages' 6-hour cooldown is left to
-  # uv. They get their own group, listed first because a package in both
-  # groups goes to the first match, so a broken update elsewhere can't hold
-  # them up.
+  # uv. They get their own group, so a broken update elsewhere can't hold them
+  # up. It comes first because a package that matches both groups goes to the
+  # first.
   - package-ecosystem: uv
     versioning-strategy: lockfile-only
     directory: /

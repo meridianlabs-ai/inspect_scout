@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any, Type
 
 from inspect_ai.model._model_config import ModelConfig
@@ -7,6 +8,7 @@ from pydantic import (
     ConfigDict,
     Field,
     field_serializer,
+    field_validator,
     model_validator,
 )
 from shortuuid import uuid
@@ -205,6 +207,30 @@ class ScanSpec(BaseModel):
 
     validation: dict[str, ValidationSetSpec] | None = Field(default=None)
     """Validation cases to apply for scanners."""
+
+    @field_validator("scanners")
+    @classmethod
+    def validate_scanner_names(
+        cls, scanners: dict[str, ScannerSpec]
+    ) -> dict[str, ScannerSpec]:
+        """Reject scanner names that would place results outside the scan.
+
+        The recorder writes each scanner's results to `<scan dir>/<name>.parquet`,
+        and a scan's `_scan.json` may come from someone else. Names that stay
+        inside the scan directory (including project scanner names such as
+        `pkg/scanner` or `refusal:v2`) are accepted.
+        """
+        for name in scanners:
+            if any(
+                path.anchor or ".." in path.parts
+                for path in (PurePosixPath(name), PureWindowsPath(name))
+            ):
+                raise ValueError(
+                    f"{name!r} is not a valid scanner name: it must not start "
+                    "with '/', '\\' or a drive such as 'C:', or contain a '..' "
+                    "component."
+                )
+        return scanners
 
     @field_serializer("timestamp")
     def serialize_created(self, timestamp: datetime) -> str:

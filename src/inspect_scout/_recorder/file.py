@@ -22,6 +22,7 @@ from inspect_ai._util._async import tg_collect
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import file, filesystem
 from inspect_ai._util.json import to_json_str_safe
+from pydantic import ValidationError
 from typing_extensions import override
 from upath import UPath
 
@@ -873,7 +874,10 @@ async def _read_scan_spec(scan_dir: UPath) -> ScanSpec:
                     f"The specified directory '{scan_dir}' does not contain a scan."
                 ) from e
             raise
-    return ScanSpec.model_validate_json(data)
+    try:
+        return ScanSpec.model_validate_json(data)
+    except ValidationError as e:
+        raise ValueError(f"Invalid scan spec '{scan_json}': {e}") from e
 
 
 def _is_not_found(e: BaseException) -> bool:

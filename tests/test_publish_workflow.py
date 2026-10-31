@@ -211,6 +211,8 @@ def tagged_repo(tmp_path: Path) -> Path:
         # the break-glass dispatch may publish a tag that is not on main
         ("workflow_dispatch", "tag", "1.2.4", "", True),
         ("workflow_dispatch", "branch", "main", "", False),
+        # a branch named like a release
+        ("workflow_dispatch", "branch", "1.2.3", "", False),
     ],
 )
 def test_build_refuses_anything_but_a_release_tag(
@@ -295,6 +297,7 @@ def _without(*names: str) -> dict[str, bytes]:
         (_without(VIEW + "index.html"), "index.html is missing"),
         ({**GOOD_WHEEL, VIEW + "index.html": b""}, "index.html is empty"),
         (_without(VIEW + "assets/index-abc.js"), "no non-empty .js assets"),
+        ({**GOOD_WHEEL, VIEW + "assets/index-abc.js": b""}, "no non-empty .js assets"),
         (_without(VIEW + "assets/index-abc.css"), "no non-empty .css assets"),
         (
             _without(VIEW + "content-security-policy.json"),

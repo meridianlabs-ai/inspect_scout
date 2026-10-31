@@ -22,3 +22,19 @@ updates:
       prefix: ci
     assignees:
       - epatey
+  # Bumps the release build toolchain pinned with hashes in
+  # scripts/build-dist/requirements.txt.
+  - package-ecosystem: uv
+    directory: /scripts/build-dist
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      build-toolchain:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: ci
+    assignees:
+      - epatey

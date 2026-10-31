@@ -3,10 +3,11 @@ name: Publish Package
 on:
   # Auto-publish when Release Please cuts a GitHub Release (App token triggers
   # this). Runs in-repo, so the PyPI trusted-publisher config (workflow
-  # publish.yaml) is unchanged.
+  # publish.yaml, environment pypi) is unchanged.
   release:
     types: [published]
-  # Manual break-glass path.
+  # Manual break-glass path: run on the release tag (select it under "Use
+  # workflow from"). Without "yes", it builds and checks but does not publish.
   workflow_dispatch:
     inputs:
       confirm:
@@ -14,49 +15,128 @@ on:
         required: true
         type: string
 
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   # Post the "awaiting approval" Slack ping — un-gated, in this same run, so it
   # deep-links to the run whose publish job is paused on the pypi environment.
+  # After the build, so it is sent only when the publish job will wait.
   notify-approval:
+    needs: build
     if: ${{ github.event_name == 'release' }}
     runs-on: ubuntu-latest
+    permissions: {}
     steps:
-      - uses: meridianlabs-ai/actions/slack-approval-ping@v1
+      - uses: meridianlabs-ai/actions/slack-approval-ping@91fe6b994ae387f2d1002c8aee193e198bda33a7 # v1
         with:
           webhook: ${{ secrets.SLACK_APPROVALS_WEBHOOK_URL }}
           approvers: "jjallaire dragonstyle epatey"
           message: ":rocket: *${{ github.repository }}* ${{ github.event.release.tag_name }} — PyPI publish is *awaiting approval*."
           run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-  publish:
+  # Builds without id-token, so the build toolchain never runs beside the
+  # publish credential; the publish job only uploads the checked artifact.
+  build:
+    name: Build and verify
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
-      id-token: write # Required for OIDC/trusted publishing
-    environment:
-      name: pypi
-      url: https://pypi.org/p/inspect-scout
-
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0 # Get all tags for version detection
+          # all tags for hatch-vcs, and main for the ancestry check
+          fetch-depth: 0
+          # the built viewer (src/inspect_scout/_view/dist) is in Git LFS
           lfs: true
+          persist-credentials: false
+
+      - name: Check release tag
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          fail() { echo "::error::$1"; exit 1; }
+          [ "$GITHUB_REF_TYPE" = "tag" ] ||
+            fail "Publish must run on a release tag, not $GITHUB_REF_TYPE '$GITHUB_REF_NAME'"
+          [[ "$GITHUB_REF_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+            fail "Tag '$GITHUB_REF_NAME' is not a release version (X.Y.Z)"
+          if [ "$EVENT_NAME" = "release" ]; then
+            [ "$RELEASE_TAG" = "$GITHUB_REF_NAME" ] ||
+              fail "Release tag '$RELEASE_TAG' does not match ref '$GITHUB_REF_NAME'"
+            [ "$PRERELEASE" != "true" ] ||
+              fail "Release $GITHUB_REF_NAME is marked pre-release; not publishing to PyPI"
+            git merge-base --is-ancestor HEAD origin/main ||
+              fail "Tag $GITHUB_REF_NAME is not on main; to publish it anyway, dispatch this workflow on the tag"
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: "3.x"
+          python-version: "3.11"
 
-      - name: Show current version
+      # The build frontend and backend come from scripts/build-dist/requirements.txt,
+      # pinned with hashes, and the build runs without isolation, so nothing
+      # else is resolved at build time. Dependabot updates the file weekly with
+      # a 7-day cooldown; it lives outside .github/ because Dependabot can't
+      # change files there for any ecosystem but github-actions. To update it
+      # by hand, run in scripts/build-dist:
+      #   uv pip compile --no-config --generate-hashes --python-version 3.11 \
+      #     --python-platform x86_64-unknown-linux-gnu --exclude-newer "7 days" \
+      #     --only-binary :all: --upgrade requirements.in -o requirements.txt
+      - name: Install build toolchain
         run: |
-          echo "Version: $(git describe --tags --always)"
+          python -m pip install --require-hashes --only-binary :all: --no-deps -r scripts/build-dist/requirements.txt
 
       - name: Build
-        run: |
-          pip install --upgrade pip build
-          python -m build
-          ls -la dist/
+        run: python -m build --no-isolation
 
+      - name: Verify distributions
+        run: python -I scripts/verify_dist.py "$GITHUB_REF_NAME"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+          # a re-run of this job replaces the earlier attempt's artifact
+          overwrite: true
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    if: ${{ github.event_name == 'release' || inputs.confirm == 'yes' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write # trusted publishing
+    environment:
+      name: pypi
+      url: https://pypi.org/p/inspect-scout
+    steps:
+      # Only the stdlib-only check script; nothing is installed or built in
+      # the job that holds the publish token.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: scripts/verify_dist.py
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist
+          path: dist/
+
+      - name: Verify distributions
+        run: python3 -I scripts/verify_dist.py "$GITHUB_REF_NAME"
+
+      # A Docker action, so it stays a step of this job: inside a composite
+      # action its image resolves against the calling repository and fails.
       - name: Publish to PyPI
-        if: ${{ github.event_name == 'release' || inputs.confirm == 'yes' }}
         uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3

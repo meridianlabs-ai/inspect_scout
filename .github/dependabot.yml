@@ -22,3 +22,40 @@ updates:
       prefix: ci
     assignees:
       - epatey
+  # Bumps uv.lock. The cooldown matches `exclude-newer` in pyproject.toml, and
+  # its exclude list matches `exclude-newer-package` there: Dependabot's
+  # cooldown counts whole days, so those packages' 6-hour cooldown is left to
+  # uv. They get their own group, listed first because a package in both
+  # groups goes to the first match, so a broken update elsewhere can't hold
+  # them up.
+  - package-ecosystem: uv
+    versioning-strategy: lockfile-only
+    directory: /
+    schedule:
+      interval: daily
+    cooldown:
+      default-days: 7
+      exclude:
+        - "anthropic"
+        - "certifi"
+        - "google-genai"
+        - "inspect-ai"
+        - "inspect-swe"
+        - "openai"
+    groups:
+      six-hour-cooldown:
+        patterns:
+          - "anthropic"
+          - "certifi"
+          - "google-genai"
+          - "inspect-ai"
+          - "inspect-swe"
+          - "openai"
+      python-packages:
+        patterns:
+          - "*"
+    # `build` keeps these out of the release notes.
+    commit-message:
+      prefix: build
+    assignees:
+      - epatey

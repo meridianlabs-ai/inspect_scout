@@ -1,7 +1,7 @@
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from os import PathLike
-from typing import Any, Literal, Protocol, Sequence, TypeAlias
+from typing import Any, Literal, Protocol, Sequence, TypeAlias, cast
 
 from inspect_ai._util.zip_common import ZipCompressionMethod
 from inspect_ai.event import Timeline
@@ -10,7 +10,14 @@ from inspect_ai.log._file import (
     EvalLogInfo,
 )
 from inspect_ai.model._chat_message import ChatMessage
-from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    SerializerFunctionWrapHandler,
+    field_serializer,
+)
 
 MessageType = Literal["system", "user", "assistant", "tool"]
 """Message types."""
@@ -250,3 +257,16 @@ class Transcript(TranscriptInfo):
 
     timelines: list[Timeline] = Field(default_factory=list)
     """Timeline views over the transcript."""
+
+    @field_serializer("metadata", mode="wrap")
+    def _serialize_metadata(
+        self, metadata: dict[str, Any], handler: SerializerFunctionWrapHandler
+    ) -> dict[str, Any]:
+        from .util import LazyJSONDict
+
+        return cast(
+            dict[str, Any],
+            handler(
+                metadata.to_dict() if isinstance(metadata, LazyJSONDict) else metadata
+            ),
+        )

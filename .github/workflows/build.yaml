@@ -25,9 +25,7 @@ permissions:
   contents: read
 
 env:
-  # Needs >= 0.13.4, which drops the compromised emSign root from uv's
-  # certificate store (GHSA-hq85-5cpj-mr62), and pyproject.toml's
-  # required-version for the relative exclude-newer.
+  # Must meet pyproject.toml's required-version.
   UV_VERSION: 0.13.5
 
 # Each job carries timeout-minutes well above its observed duration on main
@@ -45,11 +43,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # The ruff version uv.lock pins, not the newest release.
       - name: Lint with Ruff
         uses: astral-sh/ruff-action@278981a28ce3188b1e39527901f38254bf3aac89 # v4.1.0
+        with:
+          version-file: uv.lock
       - name: Format with Ruff
         uses: astral-sh/ruff-action@278981a28ce3188b1e39527901f38254bf3aac89 # v4.1.0
         with:
+          version-file: uv.lock
           args: "format --check"
 
   py-mypy:

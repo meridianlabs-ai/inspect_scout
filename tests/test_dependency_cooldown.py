@@ -123,6 +123,20 @@ def test_pinned_uv_versions_meet_required_version() -> None:
     assert setups
 
 
+def test_ruff_action_uses_the_locked_ruff() -> None:
+    # Without a version, ruff-action installs the newest ruff release.
+    steps = [
+        step
+        for path in workflows()
+        for job in yaml.safe_load(path.read_text())["jobs"].values()
+        for step in job.get("steps", [])
+        if step.get("uses", "").startswith("astral-sh/ruff-action@")
+    ]
+    assert steps
+    for step in steps:
+        assert step["with"]["version-file"] == "uv.lock", step
+
+
 @pytest.mark.parametrize("name,sync", LOCKED_JOBS.items())
 def test_locked_jobs_install_from_the_lockfile(name: str, sync: str) -> None:
     job = yaml.safe_load((WORKFLOWS / "build.yaml").read_text())["jobs"][name]

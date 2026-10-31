@@ -4,7 +4,7 @@ Thanks for contributing to Inspect Scout — this guide covers local setup, the 
 
 ## Development setup
 
-Install [uv](https://docs.astral.sh/uv/) 0.11.8 or later, then clone the repository and create the environment:
+Install [uv](https://docs.astral.sh/uv/) 0.13.4 or later, then clone the repository and create the environment:
 
 ```bash
 git clone https://github.com/meridianlabs-ai/inspect_scout

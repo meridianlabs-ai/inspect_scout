@@ -1,7 +1,7 @@
 """Every action and reusable workflow in .github/workflows is pinned to a commit.
 
 A tag or branch can be moved to new code; a commit SHA cannot. The trailing
-`# vX.Y.Z` comment records the version so Dependabot and reviewers can read it.
+comment names the version or branch the SHA came from.
 """
 
 import pathlib
@@ -59,3 +59,10 @@ def test_workflow_uses_are_pinned_to_commits() -> None:
         "pin these to a full commit SHA with a version comment "
         "(`owner/repo@<sha> # vX.Y.Z`):\n" + "\n".join(sorted(unpinned))
     )
+
+
+def test_pr_title_lint_reads_types_from_its_pinned_commit() -> None:
+    # The reusable checks out meridianlabs-ai/actions at types-ref (default
+    # `v1`); a Dependabot bump of the `uses:` SHA leaves types-ref behind.
+    job = yaml.safe_load((WORKFLOWS / "pr-title-lint.yml").read_text())["jobs"]["lint"]
+    assert job["with"]["types-ref"] == job["uses"].rsplit("@", 1)[1]

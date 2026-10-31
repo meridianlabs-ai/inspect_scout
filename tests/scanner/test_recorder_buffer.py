@@ -23,8 +23,8 @@ def recorder_buffer() -> Generator[RecorderBuffer]:
             scan_name="myscan",
             scanners={
                 "test_scanner": ScannerSpec(name="test_scanner"),
-                "test-scanner.with:special/chars": ScannerSpec(
-                    name="test-scanner.with:special/chars"
+                "test-scanner.with special*chars": ScannerSpec(
+                    name="test-scanner.with special*chars"
                 ),
             },
         )
@@ -142,7 +142,7 @@ async def test_sanitize_table_names(
     tmp_path: Path,
 ) -> None:
     """Test that table names with special characters are sanitized."""
-    scanner_name = "test-scanner.with:special/chars"
+    scanner_name = "test-scanner.with special*chars"
 
     # Record with special characters in scanner name
     await recorder_buffer.record(sample_transcript, scanner_name, sample_results, None)

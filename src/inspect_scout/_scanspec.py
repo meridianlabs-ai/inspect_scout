@@ -7,6 +7,7 @@ from pydantic import (
     ConfigDict,
     Field,
     field_serializer,
+    field_validator,
     model_validator,
 )
 from shortuuid import uuid
@@ -205,6 +206,25 @@ class ScanSpec(BaseModel):
 
     validation: dict[str, ValidationSetSpec] | None = Field(default=None)
     """Validation cases to apply for scanners."""
+
+    @field_validator("scanners")
+    @classmethod
+    def validate_scanner_names(
+        cls, scanners: dict[str, ScannerSpec]
+    ) -> dict[str, ScannerSpec]:
+        """Reject scanner names that aren't a single file name.
+
+        The recorder writes each scanner's results to `<scan dir>/<name>.parquet`,
+        and a scan's `_scan.json` may come from someone else, so a name with a
+        path separator could place that file outside the scan directory.
+        """
+        for name in scanners:
+            if name in ("", ".", "..") or any(c in name for c in "/\\:\0"):
+                raise ValueError(
+                    f"{name!r} is not a valid scanner name: scanner names must "
+                    "not be empty, '.' or '..', or contain '/', '\\', ':' or NUL."
+                )
+        return scanners
 
     @field_serializer("timestamp")
     def serialize_created(self, timestamp: datetime) -> str:

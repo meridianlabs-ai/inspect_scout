@@ -8,16 +8,18 @@ never import a named file and never construct a model. `scan_resume()` is a
 run operation and does both; the last test pins that, which also proves the
 fixture's references are live.
 
-A marker module records each import of it in a file, and a spy on
-`ModelAPI.__init__` records providers built with the fixture's base URL.
+A marker module records each import of it in a file, the fixture's scanner
+and predicate factories record each call, and a spy on `ModelAPI.__init__`
+records every model provider built after the fixture's scan is written.
 """
 
 import base64
 import json
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 
 import pytest
+from click.testing import CliRunner
 from fastapi.testclient import TestClient
 from inspect_ai.model._model import ModelAPI
 from inspect_scout import (
@@ -29,6 +31,7 @@ from inspect_scout import (
     scan_complete,
     scan_list,
     scan_results_arrow,
+    scan_results_batches,
     scan_results_df,
     scan_resume,
     scan_status,
@@ -36,6 +39,7 @@ from inspect_scout import (
     transcripts_from,
     validation_predicate,
 )
+from inspect_scout._cli.main import scout
 from inspect_scout._scanresults import scan_results_db
 from inspect_scout._view._api_v2 import v2_api_app
 from pydantic import JsonValue
@@ -59,10 +63,13 @@ MODEL_DICT = {
 }
 
 scanner_calls: list[str] = []
+factory_calls: list[str] = []
 
 
 @scanner(name=SCANNER, messages="all")
 def untrusted_scan_scanner(option: Any = None) -> Scanner[Transcript]:
+    factory_calls.append(SCANNER)
+
     async def scan_transcript(transcript: Transcript) -> Result:
         scanner_calls.append(transcript.transcript_id)
         if len(scanner_calls) == 1:
@@ -74,6 +81,8 @@ def untrusted_scan_scanner(option: Any = None) -> Scanner[Transcript]:
 
 @validation_predicate(name=PREDICATE)
 def untrusted_scan_predicate(option: Any = None) -> ValidationPredicate:
+    factory_calls.append(PREDICATE)
+
     async def check(result: Result, target: JsonValue) -> bool:
         return result.value == target
 
@@ -141,19 +150,23 @@ def untrusted_scan(tmp_path: Path) -> UntrustedScan:
     }
     spec_path.write_text(json.dumps(spec))
     scanner_calls.clear()
+    factory_calls.clear()
     return fixture
 
 
 @pytest.fixture
-def untrusted_models(monkeypatch: pytest.MonkeyPatch) -> list[str]:
-    """Spy on model provider construction: providers built with UNTRUSTED_URL."""
-    built: list[str] = []
+def untrusted_models(
+    untrusted_scan: UntrustedScan, monkeypatch: pytest.MonkeyPatch
+) -> list[str | None]:
+    """Spy on model provider construction once the scan is written.
+
+    Records the base URL of every provider built, whatever its model.
+    """
+    built: list[str | None] = []
     real_init = ModelAPI.__init__
 
     def spy(self: ModelAPI, *args: Any, **kwargs: Any) -> None:
-        base_url = args[1] if len(args) > 1 else kwargs.get("base_url")
-        if base_url == UNTRUSTED_URL:
-            built.append(base_url)
+        built.append(args[1] if len(args) > 1 else kwargs.get("base_url"))
         real_init(self, *args, **kwargs)
 
     monkeypatch.setattr(ModelAPI, "__init__", spy)
@@ -186,6 +199,24 @@ def _view_requests(fixture: UntrustedScan) -> None:
             assert response.status_code == 200, response.text
 
 
+def _df(fixture: UntrustedScan, rows: Literal["results", "transcripts"]) -> None:
+    results = scan_results_df(fixture.location, rows=rows)
+    for name in results.scanners:
+        results.scanners[name]
+
+
+def _cli(fixture: UntrustedScan) -> None:
+    runner = CliRunner()
+    for args in (
+        ["scan", "status", fixture.location],
+        ["scan", "list", fixture.scans_dir.as_posix()],
+    ):
+        result = runner.invoke(
+            scout, [*args, "--display", "plain"], catch_exceptions=False
+        )
+        assert result.exit_code == 0, result.output
+
+
 def _arrow(fixture: UntrustedScan) -> None:
     with scan_results_arrow(fixture.location).reader(SCANNER) as reader:
         reader.read_all()
@@ -199,14 +230,14 @@ def _db(fixture: UntrustedScan) -> None:
 READ_OPERATIONS: dict[str, Callable[[UntrustedScan], object]] = {
     "scan_status": lambda f: scan_status(f.location),
     "scan_list": lambda f: scan_list(f.scans_dir.as_posix()),
-    "scan_results_df": lambda f: scan_results_df(f.location),
-    "scan_results_df_transcripts": lambda f: scan_results_df(
-        f.location, rows="transcripts"
-    ),
+    "scan_results_df": lambda f: _df(f, "results"),
+    "scan_results_df_transcripts": lambda f: _df(f, "transcripts"),
     "scan_results_arrow": _arrow,
+    "scan_results_batches": lambda f: list(scan_results_batches(f.location, SCANNER)),
     "scan_results_db": _db,
     "scan_complete": lambda f: scan_complete(f.location, display="none"),
     "view_api": _view_requests,
+    "cli_status_list": _cli,
 }
 
 
@@ -214,7 +245,7 @@ READ_OPERATIONS: dict[str, Callable[[UntrustedScan], object]] = {
 def test_read_operations_do_not_run_scan_code(
     operation: Callable[[UntrustedScan], object],
     untrusted_scan: UntrustedScan,
-    untrusted_models: list[str],
+    untrusted_models: list[str | None],
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -228,11 +259,12 @@ def test_read_operations_do_not_run_scan_code(
 
     assert untrusted_scan.imported() == []
     assert untrusted_models == []
+    assert factory_calls == []
     assert scanner_calls == []
 
 
 def test_resume_runs_code_the_scan_names(
-    untrusted_scan: UntrustedScan, untrusted_models: list[str]
+    untrusted_scan: UntrustedScan, untrusted_models: list[str | None]
 ) -> None:
     scan_resume(untrusted_scan.location, display="none")
 
@@ -242,5 +274,6 @@ def test_resume_runs_code_the_scan_names(
             untrusted_scan.predicate_file.as_posix(),
         ]
     )
-    assert untrusted_models
+    assert UNTRUSTED_URL in untrusted_models
+    assert set(factory_calls) == {SCANNER, PREDICATE}
     assert scanner_calls

@@ -375,9 +375,10 @@ def scan_resume(
     """Resume a previous scan.
 
     Resuming runs code the scan names: it imports the scanner and validation
-    predicate source files recorded in the scan, and builds its scanners,
-    predicates and model (including the model's base URL and args) from values
-    in the scan. Only resume scans you trust.
+    predicate source files recorded in the scan, builds its scanners,
+    predicates, model and model roles (including base URLs and model args)
+    from values in the scan, and reads transcripts from the locations the scan
+    records. Only resume scans you trust.
 
     Args:
        scan_location: Scan location to resume from.
@@ -411,9 +412,10 @@ async def scan_resume_async(
     """Resume a previous scan.
 
     Resuming runs code the scan names: it imports the scanner and validation
-    predicate source files recorded in the scan, and builds its scanners,
-    predicates and model (including the model's base URL and args) from values
-    in the scan. Only resume scans you trust.
+    predicate source files recorded in the scan, builds its scanners,
+    predicates, model and model roles (including base URLs and model args)
+    from values in the scan, and reads transcripts from the locations the scan
+    records. Only resume scans you trust.
 
     Args:
        scan_location: Scan location to resume from.

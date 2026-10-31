@@ -164,15 +164,29 @@ jobs:
       # shipped-compatibility gate. The committed artifacts are generated
       # against inspect_ai main, so the Python → json check runs only while
       # uv.lock tracks inspect_ai main. The release PR locks the released
-      # inspect_ai, which would show false drift for fields not yet released.
+      # inspect_ai, which would show false drift for fields not yet released;
+      # so does main between the release and the merge of the PR that
+      # restores tracking (release-pin-deps.yml).
+      #
+      # The release PR must be tested against the released inspect_ai. Each
+      # Release Please update resets its branch to main's uv.lock, so it fails
+      # here until release-pin-deps.yml pushes the pinned lock.
       - name: Check whether uv.lock tracks inspect_ai main
         id: lock
+        env:
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           python3 -I - <<'PY' >> "$GITHUB_OUTPUT"
-          import tomllib
+          import os, sys, tomllib
           lock = tomllib.load(open("uv.lock", "rb"))
           (inspect_ai,) = [p for p in lock["package"] if p["name"] == "inspect-ai"]
-          print(f"tracks-main={'git' in inspect_ai['source']}")
+          tracks_main = "git" in inspect_ai["source"]
+          if tracks_main and os.environ["HEAD_REF"] == "release-please--branches--main":
+              print("::error::The release PR's uv.lock still tracks inspect_ai main. "
+                    "Wait for release-pin-deps.yml to lock the released inspect_ai.",
+                    file=sys.stderr)
+              sys.exit(1)
+          print(f"tracks-main={tracks_main}")
           PY
 
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0

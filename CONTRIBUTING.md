@@ -16,7 +16,7 @@ uv sync --extra dev
 
 ### Dependencies and the cooldown
 
-`uv.lock` pins every Python dependency, and every CI job installs from it with `uv sync --locked`, which fails when `uv.lock` is out of date with `pyproject.toml`. When you change dependencies in `pyproject.toml`, run `uv lock` and commit both files.
+`uv.lock` pins every Python dependency. CI's type-check, test, build and schema jobs install from it with `uv sync --locked`, which fails when `uv.lock` is out of date with `pyproject.toml`. When you change dependencies in `pyproject.toml`, run `uv lock` and commit both files.
 
 `pyproject.toml` sets `exclude-newer = "7 days"` under `[tool.uv]`, so `uv lock`, `uv sync` and `uv pip` only pick releases that have been on PyPI for at least seven days. A compromised release is usually found and removed within that time, before it reaches `uv.lock`, CI or your machine. A few packages wait 6 hours instead, so a new release can be adopted the day it ships: `inspect-ai`, `inspect-swe`, the `anthropic`, `openai` and `google-genai` SDKs, and `certifi`, the CA bundle. They are listed in `[tool.uv.exclude-newer-package]`. Dependabot's `uv` entry in `.github/dependabot.yml` repeats the cooldown and the list, and `tests/test_dependency_cooldown.py` checks that they match.
 

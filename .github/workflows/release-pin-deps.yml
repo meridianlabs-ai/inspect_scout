@@ -23,7 +23,9 @@ name: Pin inspect_ai for release
 # code. So the lock jobs hold only a read-only token that checkout doesn't
 # persist, and restore no cache. The jobs that push hold the App token and
 # install and run nothing from the repo: they copy pyproject.toml and uv.lock
-# from the lock job's artifact and commit them.
+# from the lock job's artifact and commit them. Code that runs during the lock
+# can still change those two files; they reach main only through a PR a
+# maintainer merges.
 
 on:
   pull_request:

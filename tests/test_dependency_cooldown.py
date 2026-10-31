@@ -182,6 +182,12 @@ def test_release_switch_round_trips_the_inspect_ai_source() -> None:
     released = inspect_ai_source.drop_source(tracking)
     assert "inspect-ai" not in tomllib.loads(released)["tool"]["uv"]["sources"]
     assert inspect_ai_source.add_source(released) == tracking
+    # A source written differently fails rather than being skipped or doubled.
+    reformatted = tracking.replace('", branch', '",  branch')
+    with pytest.raises(ValueError, match="source to read"):
+        inspect_ai_source.drop_source(reformatted)
+    with pytest.raises(ValueError, match="source to read"):
+        inspect_ai_source.add_source(reformatted)
 
 
 def test_release_switch_raises_the_inspect_ai_floor() -> None:

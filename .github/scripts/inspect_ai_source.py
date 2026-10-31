@@ -28,13 +28,24 @@ SOURCE = (
 FLOOR = re.compile(r'"inspect-ai>=[^"]*"')
 
 
+def has_source(pyproject: str) -> bool:
+    """Whether pyproject.toml gives inspect-ai a source, however it is written."""
+    sources = tomllib.loads(pyproject)["tool"]["uv"].get("sources", {})
+    return "inspect-ai" in sources
+
+
 def drop_source(pyproject: str) -> str:
-    return pyproject.replace(SOURCE, "")
+    dropped = pyproject.replace(SOURCE, "")
+    if has_source(dropped):
+        raise ValueError(f"expected inspect-ai's source to read: {SOURCE}")
+    return dropped
 
 
 def add_source(pyproject: str) -> str:
     if SOURCE in pyproject:
         return pyproject
+    if has_source(pyproject):
+        raise ValueError(f"expected inspect-ai's source to read: {SOURCE}")
     if pyproject.count(SOURCES_HEADER) != 1:
         raise ValueError(f"expected one {SOURCES_HEADER.strip()} table")
     return pyproject.replace(SOURCES_HEADER, SOURCES_HEADER + SOURCE)

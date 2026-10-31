@@ -193,14 +193,37 @@ class LazyJSONDict(dict[str, Any]):
         parts = []
         for key in self.keys():
             encoded_key = json.dumps(key, ensure_ascii=False)
-            value = super().__getitem__(key)
-            if key not in self._parsed and self._is_json_text(key, value):
-                encoded_value = value
-            else:
-                encoded_value = to_json(value, fallback=str).decode("utf-8")
+            encoded_value = self.value_to_json_string(key)
             parts.append(f"{encoded_key}:{encoded_value}")
 
         return "{" + ",".join(parts) + "}"
+
+    def value_to_json_string(self, key: str) -> str:
+        """Serialize one value, preserving unread JSON without caching parsed objects.
+
+        Args:
+            key: Dictionary key to serialize.
+
+        Returns:
+            JSON representation of the value.
+        """
+        value = super().__getitem__(key)
+        if key not in self._parsed and self._is_json_text(key, value):
+            return str(value)
+        return to_json(value, fallback=str).decode("utf-8")
+
+    def to_dict(self) -> dict[str, Any]:
+        """Resolve unread JSON objects and arrays for generic serializers.
+
+        Scalar-looking strings stay strings, matching `to_json_string()`.
+        Already parsed values retain any changes made by the caller.
+        """
+        return {
+            key: self[key]
+            if key not in self._parsed and self._is_json_text(key, value)
+            else value
+            for key, value in self.items()
+        }
 
 
 def merge_metadata(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:

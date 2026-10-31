@@ -109,8 +109,12 @@ async def test_passthrough_expands_to_the_materialized_transcript(
         info,
         "metadata",
         LazyJSONDict(
-            {"sample_metadata": '{"note": "summary"}', "target": "summary-target"},
-            json_keys=["sample_metadata"],
+            {
+                "sample_metadata": '{"note": "summary"}',
+                "target": "summary-target",
+                "eval_metadata": '{"run": "abc"}',
+            },
+            json_keys=["sample_metadata", "eval_metadata"],
         ),
     )
 
@@ -165,6 +169,7 @@ async def test_passthrough_expands_to_the_materialized_transcript(
     )
     # lazy values must arrive as objects: a raw JSON string here breaks equality with the parsed form
     assert envelope["metadata"] == materialized_metadata
+    assert envelope["metadata"]["eval_metadata"] == {"run": "abc"}
 
     if metadata:
         assert envelope["metadata"]["sample_metadata"]["note"] == "sample metadata"
@@ -174,6 +179,7 @@ async def test_passthrough_expands_to_the_materialized_transcript(
         assert envelope["metadata"] == {
             "sample_metadata": {"note": "summary"},
             "target": "summary-target",
+            "eval_metadata": {"run": "abc"},
         }
         # The index row's lazy values must come through as objects, not the
         # raw JSON strings `LazyJSONDict` stores until something parses them.

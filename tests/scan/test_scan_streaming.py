@@ -220,6 +220,18 @@ def test_recorded_input_resolves_attachments_like_materialized(
     assert streamed == control
 
 
+@pytest.mark.parametrize("spool_threshold", [0, 2**62], ids=["spooled", "materialized"])
+def test_recorded_input_preserves_metadata_objects(
+    monkeypatch: pytest.MonkeyPatch, spool_threshold: int
+) -> None:
+    """Reading a saved scan input must preserve the index metadata's types."""
+    recorded = json.loads(
+        _scan_input_column(monkeypatch, spool_threshold=spool_threshold)
+    )
+    for key in ("eval_metadata", "task_args", "generate_config", "model_roles"):
+        assert isinstance(recorded["metadata"][key], dict), key
+
+
 def test_unreadable_record_input_is_an_error_row(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

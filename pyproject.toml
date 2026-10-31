@@ -112,6 +112,32 @@ local_scheme = "no-local-version" # Important for PyPI compatibility
 [tool.hatch.metadata]
 allow-direct-references = true
 
+[tool.uv]
+# 0.11.8 is the first uv that keeps uv.lock stable with a relative exclude-newer,
+# and 0.13.4 the first that no longer trusts the compromised emSign root
+# (GHSA-hq85-5cpj-mr62).
+required-version = ">=0.13.4"
+# Only resolve releases at least 7 days old (see CONTRIBUTING.md).
+exclude-newer = "7 days"
+
+# A 6-hour cooldown instead, so a new release can be adopted the day it ships:
+# Inspect's own packages, the model provider SDKs, and the CA bundle (certifi),
+# whose releases usually remove compromised roots.
+[tool.uv.exclude-newer-package]
+anthropic = "6 hours"
+certifi = "6 hours"
+google-genai = "6 hours"
+inspect-ai = "6 hours"
+inspect-swe = "6 hours"
+openai = "6 hours"
+
+# Development and CI track inspect_ai main: uv.lock records the commit. Only uv
+# reads this; the published package requires the inspect-ai floor above. The
+# release PR removes it and locks the released inspect-ai, and a scheduled job
+# restores it after the release (.github/workflows/release-pin-deps.yml).
+[tool.uv.sources]
+inspect-ai = { git = "https://github.com/UKGovernmentBEIS/inspect_ai", branch = "main" }
+
 [tool.ruff]
 extend-exclude = ["docs"]
 src = ["."]

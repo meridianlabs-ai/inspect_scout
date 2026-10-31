@@ -1,25 +1,31 @@
 name: Pin inspect_ai for release
 
-# On the Release Please release PR, keep the `inspect_ai` dependency pinned to
-# the currently-shipped PyPI version:
-#   - rewrite a moving git ref (`inspect-ai @ git+...@main`) to
-#     `inspect-ai>=<latest>` — dev on `main` tracks inspect_ai's `main`, but a
-#     *published* scout must depend on a *released* inspect_ai (PyPI rejects
-#     direct-reference deps, and a git ref is not reproducible);
-#   - bump a stale floor (`inspect-ai>=OLD`) to the latest shipped version, so
-#     the declared minimum matches what the release build actually validated
-#     against (pip resolves the latest, so a stale floor could ship untested).
+# Development and CI track inspect_ai main: pyproject.toml's [tool.uv.sources]
+# points inspect-ai at its main branch, and uv.lock records the commit. A
+# published scout must require a released inspect_ai (PyPI rejects
+# direct-reference deps, and a git ref is not reproducible), and its release PR
+# should be tested against that release. This workflow keeps both true:
+#   - On the Release Please release PR, it drops the git source, locks the
+#     newest inspect-ai release that clears the cooldown, and raises the
+#     `inspect-ai>=` floor to it, so the release PR's CI runs locked against
+#     the release it ships with.
+#   - Merging the release PR takes that change to main. The scheduled run then
+#     opens a PR that restores the git source, so main tracks inspect_ai main
+#     again.
 #
-# Runs on release-PR events AND on a schedule: publishing a new inspect_ai to
+# Runs on release-PR events and on a schedule: publishing a new inspect_ai to
 # PyPI produces no event in this repo, so the schedule is what turns "inspect
 # shipped the fix we need" into "the release PR re-pins and goes green" without
-# a human nudge. The scheduled path no-ops unless a release PR is open.
+# a human nudge. If scout needs an unreleased inspect_ai, the release PR's
+# checks fail, which is the signal to cut an inspect_ai release first.
 #
-# This is the companion to release-dep-guard.yml: the guard *blocks* a release
-# PR that still carries a git ref; this workflow *fixes* it automatically. If
-# scout genuinely needs an unreleased inspect_ai, pinning to the shipped
-# version makes the release PR's build/tests fail loudly — which is the signal
-# to cut an inspect_ai release first (and this schedule picks it up once cut).
+# `uv lock` may build sdists to read their metadata, which runs dependency
+# code. So the lock jobs hold only a read-only token that checkout doesn't
+# persist, and restore no cache. The jobs that push hold the App token and
+# install and run nothing from the repo: they copy pyproject.toml and uv.lock
+# from the lock job's artifact and commit them. Code that runs during the lock
+# can still change those two files; they reach main only through a PR a
+# maintainer merges.
 
 on:
   pull_request:
@@ -28,31 +34,47 @@ on:
     - cron: "23 */2 * * *"
   workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: release-pin-deps
   cancel-in-progress: false
 
+env:
+  UV_VERSION: 0.13.5
+  RELEASE_BRANCH: release-please--branches--main
+
 jobs:
-  pin:
-    # PR events: only the Release Please release PR. Schedule/dispatch: always
-    # start; the first step exits quietly when no release PR is open.
-    if: ${{ github.event_name != 'pull_request' || github.head_ref == 'release-please--branches--main' }}
+  lock-release:
+    # PR events: only the Release Please release PR, from this repository.
+    # Schedule/dispatch: always start; the first step exits quietly when no
+    # release PR is open.
+    if: >-
+      github.repository == 'meridianlabs-ai/inspect_scout' &&
+      (github.event_name != 'pull_request' ||
+       (github.head_ref == 'release-please--branches--main' &&
+        github.event.pull_request.head.repo.full_name == github.repository))
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      sha: ${{ steps.lock.outputs.sha }}
+      changed: ${{ steps.lock.outputs.changed }}
     steps:
       - name: Check an open release PR exists (scheduled runs)
         id: relpr
         env:
           GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
+          if [ "$EVENT_NAME" = "pull_request" ]; then
             echo "found=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          n=$(gh pr list --repo "${{ github.repository }}" \
-                --head release-please--branches--main --state open \
+          n=$(gh pr list --repo "$GITHUB_REPOSITORY" \
+                --head "$RELEASE_BRANCH" --state open \
                 --json number --jq 'length')
           if [ "$n" -gt 0 ]; then
             echo "found=true" >> "$GITHUB_OUTPUT"
@@ -61,76 +83,166 @@ jobs:
             echo "found=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.relpr.outputs.found == 'true'
+        with:
+          ref: ${{ env.RELEASE_BRANCH }}
+          persist-credentials: false
+
+      - name: Install uv
+        if: steps.relpr.outputs.found == 'true'
+        uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: false
+
+      # -I keeps the checkout off sys.path, so a module at the release branch's
+      # root can't shadow the stdlib.
+      - name: Lock the released inspect_ai
+        id: lock
+        if: steps.relpr.outputs.found == 'true'
+        run: |
+          python3 -I .github/scripts/inspect_ai_source.py release
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          if git diff --quiet -- pyproject.toml uv.lock; then
+            echo "inspect_ai is already pinned to the newest release."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.lock.outputs.changed == 'true'
+        with:
+          name: release-lock
+          path: |
+            pyproject.toml
+            uv.lock
+          if-no-files-found: error
+          retention-days: 1
+
+  push-release:
+    needs: lock-release
+    if: needs.lock-release.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
       # App token so the pin commit re-triggers the PR's checks (guard + build).
       # A commit pushed with the default GITHUB_TOKEN would not trigger them.
       - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
-        if: steps.relpr.outputs.found == 'true'
+        id: app-token
+        with:
+          app-id: ${{ secrets.RELEASE_PLEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+
+      # The commit the lock job read: if the branch has moved since, the push
+      # below is rejected rather than overwriting it, and the next run retries.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.lock-release.outputs.sha }}
+          token: ${{ steps.app-token.outputs.token }}
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-lock
+          path: ${{ runner.temp }}/release-lock
+
+      # Copy only the two named files; nothing else from the artifact reaches
+      # the checkout.
+      - name: Commit and push the pin
+        run: |
+          cp "$RUNNER_TEMP/release-lock/pyproject.toml" "$RUNNER_TEMP/release-lock/uv.lock" .
+          git config user.name "meridian-release-bot[bot]"
+          git config user.email "meridian-release-bot[bot]@users.noreply.github.com"
+          git add pyproject.toml uv.lock
+          git commit -m "chore: pin inspect_ai to the shipped release for publishing"
+          git push origin "HEAD:refs/heads/$RELEASE_BRANCH"
+
+  lock-main:
+    if: >-
+      github.repository == 'meridianlabs-ai/inspect_scout' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      changed: ${{ steps.lock.outputs.changed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: false
+
+      - name: Restore the inspect_ai main git source
+        id: lock
+        run: |
+          python3 -I .github/scripts/inspect_ai_source.py main
+          if git diff --quiet -- pyproject.toml uv.lock; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.lock.outputs.changed == 'true'
+        with:
+          name: main-lock
+          path: |
+            pyproject.toml
+            uv.lock
+          if-no-files-found: error
+          retention-days: 1
+
+  open-main-pr:
+    needs: lock-main
+    if: needs.lock-main.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      # App token so the PR's checks run.
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         id: app-token
         with:
           app-id: ${{ secrets.RELEASE_PLEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: steps.relpr.outputs.found == 'true'
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.head_ref || 'release-please--branches--main' }}
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: main-lock
+          path: ${{ runner.temp }}/main-lock
+
+      - name: Apply the lock
+        run: cp "$RUNNER_TEMP/main-lock/pyproject.toml" "$RUNNER_TEMP/main-lock/uv.lock" .
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
           token: ${{ steps.app-token.outputs.token }}
+          add-paths: |
+            pyproject.toml
+            uv.lock
+          branch: track-inspect-ai-main
+          delete-branch: true
+          commit-message: "build: track inspect_ai main again after the release"
+          title: "build: track inspect_ai main again after the release"
+          body: |
+            The release PR locked the released inspect_ai and removed the
+            inspect_ai main git source from `pyproject.toml`. This restores
+            the source and locks inspect_ai's current main commit, so
+            development and CI track inspect_ai main again.
 
-      - name: Pin/bump inspect_ai to the shipped PyPI version
-        if: steps.relpr.outputs.found == 'true'
-        # -I keeps the checkout off sys.path: the release branch can carry
-        # agent-landed commits, and a json.py or re.py at its root would
-        # otherwise run here, beside the App token in .git/config.
-        run: |
-          python3 -I - <<'PY'
-          import json, re, sys, urllib.request
-
-          with urllib.request.urlopen("https://pypi.org/pypi/inspect-ai/json", timeout=30) as r:
-              version = json.load(r)["info"]["version"]
-          if not version:
-              print("::error::Could not resolve a released inspect-ai version from PyPI")
-              sys.exit(1)
-
-          def vtuple(v):
-              try:
-                  return tuple(int(p) for p in v.split("."))
-              except ValueError:
-                  return None
-
-          path = "pyproject.toml"
-          src = open(path).read()
-
-          git_pat = re.compile(r'"inspect[-_]ai\s*@\s*git\+[^"]*"')
-          floor_pat = re.compile(r'"inspect[-_]ai>=([0-9.]+)"')
-
-          if git_pat.search(src):
-              new = git_pat.sub(f'"inspect-ai>={version}"', src)
-              action = f"Pinned inspect_ai git ref to >={version}"
-          else:
-              m = floor_pat.search(src)
-              new, action = src, None
-              if m:
-                  cur, latest = vtuple(m.group(1)), vtuple(version)
-                  if cur and latest and latest > cur:
-                      new = floor_pat.sub(f'"inspect-ai>={version}"', src)
-                      action = f"Bumped inspect_ai floor {m.group(1)} -> {version}"
-
-          if action:
-              open(path, "w").write(new)
-              print(action)
-          else:
-              print(f"inspect_ai pin already current (latest PyPI: {version})")
-          PY
-
-      - name: Commit the pin if pyproject changed
-        if: steps.relpr.outputs.found == 'true'
-        run: |
-          if git diff --quiet -- pyproject.toml; then
-            echo "No change to commit."
-            exit 0
-          fi
-          git config user.name "meridian-release-bot[bot]"
-          git config user.email "meridian-release-bot[bot]@users.noreply.github.com"
-          git add pyproject.toml
-          git commit -m "chore: pin inspect_ai to the shipped release for publishing"
-          git push origin HEAD:release-please--branches--main
+            Opened by the [release-pin-deps workflow](https://github.com/${{ github.repository }}/actions/workflows/release-pin-deps.yml).

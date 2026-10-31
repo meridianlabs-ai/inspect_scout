@@ -97,11 +97,6 @@ ipython_config.py
 #   install all needed dependencies.
 #Pipfile.lock
 
-# UV
-#   Not committed: dev and CI install with pip / `uv pip` against inspect_ai main
-#   (see CONTRIBUTING.md), so a lock would pin a stale PyPI inspect_ai.
-uv.lock
-
 # poetry
 #   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
 #   This is especially recommended for binary packages to ensure reproducibility, and is more

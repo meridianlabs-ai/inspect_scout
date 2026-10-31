@@ -226,8 +226,9 @@ class ScanSpec(BaseModel):
                 for path in (PurePosixPath(name), PureWindowsPath(name))
             ):
                 raise ValueError(
-                    f"{name!r} is not a valid scanner name: it must not be an "
-                    "absolute path or contain a '..' component."
+                    f"{name!r} is not a valid scanner name: it must not start "
+                    "with '/', '\\' or a drive such as 'C:', or contain a '..' "
+                    "component."
                 )
         return scanners
 

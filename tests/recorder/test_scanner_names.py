@@ -60,6 +60,8 @@ async def test_sync_does_not_write_outside_the_scan_dir(
         "a\\..\\..\\victim",
         "C:victim",
         "C:/victim",
+        # a single letter and a colon is a Windows drive, which drops the scan dir
+        "x:v2",
         "\\\\server\\share\\victim",
     ],
 )

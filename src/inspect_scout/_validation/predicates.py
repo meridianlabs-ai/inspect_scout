@@ -159,7 +159,7 @@ async def _icontains(result: Result, target: JsonValue) -> bool:
         raise TypeError(
             f"icontains predicate requires string target, got {type(target).__name__}"
         )
-    return target.lower() in result.value.lower()
+    return target.casefold() in result.value.casefold()
 
 
 async def _iequals(result: Result, target: JsonValue) -> bool:
@@ -172,7 +172,7 @@ async def _iequals(result: Result, target: JsonValue) -> bool:
         raise TypeError(
             f"iequals predicate requires string target, got {type(target).__name__}"
         )
-    return result.value.lower() == target.lower()
+    return result.value.casefold() == target.casefold()
 
 
 # Registry of all built-in predicates

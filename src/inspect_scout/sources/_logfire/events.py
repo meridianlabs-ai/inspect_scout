@@ -111,6 +111,7 @@ async def to_model_event(span: dict[str, Any]) -> ModelEvent:
         timestamp=_get_timestamp(span, "start_timestamp"),
         completed=_get_end_timestamp(span),
         span_id=str(span.get("parent_span_id") or ""),
+        uuid=str(span["span_id"]) if span.get("span_id") else None,
     )
 
 
@@ -255,6 +256,24 @@ def _extract_span_metadata(span: dict[str, Any]) -> dict[str, Any] | None:
         metadata["level"] = level
 
     return metadata if metadata else None
+
+
+def tool_span_ids(spans: list[dict[str, Any]]) -> set[str]:
+    """IDs of the spans that `spans_to_events()` makes tool events of."""
+    return {
+        str(span.get("span_id"))
+        for span in spans
+        if not is_llm_span(span) and is_tool_span(span)
+    }
+
+
+def agent_span_ids(spans: list[dict[str, Any]]) -> set[str]:
+    """IDs of the spans that `spans_to_events()` makes agent spans of."""
+    return {
+        str(span.get("span_id"))
+        for span in spans
+        if not is_llm_span(span) and not is_tool_span(span) and is_agent_span(span)
+    }
 
 
 async def spans_to_events(spans: list[dict[str, Any]]) -> list[Event]:

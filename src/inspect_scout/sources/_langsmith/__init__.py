@@ -19,18 +19,19 @@ from inspect_ai.model import (
     ChatMessageAssistant,
     ChatMessageSystem,
     ChatMessageUser,
-    stable_message_ids,
 )
 
 from inspect_scout._transcript.types import Transcript
 
+from .._message_ids import TraceMessageIds
+from .._root_agent import root_agent_calls
 from .client import (
     LANGSMITH_SOURCE_TYPE,
     get_langsmith_client,
     retry_api_call,
 )
 from .detection import detect_provider_format, get_model_name
-from .events import runs_to_events
+from .events import runs_to_events, span_run_ids, tool_run_ids
 from .extraction import (
     extract_bool,
     extract_dict,
@@ -282,22 +283,37 @@ async def _trace_to_transcript(
     # Get LLM runs for message extraction and metadata
     llm_runs = get_llm_runs(ordered_runs)
 
+    model_events = [e for e in events if isinstance(e, ModelEvent)]
+    message_ids = TraceMessageIds(source_ids=True)
+    for event in model_events:
+        message_ids.apply(event, str(event.uuid))
+
     # Build messages from LLM inputs + outputs
     messages: list[ChatMessage] = []
+    messages_from: list[str] | None = None
     root_run_type = str(getattr(root_run, "run_type", "")).lower()
 
     # For chain/agent runs with LLM calls, use the full conversation from the
-    # last LLM event which includes all intermediate turns (tool calls, results).
-    # For raw LLM runs without chain wrapper, use root inputs directly.
-    if llm_runs:
-        model_events = [e for e in events if isinstance(e, ModelEvent)]
-        if model_events:
-            last_model = model_events[-1]
-            # Use the LLM's input which has the full conversation
-            messages = list(last_model.input)
-            # Append the final assistant response from output
-            if last_model.output and last_model.output.message:
-                messages.append(last_model.output.message)
+    # root agent's last LLM event, which includes all intermediate turns (tool
+    # calls, results). For raw LLM runs without chain wrapper, use root inputs
+    # directly.
+    root_calls = root_agent_calls(
+        model_events,
+        parents={
+            str(run.id): str(getattr(run, "parent_run_id", None) or "") or None
+            for run in ordered_runs
+        },
+        tools=tool_run_ids(ordered_runs),
+        spans=span_run_ids(ordered_runs),
+    )
+    if root_calls:
+        last_model = root_calls[-1]
+        # Use the LLM's input which has the full conversation
+        messages = list(last_model.input)
+        # Append the final assistant response from output
+        if last_model.output and last_model.output.choices:
+            messages.append(last_model.output.message)
+        messages_from = [str(last_model.uuid)]
 
     # Fallback: for traces without LLM events, try root inputs
     if not messages:
@@ -315,13 +331,7 @@ async def _trace_to_transcript(
                             messages.append(ChatMessageSystem(content=str(content)))
                         elif role == "assistant":
                             messages.append(ChatMessageAssistant(content=str(content)))
-
-    # Apply stable message IDs
-    apply_ids = stable_message_ids()
-    for event in events:
-        if isinstance(event, ModelEvent):
-            apply_ids(event)
-    apply_ids(messages)
+            TraceMessageIds().apply_messages(messages, str(root_run.id))
 
     # Extract metadata from root run
     metadata = extract_metadata(root_run)
@@ -369,6 +379,7 @@ async def _trace_to_transcript(
         error=error,
         limit=limit_val,
         messages=messages,
+        messages_from=messages_from,
         events=events,
         metadata=metadata,
     )
@@ -423,9 +434,7 @@ def _example_to_transcript(
     if not messages:
         return None
 
-    # Apply stable message IDs (no events for dataset examples)
-    apply_ids = stable_message_ids()
-    apply_ids(messages)
+    TraceMessageIds().apply_messages(messages, example_id)
 
     # Extract metadata
     metadata: dict[str, Any] = {}

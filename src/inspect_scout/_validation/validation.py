@@ -104,8 +104,7 @@ def _load_file(file: str | Path) -> pd.DataFrame:
     suffix = str(path.suffix).lower()
 
     if suffix == ".csv":
-        # Use automatic type detection (pandas default)
-        df = pd.read_csv(path)
+        df = _read_csv(path)
 
         # Auto-detect headerless 2-column CSV (for backwards compatibility)
         # If we have exactly 2 columns and no "id" column, check if first row looks like data
@@ -120,7 +119,7 @@ def _load_file(file: str | Path) -> pd.DataFrame:
                 or str(name).startswith("label_")
                 for name in col_names
             ):
-                df = pd.read_csv(path, header=None, names=["id", "target"])
+                df = _read_csv(path, headerless=True)
                 first_row = df.iloc[0].tolist() if len(df) > 0 else []
                 logger.warning(
                     f"CSV '{path.name}' has no recognized headers. "
@@ -166,6 +165,34 @@ def _load_file(file: str | Path) -> pd.DataFrame:
         )
 
 
+# Identifier columns are read as written, without numeric or missing-value
+# inference, so "001", "1" and "NA" keep matching the transcripts they name.
+_CSV_IDENTIFIER_COLUMNS = ("id", "task_id")
+
+
+def _read_csv(path: Path, *, headerless: bool = False) -> pd.DataFrame:
+    names = ["id", "target"] if headerless else None
+    with path.open("r", encoding="utf-8", newline="") as file:
+        df = pd.read_csv(file, names=names)
+        columns = [c for c in _CSV_IDENTIFIER_COLUMNS if c in df.columns]
+        if columns:
+            # Keep the default inference for targets and other columns.
+            file.seek(0)
+            ids = pd.read_csv(
+                file,
+                names=names,
+                usecols=columns,
+                dtype=str,
+                keep_default_na=False,
+            )
+            for column in columns:
+                df[column] = ids[column]
+            if "task_id" in columns:
+                # An empty task_id cell means the case has no task_id.
+                df["task_id"] = df["task_id"].replace("", None)
+    return df
+
+
 def _convert_csv_types(df: pd.DataFrame) -> pd.DataFrame:
     """Convert CSV string types to appropriate Python types."""
 
@@ -204,10 +231,10 @@ def _convert_csv_types(df: pd.DataFrame) -> pd.DataFrame:
 
         return val
 
-    # Apply conversion to all columns except 'id'
+    # Apply conversion to all columns except identifiers
     # Convert values and change dtype to object to preserve mixed types
     for col in df.columns:
-        if col == "id":
+        if col in _CSV_IDENTIFIER_COLUMNS:
             continue
         converted_values = [convert_value(val) for val in df[col]]
         # Change dtype to object first to prevent type coercion during assignment

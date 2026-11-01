@@ -9,12 +9,10 @@ remote protocols that _parquet_source downloads via fsspec.
 import io
 from collections.abc import Iterator
 from pathlib import Path
-from types import SimpleNamespace
-from urllib.parse import unquote, urlsplit
 
-import inspect_scout._recorder.file as file_module
 import pandas as pd
 import pyarrow as pa
+import pyarrow.fs as pafs
 import pyarrow.parquet as pq
 import pytest
 from inspect_scout import HEAVY_COLUMNS
@@ -138,7 +136,7 @@ def test_parquet_source_fsspec_download(memory_scan_dir: UPath) -> None:
 # File names in a scan directory come from whoever wrote the scan. pyarrow
 # treats a URI path as percent-encoded and splits off `?query` and `#fragment`,
 # so these names must reach it as literal file names.
-HOSTILE_NAMES = ["%2e%2e%2fvictim", "x?endpoint_override=127.0.0.1#"]
+HOSTILE_NAMES = ["%2e%2e%2fvictim", "x?endpoint_override=evil.example#"]
 
 
 @pytest.mark.parametrize("name", HOSTILE_NAMES)
@@ -150,28 +148,31 @@ def test_parquet_source_file_uri_reads_the_literal_file_name(
     pq.write_table(pa.table({"who": ["victim"]}), tmp_path / "victim.parquet")
     pq.write_table(pa.table({"who": ["inside"]}), scan_dir / f"{name}.parquet")
 
-    source, pa_fs = _parquet_source(UPath(scan_dir.as_uri()) / f"{name}.parquet")
+    # file:// + posix path, not Path.as_uri(): scout's writer (fsspec) reads
+    # file:// paths literally, without percent-decoding.
+    location = UPath("file://" + scan_dir.as_posix())
+    source, pa_fs = _parquet_source(location / f"{name}.parquet")
 
     assert pq.read_table(source, filesystem=pa_fs)["who"].to_pylist() == ["inside"]
 
 
 @pytest.mark.parametrize("name", HOSTILE_NAMES)
-def test_parquet_source_cloud_uri_keeps_the_literal_key(
+def test_parquet_source_s3_uri_keeps_the_literal_key_and_endpoint(
     monkeypatch: pytest.MonkeyPatch, name: str
 ) -> None:
-    uris: list[str] = []
+    # offline: pyarrow builds the filesystem without contacting the endpoint
+    monkeypatch.setenv("AWS_ENDPOINT_URL", "http://127.0.0.1:1")
+    monkeypatch.setenv("AWS_EC2_METADATA_DISABLED", "true")
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "test")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "test")
 
-    def from_uri(uri: str) -> tuple[object, str]:
-        uris.append(uri)
-        return object(), "unused"
-
-    monkeypatch.setattr(
-        file_module,
-        "pafs",
-        SimpleNamespace(FileSystem=SimpleNamespace(from_uri=from_uri)),
+    pa_path, pa_fs = _parquet_source(
+        UPath("s3://bucket/scans/scan_id=1") / f"{name}.parquet"
     )
-    _parquet_source(UPath("s3://bucket/scans/scan_id=1") / f"{name}.parquet")
 
-    uri = urlsplit(uris[0])
-    assert (uri.scheme, uri.query, uri.fragment) == ("s3", "", "")
-    assert unquote(uri.netloc + uri.path) == f"bucket/scans/scan_id=1/{name}.parquet"
+    assert pa_path == f"bucket/scans/scan_id=1/{name}.parquet"
+    assert isinstance(pa_fs, pafs.S3FileSystem)
+    # S3FileSystem exposes its options only through pickling
+    reduced = pa_fs.__reduce__()
+    assert isinstance(reduced, tuple)
+    assert reduced[1][0]["endpoint_override"] == "http://127.0.0.1:1"

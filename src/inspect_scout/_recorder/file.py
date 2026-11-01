@@ -1200,7 +1200,8 @@ def _parquet_source(
     (path, None).
 
     File names in a scan directory come from whoever wrote the scan, and
-    pyarrow percent-decodes a URI's path and splits off `?query` options, so
+    pyarrow percent-decodes a URI's path and splits off `?query` options and
+    `#fragment`, so
     pyarrow only ever sees the literal name: quoted inside a URI, or as a
     plain local path.
     """

@@ -9,8 +9,12 @@ remote protocols that _parquet_source downloads via fsspec.
 import io
 from collections.abc import Iterator
 from pathlib import Path
+from types import SimpleNamespace
+from urllib.parse import unquote, urlsplit
 
+import inspect_scout._recorder.file as file_module
 import pandas as pd
+import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 from inspect_scout import HEAVY_COLUMNS
@@ -129,3 +133,45 @@ def test_parquet_source_fsspec_download(memory_scan_dir: UPath) -> None:
     assert pa_fs is None
     metadata = pq.read_metadata(str(SCAN_DIR / "word_counter.parquet"))
     assert pq.read_table(source).num_rows == metadata.num_rows
+
+
+# File names in a scan directory come from whoever wrote the scan. pyarrow
+# treats a URI path as percent-encoded and splits off `?query` and `#fragment`,
+# so these names must reach it as literal file names.
+HOSTILE_NAMES = ["%2e%2e%2fvictim", "x?endpoint_override=127.0.0.1#"]
+
+
+@pytest.mark.parametrize("name", HOSTILE_NAMES)
+def test_parquet_source_file_uri_reads_the_literal_file_name(
+    tmp_path: Path, name: str
+) -> None:
+    scan_dir = tmp_path / "scan"
+    scan_dir.mkdir()
+    pq.write_table(pa.table({"who": ["victim"]}), tmp_path / "victim.parquet")
+    pq.write_table(pa.table({"who": ["inside"]}), scan_dir / f"{name}.parquet")
+
+    source, pa_fs = _parquet_source(UPath(scan_dir.as_uri()) / f"{name}.parquet")
+
+    assert pq.read_table(source, filesystem=pa_fs)["who"].to_pylist() == ["inside"]
+
+
+@pytest.mark.parametrize("name", HOSTILE_NAMES)
+def test_parquet_source_cloud_uri_keeps_the_literal_key(
+    monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    uris: list[str] = []
+
+    def from_uri(uri: str) -> tuple[object, str]:
+        uris.append(uri)
+        return object(), "unused"
+
+    monkeypatch.setattr(
+        file_module,
+        "pafs",
+        SimpleNamespace(FileSystem=SimpleNamespace(from_uri=from_uri)),
+    )
+    _parquet_source(UPath("s3://bucket/scans/scan_id=1") / f"{name}.parquet")
+
+    uri = urlsplit(uris[0])
+    assert (uri.scheme, uri.query, uri.fragment) == ("s3", "", "")
+    assert unquote(uri.netloc + uri.path) == f"bucket/scans/scan_id=1/{name}.parquet"

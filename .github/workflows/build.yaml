@@ -193,6 +193,8 @@ jobs:
             exit 1
           fi
 
+      # openapi.json is generated against inspect_ai main. The release PR
+      # tests the released inspect_ai, which would show false drift.
       - name: Regenerate schema from Python source
         if: github.head_ref != 'release-please--branches--main'
         run: uv run --no-sync python scripts/export_openapi_schema.py

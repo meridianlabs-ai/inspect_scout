@@ -20,6 +20,7 @@ REPO = pathlib.Path(__file__).parents[1]
 GITHUB = REPO / ".github"
 WORKFLOWS = GITHUB / "workflows"
 UV_SYNC_ACTION = "./.github/actions/uv-sync"
+RELEASE_BRANCH = "release-please--branches--main"
 LOCKED_JOBS = {
     "py-mypy": "--extra dev",
     "py-test": "--extra dev",
@@ -153,16 +154,37 @@ def test_locked_jobs_install_from_the_lockfile(name: str, args: str) -> None:
     assert not [line for line in run_lines(job) if line.startswith("uv sync")]
 
 
-def test_uv_sync_action_checks_the_lock_before_moving_inspect_ai() -> None:
+def test_uv_sync_action_moves_only_inspect_ai() -> None:
     # Moving inspect-ai re-locks, which would also absorb a pyproject.toml
-    # change nobody locked, so the committed lock is checked first.
+    # change nobody locked, so the committed lock is checked first. The
+    # release PR resolves without sources, and later steps see the committed
+    # uv.lock.
     action = yaml.safe_load((GITHUB / "actions" / "uv-sync" / "action.yml").read_text())
-    uv = [line for line in run_lines(action["runs"]) if line.startswith("uv ")]
-    assert uv == [
+    (step,) = action["runs"]["steps"]
+    assert step["env"]["HEAD_REF"] == "${{ github.head_ref }}"
+    lines = [line for line in run_lines({"steps": [step]}) if line[0] != "#"]
+    assert lines == [
         "uv lock --check",
+        f'if [ "$HEAD_REF" = "{RELEASE_BRANCH}" ]; then',
+        "export UV_NO_SOURCES=1",
+        "fi",
         "uv lock --upgrade-package inspect-ai",
         "uv sync --locked $ARGS",
+        "git checkout -- uv.lock",
     ]
+
+
+def test_release_branch_name_matches_everywhere() -> None:
+    # A misspelt name silently runs the release PR as a dev PR.
+    names = {
+        where: set(re.findall(r"release-please--branches--[\w-]+", text))
+        for where, text in [
+            *[(path.name, path.read_text()) for path in workflows()],
+            ("uv-sync", (GITHUB / "actions" / "uv-sync" / "action.yml").read_text()),
+        ]
+    }
+    assert set().union(*names.values()) == {RELEASE_BRANCH}
+    assert names["uv-sync"] and names["build.yaml"] and names["release-pin-deps.yml"]
 
 
 # A bare `uv run` or `uv sync` re-resolves an out-of-date uv.lock and installs
@@ -203,11 +225,6 @@ def test_no_workflow_opts_out_of_the_cooldown() -> None:
         if re.search(r"--exclude-newer(=|\s+)false", line)
     ]
     assert floating == []
-
-
-def test_floor_script_raises_the_inspect_ai_floor() -> None:
-    text = inspect_ai_floor.set_floor((REPO / "pyproject.toml").read_text(), "99.0.0")
-    assert "inspect-ai>=99.0.0" in tomllib.loads(text)["project"]["dependencies"]
 
 
 def test_floor_script_requires_a_released_inspect_ai() -> None:

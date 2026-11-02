@@ -12,16 +12,15 @@ name: Pin inspect_ai for release
 #
 # Runs on release-PR events and on a schedule: publishing a new inspect_ai to
 # PyPI produces no event in this repo, so the schedule is what turns "inspect
-# shipped the fix we need" into "the release PR re-pins and goes green" without
+# shipped the fix we need" into "the release PR raises its floor" without
 # a human nudge. If scout needs an unreleased inspect_ai, the release PR's
 # checks fail, which is the signal to cut an inspect_ai release first.
 #
 # `uv lock` may build sdists to read their metadata, which runs dependency
 # code. So the floor job holds only a read-only token that checkout doesn't
-# persist, and restores no cache. The push job holds the App token and installs
-# and runs nothing from the repo: it copies pyproject.toml from the floor job's
-# artifact and commits it. Code that runs during the lock can still change that
-# file; it reaches main only through the release PR a maintainer merges.
+# persist, and restores no cache. It hands the push job only a version string.
+# The push job holds the App token, installs and runs nothing from the repo,
+# checks that the string is a version, and writes it into pyproject.toml.
 
 on:
   pull_request:
@@ -57,6 +56,7 @@ jobs:
       pull-requests: read
     outputs:
       sha: ${{ steps.floor.outputs.sha }}
+      version: ${{ steps.floor.outputs.version }}
       changed: ${{ steps.floor.outputs.changed }}
     steps:
       - name: Check an open release PR exists (scheduled runs)
@@ -94,26 +94,19 @@ jobs:
 
       # -I keeps the checkout off sys.path, so a module at the release branch's
       # root can't shadow the stdlib.
-      - name: Raise the inspect-ai floor
+      - name: Find the release the release PR is tested against
         id: floor
         if: steps.relpr.outputs.found == 'true'
         run: |
-          python3 -I .github/scripts/inspect_ai_floor.py
+          version=$(python3 -I .github/scripts/inspect_ai_floor.py)
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          if git diff --quiet -- pyproject.toml; then
-            echo "The floor is already the newest release."
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if grep -qF "\"inspect-ai>=$version\"" pyproject.toml; then
+            echo "The floor is already inspect-ai $version."
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
-
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: steps.floor.outputs.changed == 'true'
-        with:
-          name: release-floor
-          path: pyproject.toml
-          if-no-files-found: error
-          retention-days: 1
 
   push-floor:
     needs: floor
@@ -138,16 +131,19 @@ jobs:
           ref: ${{ needs.floor.outputs.sha }}
           token: ${{ steps.app-token.outputs.token }}
 
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: release-floor
-          path: ${{ runner.temp }}/release-floor
-
-      # Copy only the named file; nothing else from the artifact reaches the
-      # checkout.
       - name: Commit and push the floor
+        env:
+          VERSION: ${{ needs.floor.outputs.version }}
         run: |
-          cp "$RUNNER_TEMP/release-floor/pyproject.toml" .
+          if ! [[ "$VERSION" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+            echo "::error::Not a release version: $VERSION"
+            exit 1
+          fi
+          sed -i -E "s/\"inspect-ai>=[^\"]*\"/\"inspect-ai>=$VERSION\"/" pyproject.toml
+          if [ "$(grep -cF "\"inspect-ai>=$VERSION\"" pyproject.toml)" != 1 ]; then
+            echo "::error::Expected one inspect-ai>= requirement in pyproject.toml"
+            exit 1
+          fi
           git config user.name "meridian-release-bot[bot]"
           git config user.email "meridian-release-bot[bot]@users.noreply.github.com"
           git add pyproject.toml

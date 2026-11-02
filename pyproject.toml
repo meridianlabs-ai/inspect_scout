@@ -131,10 +131,10 @@ inspect-ai = "6 hours"
 inspect-swe = "6 hours"
 openai = "6 hours"
 
-# Development and CI track inspect_ai main: uv.lock records the commit. Only uv
-# reads this; the published package requires the inspect-ai floor above. The
-# release PR removes it and locks the released inspect-ai, and a scheduled job
-# restores it after the release (.github/workflows/release-pin-deps.yml).
+# Development and CI track inspect_ai main. uv.lock records a commit, and CI
+# moves it to main's latest before installing (.github/actions/uv-sync). Only uv
+# reads this; the published package requires the inspect-ai floor above, and
+# the release PR's CI installs the newest release instead.
 [tool.uv.sources]
 inspect-ai = { git = "https://github.com/UKGovernmentBEIS/inspect_ai", branch = "main" }
 

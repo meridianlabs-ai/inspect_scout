@@ -1,0 +1,31 @@
+name: Install Python dependencies from uv.lock
+description: >-
+  Fails on a uv.lock that is out of date with pyproject.toml, moves inspect-ai
+  to inspect_ai main's latest commit, and installs. Every other package stays
+  at its locked version. On the Release Please release PR, inspect-ai is the
+  newest release that clears its cooldown instead, so the release is tested
+  against the inspect_ai it will require.
+
+inputs:
+  args:
+    description: Arguments for `uv sync --locked`, such as `--extra dev`.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Install dependencies
+      shell: bash
+      env:
+        HEAD_REF: ${{ github.head_ref }}
+        ARGS: ${{ inputs.args }}
+      run: |
+        uv lock --check
+        if [ "$HEAD_REF" = "release-please--branches--main" ]; then
+          export UV_NO_SOURCES=1
+        fi
+        uv lock --upgrade-package inspect-ai
+        uv sync --locked $ARGS
+        # Later steps check for uncommitted changes and build from the checkout.
+        git checkout -- uv.lock

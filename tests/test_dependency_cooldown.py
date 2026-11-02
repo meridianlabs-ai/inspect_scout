@@ -2,9 +2,9 @@
 
 pyproject.toml holds back releases younger than seven days, or six hours for a
 short list of packages. Dependabot applies the seven days to its uv.lock bumps
-and leaves that list to uv, and every CI job installs from uv.lock. Testing
-against the newest releases happens in meridianlabs-ai/canaries, outside this
-repository.
+and leaves that list to uv. Every CI job installs from uv.lock, except that
+inspect-ai moves to inspect_ai main's latest commit first. Testing against the
+newest releases happens in meridianlabs-ai/canaries, outside this repository.
 """
 
 import importlib.util
@@ -19,11 +19,12 @@ import yaml
 REPO = pathlib.Path(__file__).parents[1]
 GITHUB = REPO / ".github"
 WORKFLOWS = GITHUB / "workflows"
+UV_SYNC_ACTION = "./.github/actions/uv-sync"
 LOCKED_JOBS = {
-    "py-mypy": "uv sync --locked --extra dev",
-    "py-test": "uv sync --locked --extra dev",
-    "py-build": "uv sync --locked --extra dist --no-install-project",
-    "check-schema-and-types": "uv sync --locked",
+    "py-mypy": "--extra dev",
+    "py-test": "--extra dev",
+    "py-build": "--extra dist --no-install-project",
+    "check-schema-and-types": "",
 }
 EXEMPT_COOLDOWN = "6 hours"
 # Unlocked installs another change replaces (publish.yaml's build toolchain).
@@ -31,11 +32,11 @@ EXEMPT_COOLDOWN = "6 hours"
 KNOWN_UNLOCKED = {("publish.yaml:publish", "pip install --upgrade pip build")}
 
 spec = importlib.util.spec_from_file_location(
-    "inspect_ai_source", GITHUB / "scripts" / "inspect_ai_source.py"
+    "inspect_ai_floor", GITHUB / "scripts" / "inspect_ai_floor.py"
 )
 assert spec and spec.loader
-inspect_ai_source = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(inspect_ai_source)
+inspect_ai_floor = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(inspect_ai_floor)
 
 
 def pyproject() -> dict[str, Any]:
@@ -93,6 +94,9 @@ def test_dependabot_cooldown_matches_pyproject() -> None:
     assert cooldown["default-days"] == int(days.group(1))
     exempt = config["exclude-newer-package"]
     assert set(exempt.values()) == {EXEMPT_COOLDOWN}
+    # CI moves inspect-ai to inspect_ai main, so Dependabot leaves it alone.
+    assert dependabot["ignore"] == [{"dependency-name": "inspect-ai"}]
+    exempt = {name: days for name, days in exempt.items() if name != "inspect-ai"}
     # Dependabot's cooldown counts whole days, so it leaves these to uv.
     assert sorted(cooldown["exclude"]) == sorted(exempt)
     # The exempt packages have their own group, listed before the catch-all.
@@ -137,11 +141,28 @@ def test_ruff_action_uses_the_locked_ruff() -> None:
         assert step["with"]["version-file"] == "uv.lock", step
 
 
-@pytest.mark.parametrize("name,sync", LOCKED_JOBS.items())
-def test_locked_jobs_install_from_the_lockfile(name: str, sync: str) -> None:
+@pytest.mark.parametrize("name,args", LOCKED_JOBS.items())
+def test_locked_jobs_install_from_the_lockfile(name: str, args: str) -> None:
     job = yaml.safe_load((WORKFLOWS / "build.yaml").read_text())["jobs"][name]
-    syncs = [line for line in run_lines(job) if line.startswith("uv sync")]
-    assert syncs == [sync]
+    installs = [
+        step.get("with", {}).get("args", "")
+        for step in job["steps"]
+        if step.get("uses") == UV_SYNC_ACTION
+    ]
+    assert installs == [args]
+    assert not [line for line in run_lines(job) if line.startswith("uv sync")]
+
+
+def test_uv_sync_action_checks_the_lock_before_moving_inspect_ai() -> None:
+    # Moving inspect-ai re-locks, which would also absorb a pyproject.toml
+    # change nobody locked, so the committed lock is checked first.
+    action = yaml.safe_load((GITHUB / "actions" / "uv-sync" / "action.yml").read_text())
+    uv = [line for line in run_lines(action["runs"]) if line.startswith("uv ")]
+    assert uv == [
+        "uv lock --check",
+        "uv lock --upgrade-package inspect-ai",
+        "uv sync --locked $ARGS",
+    ]
 
 
 # A bare `uv run` or `uv sync` re-resolves an out-of-date uv.lock and installs
@@ -184,32 +205,12 @@ def test_no_workflow_opts_out_of_the_cooldown() -> None:
     assert floating == []
 
 
-def test_release_switch_round_trips_the_inspect_ai_source() -> None:
-    # The release PR drops the source and the scheduled job restores it
-    # (release-pin-deps.yml), so both edits must apply to pyproject.toml.
-    tracking = inspect_ai_source.add_source((REPO / "pyproject.toml").read_text())
-    sources = tomllib.loads(tracking)["tool"]["uv"]["sources"]
-    assert sources["inspect-ai"] == {
-        "git": "https://github.com/UKGovernmentBEIS/inspect_ai",
-        "branch": "main",
-    }
-    released = inspect_ai_source.drop_source(tracking)
-    assert "inspect-ai" not in tomllib.loads(released)["tool"]["uv"]["sources"]
-    assert inspect_ai_source.add_source(released) == tracking
-    # A source written differently fails rather than being skipped or doubled.
-    reformatted = tracking.replace('", branch', '",  branch')
-    with pytest.raises(ValueError, match="source to read"):
-        inspect_ai_source.drop_source(reformatted)
-    with pytest.raises(ValueError, match="source to read"):
-        inspect_ai_source.add_source(reformatted)
-
-
-def test_release_switch_raises_the_inspect_ai_floor() -> None:
-    text = inspect_ai_source.set_floor((REPO / "pyproject.toml").read_text(), "99.0.0")
+def test_floor_script_raises_the_inspect_ai_floor() -> None:
+    text = inspect_ai_floor.set_floor((REPO / "pyproject.toml").read_text(), "99.0.0")
     assert "inspect-ai>=99.0.0" in tomllib.loads(text)["project"]["dependencies"]
 
 
-def test_release_switch_requires_a_released_inspect_ai() -> None:
+def test_floor_script_requires_a_released_inspect_ai() -> None:
     lock = """
 [[package]]
 name = "inspect-ai"
@@ -217,9 +218,9 @@ version = "0.3.287.dev30"
 source = { git = "https://github.com/UKGovernmentBEIS/inspect_ai?branch=main#abc" }
 """
     with pytest.raises(ValueError, match="not locked from PyPI"):
-        inspect_ai_source.locked_inspect_ai(lock)
+        inspect_ai_floor.locked_inspect_ai(lock)
     released = lock.replace('version = "0.3.287.dev30"', 'version = "0.3.287"').replace(
         'git = "https://github.com/UKGovernmentBEIS/inspect_ai?branch=main#abc"',
         'registry = "https://pypi.org/simple"',
     )
-    assert inspect_ai_source.locked_inspect_ai(released) == "0.3.287"
+    assert inspect_ai_floor.locked_inspect_ai(released) == "0.3.287"

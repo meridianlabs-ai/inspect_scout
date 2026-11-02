@@ -1,17 +1,14 @@
 name: Pin inspect_ai for release
 
 # Development and CI track inspect_ai main: pyproject.toml's [tool.uv.sources]
-# points inspect-ai at its main branch, and uv.lock records the commit. A
-# published scout must require a released inspect_ai (PyPI rejects
-# direct-reference deps, and a git ref is not reproducible), and its release PR
-# should be tested against that release. This workflow keeps both true:
-#   - On the Release Please release PR, it drops the git source, locks the
-#     newest inspect-ai release that clears the cooldown, and raises the
-#     `inspect-ai>=` floor to it, so the release PR's CI runs locked against
-#     the release it ships with.
-#   - Merging the release PR takes that change to main. The scheduled run then
-#     opens a PR that restores the git source, so main tracks inspect_ai main
-#     again.
+# points inspect-ai at its main branch, and every CI install moves it to main's
+# latest commit (.github/actions/uv-sync). A published scout requires a
+# released inspect_ai through the `inspect-ai>=` floor in [project] (PyPI
+# rejects direct-reference deps, and only uv reads [tool.uv.sources]). On the
+# release PR, CI ignores the git source and installs the newest inspect-ai
+# release that clears its cooldown. This workflow raises the floor to that
+# release, so the declared minimum is the version the release was tested
+# against. Main keeps the git source throughout.
 #
 # Runs on release-PR events and on a schedule: publishing a new inspect_ai to
 # PyPI produces no event in this repo, so the schedule is what turns "inspect
@@ -20,12 +17,11 @@ name: Pin inspect_ai for release
 # checks fail, which is the signal to cut an inspect_ai release first.
 #
 # `uv lock` may build sdists to read their metadata, which runs dependency
-# code. So the lock jobs hold only a read-only token that checkout doesn't
-# persist, and restore no cache. The jobs that push hold the App token and
-# install and run nothing from the repo: they copy pyproject.toml and uv.lock
-# from the lock job's artifact and commit them. Code that runs during the lock
-# can still change those two files; they reach main only through a PR a
-# maintainer merges.
+# code. So the floor job holds only a read-only token that checkout doesn't
+# persist, and restores no cache. The push job holds the App token and installs
+# and runs nothing from the repo: it copies pyproject.toml from the floor job's
+# artifact and commits it. Code that runs during the lock can still change that
+# file; it reaches main only through the release PR a maintainer merges.
 
 on:
   pull_request:
@@ -45,7 +41,7 @@ env:
   RELEASE_BRANCH: release-please--branches--main
 
 jobs:
-  lock-release:
+  floor:
     # PR events: only the Release Please release PR, from this repository.
     # Schedule/dispatch: always start; the first step exits quietly when no
     # release PR is open.
@@ -60,8 +56,8 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      sha: ${{ steps.lock.outputs.sha }}
-      changed: ${{ steps.lock.outputs.changed }}
+      sha: ${{ steps.floor.outputs.sha }}
+      changed: ${{ steps.floor.outputs.changed }}
     steps:
       - name: Check an open release PR exists (scheduled runs)
         id: relpr
@@ -98,38 +94,36 @@ jobs:
 
       # -I keeps the checkout off sys.path, so a module at the release branch's
       # root can't shadow the stdlib.
-      - name: Lock the released inspect_ai
-        id: lock
+      - name: Raise the inspect-ai floor
+        id: floor
         if: steps.relpr.outputs.found == 'true'
         run: |
-          python3 -I .github/scripts/inspect_ai_source.py release
+          python3 -I .github/scripts/inspect_ai_floor.py
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          if git diff --quiet -- pyproject.toml uv.lock; then
-            echo "inspect_ai is already pinned to the newest release."
+          if git diff --quiet -- pyproject.toml; then
+            echo "The floor is already the newest release."
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: steps.lock.outputs.changed == 'true'
+        if: steps.floor.outputs.changed == 'true'
         with:
-          name: release-lock
-          path: |
-            pyproject.toml
-            uv.lock
+          name: release-floor
+          path: pyproject.toml
           if-no-files-found: error
           retention-days: 1
 
-  push-release:
-    needs: lock-release
-    if: needs.lock-release.outputs.changed == 'true'
+  push-floor:
+    needs: floor
+    if: needs.floor.outputs.changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
     steps:
-      # App token so the pin commit re-triggers the PR's checks (guard + build).
+      # App token so the floor commit re-triggers the PR's checks (guard + build).
       # A commit pushed with the default GITHUB_TOKEN would not trigger them.
       - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         id: app-token
@@ -137,112 +131,26 @@ jobs:
           app-id: ${{ secrets.RELEASE_PLEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
 
-      # The commit the lock job read: if the branch has moved since, the push
+      # The commit the floor job read: if the branch has moved since, the push
       # below is rejected rather than overwriting it, and the next run retries.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.lock-release.outputs.sha }}
+          ref: ${{ needs.floor.outputs.sha }}
           token: ${{ steps.app-token.outputs.token }}
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: release-lock
-          path: ${{ runner.temp }}/release-lock
+          name: release-floor
+          path: ${{ runner.temp }}/release-floor
 
-      # Copy only the two named files; nothing else from the artifact reaches
-      # the checkout.
-      - name: Commit and push the pin
+      # Copy only the named file; nothing else from the artifact reaches the
+      # checkout.
+      - name: Commit and push the floor
         run: |
-          cp "$RUNNER_TEMP/release-lock/pyproject.toml" "$RUNNER_TEMP/release-lock/uv.lock" .
+          cp "$RUNNER_TEMP/release-floor/pyproject.toml" .
           git config user.name "meridian-release-bot[bot]"
           git config user.email "meridian-release-bot[bot]@users.noreply.github.com"
-          git add pyproject.toml uv.lock
-          git commit -m "chore: pin inspect_ai to the shipped release for publishing"
+          git add pyproject.toml
+          git commit -m "chore: raise the inspect_ai floor to the release it was tested against"
           git push origin "HEAD:refs/heads/$RELEASE_BRANCH"
 
-  lock-main:
-    if: >-
-      github.repository == 'meridianlabs-ai/inspect_scout' &&
-      github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: read
-    outputs:
-      changed: ${{ steps.lock.outputs.changed }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
-        with:
-          version: ${{ env.UV_VERSION }}
-          enable-cache: false
-
-      - name: Restore the inspect_ai main git source
-        id: lock
-        run: |
-          python3 -I .github/scripts/inspect_ai_source.py main
-          if git diff --quiet -- pyproject.toml uv.lock; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: steps.lock.outputs.changed == 'true'
-        with:
-          name: main-lock
-          path: |
-            pyproject.toml
-            uv.lock
-          if-no-files-found: error
-          retention-days: 1
-
-  open-main-pr:
-    needs: lock-main
-    if: needs.lock-main.outputs.changed == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      # App token so the PR's checks run.
-      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
-        id: app-token
-        with:
-          app-id: ${{ secrets.RELEASE_PLEASE_APP_ID }}
-          private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: main-lock
-          path: ${{ runner.temp }}/main-lock
-
-      - name: Apply the lock
-        run: cp "$RUNNER_TEMP/main-lock/pyproject.toml" "$RUNNER_TEMP/main-lock/uv.lock" .
-
-      - name: Create pull request
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
-        with:
-          token: ${{ steps.app-token.outputs.token }}
-          add-paths: |
-            pyproject.toml
-            uv.lock
-          branch: track-inspect-ai-main
-          delete-branch: true
-          commit-message: "build: track inspect_ai main again after the release"
-          title: "build: track inspect_ai main again after the release"
-          body: |
-            The release PR locked the released inspect_ai and removed the
-            inspect_ai main git source from `pyproject.toml`. This restores
-            the source and locks inspect_ai's current main commit, so
-            development and CI track inspect_ai main again.
-
-            Opened by the [release-pin-deps workflow](https://github.com/${{ github.repository }}/actions/workflows/release-pin-deps.yml).

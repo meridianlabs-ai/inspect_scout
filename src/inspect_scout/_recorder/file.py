@@ -1209,7 +1209,7 @@ def _parquet_source(
     if path_str.startswith(("s3://", "gs://", "gcs://", "abfs://", "abfss://")):
         scheme, rest = path_str.split("://", 1)
         # Leave the authority (userinfo@host:port) exactly as written so its
-        # percent-encoding round-trips — re-quoting would turn a secret like
+        # percent-encoding round-trips. Re-quoting would turn a secret like
         # `p%40ss` into the literal `p%40ss` instead of `p@ss`. Quote only the
         # object path, so `%`, `?`, `#`, spaces, unicode, `@`, `:` in the key
         # reach pyarrow literally.

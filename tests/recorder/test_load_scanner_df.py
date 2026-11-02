@@ -179,10 +179,17 @@ def test_parquet_source_s3_uri_keeps_the_literal_key_and_endpoint(
 
 
 @pytest.mark.parametrize("name", HOSTILE_NAMES)
-def test_parquet_source_s3_uri_keeps_authority_userinfo_decoded(name: str) -> None:
+def test_parquet_source_s3_uri_keeps_authority_userinfo_decoded(
+    monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    # offline: pyarrow builds the filesystem without contacting the endpoint.
+    # No access key env vars: the test checks the credentials from the URI.
+    monkeypatch.setenv("AWS_ENDPOINT_URL", "http://127.0.0.1:1")
+    monkeypatch.setenv("AWS_EC2_METADATA_DISABLED", "true")
+
     # The authority may carry percent-encoded userinfo (access:secret@bucket).
-    # pyarrow decodes it once, so the modified URI must leave it untouched —
-    # re-quoting would double-encode `p%40ss` into the literal `p%40ss`
+    # pyarrow decodes it once, so the modified URI must leave it untouched.
+    # Re-quoting would double-encode `p%40ss` into the literal `p%40ss`
     # instead of the intended secret `p@ss`.
     pa_path, pa_fs = _parquet_source(
         UPath("s3://user:p%40ss@bucket/scans/scan_id=1") / f"{name}.parquet"

@@ -196,7 +196,9 @@ def test_parquet_source_s3_uri_keeps_authority_userinfo_decoded(
     )
 
     assert isinstance(pa_fs, pafs.S3FileSystem)
-    options = pa_fs.__reduce__()[1][0]
+    reduced = pa_fs.__reduce__()
+    assert isinstance(reduced, tuple)
+    options = reduced[1][0]
     assert options["access_key"] == "user"
     assert options["secret_key"] == "p@ss"
     # the hostile key still reaches pyarrow literally

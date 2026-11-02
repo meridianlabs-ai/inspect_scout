@@ -8,6 +8,7 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
+from inspect_scout._recorder.buffer import RecorderBuffer, _sanitize_component
 from inspect_scout._recorder.file import FileRecorder
 from inspect_scout._scanspec import ScannerSpec, ScanSpec
 from pydantic import ValidationError
@@ -87,13 +88,13 @@ def test_scan_spec_accepts_scanner_names_inside_the_scan_dir(name: str) -> None:
     assert list(spec.scanners) == [name]
 
 
-async def _init_scan(tmp_path: Path, scanner: str) -> Path:
+async def _init_scan(tmp_path: Path, scanner: str, location: str | None = None) -> Path:
     recorder = FileRecorder()
     await recorder.init(
         ScanSpec(scan_name="test", scanners={"s": ScannerSpec(name="s")}),
-        str(tmp_path / "scans"),
+        location or str(tmp_path / "scans"),
     )
-    scan_dir = Path(recorder.scan_dir.as_posix())
+    scan_dir = Path(recorder.scan_dir.path)
     spec_file = scan_dir / "_scan.json"
     spec = json.loads(spec_file.read_text())
     spec["scanners"] = {scanner: spec["scanners"]["s"]}
@@ -138,6 +139,33 @@ async def test_sync_does_not_follow_a_directory_symlink_out_of_the_scan_dir(
 
     try:
         await FileRecorder.sync(scan_dir.as_posix(), complete=True)
+    except Exception:
+        pass
+
+    assert hashlib.sha256(outside.read_bytes()).hexdigest() == before
+
+
+@pytest.mark.asyncio
+async def test_sync_does_not_decode_a_percent_encoded_dotdot_out_of_the_scan_dir(
+    tmp_path: Path, scout_buffer_dir: Path
+) -> None:
+    """A `%2e%2e/victim` name in a file:// scan must not write to its parent."""
+    name = "%2e%2e/victim"
+    scan_dir = await _init_scan(tmp_path, name, "file://" + str(tmp_path / "scans"))
+    outside = scan_dir.parent / "victim.parquet.tmp"
+    outside.write_bytes(b"outside file must survive\n")
+    before = hashlib.sha256(outside.read_bytes()).hexdigest()
+
+    scan_uri = "file://" + str(scan_dir)
+    buffered = (
+        Path(RecorderBuffer.buffer_dir(scan_uri).as_posix())
+        / f"scanner={_sanitize_component(name)}"
+    )
+    buffered.mkdir(parents=True)
+    pq.write_table(pa.table({"x": [1, 2, 3]}), buffered / "t.parquet")
+
+    try:
+        await FileRecorder.sync(scan_uri, complete=True)
     except Exception:
         pass
 

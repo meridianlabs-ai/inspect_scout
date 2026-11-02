@@ -1201,16 +1201,21 @@ def _parquet_source(
 
     File names in a scan directory come from whoever wrote the scan, and
     pyarrow percent-decodes a URI's path and splits off `?query` options and
-    `#fragment`, so
-    pyarrow only ever sees the literal name: quoted inside a URI, or as a
-    plain local path.
+    `#fragment`, so pyarrow only ever sees the literal name: quoted inside a
+    URI, or as a plain local path.
     """
     path_str = parquet_path.as_posix()
 
     if path_str.startswith(("s3://", "gs://", "gcs://", "abfs://", "abfss://")):
         scheme, rest = path_str.split("://", 1)
+        # Leave the authority (userinfo@host:port) exactly as written so its
+        # percent-encoding round-trips — re-quoting would turn a secret like
+        # `p%40ss` into the literal `p%40ss` instead of `p@ss`. Quote only the
+        # object path, so `%`, `?`, `#`, spaces, unicode, `@`, `:` in the key
+        # reach pyarrow literally.
+        authority, slash, key = rest.partition("/")
         pa_fs, pa_path = pafs.FileSystem.from_uri(
-            f"{scheme}://{quote(rest, safe='/@:')}"
+            f"{scheme}://{authority}{slash}{quote(key, safe='/')}"
         )
         return pa_path, pa_fs
 

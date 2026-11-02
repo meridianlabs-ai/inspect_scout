@@ -176,3 +176,21 @@ def test_parquet_source_s3_uri_keeps_the_literal_key_and_endpoint(
     reduced = pa_fs.__reduce__()
     assert isinstance(reduced, tuple)
     assert reduced[1][0]["endpoint_override"] == "http://127.0.0.1:1"
+
+
+@pytest.mark.parametrize("name", HOSTILE_NAMES)
+def test_parquet_source_s3_uri_keeps_authority_userinfo_decoded(name: str) -> None:
+    # The authority may carry percent-encoded userinfo (access:secret@bucket).
+    # pyarrow decodes it once, so the modified URI must leave it untouched —
+    # re-quoting would double-encode `p%40ss` into the literal `p%40ss`
+    # instead of the intended secret `p@ss`.
+    pa_path, pa_fs = _parquet_source(
+        UPath("s3://user:p%40ss@bucket/scans/scan_id=1") / f"{name}.parquet"
+    )
+
+    assert isinstance(pa_fs, pafs.S3FileSystem)
+    options = pa_fs.__reduce__()[1][0]
+    assert options["access_key"] == "user"
+    assert options["secret_key"] == "p@ss"
+    # the hostile key still reaches pyarrow literally
+    assert pa_path == f"bucket/scans/scan_id=1/{name}.parquet"

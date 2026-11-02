@@ -85,3 +85,60 @@ def test_scan_spec_rejects_scanner_names_that_leave_the_scan_dir(name: str) -> N
 def test_scan_spec_accepts_scanner_names_inside_the_scan_dir(name: str) -> None:
     spec = ScanSpec(scan_name="test", scanners={name: ScannerSpec(name="s")})
     assert list(spec.scanners) == [name]
+
+
+async def _init_scan(tmp_path: Path, scanner: str) -> Path:
+    recorder = FileRecorder()
+    await recorder.init(
+        ScanSpec(scan_name="test", scanners={"s": ScannerSpec(name="s")}),
+        str(tmp_path / "scans"),
+    )
+    scan_dir = Path(recorder.scan_dir.as_posix())
+    spec_file = scan_dir / "_scan.json"
+    spec = json.loads(spec_file.read_text())
+    spec["scanners"] = {scanner: spec["scanners"]["s"]}
+    spec_file.write_text(json.dumps(spec))
+    return scan_dir
+
+
+@pytest.mark.asyncio
+async def test_sync_does_not_follow_a_tmp_file_symlink_out_of_the_scan_dir(
+    tmp_path: Path, scout_buffer_dir: Path
+) -> None:
+    """A shared scan's `s.parquet.tmp` symlink must not redirect sync's write."""
+    outside = tmp_path / "elsewhere" / "notes.txt"
+    outside.parent.mkdir()
+    outside.write_text("not a parquet file\n")
+    before = hashlib.sha256(outside.read_bytes()).hexdigest()
+
+    scan_dir = await _init_scan(tmp_path, "s")
+    pq.write_table(pa.table({"x": [1, 2, 3]}), scan_dir / "s.parquet")
+    (scan_dir / "s.parquet.tmp").symlink_to(outside)
+
+    try:
+        await FileRecorder.sync(scan_dir.as_posix(), complete=True)
+    except Exception:
+        pass
+
+    assert hashlib.sha256(outside.read_bytes()).hexdigest() == before
+
+
+@pytest.mark.asyncio
+async def test_sync_does_not_follow_a_directory_symlink_out_of_the_scan_dir(
+    tmp_path: Path, scout_buffer_dir: Path
+) -> None:
+    """A shared scan's `pkg` dir symlink must not route `pkg/victim` outside."""
+    outside = tmp_path / "elsewhere" / "victim.parquet"
+    outside.parent.mkdir()
+    pq.write_table(pa.table({"x": [1, 2, 3]}), outside)
+    before = hashlib.sha256(outside.read_bytes()).hexdigest()
+
+    scan_dir = await _init_scan(tmp_path, "pkg/victim")
+    (scan_dir / "pkg").symlink_to(outside.parent, target_is_directory=True)
+
+    try:
+        await FileRecorder.sync(scan_dir.as_posix(), complete=True)
+    except Exception:
+        pass
+
+    assert hashlib.sha256(outside.read_bytes()).hexdigest() == before

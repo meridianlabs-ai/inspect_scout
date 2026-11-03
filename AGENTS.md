@@ -4,7 +4,7 @@
 - **Python package** (`src/inspect_scout/`) - Core library for analyzing LLM evaluation transcripts. Provides a CLI, programmatic API, and FastAPI server. Handles transcript databases, scanners, validation, and results.
 - **React frontend** (`src/inspect_scout/_view/ts-mono/`) - TypeScript monorepo (Turborepo + pnpm workspaces) for the web UI, embedded as a git submodule. See its own [CLAUDE.md](src/inspect_scout/_view/ts-mono/CLAUDE.md) and [submodule guide](src/inspect_scout/_view/ts-mono/docs/submodule-guide.md).
 
-Development setup (editable install, inspect_ai tracked from `main`, frontend/Git LFS setup) is in [CONTRIBUTING.md](CONTRIBUTING.md).
+Development setup (`uv sync --extra dev`, the dependency cooldown, inspect_ai tracked from `main`, frontend/Git LFS setup) is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Principles
 
@@ -141,7 +141,8 @@ Notes:
 
 ### Common Pitfalls
 - Use the venv for all Python commands: either reference `.venv/bin/` directly or run `source .venv/bin/activate`
-- **Never use `uv sync` or `uv run`**—developers often have local editable installs (e.g., `pip install -e` for inspect_ai) that uv silently removes
+- Set up or refresh the venv with `uv sync --extra dev`. Use `uv run --no-sync`, not plain `uv run`: developers often have a local editable inspect_ai installed over the locked one, and a plain `uv run` or `uv sync` reinstalls the locked version
+- After changing dependencies in `pyproject.toml`, run `uv lock` and commit `uv.lock`; CI's `uv sync --locked` fails on a stale lock. Don't override the 7-day `exclude-newer` cooldown
 
 
 ## TypeScript
@@ -184,7 +185,7 @@ pnpm install
 Pipeline: Pydantic models → openapi.json → generated.ts
 
 After Python API changes:
-1. `.venv/bin/python scripts/export_openapi_schema.py`—regenerates `src/inspect_scout/_view/openapi.json`
+1. `uv sync --upgrade-package inspect-ai --extra dev` (CI regenerates against inspect_ai main's latest commit), then `.venv/bin/python scripts/export_openapi_schema.py`—regenerates `src/inspect_scout/_view/openapi.json`
 2. In the submodule's `apps/scout`: `pnpm types:generate`—regenerates `apps/scout/src/types/generated.ts` (`pnpm build` does NOT regenerate types)
 3. Commit both: `openapi.json` in this repo, `generated.ts` in the submodule. Landing a submodule change requires the coordinated flow in [.agents/skills/land-ts-mono/SKILL.md](.agents/skills/land-ts-mono/SKILL.md)
 

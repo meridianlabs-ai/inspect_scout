@@ -4,16 +4,42 @@ Thanks for contributing to Inspect Scout — this guide covers local setup, the 
 
 ## Development setup
 
-Clone the repository and install it editable with the `[dev]` extras. Development tracks `inspect_ai` from `main`, so install that first (this is what CI does):
+Install [uv](https://docs.astral.sh/uv/) 0.13.4 or later, then clone the repository and create the environment:
 
 ```bash
 git clone https://github.com/meridianlabs-ai/inspect_scout
 cd inspect_scout
-pip install git+https://github.com/UKGovernmentBEIS/inspect_ai.git
-pip install -e ".[dev]"
+uv sync --extra dev
 ```
 
-Run all Python commands from the project virtualenv (reference `.venv/bin/` directly or `source .venv/bin/activate`). Do **not** use `uv sync` or `uv run` — they can silently remove local editable installs.
+`uv sync` creates `.venv` with the exact versions in `uv.lock`, the `[dev]` extra included, and installs Scout editable. Run Python commands from it: `uv run <command>`, `.venv/bin/<command>`, or `source .venv/bin/activate`. `uv sync` without `--extra dev` removes the dev tools again.
+
+### Dependencies and the cooldown
+
+`uv.lock` pins every Python dependency. CI's type-check, test, build and schema jobs install their dependencies from it, and fail when `uv.lock` is out of date with `pyproject.toml`. When you change dependencies in `pyproject.toml`, run `uv lock` and commit both files.
+
+`pyproject.toml` sets `exclude-newer = "7 days"` under `[tool.uv]`, so `uv lock`, `uv sync` and `uv pip` only pick releases that have been on PyPI for at least seven days. A compromised release is usually found and removed within that time, before it reaches `uv.lock`, CI or your machine. A few packages wait 6 hours instead, so a new release can be adopted the day it ships: `inspect-ai`, `inspect-swe`, the `anthropic`, `openai` and `google-genai` SDKs, and `certifi`, the CA bundle. They are listed in `[tool.uv.exclude-newer-package]`. Dependabot's `uv` entry in `.github/dependabot.yml` repeats the cooldown and the list, except `inspect-ai`, which it ignores, and `tests/test_dependency_cooldown.py` checks that they match.
+
+Dependabot proposes `uv.lock` updates daily, once a release has cleared its cooldown. To adopt a release sooner, run `uv lock --upgrade-package <package>` and commit `uv.lock`. A release still inside its cooldown can't be locked; wait for it rather than overriding `exclude-newer`.
+
+Testing against the newest release of every dependency happens in the nightly canary in [meridianlabs-ai/canaries](https://github.com/meridianlabs-ai/canaries), so Scout's own CI doesn't need to.
+
+### inspect_ai main
+
+Development and CI track inspect_ai's `main` branch. `[tool.uv.sources]` in `pyproject.toml` points `inspect-ai` at its git repository, and `uv.lock` records a commit. Only uv reads `[tool.uv.sources]`: the published package requires the `inspect-ai>=` floor in `[project]`.
+
+- CI moves inspect-ai to the latest `main` commit before every install (`.github/actions/uv-sync`), so it always tests against inspect_ai main. Every other package stays at its locked version.
+- `uv sync --extra dev` installs the commit in `uv.lock`. To move to the latest `main` commit, run `uv sync --upgrade-package inspect-ai --extra dev`. Committing the updated `uv.lock` is optional.
+- On the release PR, CI ignores the git source and installs the newest inspect-ai release that has cleared its cooldown, so the release is tested against the inspect_ai users will get. `.github/workflows/release-pin-deps.yml` raises the floor to that release. Main keeps the git source.
+
+To work against a local inspect_ai checkout, install it over the locked one:
+
+```bash
+uv sync --extra dev
+uv pip install -e ../inspect_ai
+```
+
+Then run commands with `.venv/bin/<command>` or `uv run --no-sync <command>`. A plain `uv run` or `uv sync` reinstalls the locked inspect_ai.
 
 ### Frontend (TypeScript viewer)
 
@@ -53,9 +79,10 @@ pnpm build   # production build — run before committing; we ship the built JS
 
 ### Regenerating schema and types
 
-Shared types flow **Python (Pydantic models) → `openapi.json` → `generated.ts`**. These artifacts are generated, never hand-edited, and CI fails if they drift from source. After changing any Python model that crosses this boundary, regenerate and commit both artifacts:
+Shared types flow **Python (Pydantic models) → `openapi.json` → `generated.ts`**. These artifacts are generated, never hand-edited, and CI fails if they drift from source. After changing any Python model that crosses this boundary, regenerate and commit both artifacts. CI regenerates against inspect_ai main's latest commit, so move to it first:
 
 ```bash
+uv sync --upgrade-package inspect-ai --extra dev
 .venv/bin/python scripts/export_openapi_schema.py     # Python → openapi.json
 cd src/inspect_scout/_view/ts-mono/apps/scout && pnpm types:generate   # openapi.json → generated.ts
 ```

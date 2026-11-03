@@ -2,9 +2,10 @@
 
 pyproject.toml holds back releases younger than seven days, or six hours for a
 list of model provider SDKs and Inspect packages. Dependabot applies the seven
-days to its uv.lock bumps and leaves that list to uv. Every CI job installs from uv.lock, except that
-inspect-ai moves to inspect_ai main's latest commit first. Testing against the
-newest releases happens in meridianlabs-ai/canaries, outside this repository.
+days to its uv.lock bumps and leaves that list to uv. Every CI job installs
+from uv.lock, except that inspect-ai moves to inspect_ai main's latest commit
+first. Testing against the newest releases happens in meridianlabs-ai/canaries,
+outside this repository.
 """
 
 import importlib.util

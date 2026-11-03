@@ -121,6 +121,8 @@ jobs:
         with:
           app-id: ${{ secrets.RELEASE_PLEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+          # Only what the push needs, not every permission the App has.
+          permission-contents: write
 
       # The commit the floor job read: if the branch has moved since, the push
       # below is rejected rather than overwriting it, and the next run retries.

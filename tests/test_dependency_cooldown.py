@@ -1,16 +1,18 @@
 """Tests for the dependency cooldown in pyproject.toml and the CI jobs around it.
 
 pyproject.toml holds back releases younger than seven days, or six hours for a
-short list of packages. Dependabot applies the seven days to its uv.lock bumps
-and leaves that list to uv. Every CI job installs from uv.lock, except that
-inspect-ai moves to inspect_ai main's latest commit first. Testing against the
-newest releases happens in meridianlabs-ai/canaries, outside this repository.
+list of model provider SDKs and Inspect packages. Dependabot applies the seven
+days to its uv.lock bumps and leaves that list to uv. Every CI job installs
+from uv.lock, except that inspect-ai moves to inspect_ai main's latest commit
+first. Testing against the newest releases happens in meridianlabs-ai/canaries,
+outside this repository.
 """
 
 import importlib.util
 import pathlib
 import re
 import tomllib
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -50,6 +52,26 @@ def pyproject() -> dict[str, Any]:
 def uv_config() -> dict[str, Any]:
     config: dict[str, Any] = pyproject()["tool"]["uv"]
     return config
+
+
+def normalize(package: str) -> str:
+    return re.sub(r"[-_.]+", "-", package).lower()
+
+
+def direct_dependencies() -> set[str]:
+    """Packages in the pyproject.toml `dependencies` or the `dev` extra."""
+    project = pyproject()["project"]
+    requirements = project["dependencies"] + project["optional-dependencies"]["dev"]
+    return {
+        normalize(re.split(r"[^A-Za-z0-9._-]", requirement, maxsplit=1)[0])
+        for requirement in requirements
+    }
+
+
+def cooldown_days(exclude_newer: str) -> int:
+    days = re.fullmatch(r"(\d+) days", exclude_newer)
+    assert days, exclude_newer
+    return int(days[1])
 
 
 def dependabot_uv() -> dict[str, Any]:
@@ -106,25 +128,86 @@ def workflow_run_lines() -> list[tuple[str, str]]:
     return lines
 
 
-def test_dependabot_cooldown_matches_pyproject() -> None:
+def verify_exclude_newer_package(
+    config: dict[str, Any], direct: set[str], now: datetime
+) -> None:
+    # Each entry is "6 hours" or a dated entry younger than the cooldown.
+    max_age = timedelta(days=cooldown_days(config["exclude-newer"]))
+    for package, cooldown in config["exclude-newer-package"].items():
+        assert normalize(package) in direct, f"{package} is not a direct dependency"
+        if cooldown != EXEMPT_COOLDOWN:
+            age = now - datetime.fromisoformat(cooldown)
+            assert timedelta(0) <= age < max_age, (
+                f'dated entry {package} = "{cooldown}" is in the future or stale'
+            )
+
+
+def test_exclude_newer_package_entries() -> None:
+    verify_exclude_newer_package(uv_config(), direct_dependencies(), datetime.now(UTC))
+
+
+def test_non_direct_entry_is_caught() -> None:
     config = uv_config()
-    days = re.fullmatch(r"(\d+) days", config["exclude-newer"])
-    assert days, config["exclude-newer"]
-    dependabot = dependabot_uv()
+    config["exclude-newer-package"]["certifi"] = EXEMPT_COOLDOWN
+    with pytest.raises(AssertionError, match="not a direct dependency"):
+        verify_exclude_newer_package(config, direct_dependencies(), datetime.now(UTC))
+
+
+def test_fresh_dated_entry_passes() -> None:
+    config = uv_config()
+    now = datetime.now(UTC)
+    config["exclude-newer-package"]["duckdb"] = (now - timedelta(days=6)).isoformat()
+    verify_exclude_newer_package(config, direct_dependencies(), now)
+    verify_dependabot_cooldown(config, dependabot_uv())
+
+
+def test_stale_dated_entry_is_caught() -> None:
+    config = uv_config()
+    now = datetime.now(UTC)
+    config["exclude-newer-package"]["duckdb"] = (now - timedelta(days=7)).isoformat()
+    with pytest.raises(AssertionError, match="dated entry"):
+        verify_exclude_newer_package(config, direct_dependencies(), now)
+
+
+def test_future_dated_entry_is_caught() -> None:
+    config = uv_config()
+    now = datetime.now(UTC)
+    config["exclude-newer-package"]["duckdb"] = (now + timedelta(days=1)).isoformat()
+    with pytest.raises(AssertionError, match="dated entry"):
+        verify_exclude_newer_package(config, direct_dependencies(), now)
+
+
+def test_other_cooldown_value_is_caught() -> None:
+    config = uv_config()
+    config["exclude-newer-package"]["duckdb"] = "1 day"
+    with pytest.raises(ValueError):
+        verify_exclude_newer_package(config, direct_dependencies(), datetime.now(UTC))
+
+
+def verify_dependabot_cooldown(
+    config: dict[str, Any], dependabot: dict[str, Any]
+) -> None:
     cooldown = dependabot["cooldown"]
-    assert cooldown["default-days"] == int(days.group(1))
-    exempt = config["exclude-newer-package"]
-    assert set(exempt.values()) == {EXEMPT_COOLDOWN}
+    assert cooldown["default-days"] == cooldown_days(config["exclude-newer"])
     # CI moves inspect-ai to inspect_ai main, so Dependabot leaves it alone.
     assert dependabot["ignore"] == [{"dependency-name": "inspect-ai"}]
-    exempt = {name: days for name, days in exempt.items() if name != "inspect-ai"}
-    # Dependabot's cooldown counts whole days, so it leaves these to uv.
-    assert sorted(cooldown["exclude"]) == sorted(exempt)
+    # Dependabot's cooldown counts whole days, so it leaves the "6 hours"
+    # entries to uv. Dated entries are locked by hand.
+    exempt = sorted(
+        package
+        for package, cooldown in config["exclude-newer-package"].items()
+        if cooldown == EXEMPT_COOLDOWN and package != "inspect-ai"
+    )
+    assert sorted(cooldown["exclude"]) == exempt
     # The exempt packages have their own group, listed before the catch-all.
     groups = dependabot["groups"]
     assert list(groups) == ["six-hour-cooldown", "python-packages"]
-    assert sorted(groups["six-hour-cooldown"]["patterns"]) == sorted(exempt)
+    assert sorted(groups["six-hour-cooldown"]["patterns"]) == exempt
     assert groups["python-packages"]["patterns"] == ["*"]
+
+
+def test_dependabot_cooldown_matches_pyproject() -> None:
+    verify_dependabot_cooldown(uv_config(), dependabot_uv())
 
 
 def test_uv_comes_from_the_shared_setup_uv() -> None:

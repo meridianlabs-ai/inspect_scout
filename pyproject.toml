@@ -119,12 +119,10 @@ required-version = ">=0.13.4"
 # Only resolve releases at least 7 days old (see CONTRIBUTING.md).
 exclude-newer = "7 days"
 
-# A 6-hour cooldown instead, so a new release can be adopted the day it ships:
-# Inspect's own packages, the model provider SDKs, and the CA bundle (certifi),
-# whose releases usually remove compromised roots.
+# 6 hours only for direct dependencies that are a model provider SDK or an
+# Inspect package; see CONTRIBUTING.md.
 [tool.uv.exclude-newer-package]
 anthropic = "6 hours"
-certifi = "6 hours"
 google-genai = "6 hours"
 inspect-ai = "6 hours"
 inspect-swe = "6 hours"

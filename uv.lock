@@ -28,7 +28,6 @@ exclude-newer-span = "P7D"
 
 [options.exclude-newer-package]
 anthropic = { timestamp = "0001-01-01T00:00:00Z", span = "PT6H" }
-certifi = { timestamp = "0001-01-01T00:00:00Z", span = "PT6H" }
 google-genai = { timestamp = "0001-01-01T00:00:00Z", span = "PT6H" }
 inspect-ai = { timestamp = "0001-01-01T00:00:00Z", span = "PT6H" }
 inspect-swe = { timestamp = "0001-01-01T00:00:00Z", span = "PT6H" }

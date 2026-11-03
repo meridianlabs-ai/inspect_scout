@@ -142,7 +142,7 @@ Notes:
 ### Common Pitfalls
 - Use the venv for all Python commands: either reference `.venv/bin/` directly or run `source .venv/bin/activate`
 - Set up or refresh the venv with `uv sync --extra dev`. Use `uv run --no-sync`, not plain `uv run`: developers often have a local editable inspect_ai installed over the locked one, and a plain `uv run` or `uv sync` reinstalls the locked version
-- After changing dependencies in `pyproject.toml`, run `uv lock` and commit `uv.lock`; CI's `uv sync --locked` fails on a stale lock. Don't override the 7-day `exclude-newer` cooldown
+- After changing dependencies in `pyproject.toml`, run `uv lock` and commit `uv.lock`; CI's `uv sync --locked` fails on a stale lock. Don't override the 7-day `exclude-newer` cooldown; for an emergency release, CONTRIBUTING.md describes a dated entry
 
 
 ## TypeScript

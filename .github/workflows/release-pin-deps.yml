@@ -86,7 +86,7 @@ jobs:
 
       - name: Install uv
         if: steps.relpr.outputs.found == 'true'
-        uses: meridianlabs-ai/actions/setup-uv@2e29d39eac45f500a64f443ec31aa6fb874f9ddc # main
+        uses: meridianlabs-ai/actions/setup-uv@f4ae19412da5597fc283e3ef62db1a67384ae609 # main
         with:
           actions-cache: none
 

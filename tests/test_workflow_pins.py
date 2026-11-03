@@ -17,13 +17,10 @@ PINNED = re.compile(r"[^@\s]+@[0-9a-f]{40}")
 
 # References allowed to stay unpinned, each with the reason.
 ALLOWED_UNPINNED = {
-    # Shared agent stubs that track main across Meridian repos. Pinning them
-    # is a decision for the meridianlabs-ai/agents owners.
+    # Shared agent stubs. meridianlabs-ai/agents has callers track its main,
+    # so a merged change reaches every Meridian repo on its next run.
     "meridianlabs-ai/agents/.github/workflows/claude.yml@main",
     "meridianlabs-ai/agents/.github/workflows/claude-review.yml@main",
-    # Pinned by the PRs that split publish.yaml and npm-publish.yml; remove
-    # once both have merged.
-    "meridianlabs-ai/actions/slack-approval-ping@v1",
 }
 
 
@@ -40,11 +37,15 @@ def workflow_uses(workflow: dict[str, Any]) -> Iterator[str]:
 def test_workflow_uses_are_pinned_to_commits() -> None:
     checked = 0
     unpinned: set[str] = set()
+    allowed_seen: set[str] = set()
     for path in sorted([*WORKFLOWS.glob("*.yml"), *WORKFLOWS.glob("*.yaml")]):
         text = path.read_text()
         for uses in workflow_uses(yaml.safe_load(text)):
             checked += 1
-            if uses.startswith("./") or uses in ALLOWED_UNPINNED:
+            if uses in ALLOWED_UNPINNED:
+                allowed_seen.add(uses)
+                continue
+            if uses.startswith("./"):
                 continue
             trailers = re.findall(
                 rf"uses:\s*{re.escape(uses)}(.*)$", text, re.MULTILINE
@@ -58,6 +59,10 @@ def test_workflow_uses_are_pinned_to_commits() -> None:
     assert not unpinned, (
         "pin these to a full commit SHA with a version comment "
         "(`owner/repo@<sha> # vX.Y.Z`):\n" + "\n".join(sorted(unpinned))
+    )
+    stale = ALLOWED_UNPINNED - allowed_seen
+    assert not stale, (
+        f"no workflow uses these; remove them from ALLOWED_UNPINNED: {stale}"
     )
 
 

@@ -34,9 +34,6 @@ LOCKED_JOBS = {
     "check-schema-and-types": {"python-version": "3.11"},
 }
 EXEMPT_COOLDOWN = "6 hours"
-# Unlocked installs another change replaces (publish.yaml's build toolchain).
-# Remove each entry once that lands.
-KNOWN_UNLOCKED = {("publish.yaml:publish", "pip install --upgrade pip build")}
 
 spec = importlib.util.spec_from_file_location(
     "inspect_ai_floor", GITHUB / "scripts" / "inspect_ai_floor.py"
@@ -242,7 +239,7 @@ def test_pip_installs_are_dependency_free_or_hashed() -> None:
             and "--require-hashes" not in line.split()
         )
     ]
-    assert set(unlocked) - KNOWN_UNLOCKED == set()
+    assert unlocked == []
 
 
 def test_no_workflow_opts_out_of_the_cooldown() -> None:

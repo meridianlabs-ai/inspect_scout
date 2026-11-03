@@ -43,7 +43,6 @@ updates:
       default-days: 7
       exclude:
         - "anthropic"
-        - "certifi"
         - "google-genai"
         - "inspect-swe"
         - "openai"
@@ -53,7 +52,6 @@ updates:
       six-hour-cooldown:
         patterns:
           - "anthropic"
-          - "certifi"
           - "google-genai"
           - "inspect-swe"
           - "openai"

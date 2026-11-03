@@ -2,9 +2,14 @@ version: 2
 
 updates:
   # Keeps the SHA-pinned actions current. Dependabot bumps a `<sha> # vX.Y.Z`
-  # pin to the new release's SHA and rewrites the tag comment to match.
+  # pin to the new release's SHA and rewrites the tag comment to match. A
+  # `<sha> # main` pin (meridianlabs-ai/actions, until a release tag has the
+  # shared Python actions) moves to that branch's head, with no cooldown.
   - package-ecosystem: github-actions
-    directory: /
+    # / covers the workflows; the local composite actions pin actions too.
+    directories:
+      - /
+      - /.github/actions/*
     schedule:
       interval: weekly
     # Wait a week after a release before proposing it, so a compromised

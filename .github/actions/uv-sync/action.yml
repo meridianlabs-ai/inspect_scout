@@ -1,31 +1,52 @@
 name: Install Python dependencies from uv.lock
 description: >-
-  Fails on a uv.lock that is out of date with pyproject.toml, moves inspect-ai
-  to inspect_ai main's latest commit, and installs. Every other package stays
-  at its locked version. On the Release Please release PR, inspect-ai is the
-  newest release that clears its cooldown instead, so the release is tested
-  against the inspect_ai it will require.
+  Installs uv and Python, fails on a uv.lock that is out of date with
+  pyproject.toml, moves inspect-ai to inspect_ai main's latest commit, and
+  installs. Every other package stays at its locked version. On the Release
+  Please release PR, inspect-ai is the newest release that clears its cooldown
+  instead, so the release is tested against the inspect_ai it will require.
 
 inputs:
-  args:
-    description: Arguments for `uv sync --locked`, such as `--extra dev`.
+  python-version:
+    description: Python version to install, for example '3.11'.
+    required: true
+  extras:
+    description: Optional dependencies to install, one name per line.
     required: false
     default: ""
+  project-install:
+    description: Whether the project installs, editable or skip.
+    required: false
+    default: editable
 
 runs:
   using: composite
   steps:
-    - name: Install dependencies
+    # meridianlabs-ai/actions holds the uv pin. Both actions use the same commit.
+    - uses: meridianlabs-ai/actions/setup-uv@2e29d39eac45f500a64f443ec31aa6fb874f9ddc # main
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Move inspect-ai to inspect_ai main
       shell: bash
       env:
         HEAD_REF: ${{ github.head_ref }}
-        ARGS: ${{ inputs.args }}
       run: |
         uv lock --check
         if [ "$HEAD_REF" = "release-please--branches--main" ]; then
           export UV_NO_SOURCES=1
+          echo "UV_NO_SOURCES=1" >> "$GITHUB_ENV"
         fi
         uv lock --upgrade-package inspect-ai
-        uv sync --locked $ARGS
-        # Later steps check for uncommitted changes and build from the checkout.
-        git checkout -- uv.lock
+
+    - uses: meridianlabs-ai/actions/install-python-dependencies@2e29d39eac45f500a64f443ec31aa6fb874f9ddc # main
+      with:
+        versions: locked
+        python-version: ${{ inputs.python-version }}
+        extras: ${{ inputs.extras }}
+        project-install: ${{ inputs.project-install }}
+
+    # Later steps check for uncommitted changes and build from the checkout.
+    - name: Restore uv.lock
+      shell: bash
+      run: git checkout -- uv.lock

@@ -24,10 +24,6 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  # Must meet pyproject.toml's required-version.
-  UV_VERSION: 0.13.5
-
 # Each job carries timeout-minutes well above its observed duration on main
 # (slowest: py-test at ~5m). Without one, a hung step holds a runner to the
 # 6-hour default while the PR sits "in progress".
@@ -64,14 +60,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install uv
-        uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
-        with:
-          version: ${{ env.UV_VERSION }}
-          python-version: ${{ matrix.python-version }}
       - uses: ./.github/actions/uv-sync
         with:
-          args: --extra dev
+          python-version: ${{ matrix.python-version }}
+          extras: dev
       - name: Run mypy
         run: uv run --no-sync mypy src examples tests
       - name: Minimize uv cache
@@ -100,14 +92,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install uv
-        uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
-        with:
-          version: ${{ env.UV_VERSION }}
-          python-version: ${{ matrix.python-version }}
       - uses: ./.github/actions/uv-sync
         with:
-          args: --extra dev
+          python-version: ${{ matrix.python-version }}
+          extras: dev
       - name: Run tests
         run: uv run --no-sync pytest
       - name: Minimize uv cache
@@ -124,16 +112,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install uv
-        uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
-        with:
-          version: ${{ env.UV_VERSION }}
-          python-version: ${{ matrix.python-version }}
       # The project's locked dependencies and the dist extra, not the project
       # itself: the step after the build installs the wheel.
       - uses: ./.github/actions/uv-sync
         with:
-          args: --extra dist --no-install-project
+          python-version: ${{ matrix.python-version }}
+          extras: dist
+          project-install: skip
       - name: Build package
         run: .venv/bin/python -m build
       - name: Verify package
@@ -154,12 +139,9 @@ jobs:
           persist-credentials: false
           submodules: true
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
-        with:
-          version: ${{ env.UV_VERSION }}
-          python-version: "3.11"
       - uses: ./.github/actions/uv-sync
+        with:
+          python-version: "3.11"
 
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:

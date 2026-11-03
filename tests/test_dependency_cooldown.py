@@ -28,11 +28,7 @@ MATRIX_PYTHON = "${{ matrix.python-version }}"
 LOCKED_JOBS = {
     "py-mypy": {"python-version": MATRIX_PYTHON, "extras": "dev"},
     "py-test": {"python-version": MATRIX_PYTHON, "extras": "dev"},
-    "py-build": {
-        "python-version": MATRIX_PYTHON,
-        "extras": "dist",
-        "project-install": "skip",
-    },
+    "py-build": {"python-version": MATRIX_PYTHON, "project-install": "skip"},
     "check-schema-and-types": {"python-version": "3.11"},
 }
 EXEMPT_COOLDOWN = "6 hours"

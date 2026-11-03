@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Email **security@meridianlabs.ai**. The address is monitored by Meridian Research Labs, which maintains Inspect Scout. Please do not open a public issue, discussion, or pull request for a suspected vulnerability.
+[Report a vulnerability](https://github.com/meridianlabs-ai/inspect_scout/security/advisories/new) through GitHub's private vulnerability reporting on this repository. Only you, the maintainers at Meridian Research Labs, and anyone they add to the report can see it. Please do not open a public issue, discussion, or pull request for a suspected vulnerability.
 
 Include as much of the following as you can:
 
@@ -13,11 +13,11 @@ Include as much of the following as you can:
 
 ## What to expect
 
-- We will acknowledge your email within 3 business days.
+- We will acknowledge your report within 3 business days.
 - We will tell you within 10 business days whether we consider it a vulnerability and what we plan to do.
 - We aim to release a fix within 30 days of the report. If a fix will take longer, we will tell you why.
 
-We will keep you updated as we work on a fix, and we will let you know before we publish anything.
+We reply in the advisory and keep you updated there as we work on a fix.
 
 We do not run a bug bounty program and cannot pay for reports.
 
@@ -46,6 +46,6 @@ Scout reads transcripts that contain model output, and scanners are Python progr
 
 ## Disclosure
 
-We publish fixes as a GitHub security advisory on this repository and request a CVE where one applies. We will credit you by name unless you ask us not to.
+When the fix is released, we publish the advisory from your report and request a CVE through GitHub where one applies. We will tell you before we publish it. The advisory credits you unless you ask us not to.
 
 Please keep the details private until the advisory is published.

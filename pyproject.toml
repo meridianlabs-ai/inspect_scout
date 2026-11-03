@@ -93,7 +93,6 @@ doc = [
     "rich",
     "quarto-cli>=1.7"
 ]
-dist = ["twine", "build"]
 
 [tool.hatch.build]
 only-packages = true

@@ -112,15 +112,22 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # The project's locked dependencies and the dist extra, not the project
-      # itself: the step after the build installs the wheel.
+      # The project's locked dependencies, not the project itself: the step
+      # after the build installs the wheel.
       - uses: ./.github/actions/uv-sync
         with:
           python-version: ${{ matrix.python-version }}
-          extras: dist
           project-install: skip
+      # The release build's toolchain and build command (publish.yaml), in a
+      # separate environment outside the checkout, so nothing is resolved at
+      # build time and the build backend sees only the toolchain. --no-config
+      # skips the project's exclude-newer, which the release's pip doesn't
+      # apply either.
       - name: Build package
-        run: .venv/bin/python -m build
+        run: |
+          uv venv --python .venv/bin/python "$RUNNER_TEMP/build-venv"
+          uv pip install --no-config --python "$RUNNER_TEMP/build-venv/bin/python" --require-hashes --only-binary :all: --no-deps -r scripts/build-dist/requirements.txt
+          "$RUNNER_TEMP/build-venv/bin/python" -m build --no-isolation
       - name: Verify package
         run: |
           uv pip install --no-deps dist/*.whl

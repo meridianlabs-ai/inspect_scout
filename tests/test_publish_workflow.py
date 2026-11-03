@@ -122,6 +122,19 @@ def test_build_job_builds_with_the_hashed_toolchain_and_gates_the_upload() -> No
     assert build < verify < upload
 
 
+def test_pr_ci_builds_with_the_release_toolchain() -> None:
+    build_yaml = REPO / ".github" / "workflows" / "build.yaml"
+    steps = _load(build_yaml)["jobs"]["py-build"]["steps"]
+    build = next(s for s in steps if s.get("name") == "Build package")
+    assert build["run"].strip().splitlines() == [
+        'uv venv --python .venv/bin/python "$RUNNER_TEMP/build-venv"',
+        'uv pip install --no-config --python "$RUNNER_TEMP/build-venv/bin/python" '
+        "--require-hashes --only-binary :all: --no-deps "
+        "-r scripts/build-dist/requirements.txt",
+        '"$RUNNER_TEMP/build-venv/bin/python" -m build --no-isolation',
+    ]
+
+
 def test_requirements_pin_every_package_with_hashes() -> None:
     requirements = REQUIREMENTS.read_text()
     pins = re.findall(r"^([A-Za-z0-9_.-]+)==\S+ \\$", requirements, re.MULTILINE)

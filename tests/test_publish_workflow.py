@@ -138,7 +138,7 @@ def test_requirements_pin_every_package_with_hashes() -> None:
 
 def test_dependabot_updates_the_build_toolchain_with_a_cooldown() -> None:
     updates = _load(REPO / ".github" / "dependabot.yml")["updates"]
-    (update,) = [u for u in updates if u["directory"] == "/scripts/build-dist"]
+    (update,) = [u for u in updates if u.get("directory") == "/scripts/build-dist"]
     assert update["package-ecosystem"] == "uv"
     assert update["cooldown"]["default-days"] == 7
     assert update["schedule"]["interval"] == "weekly"

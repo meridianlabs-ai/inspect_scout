@@ -18,7 +18,9 @@ CREDENTIAL_JOBS = [
     ("publish.yaml", "publish"),
     ("publish.yaml", "notify-approval"),
     ("npm-publish.yml", "notify-approval"),
-    ("release-pin-deps.yml", "pin"),
+    # Runs `uv lock`, which may build sdists, and hands push-floor a version.
+    ("release-pin-deps.yml", "floor"),
+    ("release-pin-deps.yml", "push-floor"),
 ]
 
 
@@ -36,6 +38,8 @@ def test_credential_holding_jobs_restore_no_cache(workflow: str, job: str) -> No
         assert action not in {"actions/cache", "actions/cache/restore"}
         if action == "astral-sh/setup-uv":
             assert inputs.get("enable-cache") is False
+        if action == "meridianlabs-ai/actions/setup-uv":
+            assert inputs.get("actions-cache") == "none"
         if action == "actions/setup-python":
             assert "cache" not in inputs
         if action == "actions/setup-node":

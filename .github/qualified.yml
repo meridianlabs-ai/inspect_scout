@@ -1,0 +1,10 @@
+# Qualified contributors — see CONTRIBUTING.md ("How contributions work").
+#
+# STRICT FORMAT (a line parser reads it, not a YAML library):
+#   - exactly one top-level key: `users:`
+#   - entries are `  - <numeric account id>` — one per line, nothing else
+users:
+  - 245131
+  - 2798829
+  - 42191920
+  - 180970537

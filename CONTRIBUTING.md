@@ -158,6 +158,8 @@ stays out of the headline sections.
 
 Found a bug or have a feature request? Please open an issue on the [GitHub issue tracker](https://github.com/meridianlabs-ai/inspect_scout/issues).
 
+A bug report needs a crisp minimal repro that **demonstrates** the bug: a real affected input, or steps that reproduce it. Show the repro rather than asserting the cause. That lets a maintainer confirm the bug and accept the issue.
+
 ## Bug-fix pull requests
 
-A bug-fix PR should either link the issue it resolves or include a crisp minimal repro that **demonstrates** the bug: a real affected input, or steps that reproduce it, alongside the root cause. Show the repro rather than asserting the cause. That lets a reviewer confirm the diagnosis instead of reverse-engineering it, and keeps the PR from stalling. Without an issue or a demonstrated repro, review is deferred until you add one.
+If you are a maintainer or a qualified contributor and your bug-fix PR links no issue, the PR must include the repro that a bug report needs (see above). Without it, review is deferred until you add it.

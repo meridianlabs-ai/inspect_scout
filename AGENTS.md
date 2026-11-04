@@ -91,7 +91,7 @@ Development setup (`uv sync --extra dev`, the dependency cooldown, inspect_ai tr
 - Body lines starting with `<type>:` are parsed as extra changelog entries—don't begin description lines with a conventional-commit prefix unless that's intended
 - Never edit `CHANGELOG.md`, version numbers, or `.release-please-manifest.json`—Release Please owns them
 - After opening a PR, watch its checks until they complete (`gh pr checks <number> --watch`); investigate and fix any failures
-- A bug-fix PR needs a linked issue or a crisp minimal repro that *demonstrates* the bug—a real affected input or reproducible steps, not just an asserted root cause. A regression test that encodes an unproven premise doesn't count. Without one, review is deferred until you add it
+- A bug-fix PR from a maintainer or qualified contributor that links no issue needs a crisp minimal repro that *demonstrates* the bug—a real affected input or reproducible steps, not just an asserted root cause. A regression test that encodes an unproven premise doesn't count. Without one, review is deferred until you add it
 - See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines
 
 ### Agent review disclosure

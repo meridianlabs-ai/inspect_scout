@@ -127,6 +127,7 @@ class DillCallable:
             func: The callable to wrap (can be closure, lambda, etc)
         """
         self._pickled_func: bytes = scout_dumps(func)
+        self._func: Callable[..., Any] | None = None
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """Call the wrapped function.
@@ -138,8 +139,10 @@ class DillCallable:
         Returns:
             Result from calling the wrapped function
         """
-        func = cloudpickle.loads(self._pickled_func)
-        return func(*args, **kwargs)
+        # Cached: a worker calls this for every transcript.
+        if self._func is None:
+            self._func = cloudpickle.loads(self._pickled_func)
+        return self._func(*args, **kwargs)
 
     def __getstate__(self) -> bytes:
         """Get state for pickling.
@@ -156,6 +159,7 @@ class DillCallable:
             state: Pickled function bytes
         """
         self._pickled_func = state
+        self._func = None
 
 
 @dataclass(frozen=True)

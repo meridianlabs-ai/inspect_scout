@@ -15,4 +15,4 @@ jobs:
     with:
       # Read the type list from the same commit (tests/test_workflow_pins.py
       # checks they match).
-      types-ref: f4ae19412da5597fc283e3ef62db1a67384ae609
+      types-ref: 62bc8360498822ef3eab7c9584d1bd523de3febf

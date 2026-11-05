@@ -295,6 +295,16 @@ class ScanRecorder(abc.ABC):
     ) -> None: ...
 
     @abc.abstractmethod
+    async def record_error(self, error: Error) -> None:
+        """Record an error for a scan whose results could not be recorded.
+
+        The error counts in `summary()` and `errors()` like a scanner error,
+        but no result row is written, so the transcript is not recorded and a
+        resume scans it again.
+        """
+        ...
+
+    @abc.abstractmethod
     async def record_metrics(
         self, scanner: str, metrics: dict[str, dict[str, float]]
     ) -> None: ...

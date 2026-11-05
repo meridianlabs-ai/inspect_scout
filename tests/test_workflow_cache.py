@@ -38,7 +38,10 @@ def test_credential_holding_jobs_restore_no_cache(workflow: str, job: str) -> No
         assert action not in {"actions/cache", "actions/cache/restore"}
         if action == "astral-sh/setup-uv":
             assert inputs.get("enable-cache") is False
-        if action == "meridianlabs-ai/actions/setup-uv":
+        if action in {
+            "meridianlabs-ai/actions/setup-uv",
+            "meridianlabs-ai/actions/install-python-dependencies",
+        }:
             assert inputs.get("actions-cache") == "none"
         if action == "actions/setup-python":
             assert "cache" not in inputs

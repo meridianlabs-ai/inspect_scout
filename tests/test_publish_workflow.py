@@ -24,6 +24,8 @@ REQUIREMENTS = REPO / "scripts" / "build-dist" / "requirements.txt"
 VERIFY_DIST = "scripts/verify_dist.py"
 PYPI_PUBLISH = "pypa/gh-action-pypi-publish@"
 SHA_PIN = re.compile(r"@[0-9a-f]{40} # v\S+$")
+# meridianlabs-ai/actions has no version tag for the pinned commit.
+SHARED_PIN = re.compile(r"uses: meridianlabs-ai/actions/\S+@[0-9a-f]{40} # main$")
 
 
 def _load(path: Path) -> dict[Any, Any]:
@@ -103,17 +105,29 @@ def test_build_job_checks_out_the_tag_with_lfs_and_no_credentials() -> None:
 
 def test_build_job_builds_with_the_hashed_toolchain_and_gates_the_upload() -> None:
     steps = _jobs()["build"]["steps"]
-    setup = next(
+    assert not [
         s for s in steps if s.get("uses", "").startswith("actions/setup-python@")
-    )
-    assert setup["with"] == {"python-version": "3.11"}
-    runs = [s.get("run", "").strip() for s in steps]
-    assert [r for r in runs if "pip install" in r] == [
-        "python -m pip install --require-hashes --only-binary :all: --no-deps "
-        "-r scripts/build-dist/requirements.txt"
     ]
-    build = runs.index("python -m build --no-isolation")
-    verify = runs.index(f'python -I {VERIFY_DIST} "$GITHUB_REF_NAME"')
+    (install,) = [
+        s
+        for s in steps
+        if s.get("uses", "").startswith(
+            "meridianlabs-ai/actions/install-python-dependencies@"
+        )
+    ]
+    assert install["with"] == {
+        "versions": "hashed-requirements",
+        "python-version": "3.11",
+        "requirements-file": "scripts/build-dist/requirements.txt",
+        "package-format": "wheels-only",
+        "actions-cache": "none",
+        "environment-dir": "${{ runner.temp }}/build-venv",
+    }
+    runs = [s.get("run", "").strip() for s in steps]
+    assert not [r for r in runs if "pip install" in r]
+    python = '"$RUNNER_TEMP/build-venv/bin/python"'
+    build = runs.index(f"{python} -m build --no-isolation")
+    verify = runs.index(f'{python} -I {VERIFY_DIST} "$GITHUB_REF_NAME"')
     upload = next(
         i
         for i, s in enumerate(steps)
@@ -166,7 +180,7 @@ def test_actions_are_pinned_to_commit_shas() -> None:
     ]
     assert uses
     for line in uses:
-        assert SHA_PIN.search(line), line
+        assert SHA_PIN.search(line) or SHARED_PIN.search(line), line
 
 
 # ---------------------------------------------------------------------------

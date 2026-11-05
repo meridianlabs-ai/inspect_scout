@@ -158,12 +158,25 @@ class Summary(BaseModel):
                 tot_results.model_usage[model], usage
             )
 
-        # Aggregate validation entries and rebuild ValidationResults with metrics
+        # Aggregate validation entries and rebuild ValidationResults with metrics.
+        # A resumed scan retries transcripts that errored, re-validating cases
+        # already recorded by the interrupted run, so this report's entries
+        # supersede prior entries with the same case ids rather than
+        # double-counting those cases in the metrics (mirroring the parquet
+        # layer, which rewrites a retried transcript's results file
+        # wholesale). Entries are keyed by case id alone (they carry no
+        # transcript identity; case ids are input ids, unique in practice).
+        # Legacy entries (id == "") have no identity and are never superseded.
         if new_entries:
             existing_entries = (
                 tot_results.validation.entries if tot_results.validation else []
             )
-            all_entries = existing_entries + new_entries
+            new_keys = {_entry_key(entry.id) for entry in new_entries if entry.id != ""}
+            all_entries = [
+                entry
+                for entry in existing_entries
+                if entry.id == "" or _entry_key(entry.id) not in new_keys
+            ] + new_entries
             tot_results.validation = ValidationResults.from_entries(all_entries)
 
     def _report_metrics(
@@ -177,6 +190,11 @@ class Summary(BaseModel):
 
     def __getitem__(self, scanner: str) -> ScannerSummary:
         return self.scanners[scanner]
+
+
+def _entry_key(entry_id: str | list[str]) -> str | tuple[str, ...]:
+    """Hashable case identity for a validation entry (list ids as tuples)."""
+    return tuple(entry_id) if isinstance(entry_id, list) else entry_id
 
 
 def add_model_usage(a: ModelUsage, b: ModelUsage) -> ModelUsage:

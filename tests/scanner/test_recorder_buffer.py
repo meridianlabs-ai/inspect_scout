@@ -13,6 +13,7 @@ from inspect_scout._recorder.buffer import RecorderBuffer, scanner_table
 from inspect_scout._scanner.result import Reference, Result, ResultReport
 from inspect_scout._scanspec import ScannerSpec, ScanSpec
 from inspect_scout._transcript.types import TranscriptInfo
+from upath import UPath
 
 
 @pytest.fixture
@@ -132,6 +133,122 @@ async def test_is_recorded(
         other_transcript.transcript_id, scanner_name
     )
     assert is_recorded is False
+
+
+@pytest.mark.asyncio
+async def test_incremental_results_and_retry(
+    recorder_buffer: RecorderBuffer,
+    sample_transcript: TranscriptInfo,
+    sample_results: list[ResultReport],
+    tmp_path: Path,
+) -> None:
+    """Partial results are readable, but only an exhausted loader is complete.
+
+    A retry replaces the previous attempt, including rows already synced to
+    the scan location. Repeated compaction never duplicates those prior rows.
+    """
+    scanner_name = "test_scanner"
+    tid = sample_transcript.transcript_id
+    prior = tmp_path / "prior.parquet"
+    out = tmp_path / "out.parquet"
+
+    await recorder_buffer.record(
+        sample_transcript, scanner_name, sample_results[:1], None, complete=False
+    )
+    assert not await recorder_buffer.is_recorded(tid, scanner_name)
+    assert recorder_buffer.scan_summary().scanners[scanner_name].scans == 0
+    assert scanner_table(recorder_buffer._buffer_dir, scanner_name, str(prior))
+    assert pq.read_table(prior).num_rows == 1
+
+    await recorder_buffer.record(
+        sample_transcript,
+        scanner_name,
+        sample_results[1:],
+        None,
+        complete=False,
+        append=True,
+    )
+    assert not await recorder_buffer.is_recorded(tid, scanner_name)
+    for _ in range(2):
+        assert scanner_table(
+            recorder_buffer._buffer_dir,
+            scanner_name,
+            str(out),
+            extra_inputs=[UPath(prior)],
+        )
+        assert pq.read_table(out).num_rows == 3
+
+    # Start a new attempt with fewer rows than the interrupted attempt.
+    await recorder_buffer.record(
+        sample_transcript, scanner_name, sample_results[:1], None, complete=False
+    )
+    assert scanner_table(
+        recorder_buffer._buffer_dir, scanner_name, str(out), extra_inputs=[UPath(prior)]
+    )
+    assert pq.read_table(out).num_rows == 1
+    await recorder_buffer.record(sample_transcript, scanner_name, [], None, append=True)
+    assert await recorder_buffer.is_recorded(tid, scanner_name)
+    assert recorder_buffer.scan_summary().scanners[scanner_name].scans == 1
+
+
+@pytest.mark.asyncio
+async def test_failed_checkpoint_preserves_published_results(
+    recorder_buffer: RecorderBuffer,
+    sample_transcript: TranscriptInfo,
+    sample_results: list[ResultReport],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A failed checkpoint leaves its previous atomic snapshot readable."""
+    await recorder_buffer.record(
+        sample_transcript, "test_scanner", sample_results[:1], None, complete=False
+    )
+
+    def fail_publish(source: str, destination: str) -> None:
+        raise OSError("checkpoint publication failed")
+
+    with monkeypatch.context() as patch:
+        patch.setattr("inspect_scout._recorder.buffer.os.replace", fail_publish)
+        with pytest.raises(OSError, match="checkpoint publication failed"):
+            await recorder_buffer.record(
+                sample_transcript,
+                "test_scanner",
+                sample_results[1:],
+                None,
+                complete=False,
+                append=True,
+            )
+    out = tmp_path / "out.parquet"
+    assert scanner_table(recorder_buffer._buffer_dir, "test_scanner", str(out))
+    assert pq.read_table(out).num_rows == 1
+    assert not await recorder_buffer.is_recorded(
+        sample_transcript.transcript_id, "test_scanner"
+    )
+
+
+@pytest.mark.asyncio
+async def test_empty_retry_completes_and_supersedes_partial_results(
+    recorder_buffer: RecorderBuffer,
+    sample_transcript: TranscriptInfo,
+    sample_results: list[ResultReport],
+    tmp_path: Path,
+) -> None:
+    scanner_name = "test_scanner"
+    prior = UPath(tmp_path / "prior.parquet")
+    out = tmp_path / "out.parquet"
+    await recorder_buffer.record(
+        sample_transcript, scanner_name, sample_results, None, complete=False
+    )
+    assert scanner_table(recorder_buffer._buffer_dir, scanner_name, str(prior))
+    await recorder_buffer.record(sample_transcript, scanner_name, [], None)
+    assert await recorder_buffer.is_recorded(
+        sample_transcript.transcript_id, scanner_name
+    )
+    assert recorder_buffer.scan_summary().scanners[scanner_name].scans == 1
+    assert scanner_table(
+        recorder_buffer._buffer_dir, scanner_name, str(out), extra_inputs=[prior]
+    )
+    assert pq.read_table(out).num_rows == 0
 
 
 @pytest.mark.asyncio

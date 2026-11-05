@@ -112,6 +112,8 @@ class ScanDisplayPlain(ScanDisplay):
         scanner: str,
         results: Sequence[ResultReport],
         metrics: dict[str, dict[str, float]] | None,
+        *,
+        complete: bool = True,
     ) -> None:
         pass
 

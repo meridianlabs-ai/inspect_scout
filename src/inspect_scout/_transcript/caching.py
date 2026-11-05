@@ -84,6 +84,7 @@ def samples_df_with_caching(
     logs: LogPaths,
     cache_store: str = "scout_transcript_info_cache",
     max_workers: int = DEFAULT_READER_MAX_WORKERS,
+    on_error: Callable[[str, Exception], None] | None = None,
 ) -> pd.DataFrame:
     """Read transcript sample info from the logs with caching.
 
@@ -92,6 +93,9 @@ def samples_df_with_caching(
       reading cache misses concurrently on a thread pool
     - Each file is cached as soon as its read completes, so a failure part
       way through preserves the files already read
+    - With on_error, a file whose read fails is reported to it, left out of
+      the cache and the result, and reading continues; without it the first
+      failure is re-raised
     - Concatenates all results into single DataFrame
     - Falls back to direct reader call on any cache errors
 
@@ -106,6 +110,8 @@ def samples_df_with_caching(
         logs: Log paths to read
         cache_store: KVStore name for cache storage
         max_workers: Maximum number of threads used to read cache misses
+        on_error: Called with the path and exception of each file that
+            cannot be read, which is then skipped
 
     Returns:
         DataFrame with transcript data
@@ -148,6 +154,9 @@ def samples_df_with_caching(
                     try:
                         df = future.result()
                     except Exception as ex:
+                        if on_error is not None:
+                            on_error(path, ex)
+                            continue
                         # as_completed never yields futures that
                         # shutdown(cancel_futures=True) drained from the
                         # queue, so stop iterating and harvest the reads
@@ -167,7 +176,9 @@ def samples_df_with_caching(
                 except Exception:
                     pass
             raise first_error
-        miss_dfs = [miss_df_by_path[path] for path, _ in cache_misses]
+        miss_dfs = [
+            miss_df_by_path[path] for path, _ in cache_misses if path in miss_df_by_path
+        ]
 
     all_dfs = [df for df in cache_hits + miss_dfs if not df.empty]
     if not all_dfs:

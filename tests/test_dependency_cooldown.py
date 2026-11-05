@@ -26,7 +26,11 @@ SHARED_ACTIONS = "meridianlabs-ai/actions/"
 RELEASE_BRANCH = "release-please--branches--main"
 MATRIX_PYTHON = "${{ matrix.python-version }}"
 LOCKED_JOBS = {
-    "py-ruff": {"python-version": MATRIX_PYTHON, "project-install": "skip", "extras": "dev"},
+    "py-ruff": {
+        "python-version": MATRIX_PYTHON,
+        "project-install": "skip",
+        "extras": "dev",
+    },
     "py-mypy": {"python-version": MATRIX_PYTHON, "extras": "dev"},
     "py-test": {"python-version": MATRIX_PYTHON, "extras": "dev"},
     "py-build": {"python-version": MATRIX_PYTHON, "project-install": "skip"},

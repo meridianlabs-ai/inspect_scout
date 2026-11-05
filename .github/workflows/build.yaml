@@ -118,11 +118,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           project-install: skip
-      # The release build's toolchain and build command (publish.yaml), in a
-      # separate environment outside the checkout, so nothing is resolved at
-      # build time and the build backend sees only the toolchain. --no-config
-      # skips the project's exclude-newer, which the release's pip doesn't
-      # apply either.
+      # The release build's hashed toolchain and build command (publish.yaml),
+      # in a separate environment outside the checkout, so nothing is resolved
+      # at build time and the build backend sees only the toolchain.
+      # --no-config skips the project's exclude-newer; the hashed pins are
+      # already compiled with a 7-day window.
       - name: Build package
         run: |
           uv venv --python .venv/bin/python "$RUNNER_TEMP/build-venv"

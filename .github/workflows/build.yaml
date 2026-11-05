@@ -118,7 +118,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           project-install: skip
-      # The release build's hashed toolchain and build command (publish.yaml),
+      # The release build's hashed toolchain file and build command
+      # (publish.yaml, which installs it through install-python-dependencies),
       # in a separate environment outside the checkout, so nothing is resolved
       # at build time and the build backend sees only the toolchain.
       # --no-config skips the project's exclude-newer; the hashed pins are

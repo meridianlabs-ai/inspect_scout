@@ -23,8 +23,9 @@ WORKFLOW = REPO / ".github" / "workflows" / "publish.yaml"
 REQUIREMENTS = REPO / "scripts" / "build-dist" / "requirements.txt"
 VERIFY_DIST = "scripts/verify_dist.py"
 PYPI_PUBLISH = "pypa/gh-action-pypi-publish@"
-# A version tag, or main for meridianlabs-ai/actions, which has no tag for the pin.
-SHA_PIN = re.compile(r"@[0-9a-f]{40} # (v\S+|main)$")
+SHA_PIN = re.compile(r"@[0-9a-f]{40} # v\S+$")
+# meridianlabs-ai/actions has no version tag for the pinned commit.
+SHARED_PIN = re.compile(r"meridianlabs-ai/actions/\S+@[0-9a-f]{40} # main$")
 
 
 def _load(path: Path) -> dict[Any, Any]:
@@ -179,7 +180,7 @@ def test_actions_are_pinned_to_commit_shas() -> None:
     ]
     assert uses
     for line in uses:
-        assert SHA_PIN.search(line), line
+        assert SHA_PIN.search(line) or SHARED_PIN.search(line), line
 
 
 # ---------------------------------------------------------------------------

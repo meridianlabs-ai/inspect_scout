@@ -416,22 +416,25 @@ def scanner_table(
     # 1. Pin columns with a known type (`fixed_types`): the first file may hold
     #    them as all-null, which would otherwise demote them to string, or lack
     #    them entirely (written by an older version), which would drop them
-    # 2. Promote other null-type columns to string (unknown type)
+    # 2. Promote other null-type columns to large_string (unknown type)
     # 3. Force 'value' and 'transcript_score' columns to string since they can have
     #    mixed types across different result reports / transcripts
     fixed_types: dict[str, pa.DataType] = {
         "transcript_success": pa.bool_(),
         "transcript_trust_content": pa.bool_(),
     }
-    corrected_fields = []
+    corrected_fields: list[pa.Field[Any]] = []
     for field in schema:
         if field.name in fixed_types:
             corrected_fields.append(
                 pa.field(field.name, fixed_types[field.name], nullable=True)
             )
         elif pa.types.is_null(field.type):
-            # Promote null type to string
-            corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))
+            # Not pa.string(): casting a later fragment's large inline cells to
+            # 32-bit offsets overflows at 2 GiB.
+            corrected_fields.append(
+                pa.field(field.name, pa.large_string(), nullable=True)
+            )
         elif field.name in {"value", "transcript_score"}:
             # Force mixed-type columns to string
             corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))

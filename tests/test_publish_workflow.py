@@ -25,7 +25,7 @@ VERIFY_DIST = "scripts/verify_dist.py"
 PYPI_PUBLISH = "pypa/gh-action-pypi-publish@"
 SHA_PIN = re.compile(r"@[0-9a-f]{40} # v\S+$")
 # meridianlabs-ai/actions has no version tag for the pinned commit.
-SHARED_PIN = re.compile(r"meridianlabs-ai/actions/\S+@[0-9a-f]{40} # main$")
+SHARED_PIN = re.compile(r"uses: meridianlabs-ai/actions/\S+@[0-9a-f]{40} # main$")
 
 
 def _load(path: Path) -> dict[Any, Any]:

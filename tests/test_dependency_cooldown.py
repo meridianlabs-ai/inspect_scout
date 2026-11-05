@@ -26,6 +26,7 @@ SHARED_ACTIONS = "meridianlabs-ai/actions/"
 RELEASE_BRANCH = "release-please--branches--main"
 MATRIX_PYTHON = "${{ matrix.python-version }}"
 LOCKED_JOBS = {
+    "py-ruff": {"python-version": "3.11", "project-install": "skip", "extras": "dev"},
     "py-mypy": {"python-version": MATRIX_PYTHON, "extras": "dev"},
     "py-test": {"python-version": MATRIX_PYTHON, "extras": "dev"},
     "py-build": {"python-version": MATRIX_PYTHON, "project-install": "skip"},
@@ -221,18 +222,19 @@ def test_uv_comes_from_the_shared_setup_uv() -> None:
     assert re.fullmatch(r"[0-9a-f]{40}", refs.pop())
 
 
-def test_ruff_action_uses_the_locked_ruff() -> None:
-    # Without a version, ruff-action installs the newest ruff release.
-    steps = [
-        step
+def test_ruff_runs_from_the_locked_environment() -> None:
+    # ruff-action without a version installs the newest ruff release.
+    uses = [
+        step.get("uses", "")
         for path in workflows()
         for job in yaml.safe_load(path.read_text())["jobs"].values()
         for step in job.get("steps", [])
-        if step.get("uses", "").startswith("astral-sh/ruff-action@")
     ]
-    assert steps
-    for step in steps:
-        assert step["with"]["version-file"] == "uv.lock", step
+    assert not [u for u in uses if u.startswith("astral-sh/ruff-action@")]
+    job = yaml.safe_load((WORKFLOWS / "build.yaml").read_text())["jobs"]["py-ruff"]
+    runs = run_lines(job)
+    assert "uv run --no-sync ruff check --output-format github" in runs
+    assert "uv run --no-sync ruff format --check --output-format github" in runs
 
 
 @pytest.mark.parametrize("name,inputs", LOCKED_JOBS.items())

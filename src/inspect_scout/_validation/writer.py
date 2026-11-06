@@ -153,6 +153,35 @@ def _nest_by_splits(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return result
 
 
+def _csv_cases(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for case in _flatten_labels_in_data(cases):
+        row = dict(case)
+        if isinstance(row.get("id"), list):
+            row["id"] = json.dumps(row["id"], ensure_ascii=False)
+        if isinstance(row.get("target"), dict):
+            target = row.pop("target")
+            row.update({f"target_{key}": value for key, value in target.items()})
+        rows.append(row)
+    return rows
+
+
+def _write_csv_file(file_path: Path, cases: list[dict[str, Any]]) -> None:
+    if not cases:
+        df = pd.DataFrame(columns=["id", "target"])
+    else:
+        df = pd.DataFrame(_csv_cases(cases))
+
+    # Ensure id is the first column
+    cols = list(df.columns)
+    if "id" in cols:
+        cols.remove("id")
+        cols = ["id"] + cols
+        df = df[cols]
+
+    df.to_csv(file_path, index=False)
+
+
 class ValidationFileWriter:
     """Read and write validation files preserving their format.
 
@@ -229,19 +258,7 @@ class ValidationFileWriter:
 
     def _write_csv(self, cases: list[dict[str, Any]]) -> None:
         """Write cases to CSV format."""
-        if not cases:
-            df = pd.DataFrame(columns=["id", "target"])
-        else:
-            df = pd.DataFrame(cases)
-
-        # Ensure id is the first column
-        cols = list(df.columns)
-        if "id" in cols:
-            cols.remove("id")
-            cols = ["id"] + cols
-            df = df[cols]
-
-        df.to_csv(self.file_path, index=False)
+        _write_csv_file(self.file_path, cases)
 
     def _write_structured(
         self,
@@ -364,16 +381,7 @@ class ValidationFileWriter:
         case_dicts = [c.model_dump(exclude_none=True) for c in cases]
 
         if suffix == ".csv":
-            if not case_dicts:
-                df = pd.DataFrame(columns=["id", "target"])
-            else:
-                df = pd.DataFrame(case_dicts)
-                cols = list(df.columns)
-                if "id" in cols:
-                    cols.remove("id")
-                    cols = ["id"] + cols
-                    df = df[cols]
-            df.to_csv(file_path, index=False)
+            _write_csv_file(file_path, case_dicts)
 
         elif suffix in {".yaml", ".yml", ".json"}:
             data = _unflatten_columns(case_dicts)

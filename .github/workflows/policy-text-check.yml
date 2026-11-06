@@ -21,4 +21,4 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: meridianlabs-ai/actions/policy-text-check@6ff26c30a2d7a4b09e548793437f6cc59eebb3dc # epatey/accepted-issue-rule, move to main before merge
+      - uses: meridianlabs-ai/actions/policy-text-check@330f3df6492418d6b25dc2631fc31143489f4674 # main

@@ -16,7 +16,14 @@ def scan_resume_command(
     scan_location: str,
     **common: Unpack[CommonOptions],
 ) -> None:
-    """Resume a scan which is incomplete due to interruption or errors (errors are retried)."""
+    """Resume a scan which is incomplete due to interruption or errors (errors are retried).
+
+    Resuming runs code the scan names: it imports the scanner and validation
+    predicate source files recorded in the scan, builds its scanners,
+    predicates, model and model roles (including base URLs and model args)
+    from values in the scan, and reads transcripts from the locations the scan
+    records. Only resume scans you trust.
+    """
     # Process common options
     process_common_options(ctx, common)
 

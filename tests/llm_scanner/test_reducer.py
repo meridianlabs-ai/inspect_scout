@@ -106,6 +106,22 @@ class TestMin:
 
 
 class TestAny:
+    @pytest.mark.asyncio
+    async def test_reducing_converted_results_twice_preserves_boolean(self) -> None:
+        positive = Result(value=0.0, parsed=True, answer="Yes")
+        negative = Result(value=1.0, parsed=False, answer="No")
+        first = await ResultReducer.any([negative, positive])
+        result = await ResultReducer.any([first, negative])
+        assert result.value == 0.0
+        assert result.parsed is True
+        assert result.answer == "Yes"
+
+    @pytest.mark.asyncio
+    async def test_unparsed_numeric_values_are_not_boolean_answers(self) -> None:
+        result = await ResultReducer.any([Result(value=1.0), Result(value=None)])
+        assert result.value is False
+        assert result.answer == "No"
+
     @pytest.mark.anyio
     async def test_any_all_false(self) -> None:
         results = [

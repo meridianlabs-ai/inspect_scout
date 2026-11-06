@@ -6,16 +6,25 @@ from pathlib import Path
 from typing import Any, Literal
 
 import pytest
-from inspect_ai.event import Event, ModelEvent, TimelineEvent, timeline_build
-from inspect_ai.event._timeline import (
-    _get_system_prompt_for_event,
-    _has_tool_calls,
-)
+from inspect_ai.event import Event, ModelEvent, TimelineEvent, _timeline, timeline_build
+from inspect_ai.event._timeline import _has_tool_calls
 from inspect_ai.model import ChatMessageSystem
 from inspect_scout._transcript.timeline import TimelineSpan, _walk_spans
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
 
 from tests.transcript.fixtures_agentic import agentic_events, agentic_transcript
+
+
+def _classify(name: str, event: ModelEvent) -> object:
+    """Call an ``inspect_ai`` per-event classifier on released or main signatures.
+
+    inspect_ai main (#6098) adds an ``_Inputs`` argument that 0.3.287 lacks.
+    """
+    classifier = getattr(_timeline, name)
+    inputs_type = getattr(_timeline, "_Inputs", None)
+    if inputs_type is None:
+        return classifier(event)
+    return classifier(event, inputs_type([event], None))
 
 
 def _collect_utility(span: TimelineSpan) -> list[TimelineSpan]:
@@ -112,7 +121,6 @@ def test_stub_preserves_warmup_signal(
     both the stub and materialized paths, so this asserts at the classifier
     boundary instead.)
     """
-    from inspect_ai.event._timeline import _Inputs, _is_warmup_call
     from inspect_ai.model import ChatMessageUser, GenerateConfig
     from inspect_scout._transcript.timeline_stream import _PromptInterner, stub_event
 
@@ -129,18 +137,16 @@ def test_stub_preserves_warmup_signal(
         }
     )
     # Sanity: the classifier's pre-stub verdict matches the expectation.
-    inputs = _Inputs([event], None)
-    assert _is_warmup_call(event, inputs) is expected_warmup
+    assert _classify("_is_warmup_call", event) is expected_warmup
 
     stub = stub_event(event, _PromptInterner())
     assert isinstance(stub, ModelEvent)
-    stub_inputs = _Inputs([stub], None)
 
     # The three per-event signals `_wrap_utility_events` reads are preserved.
-    assert _is_warmup_call(stub, stub_inputs) is expected_warmup
-    assert _get_system_prompt_for_event(
-        stub, stub_inputs
-    ) == _get_system_prompt_for_event(event, inputs)
+    assert _classify("_is_warmup_call", stub) is expected_warmup
+    assert _classify("_get_system_prompt_for_event", stub) == _classify(
+        "_get_system_prompt_for_event", event
+    )
     assert _has_tool_calls(stub) == _has_tool_calls(event)
     # Bulk stripped: the 100KB user turn must not survive stubbing.
     assert "w" * 1000 not in stub.model_dump_json()

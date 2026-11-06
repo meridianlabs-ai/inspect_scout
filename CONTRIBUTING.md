@@ -2,6 +2,40 @@
 
 Thanks for contributing to Inspect Scout — this guide covers local setup, the checks CI runs, and how commits map to releases.
 
+<!-- BEGIN shared text from meridianlabs-ai/actions policy/CONTRIBUTING.md. Change it there, not here. -->
+## How contributions work
+
+There are two paths:
+
+- **Qualified contributors**: maintainers and individuals recorded (by
+  account id) in [`.github/qualified.yml`](.github/qualified.yml) — may open
+  PRs directly.
+
+- **Everyone else**: start from an issue a maintainer has labeled `accepted`
+  before writing code, and reference it from your PR (`Fixes #NNN`). This
+  applies regardless of your contribution history here, and regardless of
+  who filed the issue — what matters is that a maintainer has accepted it.
+  PRs that aren't linked to an accepted issue may be closed; if a linked
+  issue is later accepted, reopen the PR.
+  **Exception:** trivial documentation fixes (typos, broken links — docs
+  files only, under 25 changed lines) are always welcome directly.
+
+Whatever your path, check for an existing open PR addressing the same
+problem before opening yours: duplicates are closed in favor of the earlier
+PR unless a maintainer has asked for an alternative.
+
+Issues a maintainer has labeled `deferred` are decisions not to prioritize
+that work right now. PRs against a deferred issue are closed —
+comment on the issue with new evidence or demand if you think it should be
+revisited.
+
+**Why:** like most open-source projects, we now receive a large volume of
+unrequested, often agent-generated PRs. Reviewing a PR is time-consuming;
+agreeing on a direction in an issue first is much easier. This policy spends
+our review time on work we've agreed we want and spares you writing code we
+can't merge.
+<!-- END shared text from meridianlabs-ai/actions policy/CONTRIBUTING.md -->
+
 ## Development setup
 
 Install [uv](https://docs.astral.sh/uv/) 0.13.4 or later, then clone the repository and create the environment:
@@ -124,6 +158,8 @@ stays out of the headline sections.
 
 Found a bug or have a feature request? Please open an issue on the [GitHub issue tracker](https://github.com/meridianlabs-ai/inspect_scout/issues).
 
+A bug report needs a crisp minimal repro that **demonstrates** the bug: a real affected input, or steps that reproduce it. Show the repro rather than asserting the cause. That lets a maintainer confirm the bug and accept the issue.
+
 ## Bug-fix pull requests
 
-A bug-fix PR should either link the issue it resolves or include a crisp minimal repro that **demonstrates** the bug: a real affected input, or steps that reproduce it, alongside the root cause. Show the repro rather than asserting the cause. That lets a reviewer confirm the diagnosis instead of reverse-engineering it, and keeps the PR from stalling. Without an issue or a demonstrated repro, review is deferred until you add one.
+If you are a maintainer or a qualified contributor and your bug-fix PR links no issue, the PR must include the repro that a bug report needs (see above). Without it, review is deferred until you add it.

@@ -7,7 +7,7 @@ from uuid import uuid4
 
 import duckdb
 
-from .._query.sql import format_sql_value, quote_identifier
+from .._query.sql import quote_identifier
 
 
 def generated_identifier(prefix: str) -> str:
@@ -40,7 +40,7 @@ def create_parquet_view(
     paths: str | Sequence[str],
     *,
     union_by_name: bool = False,
-    filename: bool | str = False,
+    filename: bool = False,
 ) -> str:
     """Register explicit Parquet sources under an internal DuckDB view."""
     name = generated_identifier("parquet")
@@ -52,9 +52,7 @@ def create_parquet_view(
     options = []
     if union_by_name:
         options.append("union_by_name = true")
-    if isinstance(filename, str):
-        options.append(f"filename = {format_sql_value(filename)}")
-    elif filename:
+    if filename:
         options.append("filename = true")
     option_sql = f", {', '.join(options)}" if options else ""
     try:
@@ -82,7 +80,7 @@ def parquet_view(
     paths: str | Sequence[str],
     *,
     union_by_name: bool = False,
-    filename: bool | str = False,
+    filename: bool = False,
 ) -> Iterator[str]:
     """Temporarily register explicit Parquet sources as a generated view."""
     view_name = create_parquet_view(

@@ -34,6 +34,7 @@ from shortuuid import uuid
 
 from ...._query.sql import quote_identifier
 from ...._util.duckdb import (
+    escape_duckdb_glob,
     generated_identifier,
     parquet_view,
     relation_columns,
@@ -156,7 +157,7 @@ async def compact_index(
     # If the same transcript_id appears in multiple index files (from retried
     # inserts after partial failures), keep the entry from the newest file.
     # Index files have timestamps in their names, so newer files sort later.
-    # We tag each file with its position in the sorted list (_file_order).
+    # We tag each file with its position in the sorted list.
     try:
         merged_table = _read_and_deduplicate_index_files(conn, idx_files)
     except duckdb.IOException as e:
@@ -611,29 +612,39 @@ def _read_and_deduplicate_index_files(
                 f"SELECT * FROM {quote_identifier(source_view)}"
             ).fetch_arrow_table()
 
-    # One reader reconciles all schemas without a deep SQL union tree.
-    source_filename = generated_identifier("index_source")
-    quoted_filename = quote_identifier(source_filename)
+    # Unify the schemas in one bind that reads no rows, then insert each file by
+    # name with its own statement: one SQL union over every file exceeds DuckDB
+    # 1.4's expression depth on large indexes, and before DuckDB 1.5.3 a
+    # multi-file scan cannot read a struct column from a file that stores the
+    # column as another type.
+    merged_table = quote_identifier(generated_identifier("index_merge"))
+    file_order = quote_identifier(generated_identifier("index_order"))
     ordered_files = sorted(idx_files)
-    # Discovered index files share a directory and have unique basenames.
-    # Match basenames because remote readers can normalize URL prefixes.
-    filenames = [path.replace("\\", "/").rsplit("/", 1)[-1] for path in ordered_files]
-    with parquet_view(
-        conn, ordered_files, union_by_name=True, filename=source_filename
-    ) as source_view:
-        return conn.execute(
-            f"""
-            SELECT * EXCLUDE ({quoted_filename}, _rn) FROM (
-                SELECT source_data.*,
+    try:
+        with parquet_view(conn, ordered_files, union_by_name=True) as source_view:
+            conn.execute(
+                f"CREATE TEMP TABLE {merged_table} AS "
+                f"SELECT *, 0 AS {file_order} FROM {quote_identifier(source_view)} "
+                "WITH NO DATA"
+            )
+        for order, path in enumerate(ordered_files):
+            conn.execute(
+                f"INSERT INTO {merged_table} BY NAME "
+                f"SELECT *, ? AS {file_order} FROM read_parquet(?)",
+                [order, escape_duckdb_glob(path)],
+            )
+
+        # Deduplicate: keep entry from newest file (highest file order)
+        return conn.execute(f"""
+            SELECT * EXCLUDE ({file_order}, _rn) FROM (
+                SELECT *,
                        ROW_NUMBER() OVER (
-                           PARTITION BY source_data.transcript_id
-                           ORDER BY file_ranks.file_order DESC
+                           PARTITION BY transcript_id
+                           ORDER BY {file_order} DESC
                        ) as _rn
-                FROM {quote_identifier(source_view)} AS source_data
-                JOIN UNNEST(?) WITH ORDINALITY AS file_ranks(filename, file_order)
-                    ON parse_filename(source_data.{quoted_filename}) = file_ranks.filename
+                FROM {merged_table}
             )
             WHERE _rn = 1
-            """,
-            [filenames],
-        ).fetch_arrow_table()
+        """).fetch_arrow_table()
+    finally:
+        conn.execute(f"DROP TABLE IF EXISTS {merged_table}")

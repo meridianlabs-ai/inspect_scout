@@ -814,3 +814,28 @@ class TestErrorHandling:
 
         with pytest.raises(PatternError):
             await scanner(transcript)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "pattern,text,regex,word_boundary,expected",
+    [
+        ("cat|dog", "catfish hotdog bobcat dogma", True, True, 0),
+        ("dog|cat", "catfish hotdog bobcat dogma", True, True, 0),
+        ("cat|dog", "cat dog CAT DOG", True, True, 4),
+        ("(?:cat|dog)", "catfish hotdog cat dog", True, True, 2),
+        (r"(cat)\1|dog", "catcat dog catcatfish hotdog", True, True, 2),
+        ("cat|dog", "catfish hotdog bobcat dogma", True, False, 4),
+        ("cat|dog", "cat|dog cat dog", False, True, 1),
+        ("café|犬", "café 犬 cafés 子犬", True, True, 2),
+    ],
+)
+async def test_word_boundaries_cover_alternation(
+    pattern: str, text: str, regex: bool, word_boundary: bool, expected: int
+) -> None:
+    transcript = make_transcript([("user", text)])
+    result = await grep_scanner(
+        pattern, regex=regex, word_boundary=word_boundary, ignore_case=True
+    )(transcript)
+    assert isinstance(result, Result)
+    assert result.value == expected

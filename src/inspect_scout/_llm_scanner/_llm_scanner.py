@@ -250,7 +250,7 @@ def llm_scanner(
             ``True`` for default caching, a :class:`CachePolicy` for explicit
             expiry/scope, or ``None`` (default) for no caching. Threaded
             through to ``model.generate()`` via ``GenerateConfig.cache``.
-        retry_refusals: Retry model refusals. Pass an ``int`` for number of retries (defaults to 3). Pass ``False`` to not retry refusals. If the limit of refusals is exceeded then a ``RuntimeError`` is raised.
+        retry_refusals: Retry model refusals. Pass an ``int`` for number of retries (defaults to 3). Pass ``True`` to use the default or ``False`` to not retry refusals. If the limit of refusals is exceeded then a ``RuntimeError`` is raised.
         name: Scanner name.
             Use this to assign a name when passing ``llm_scanner()`` directly to ``scan()`` rather than delegating to it from another scanner.
         content: Override the transcript content filters for this scanner.
@@ -336,13 +336,8 @@ def llm_scanner(
     )
 
     # resolve retry_refusals
-    retry_refusals = (
-        retry_refusals
-        if isinstance(retry_refusals, int)
-        else 3
-        if retry_refusals is True
-        else 0
-    )
+    if isinstance(retry_refusals, bool):
+        retry_refusals = 3 if retry_refusals else 0
 
     async def scan(transcript: Transcript | TranscriptHandle) -> Result:
         # Match the concrete handle classes: TranscriptHandle is a plain

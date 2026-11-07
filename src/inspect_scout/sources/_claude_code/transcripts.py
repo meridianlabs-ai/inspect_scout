@@ -113,7 +113,7 @@ async def claude_code(
     count = 0
 
     for f in session_files:
-        if limit and count >= limit:
+        if limit is not None and count >= limit:
             return
 
         slug = peek_slug(f)
@@ -128,7 +128,7 @@ async def claude_code(
             async for transcript in _merge_slug_group(slug_groups[slug], slug):
                 yield transcript
                 count += 1
-                if limit and count >= limit:
+                if limit is not None and count >= limit:
                     return
         else:
             # Single file (no slug or only one file for this slug)
@@ -137,7 +137,7 @@ async def claude_code(
             async for transcript in _process_session_file(f):
                 yield transcript
                 count += 1
-                if limit and count >= limit:
+                if limit is not None and count >= limit:
                     return
 
 

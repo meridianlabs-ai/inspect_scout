@@ -1,10 +1,44 @@
 # AGENTS.md
 
+<!-- BEGIN shared text from meridianlabs-ai/actions policy/AGENTS.md. Change it there, not here. -->
+## Contribution policy — required checks before opening a PR
+
+These rules are mandatory for AI coding agents (Claude Code, Codex, Cursor,
+Devin, and similar) preparing contributions. Human contributors: see
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
+1. **Accepted-issue check.** Is the account you are operating for on the
+   qualified roster (recorded by account id in `.github/qualified.yml`)? If
+   not, every non-trivial PR requires a linked issue labeled `accepted` by a
+   maintainer. This applies regardless of the account's merged-PR history and
+   regardless of who filed the issue — an issue filed by the same account the
+   PR comes from is fine once a maintainer accepts it, and an issue filed by
+   anyone else still needs the label. Without an accepted linked issue, your
+   PR will be closed. Do not open it: file your evidence on an
+   issue and stop; open the PR only after a maintainer accepts the issue.
+2. **Deferred check.** Is the issue you are addressing labeled `deferred`?
+   The project has decided not to prioritize it. Do not open a PR against it
+   (it will be closed). If you have new evidence or demand,
+   comment on the issue and stop.
+3. **Duplicate check.** Search open PRs (and the linked issue's existing
+   PRs) for work addressing the same problem. If a PR already exists, do not
+   open a competing one — review it or comment there instead. If you believe
+   your approach is materially better, make that case in a comment on the
+   existing PR and wait for a maintainer's direction; if invited to proceed,
+   link the two PRs in your description.
+4. **Trivial-fix exception.** Documentation-only fixes (typo, broken link;
+   docs files only, under 25 changed lines) may be opened directly by anyone.
+5. **Value re-evaluation.** Before opening any PR, objectively re-assess it:
+   does it fix a demonstrated problem, with evidence (a reproduction or a
+   failing test)? If the need is speculative or the fix unverified, do not
+   proceed. File an issue with your evidence instead.
+<!-- END shared text from meridianlabs-ai/actions policy/AGENTS.md -->
+
 ## Repository Structure
 - **Python package** (`src/inspect_scout/`) - Core library for analyzing LLM evaluation transcripts. Provides a CLI, programmatic API, and FastAPI server. Handles transcript databases, scanners, validation, and results.
 - **React frontend** (`src/inspect_scout/_view/ts-mono/`) - TypeScript monorepo (Turborepo + pnpm workspaces) for the web UI, embedded as a git submodule. See its own [CLAUDE.md](src/inspect_scout/_view/ts-mono/CLAUDE.md) and [submodule guide](src/inspect_scout/_view/ts-mono/docs/submodule-guide.md).
 
-Development setup (editable install, inspect_ai tracked from `main`, frontend/Git LFS setup) is in [CONTRIBUTING.md](CONTRIBUTING.md).
+Development setup (`uv sync --extra dev`, the dependency cooldown, inspect_ai tracked from `main`, frontend/Git LFS setup) is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Principles
 
@@ -57,7 +91,7 @@ Development setup (editable install, inspect_ai tracked from `main`, frontend/Gi
 - Body lines starting with `<type>:` are parsed as extra changelog entries—don't begin description lines with a conventional-commit prefix unless that's intended
 - Never edit `CHANGELOG.md`, version numbers, or `.release-please-manifest.json`—Release Please owns them
 - After opening a PR, watch its checks until they complete (`gh pr checks <number> --watch`); investigate and fix any failures
-- A bug-fix PR needs a linked issue or a crisp minimal repro that *demonstrates* the bug—a real affected input or reproducible steps, not just an asserted root cause. A regression test that encodes an unproven premise doesn't count. Without one, review is deferred until you add it
+- A bug-fix PR from a maintainer or qualified contributor that links no issue needs a crisp minimal repro that *demonstrates* the bug—a real affected input or reproducible steps, not just an asserted root cause. A regression test that encodes an unproven premise doesn't count. Without one, review is deferred until you add it
 - See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines
 
 ### Agent review disclosure
@@ -141,7 +175,8 @@ Notes:
 
 ### Common Pitfalls
 - Use the venv for all Python commands: either reference `.venv/bin/` directly or run `source .venv/bin/activate`
-- **Never use `uv sync` or `uv run`**—developers often have local editable installs (e.g., `pip install -e` for inspect_ai) that uv silently removes
+- Set up or refresh the venv with `uv sync --extra dev`. Use `uv run --no-sync`, not plain `uv run`: developers often have a local editable inspect_ai installed over the locked one, and a plain `uv run` or `uv sync` reinstalls the locked version
+- After changing dependencies in `pyproject.toml`, run `uv lock` and commit `uv.lock`; CI's `uv sync --locked` fails on a stale lock. Don't override the 7-day `exclude-newer` cooldown; for an emergency release, CONTRIBUTING.md describes a dated entry
 
 
 ## TypeScript
@@ -184,7 +219,7 @@ pnpm install
 Pipeline: Pydantic models → openapi.json → generated.ts
 
 After Python API changes:
-1. `.venv/bin/python scripts/export_openapi_schema.py`—regenerates `src/inspect_scout/_view/openapi.json`
+1. `uv sync --upgrade-package inspect-ai --extra dev` (CI regenerates against inspect_ai main's latest commit), then `.venv/bin/python scripts/export_openapi_schema.py`—regenerates `src/inspect_scout/_view/openapi.json`
 2. In the submodule's `apps/scout`: `pnpm types:generate`—regenerates `apps/scout/src/types/generated.ts` (`pnpm build` does NOT regenerate types)
 3. Commit both: `openapi.json` in this repo, `generated.ts` in the submodule. Landing a submodule change requires the coordinated flow in [.agents/skills/land-ts-mono/SKILL.md](.agents/skills/land-ts-mono/SKILL.md)
 
@@ -193,3 +228,7 @@ CI validates sync.
 ## Repository skills
 
 Shared skills live in `.agents/skills`. `.claude/skills` links to that directory. Use `$skill-name` in Codex or `/skill-name` in Claude Code.
+
+## Reviewing other people's pull requests
+
+Unless a maintainer asked for your review, submit any review on someone else's pull request as a **Comment**, never **Approve** or **Request changes**. In this repository those are maintainer decisions: a non-maintainer's verdict doesn't count toward merging and misleads the author about where their PR stands. Put any confirmation or concern in the comment text, and say that you are an AI agent and not a maintainer. This does not apply to agents acting for project maintainers.

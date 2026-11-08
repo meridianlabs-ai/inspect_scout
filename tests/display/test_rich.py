@@ -144,6 +144,29 @@ def test_scanner_table_and_panel_remove_terminal_controls() -> None:
     _assert_safe(_render(scan_panel(spec=spec, summary=summary)))
 
 
+def test_scanners_table_shows_unscored_column_only_when_present() -> None:
+    """The unscored column appears only when some scanner has unscored results."""
+    spec = ScanSpec(
+        scan_name="scan",
+        scan_args={},
+        scanners={"s": ScannerSpec(name="s")},
+        transcripts=None,
+    )
+    summary = Summary(scanners=["s"])
+    summary["s"].scans = 3
+    summary["s"].results = 2
+    assert "unscored" not in _render(scanners_table(spec, summary))
+
+    summary["s"].unscored = 1
+    rendered = _render(scanners_table(spec, summary))
+    assert "unscored" in rendered
+    assert (
+        rendered.index("results")
+        < rendered.index("unscored")
+        < rendered.index("errors")
+    )
+
+
 def test_scan_metadata_and_filename_text_remove_terminal_controls() -> None:
     spec, summary = _scan()
     status = Status(

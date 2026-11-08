@@ -43,7 +43,10 @@ from typing_extensions import Unpack
 from inspect_scout._concurrency._mp_common import set_log_level
 from inspect_scout._project import read_project
 from inspect_scout._scanjob import merge_project_into_scanjob
-from inspect_scout._scanner.metrics import metrics_accumulators
+from inspect_scout._scanner.metrics import (
+    metrics_accumulators,
+    resultset_as_score_value,
+)
 from inspect_scout._transcript.local_files_cache import (
     cleanup_task_files_cache,
     init_task_files_cache,
@@ -762,7 +765,10 @@ async def _scan_async_inner(
                     if scanner in metrics_accum:
                         for result in results:
                             if result.result is not None:
-                                metrics_accum[scanner].add_result(result.result.value)
+                                value = result.result.value
+                                if result.result.type == "resultset":
+                                    value = dict(resultset_as_score_value(value))
+                                metrics_accum[scanner].add_result(value)
                         return metrics_accum[scanner].compute_metrics_throttled()
                     else:
                         return None

@@ -61,7 +61,7 @@ dev = [
     # tests construct directly (httpx2 arrives transitively via anthropic)
     "anthropic>=1.0.0",
     "arize-phoenix-client",
-    "google-genai>=1.69.0",
+    "google-genai>=3.0.0",
     # harbor (for the atif source tests): >=0.6.0 is the first release with the
     # ATIF v1.7 schema the source parses; harbor itself requires Python >=3.12
     "harbor>=0.6.0; python_version >= '3.12'",

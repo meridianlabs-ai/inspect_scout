@@ -592,10 +592,18 @@ async def _scan_async_inner(
                 raise PrerequisiteError("No scanners provided")
             total_scans = 0
             skipped_scans = 0
+            metrics_accum = metrics_accumulators(scan.scanners)
             for transcript_id in snapshot.transcript_ids.keys():
                 for name in scanner_names_list:
                     if await recorder.is_recorded(transcript_id, name):
                         skipped_scans += 1
+                        # Only seed transcripts that will be skipped. A retry replaces
+                        # every result for its transcript, including partial successes.
+                        if name in metrics_accum:
+                            for value in await recorder.recorded_values(
+                                transcript_id, name
+                            ):
+                                metrics_accum[name].add_result(value)
                     total_scans += 1
 
             # override total scans if there is a worklist
@@ -621,9 +629,6 @@ async def _scan_async_inner(
                         for scanner in scan.scanners.values()
                     ]
                 )
-
-                # create metrics accumulator
-                metrics_accum = metrics_accumulators(scan.scanners)
 
                 async def _parse_function(
                     job: ParseJob, reader: TranscriptsReader

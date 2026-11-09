@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import uuid
@@ -287,6 +288,31 @@ class RecorderBuffer:
 
     def errors(self) -> list[Error]:
         return read_scan_errors(str(self._error_file))
+
+    async def recorded_values(
+        self, transcript_id: str, scanner: str
+    ) -> list[JsonValue]:
+        def read() -> list[JsonValue]:
+            path = (
+                self._buffer_dir
+                / f"scanner={_sanitize_component(scanner)}"
+                / f"{transcript_id}.parquet"
+            )
+            table = pq.read_table(path.as_posix(), columns=["value", "value_type"])
+            values: list[JsonValue] = []
+            for row in table.to_pylist():
+                value = row["value"]
+                if isinstance(value, str) and row["value_type"] != "string":
+                    # Mixed scalar columns stringify booleans with Python casing.
+                    value = (
+                        value.lower() == "true"
+                        if row["value_type"] == "boolean"
+                        else json.loads(value)
+                    )
+                values.append(value)
+            return values
+
+        return await anyio.to_thread.run_sync(read)
 
     def scan_summary(self) -> Summary:
         assert self._state.summary is not None  # set in __init__

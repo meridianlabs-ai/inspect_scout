@@ -218,17 +218,19 @@ class ScanSpec(BaseModel):
         The recorder writes each scanner's results to `<scan dir>/<name>.parquet`,
         and a scan's `_scan.json` may come from someone else. Names that stay
         inside the scan directory (including project scanner names such as
-        `pkg/scanner` or `refusal:v2`) are accepted.
+        `pkg/scanner` or `refusal:v2`) are accepted. `%` is rejected because
+        the paths of a `file://` scan are percent-decoded, so `%2e%2e` reads as
+        `..`.
         """
         for name in scanners:
-            if any(
+            if "%" in name or any(
                 path.anchor or ".." in path.parts
                 for path in (PurePosixPath(name), PureWindowsPath(name))
             ):
                 raise ValueError(
                     f"{name!r} is not a valid scanner name: it must not start "
                     "with '/', '\\' or a drive such as 'C:', or contain a '..' "
-                    "component."
+                    "component or a '%'."
                 )
         return scanners
 

@@ -21,7 +21,7 @@ import pyarrow.fs as pafs
 import pyarrow.parquet as pq
 from inspect_ai._util._async import tg_collect
 from inspect_ai._util.asyncfiles import AsyncFilesystem
-from inspect_ai._util.file import file, filesystem
+from inspect_ai._util.file import file, filesystem, local_path
 from inspect_ai._util.json import to_json_str_safe
 from pydantic import ValidationError
 from typing_extensions import override
@@ -323,19 +323,21 @@ class FileRecorder(ScanRecorder):
         # remote object stores expose new objects atomically (an object only
         # becomes visible once fully uploaded), so we PUT directly to the
         # final key. local filesystems expose partial writes, so there we
-        # write to a sibling `.tmp` and atomically rename — either way the
-        # same path is never simultaneously an input to scanner_table and
-        # the target of an in-progress write, and readers always observe a
-        # complete file.
+        # write to a new temp file beside the output and atomically rename —
+        # either way the same path is never simultaneously an input to
+        # scanner_table and the target of an in-progress write, and readers
+        # always observe a complete file.
         remote = scan_dir.protocol not in ("", "file")
         async with AsyncFilesystem() as fs:
             for scanner in sorted(scan_spec.scanners.keys()):
-                output_path = _scanner_parquet_file(scan_dir, scanner)
                 if remote:
+                    output_path = _scanner_parquet_file(scan_dir, scanner)
                     tmp_fd, compact_file = tempfile.mkstemp(suffix=".parquet")
                     os.close(tmp_fd)
                 else:
-                    compact_file = f"{output_path}.tmp"
+                    target = _local_scan_file(scan_dir, f"{scanner}.parquet")
+                    output_path = str(target)
+                    compact_file = _new_temp_file_beside(target)
                 try:
                     if await _compact_with_prior(
                         fs,
@@ -348,12 +350,10 @@ class FileRecorder(ScanRecorder):
                             with open(compact_file, "rb") as f:
                                 await fs.write_file_streaming(output_path, f)
                         else:
-                            filesystem(scan_dir.as_posix()).mv(
-                                compact_file, output_path
-                            )
+                            os.replace(compact_file, output_path)
                 finally:
                     # remove leftovers: the remote-upload temp file, or a
-                    # partially-written local `.tmp` after a failure (after
+                    # partially-written local temp file after a failure (after
                     # a successful local rename the path no longer exists)
                     _unlink_quietly(compact_file)
 
@@ -862,6 +862,39 @@ async def _compact_with_prior(
 
 def _scanner_parquet_file(scan_dir: UPath, scanner: str) -> str:
     return (scan_dir / f"{scanner}.parquet").as_posix()
+
+
+def _local_scan_file(scan_dir: UPath, name: str) -> Path:
+    """The local path of `name` in a scan directory, for sync to write.
+
+    A scan directory can come from someone else, so a symlink in it could
+    route a write elsewhere. Refuses a target that is a symlink or whose
+    directory resolves outside the scan, and creates that directory.
+    """
+    root = Path(local_path(scan_dir.as_posix()))
+    target = root / name
+    if target.is_symlink() or not target.parent.resolve().is_relative_to(
+        root.resolve()
+    ):
+        raise ValueError(
+            f"Refusing to write '{name}' in scan '{scan_dir}': it resolves "
+            "outside the scan directory."
+        )
+    target.parent.mkdir(parents=True, exist_ok=True)
+    return target
+
+
+def _new_temp_file_beside(target: Path) -> str:
+    """Create an empty temp file next to `target` for an atomic replace.
+
+    `mkstemp` creates the file exclusively, so it never opens a file or
+    symlink that already exists at a predictable name.
+    """
+    fd, path = tempfile.mkstemp(
+        dir=target.parent, prefix=f".{target.name}.", suffix=".tmp"
+    )
+    os.close(fd)
+    return path
 
 
 async def _read_scan_spec(scan_dir: UPath) -> ScanSpec:
@@ -1479,9 +1512,8 @@ async def _sync_status_files(
     # copy scan summary (update with complete status)
     summary = read_scan_summary(scan_buffer_dir, scan_spec)
     summary.complete = complete
-    await fs.write_file(
-        (scan_dir / SCAN_SUMMARY).as_posix(),
-        summary.model_dump_json().encode("utf-8"),
+    await _write_scan_file(
+        fs, scan_dir, SCAN_SUMMARY, summary.model_dump_json().encode("utf-8")
     )
 
     # copy errors
@@ -1489,4 +1521,20 @@ async def _sync_status_files(
         error.model_dump_json(warnings=False) + "\n"
         for error in _read_scan_errors(scan_buffer_dir)
     )
-    await fs.write_file((scan_dir / SCAN_ERRORS).as_posix(), errors.encode("utf-8"))
+    await _write_scan_file(fs, scan_dir, SCAN_ERRORS, errors.encode("utf-8"))
+
+
+async def _write_scan_file(
+    fs: AsyncFilesystem, scan_dir: UPath, name: str, data: bytes
+) -> None:
+    """Write `name` in the scan directory, atomically on a local filesystem."""
+    if scan_dir.protocol not in ("", "file"):
+        await fs.write_file((scan_dir / name).as_posix(), data)
+        return
+    target = _local_scan_file(scan_dir, name)
+    tmp = _new_temp_file_beside(target)
+    try:
+        Path(tmp).write_bytes(data)
+        os.replace(tmp, target)
+    finally:
+        _unlink_quietly(tmp)

@@ -64,6 +64,9 @@ async def test_sync_does_not_write_outside_the_scan_dir(
         # a single letter and a colon is a Windows drive, which drops the scan dir
         "x:v2",
         "\\\\server\\share\\victim",
+        # a file:// scan's paths are percent-decoded, so these would be `..`
+        "%2e%2e/victim",
+        "a%2f..%2f..%2fvictim",
     ],
 )
 def test_scan_spec_rejects_scanner_names_that_leave_the_scan_dir(name: str) -> None:
@@ -166,6 +169,28 @@ async def test_sync_does_not_decode_a_percent_encoded_dotdot_out_of_the_scan_dir
 
     try:
         await FileRecorder.sync(scan_uri, complete=True)
+    except Exception:
+        pass
+
+    assert hashlib.sha256(outside.read_bytes()).hexdigest() == before
+
+
+@pytest.mark.asyncio
+async def test_sync_does_not_follow_a_status_file_symlink_out_of_the_scan_dir(
+    tmp_path: Path, scout_buffer_dir: Path
+) -> None:
+    """A shared scan's `_summary.json` symlink must not redirect sync's write."""
+    outside = tmp_path / "elsewhere" / "notes.txt"
+    outside.parent.mkdir()
+    outside.write_text("not a scan summary\n")
+    before = hashlib.sha256(outside.read_bytes()).hexdigest()
+
+    scan_dir = await _init_scan(tmp_path, "s")
+    (scan_dir / "_summary.json").unlink(missing_ok=True)
+    (scan_dir / "_summary.json").symlink_to(outside)
+
+    try:
+        await FileRecorder.sync(scan_dir.as_posix(), complete=True)
     except Exception:
         pass
 

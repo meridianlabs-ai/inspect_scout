@@ -2,12 +2,23 @@ import functools
 import io
 import json
 import os
+import secrets
+import stat
 import tempfile
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from logging import getLogger
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Literal, NamedTuple, Sequence, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    BinaryIO,
+    Callable,
+    Literal,
+    NamedTuple,
+    Sequence,
+    cast,
+)
 from urllib.parse import quote
 
 import anyio
@@ -295,8 +306,10 @@ class FileRecorder(ScanRecorder):
 
     async def _write_scan_spec(self) -> None:
         async with AsyncFilesystem() as fs:
-            await fs.write_file(
-                (self.scan_dir / SCAN_JSON).as_posix(),
+            await _write_scan_file(
+                fs,
+                self.scan_dir,
+                SCAN_JSON,
                 to_json_str_safe(self._scan_spec).encode("utf-8"),
             )
 
@@ -333,19 +346,21 @@ class FileRecorder(ScanRecorder):
                 if remote:
                     output_path = _scanner_parquet_file(scan_dir, scanner)
                     tmp_fd, compact_file = tempfile.mkstemp(suffix=".parquet")
-                    os.close(tmp_fd)
+                    output: BinaryIO = os.fdopen(tmp_fd, "wb")
                 else:
                     target = _local_scan_file(scan_dir, f"{scanner}.parquet")
                     output_path = str(target)
-                    compact_file = _new_temp_file_beside(target)
+                    compact_file, output = _open_temp_file_beside(target)
                 try:
-                    if await _compact_with_prior(
-                        fs,
-                        scan_buffer_dir,
-                        scanner,
-                        prior=UPath(output_path),
-                        output_file=compact_file,
-                    ):
+                    with output:
+                        written = await _compact_with_prior(
+                            fs,
+                            scan_buffer_dir,
+                            scanner,
+                            prior=UPath(output_path),
+                            output_file=output,
+                        )
+                    if written:
                         if remote:
                             with open(compact_file, "rb") as f:
                                 await fs.write_file_streaming(output_path, f)
@@ -814,11 +829,11 @@ async def _compact_with_prior(
     scanner: str,
     *,
     prior: UPath,
-    output_file: str,
+    output_file: BinaryIO,
 ) -> bool:
     """Compact buffer parquets, merging in a prior compacted output (if any).
 
-    The compacted result is streamed to `output_file` (a local path);
+    The compacted result is streamed to `output_file`;
     returns True if it was written (False when there was nothing to compact).
 
     `scanner_table` requires uniform local paths and does blocking CPU +
@@ -869,9 +884,17 @@ def _local_scan_file(scan_dir: UPath, name: str) -> Path:
 
     A scan directory can come from someone else, so a symlink in it could
     route a write elsewhere. Refuses a target that is a symlink or whose
-    directory resolves outside the scan, and creates that directory.
+    directory resolves outside the scan, and creates that directory. Also
+    refuses a percent-encoded `file://` location: fsspec, which reads the
+    scan, takes `%20` literally, and the local path decodes it.
     """
-    root = Path(local_path(scan_dir.as_posix()))
+    location = scan_dir.as_posix()
+    if scan_dir.protocol == "file" and "%" in location:
+        raise ValueError(
+            f"Percent-encoded scan locations such as '{location}' aren't "
+            "supported. Use a plain path."
+        )
+    root = Path(local_path(location))
     target = root / name
     if target.is_symlink() or not target.parent.resolve().is_relative_to(
         root.resolve()
@@ -884,17 +907,31 @@ def _local_scan_file(scan_dir: UPath, name: str) -> Path:
     return target
 
 
-def _new_temp_file_beside(target: Path) -> str:
-    """Create an empty temp file next to `target` for an atomic replace.
+class _TempFile(NamedTuple):
+    path: str
+    file: BinaryIO
 
-    `mkstemp` creates the file exclusively, so it never opens a file or
-    symlink that already exists at a predictable name.
+
+def _open_temp_file_beside(target: Path) -> _TempFile:
+    """Create and open a temp file next to `target` for an atomic replace.
+
+    `O_EXCL` never opens a file or symlink already at the name, and writing
+    through the returned file rather than its path means a directory swapped
+    for a symlink afterwards can't redirect the write. The file gets the
+    existing target's mode, or otherwise the umask's default, as writing
+    `target` in place would.
     """
-    fd, path = tempfile.mkstemp(
-        dir=target.parent, prefix=f".{target.name}.", suffix=".tmp"
-    )
-    os.close(fd)
-    return path
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
+    while True:
+        path = target.parent / f".scout-{secrets.token_hex(8)}.tmp"
+        try:
+            fd = os.open(path, flags, 0o666)
+            break
+        except FileExistsError:
+            continue
+    if target.exists():
+        os.chmod(path, stat.S_IMODE(target.stat().st_mode))
+    return _TempFile(str(path), os.fdopen(fd, "wb"))
 
 
 async def _read_scan_spec(scan_dir: UPath) -> ScanSpec:
@@ -1532,9 +1569,10 @@ async def _write_scan_file(
         await fs.write_file((scan_dir / name).as_posix(), data)
         return
     target = _local_scan_file(scan_dir, name)
-    tmp = _new_temp_file_beside(target)
+    tmp, file = _open_temp_file_beside(target)
     try:
-        Path(tmp).write_bytes(data)
+        with file:
+            file.write(data)
         os.replace(tmp, target)
     finally:
         _unlink_quietly(tmp)

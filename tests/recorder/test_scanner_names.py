@@ -4,11 +4,17 @@ import hashlib
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
-from inspect_scout._recorder.buffer import RecorderBuffer, _sanitize_component
+from inspect_scout._recorder import file as recorder_file
+from inspect_scout._recorder.buffer import (
+    RecorderBuffer,
+    _sanitize_component,
+    scanner_table,
+)
 from inspect_scout._recorder.file import FileRecorder
 from inspect_scout._scanspec import ScannerSpec, ScanSpec
 from pydantic import ValidationError
@@ -191,6 +197,98 @@ async def test_sync_does_not_follow_a_status_file_symlink_out_of_the_scan_dir(
 
     try:
         await FileRecorder.sync(scan_dir.as_posix(), complete=True)
+    except Exception:
+        pass
+
+    assert hashlib.sha256(outside.read_bytes()).hexdigest() == before
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX permission bits")
+@pytest.mark.asyncio
+async def test_sync_keeps_file_permissions(
+    tmp_path: Path, scout_buffer_dir: Path
+) -> None:
+    """New outputs get the umask's defaults; existing ones keep their mode."""
+    umask = os.umask(0)
+    os.umask(umask)
+    scan_dir = await _init_scan(tmp_path, "s")
+    pq.write_table(pa.table({"x": [1, 2, 3]}), scan_dir / "s.parquet")
+    (scan_dir / "s.parquet").chmod(0o640)
+    (scan_dir / "_summary.json").unlink(missing_ok=True)
+
+    await FileRecorder.sync(scan_dir.as_posix(), complete=True)
+
+    assert (scan_dir / "s.parquet").stat().st_mode & 0o777 == 0o640
+    assert (scan_dir / "_summary.json").stat().st_mode & 0o777 == 0o666 & ~umask
+
+
+@pytest.mark.asyncio
+async def test_sync_handles_a_long_scanner_name(
+    tmp_path: Path, scout_buffer_dir: Path
+) -> None:
+    """A name near the 255-byte file name limit still syncs."""
+    scan_dir = await _init_scan(tmp_path, "s" * 240)
+    await FileRecorder.sync(scan_dir.as_posix(), complete=True)
+
+
+@pytest.mark.asyncio
+async def test_sync_does_not_follow_a_directory_swapped_in_during_the_write(
+    tmp_path: Path, scout_buffer_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Replacing `pkg` with a symlink after sync checked it must not redirect it."""
+    outside = tmp_path / "elsewhere" / "victim.parquet"
+    outside.parent.mkdir()
+    pq.write_table(pa.table({"x": [1, 2, 3]}), outside)
+    before = hashlib.sha256(outside.read_bytes()).hexdigest()
+
+    scan_dir = await _init_scan(tmp_path, "pkg/victim")
+    (scan_dir / "pkg").mkdir()
+    pq.write_table(pa.table({"x": [4, 5, 6]}), scan_dir / "pkg" / "victim.parquet")
+
+    def swap_then_compact(*args: Any, **kwargs: Any) -> bool:
+        (scan_dir / "pkg").rename(scan_dir / "pkg.real")
+        (scan_dir / "pkg").symlink_to(outside.parent, target_is_directory=True)
+        return scanner_table(*args, **kwargs)
+
+    monkeypatch.setattr(recorder_file, "scanner_table", swap_then_compact)
+    try:
+        await FileRecorder.sync(scan_dir.as_posix(), complete=True)
+    except Exception:
+        pass
+
+    assert hashlib.sha256(outside.read_bytes()).hexdigest() == before
+    assert sorted(p.name for p in outside.parent.iterdir()) == ["victim.parquet"]
+
+
+@pytest.mark.asyncio
+async def test_sync_refuses_a_percent_encoded_file_uri_scan_location(
+    tmp_path: Path, scout_buffer_dir: Path
+) -> None:
+    """Fsspec reads `%20` literally and local paths decode it; don't pick one."""
+    location = "file://" + str(tmp_path / "B%20dir")
+
+    with pytest.raises(ValueError, match="Percent-encoded"):
+        await _init_scan(tmp_path, "s", location)
+    assert not (tmp_path / "B dir").exists()
+
+
+@pytest.mark.asyncio
+async def test_resume_does_not_write_the_scan_spec_through_a_symlink(
+    tmp_path: Path, scout_buffer_dir: Path
+) -> None:
+    """A shared scan's `_scan.json` symlink must not redirect the spec write."""
+    scan_dir = await _init_scan(tmp_path, "s")
+    outside = tmp_path / "elsewhere" / "_scan.json"
+    outside.parent.mkdir()
+    (scan_dir / "_scan.json").rename(outside)
+    (scan_dir / "_scan.json").symlink_to(outside)
+    before = hashlib.sha256(outside.read_bytes()).hexdigest()
+
+    recorder = FileRecorder()
+    spec = await recorder.resume(scan_dir.as_posix())
+    spec.scan_name = "changed"
+    try:
+        await recorder._write_scan_spec()
     except Exception:
         pass
 

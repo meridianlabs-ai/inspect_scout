@@ -885,14 +885,15 @@ def _local_scan_file(scan_dir: UPath, name: str) -> Path:
     A scan directory can come from someone else, so a symlink in it could
     route a write elsewhere. Refuses a target that is a symlink or whose
     directory resolves outside the scan, and creates that directory. Also
-    refuses a percent-encoded `file://` location: fsspec, which reads the
-    scan, takes `%20` literally, and the local path decodes it.
+    refuses a `file://` location with `%`, `#` or `?`: fsspec, which reads
+    the scan, takes them literally, but the local path decodes `%` and drops
+    what follows `#` or `?`.
     """
     location = scan_dir.as_posix()
-    if scan_dir.protocol == "file" and "%" in location:
+    if scan_dir.protocol == "file" and any(c in location for c in "%#?"):
         raise ValueError(
-            f"Percent-encoded scan locations such as '{location}' aren't "
-            "supported. Use a plain path."
+            f"file:// scan locations with '%', '#' or '?', such as "
+            f"'{location}', aren't supported. Use a plain path."
         )
     root = Path(local_path(location))
     target = root / name

@@ -260,16 +260,17 @@ async def test_sync_does_not_follow_a_directory_swapped_in_during_the_write(
     assert sorted(p.name for p in outside.parent.iterdir()) == ["victim.parquet"]
 
 
+@pytest.mark.parametrize("name", ["B%20dir", "scans#run", "scans?run"])
 @pytest.mark.asyncio
-async def test_sync_refuses_a_percent_encoded_file_uri_scan_location(
-    tmp_path: Path, scout_buffer_dir: Path
+async def test_init_refuses_a_file_uri_scan_location_that_parsers_disagree_on(
+    tmp_path: Path, scout_buffer_dir: Path, name: str
 ) -> None:
-    """Fsspec reads `%20` literally and local paths decode it; don't pick one."""
-    location = "file://" + str(tmp_path / "B%20dir")
+    """Fsspec reads `%20`, `#` and `?` literally; the local path doesn't."""
+    location = "file://" + str(tmp_path / name)
 
-    with pytest.raises(ValueError, match="Percent-encoded"):
+    with pytest.raises(ValueError, match="aren't supported"):
         await _init_scan(tmp_path, "s", location)
-    assert not (tmp_path / "B dir").exists()
+    assert not list(tmp_path.rglob("_scan.json"))
 
 
 @pytest.mark.asyncio

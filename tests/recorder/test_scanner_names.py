@@ -293,3 +293,43 @@ async def test_resume_does_not_write_the_scan_spec_through_a_symlink(
         pass
 
     assert hashlib.sha256(outside.read_bytes()).hexdigest() == before
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX permission bits")
+@pytest.mark.asyncio
+async def test_sync_does_not_chmod_through_a_directory_swapped_in_after_create(
+    tmp_path: Path, scout_buffer_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Copying the target's mode must not follow a swapped `pkg` to a victim."""
+    victim = tmp_path / "home" / "private_key"
+    victim.parent.mkdir()
+    victim.write_text("secret\n")
+    victim.chmod(0o600)
+    decoy = tmp_path / "decoy"
+    decoy.mkdir()
+    pq.write_table(pa.table({"x": [1]}), decoy / "victim.parquet")
+    (decoy / "victim.parquet").chmod(0o644)
+
+    scan_dir = await _init_scan(tmp_path, "pkg/victim")
+    (scan_dir / "pkg").mkdir()
+    pq.write_table(pa.table({"x": [4, 5, 6]}), scan_dir / "pkg" / "victim.parquet")
+
+    real_open = os.open
+
+    def open_then_swap(path: Any, flags: int, mode: int = 0o777) -> int:
+        fd = real_open(path, flags, mode)
+        name = Path(path).name
+        if name.startswith(".scout-") and (scan_dir / "pkg").is_dir():
+            (scan_dir / "pkg").rename(scan_dir / "pkg.old")
+            (scan_dir / "pkg").symlink_to(decoy, target_is_directory=True)
+            (decoy / name).symlink_to(victim)
+        return fd
+
+    monkeypatch.setattr(os, "open", open_then_swap)
+    try:
+        await FileRecorder.sync(scan_dir.as_posix(), complete=True)
+    except Exception:
+        pass
+    monkeypatch.undo()
+
+    assert victim.stat().st_mode & 0o777 == 0o600

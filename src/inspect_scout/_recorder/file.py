@@ -929,9 +929,19 @@ def _open_temp_file_beside(target: Path) -> _TempFile:
             break
         except FileExistsError:
             continue
-    if target.exists():
-        os.chmod(path, stat.S_IMODE(target.stat().st_mode))
-    return _TempFile(str(path), os.fdopen(fd, "wb"))
+    try:
+        if target.exists():
+            mode = stat.S_IMODE(target.stat().st_mode) & 0o777
+            # by descriptor: a path could follow a swapped directory
+            if hasattr(os, "fchmod"):
+                os.fchmod(fd, mode)
+            else:
+                os.chmod(path, mode)
+        return _TempFile(str(path), os.fdopen(fd, "wb"))
+    except BaseException:
+        os.close(fd)
+        _unlink_quietly(str(path))
+        raise
 
 
 async def _read_scan_spec(scan_dir: UPath) -> ScanSpec:

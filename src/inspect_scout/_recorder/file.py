@@ -32,7 +32,7 @@ import pyarrow.fs as pafs
 import pyarrow.parquet as pq
 from inspect_ai._util._async import tg_collect
 from inspect_ai._util.asyncfiles import AsyncFilesystem
-from inspect_ai._util.file import file, filesystem, local_path
+from inspect_ai._util.file import file, filesystem
 from inspect_ai._util.json import to_json_str_safe
 from pydantic import ValidationError
 from typing_extensions import override
@@ -884,18 +884,11 @@ def _local_scan_file(scan_dir: UPath, name: str) -> Path:
 
     A scan directory can come from someone else, so a symlink in it could
     route a write elsewhere. Refuses a target that is a symlink or whose
-    directory resolves outside the scan, and creates that directory. Also
-    refuses a `file://` location with `%`, `#` or `?`: fsspec, which reads
-    the scan, takes them literally, but the local path decodes `%` and drops
-    what follows `#` or `?`.
+    directory resolves outside the scan, and creates that directory. The path
+    is the one fsspec reads the scan from: `~` expanded, and `%`, `#` and
+    `?` in a `file://` location taken literally.
     """
-    location = scan_dir.as_posix()
-    if scan_dir.protocol == "file" and any(c in location for c in "%#?"):
-        raise ValueError(
-            f"file:// scan locations with '%', '#' or '?', such as "
-            f"'{location}', aren't supported. Use a plain path."
-        )
-    root = Path(local_path(location))
+    root = Path(scan_dir.expanduser().path)
     target = root / name
     if target.is_symlink() or not target.parent.resolve().is_relative_to(
         root.resolve()

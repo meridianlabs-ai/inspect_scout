@@ -262,15 +262,36 @@ async def test_sync_does_not_follow_a_directory_swapped_in_during_the_write(
 
 @pytest.mark.parametrize("name", ["B%20dir", "scans#run", "scans?run"])
 @pytest.mark.asyncio
-async def test_init_refuses_a_file_uri_scan_location_that_parsers_disagree_on(
+async def test_sync_writes_where_fsspec_reads_a_file_uri_scan_location(
     tmp_path: Path, scout_buffer_dir: Path, name: str
 ) -> None:
-    """Fsspec reads `%20`, `#` and `?` literally; the local path doesn't."""
-    location = "file://" + str(tmp_path / name)
+    """Fsspec reads `%20`, `#` and `?` in a file:// location literally; so must sync."""
+    scan_dir = await _init_scan(tmp_path, "s", "file://" + str(tmp_path / name))
 
-    with pytest.raises(ValueError, match="aren't supported"):
-        await _init_scan(tmp_path, "s", location)
-    assert not list(tmp_path.rglob("_scan.json"))
+    status = await FileRecorder.sync("file://" + str(scan_dir), complete=True)
+
+    assert status.summary.complete
+    assert {p.name for p in tmp_path.iterdir()} == {"buffer", name}
+
+
+@pytest.mark.asyncio
+async def test_sync_writes_where_fsspec_reads_a_tilde_scan_location(
+    tmp_path: Path, scout_buffer_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Fsspec expands `~` in a scan location; so must sync."""
+    (tmp_path / "home" / "scans").mkdir(parents=True)
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.chdir(tmp_path)
+    recorder = FileRecorder()
+    await recorder.init(
+        ScanSpec(scan_name="test", scanners={"s": ScannerSpec(name="s")}), "~/scans"
+    )
+
+    status = await FileRecorder.sync(recorder.scan_dir.as_posix(), complete=True)
+
+    assert status.summary.complete
+    # init creates an empty literal `~/scans/scan_id=...` (unchanged here)
+    assert not [p for p in (tmp_path / "~").rglob("*") if p.is_file()]
 
 
 @pytest.mark.asyncio

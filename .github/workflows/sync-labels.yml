@@ -1,0 +1,26 @@
+# Creates or updates the labels of the accepted-issue rule (labels.json in
+# meridianlabs-ai/actions). It never deletes a label. It runs weekly, by hand,
+# and when this file changes on main. It has no pull_request trigger, because
+# the job writes labels to this repo.
+name: Sync labels
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/workflows/sync-labels.yml"]
+
+permissions: {}
+
+jobs:
+  sync-labels:
+    # Forks with Actions enabled would otherwise write labels to the fork.
+    if: github.repository == 'meridianlabs-ai/inspect_scout'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write # create and update labels
+    steps:
+      - uses: meridianlabs-ai/actions/sync-labels@330f3df6492418d6b25dc2631fc31143489f4674 # main

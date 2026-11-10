@@ -66,6 +66,9 @@ SCANNER_VERSION = "scanner_version"
 SCANNER_FILE_ATTR = "___scanner_file___"
 SCANNER_NAME_ATTR = "___scanner_name___"
 SCANNER_CONTENT_ATTR = "___scanner_content___"
+# Scan functions that need timelines loaded (e.g. `llm_scanner(timeline=...)`)
+# but defer to any timeline filter declared or passed as a content override.
+SCANNER_TIMELINE_NEEDED_ATTR = "___scanner_timeline_needed___"
 # Scan functions whose author has vouched for (True) or against (False)
 # receiving a streaming `TranscriptHandle`. Keyed by identity rather than
 # stored on the function: `functools.wraps` copies `__dict__`, so an attribute
@@ -450,6 +453,10 @@ def scanner(
                     inferred_timeline = override.timeline
                 if override.metadata is not None:
                     inferred_metadata = override.metadata
+            if inferred_timeline is None and getattr(
+                scanner_fn, SCANNER_TIMELINE_NEEDED_ATTR, False
+            ):
+                inferred_timeline = normalize_timeline_filter(True)
 
             # Validate scanner signature matches filters
             # Only validate if we have filters (not just a custom loader)

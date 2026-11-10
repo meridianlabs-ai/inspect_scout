@@ -25,6 +25,7 @@ from inspect_ai.event._sample_init import SampleInitEvent
 from inspect_ai.event._sample_limit import SampleLimitEvent
 from inspect_ai.event._sandbox import SandboxEvent
 from inspect_ai.event._score import ScoreEvent
+from inspect_ai.event._sentinel import SentinelEvent
 from inspect_ai.event._span import SpanBeginEvent, SpanEndEvent
 from inspect_ai.event._state import StateEvent
 from inspect_ai.event._store import StoreEvent
@@ -58,6 +59,7 @@ TYPE_TO_EVENT_FILTER: dict[type[Any], str] = {
     StateEvent: "state",
     StoreEvent: "store",
     ApprovalEvent: "approval",
+    SentinelEvent: "sentinel",
     InputEvent: "input",
     ScoreEvent: "score",
     ErrorEvent: "error",
@@ -396,6 +398,7 @@ def _get_event_types_from_filter(
         "state": StateEvent,
         "store": StoreEvent,
         "approval": ApprovalEvent,
+        "sentinel": SentinelEvent,
         "compaction": CompactionEvent,
         "branch": BranchEvent,
         "input": InputEvent,

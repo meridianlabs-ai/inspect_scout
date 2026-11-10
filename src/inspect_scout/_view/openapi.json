@@ -212,7 +212,7 @@
       },
       "AppConfig": {
         "additionalProperties": false,
-        "description": "Application configuration returned by GET /config.",
+        "description": "Application configuration returned by GET /config.\n\n`trust_content` is the viewer-wide cap: the lowest of the `scout view`\noption (or `SCOUT_VIEW_TRUST_CONTENT`) and the project's setting.",
         "properties": {
           "filter": {
             "anyOf": [
@@ -463,6 +463,17 @@
                 "type": "null"
               }
             ]
+          },
+          "trust_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Content"
           },
           "validation": {
             "anyOf": [
@@ -1600,6 +1611,359 @@
         "title": "CheckpointSampleConfig",
         "type": "object"
       },
+      "CommunicationDelivery": {
+        "description": "For `delivered`, whom a record reached and in what order.",
+        "properties": {
+          "recipients": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recipients",
+            "type": "array"
+          },
+          "seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seq"
+          }
+        },
+        "required": [
+          "recipients"
+        ],
+        "title": "CommunicationDelivery",
+        "type": "object"
+      },
+      "CommunicationEvent": {
+        "description": "Communication between agents: a record sent or delivered, a read of what others communicated, or a wait for others.\n\nExperimental: not yet a stable API.",
+        "properties": {
+          "agent": {
+            "title": "Agent",
+            "type": "string"
+          },
+          "agent_span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Span Id"
+          },
+          "channel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel"
+          },
+          "data": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Data",
+            "type": "object"
+          },
+          "delivery": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CommunicationDelivery"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "event": {
+            "const": "communication",
+            "default": "communication",
+            "title": "Event",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "sent",
+              "delivered",
+              "read",
+              "waited"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "loop_span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Loop Span Id"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "nested": {
+            "default": false,
+            "title": "Nested",
+            "type": "boolean"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "record_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Record Ids",
+            "type": "array"
+          },
+          "send": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CommunicationSend"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "wait": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CommunicationWait"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "timestamp",
+          "working_start",
+          "event",
+          "kind",
+          "source",
+          "agent",
+          "nested",
+          "record_ids",
+          "data"
+        ],
+        "title": "CommunicationEvent",
+        "type": "object"
+      },
+      "CommunicationRecord": {
+        "description": "For `sent`, what one agent communicated: a message, or a change to state other agents read.",
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "recipients": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recipients",
+            "type": "array"
+          },
+          "reply_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply To"
+          },
+          "sender": {
+            "title": "Sender",
+            "type": "string"
+          },
+          "to": {
+            "items": {
+              "type": "string"
+            },
+            "title": "To",
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "sender",
+          "to",
+          "recipients"
+        ],
+        "title": "CommunicationRecord",
+        "type": "object"
+      },
+      "CommunicationRejection": {
+        "description": "For `sent`, why a record that was sent was not delivered.",
+        "properties": {
+          "control": {
+            "title": "Control",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "control",
+          "reason"
+        ],
+        "title": "CommunicationRejection",
+        "type": "object"
+      },
+      "CommunicationSend": {
+        "description": "For `sent`, the record an agent sent, and why it was refused if it was.",
+        "properties": {
+          "record": {
+            "$ref": "#/components/schemas/CommunicationRecord"
+          },
+          "rejected": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CommunicationRejection"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "record"
+        ],
+        "title": "CommunicationSend",
+        "type": "object"
+      },
+      "CommunicationWait": {
+        "description": "For `waited`, an agent waiting for other agents.",
+        "properties": {
+          "channels": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Channels",
+            "type": "array"
+          },
+          "duration": {
+            "title": "Duration",
+            "type": "number"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "channels",
+          "outcome",
+          "duration"
+        ],
+        "title": "CommunicationWait",
+        "type": "object"
+      },
       "CompactionEvent": {
         "description": "Compaction of conversation history.",
         "properties": {
@@ -2116,7 +2480,7 @@
         "type": "object"
       },
       "ContentReasoning": {
-        "description": "Reasoning content.\n\nSee the specification for [thinking blocks](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#understanding-thinking-blocks) for Claude models.",
+        "description": "Reasoning content.\n\nSee the specification for [thinking blocks](https://platform.claude.com/docs/en/build-with-claude/extended-thinking) for Claude models.",
         "properties": {
           "internal": {
             "anyOf": [
@@ -2177,6 +2541,17 @@
       "ContentText": {
         "description": "Text content.",
         "properties": {
+          "cache_breakpoint": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Breakpoint"
+          },
           "citations": {
             "anyOf": [
               {
@@ -3831,6 +4206,7 @@
                         "compaction",
                         "branch",
                         "approval",
+                        "sentinel",
                         "sandbox",
                         "info",
                         "store",
@@ -4917,6 +5293,7 @@
                         "compaction",
                         "branch",
                         "approval",
+                        "sentinel",
                         "sandbox",
                         "info",
                         "store",
@@ -5290,6 +5667,15 @@
                   "$ref": "#/components/schemas/ReviewEvent"
                 },
                 {
+                  "$ref": "#/components/schemas/SentinelEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/CommunicationEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/SwarmEvent"
+                },
+                {
                   "$ref": "#/components/schemas/BranchEvent"
                 },
                 {
@@ -5659,6 +6045,17 @@
             "title": "Model",
             "type": "string"
           },
+          "origin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin"
+          },
           "output": {
             "$ref": "#/components/schemas/ModelOutput"
           },
@@ -5672,6 +6069,31 @@
               }
             ],
             "title": "Pending"
+          },
+          "request_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ModelRequestId"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Ids"
+          },
+          "requested_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Model"
           },
           "retries": {
             "anyOf": [
@@ -5870,6 +6292,17 @@
               }
             ]
           },
+          "input_context_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Context Tokens"
+          },
           "metadata": {
             "anyOf": [
               {
@@ -5885,6 +6318,17 @@
           "model": {
             "title": "Model",
             "type": "string"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
           },
           "time": {
             "anyOf": [
@@ -5914,6 +6358,30 @@
           "completion"
         ],
         "title": "ModelOutput",
+        "type": "object"
+      },
+      "ModelRequestId": {
+        "description": "Provider request id from an HTTP response.",
+        "properties": {
+          "header": {
+            "title": "Header",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "header",
+          "status"
+        ],
+        "title": "ModelRequestId",
         "type": "object"
       },
       "ModelUsage": {
@@ -6360,6 +6828,17 @@
             ],
             "title": "Transcripts"
           },
+          "trust_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Content"
+          },
           "validation": {
             "anyOf": [
               {
@@ -6656,6 +7135,17 @@
               }
             ],
             "title": "Transcripts"
+          },
+          "trust_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Content"
           },
           "validation": {
             "anyOf": [
@@ -7156,6 +7646,17 @@
               }
             ],
             "title": "Choices"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
           },
           "files": {
             "anyOf": [
@@ -8684,6 +9185,15 @@
                 "$ref": "#/components/schemas/ReviewEvent"
               },
               {
+                "$ref": "#/components/schemas/SentinelEvent"
+              },
+              {
+                "$ref": "#/components/schemas/CommunicationEvent"
+              },
+              {
+                "$ref": "#/components/schemas/SwarmEvent"
+              },
+              {
                 "$ref": "#/components/schemas/BranchEvent"
               },
               {
@@ -8757,6 +9267,15 @@
                     },
                     {
                       "$ref": "#/components/schemas/ReviewEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SentinelEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CommunicationEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SwarmEvent"
                     },
                     {
                       "$ref": "#/components/schemas/BranchEvent"
@@ -8976,6 +9495,11 @@
             "title": "Tokens",
             "type": "integer"
           },
+          "unscored": {
+            "default": 0,
+            "title": "Unscored",
+            "type": "integer"
+          },
           "validation": {
             "anyOf": [
               {
@@ -8990,6 +9514,7 @@
         "required": [
           "scans",
           "results",
+          "unscored",
           "errors",
           "tokens",
           "model_usage"
@@ -9658,6 +10183,233 @@
           "result"
         ],
         "title": "SearchResponse",
+        "type": "object"
+      },
+      "SentinelEvent": {
+        "description": "Report from a sentinel monitor or protocol about one step.\n\nA report's metadata is recorded in the event's `metadata` field.\n\nExperimental: not yet a stable API; may change without notice.",
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "enum": [
+                  "proceed",
+                  "modify",
+                  "reject",
+                  "terminate",
+                  "escalate"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "audit": {
+            "default": false,
+            "title": "Audit",
+            "type": "boolean"
+          },
+          "conversation": {
+            "title": "Conversation",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "event": {
+            "const": "sentinel",
+            "default": "sentinel",
+            "title": "Event",
+            "type": "string"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "factory": {
+            "title": "Factory",
+            "type": "string"
+          },
+          "function": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Function"
+          },
+          "kind": {
+            "enum": [
+              "observation",
+              "decision"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "modified": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ToolCall"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/Reference"
+            },
+            "title": "References",
+            "type": "array"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "stage": {
+            "enum": [
+              "model_input",
+              "model_output",
+              "tool_call",
+              "tool_result"
+            ],
+            "title": "Stage",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "reported",
+              "cancelled",
+              "bypassed",
+              "superseded",
+              "error"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "step_id": {
+            "title": "Step Id",
+            "type": "string"
+          },
+          "suspicion": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "minProperties": 1,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suspicion"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "timestamp",
+          "working_start",
+          "event",
+          "factory",
+          "path",
+          "step_id",
+          "conversation",
+          "stage",
+          "kind",
+          "status",
+          "audit",
+          "references"
+        ],
+        "title": "SentinelEvent",
         "type": "object"
       },
       "SnapshotDetails": {
@@ -10401,6 +11153,101 @@
         "title": "Summary",
         "type": "object"
       },
+      "SwarmEvent": {
+        "description": "Evidence from an agent swarm (inspect_swarm) other than communication: a member's result, the final answer's selection, the swarm's ledger or its metrics.\n\nThe swarm defines `kind` and the format of `data`. Experimental: not yet a stable API.",
+        "properties": {
+          "data": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Data",
+            "type": "object"
+          },
+          "event": {
+            "const": "swarm",
+            "default": "swarm",
+            "title": "Event",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "member": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uuid"
+          },
+          "working_start": {
+            "title": "Working Start",
+            "type": "number"
+          }
+        },
+        "required": [
+          "timestamp",
+          "working_start",
+          "event",
+          "kind",
+          "data"
+        ],
+        "title": "SwarmEvent",
+        "type": "object"
+      },
       "TimeInterval": {
         "description": "Fire after a wall-clock interval.\n\nThe engine fires when at least ``every`` has elapsed since the\nlast fire (or since the session opened, for the first fire).",
         "properties": {
@@ -10739,7 +11586,7 @@
         "type": "object"
       },
       "ToolEvent": {
-        "description": "Call to a tool.",
+        "description": "Call to a tool.\n\nA host tool that `sandbox_agent_bridge(bridged_tools=...)` runs for a\nsandboxed agent is recorded with `metadata[\"bridge\"]`: `server` and `tool`\n(the bridged server and the tool name within it, also the event's\n`function`), `function` (the name the model called it by, or `None`),\n`proposal_id` (the id of the model's proposing tool call, or `None`) and\n`grant` (`\"consumed\"` when a proposal matched, `\"denied\"` when the call\nwas refused for lack of one, `\"exempt\"` when a server registered with\n`require_proposal=False` ran it without one, or `None` when the request\nwas rejected before that check).",
         "properties": {
           "agent": {
             "anyOf": [
@@ -11213,6 +12060,15 @@
                   "$ref": "#/components/schemas/ReviewEvent"
                 },
                 {
+                  "$ref": "#/components/schemas/SentinelEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/CommunicationEvent"
+                },
+                {
+                  "$ref": "#/components/schemas/SwarmEvent"
+                },
+                {
                   "$ref": "#/components/schemas/BranchEvent"
                 },
                 {
@@ -11459,6 +12315,17 @@
           "transcript_id": {
             "title": "Transcript Id",
             "type": "string"
+          },
+          "trust_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Content"
           }
         },
         "required": [
@@ -11716,6 +12583,17 @@
           "transcript_id": {
             "title": "Transcript Id",
             "type": "string"
+          },
+          "trust_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Content"
           }
         },
         "required": [

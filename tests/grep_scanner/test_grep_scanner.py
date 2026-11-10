@@ -10,6 +10,7 @@ from inspect_ai.event._error import ErrorEvent
 from inspect_ai.event._info import InfoEvent
 from inspect_ai.event._logger import LoggerEvent, LoggingMessage
 from inspect_ai.event._model import ModelEvent
+from inspect_ai.event._sentinel import SentinelEvent
 from inspect_ai.log import EvalError
 from inspect_ai.model import (
     ChatMessage,
@@ -693,8 +694,24 @@ def make_approval_event(
     )
 
 
+def make_sentinel_event(uuid: str, **fields: Any) -> SentinelEvent:
+    """Helper to create SentinelEvent for testing."""
+    return SentinelEvent(
+        timestamp=datetime.now(),
+        factory="test_protocol",
+        path="protocol",
+        function="decide",
+        step_id="call-1",
+        conversation="conv-1",
+        stage="tool_call",
+        status="reported",
+        uuid=uuid,
+        **fields,
+    )
+
+
 class TestAdditionalEventTypes:
-    """Tests for ModelEvent and ApprovalEvent matching."""
+    """Tests for ModelEvent, ApprovalEvent, and SentinelEvent matching."""
 
     @pytest.mark.asyncio
     async def test_model_event_match(self) -> None:
@@ -724,6 +741,47 @@ class TestAdditionalEventTypes:
 
         assert isinstance(result, Result)
         assert result.value == 1
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "fields,pattern",
+        [
+            (
+                {
+                    "kind": "decision",
+                    "action": "reject",
+                    "message": "Not allowed",
+                    "explanation": "Command exfiltrates credentials",
+                },
+                "exfiltrates",
+            ),
+            (
+                {"kind": "observation", "suspicion": {"exfiltration": 0.8}},
+                "exfiltration=0.8",
+            ),
+            (
+                {
+                    "kind": "decision",
+                    "action": "modify",
+                    "modified": ToolCall(
+                        id="call-1", function="safe_bash", arguments={"cmd": "ls"}
+                    ),
+                },
+                "safe_bash",
+            ),
+        ],
+    )
+    async def test_sentinel_event_match(
+        self, fields: dict[str, Any], pattern: str
+    ) -> None:
+        """Pattern matches sentinel event explanation, suspicion, and modified call."""
+        transcript = make_transcript_with_events([make_sentinel_event("e1", **fields)])
+        scanner = grep_scanner(pattern)
+        result = await scanner(transcript)
+
+        assert isinstance(result, Result)
+        assert result.value == 1
+        assert result.references[0].type == "event"
 
 
 class TestErrorHandling:

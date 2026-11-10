@@ -16,7 +16,7 @@ The data frames available for each scanner contain information about the source 
 
 #### Row Granularity
 
-Note that by default the results data frame will include an individual row for each result returned by a scanner. This means that if a scanner returned [multiple results](scanners.qmd#multiple-results) there would be multiple rows all sharing the same `transcript_id`. You can customize this behavior via the `rows` option of the scan results functions:
+Note that by default the results data frame will include an individual row for each result returned by a scanner. This means that if a scanner returned [multiple results](custom_scanner.qmd#multiple-results) there would be multiple rows all sharing the same `transcript_id`. You can customize this behavior via the `rows` option of the scan results functions:
 
 |  |  |
 |------------------------------------|------------------------------------|
@@ -46,12 +46,14 @@ Note that the heavy JSON columns (`input` and `scan_events`) are excluded by def
 | `transcript_model` | str | Main model used by agent. |
 | `transcript_model_options` | JsonValue<br/><small>JSON</small> | Generation options for main model. |
 | `transcript_score` | JsonValue<br/><small>JSON</small> | Value indicating score on task. |
+| `transcript_score_explanation` | str | Scorer's account of how it reached `score`, where it gave one. |
 | `transcript_success` | bool |  Boolean reduction of `score` to succeeded/failed. |
 | `transcript_message_count` | number | Total messages in conversation | 
 | `transcript_total_time` | number | Time required to execute task (seconds) |
 | `transcript_total_tokens` | number | Tokens spent in execution of task. |
 | `transcript_error` | str | Error message that terminated the task. |
 | `transcript_limit` | str | Limit that caused the task to exit (e.g. "tokens", "messages, etc.) |
+| `transcript_trust_content` | bool | Whether the transcript's model output may be rendered richly (`False` shows it as plain text). |
 | `transcript_metadata` | dict <br/><small>JSON</small> | Source specific metadata. |
 | `scan_id` | str | Globally unique identifier for scan. |
 | `scan_tags` | list\[str\]</br><small>JSON</small> | Tags associated with the scan. |

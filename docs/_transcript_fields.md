@@ -15,12 +15,14 @@ Here are the available `Transcript` fields:
 | `model` | str | Main model used by agent. |
 | `model_options` | dict </br><small>JSON</small> | Generation options for main model.  |
 | `score` | JsonValue<br/><small>JSON</small> | Value indicating score on task. |
+| `score_explanation` | str | Scorer's account of how it reached `score`, where it gave one. |
 | `success` | bool |  Boolean reduction of `score` to succeeded/failed. |
 | `message_count` | int | Total messages in conversation. |
 | `total_time` | number | Time required to execute task (seconds) |
 | `total_tokens` | number | Tokens spent in execution of task. |
 | `error` | str | Error message that terminated the task. |
 | `limit` | str | Limit that caused the task to exit (e.g. "tokens", "messages, etc.) |
+| `trust_content` | bool | Whether the viewer may render the transcript's model output richly. `False` shows it as plain text. For Inspect logs this is the task's `ViewerConfig(trust_content=...)`. |
 | `metadata` | dict\[str, JsonValue\] | Transcript source specific metadata (e.g. model, task name, errors, epoch, dataset sample id, limits, etc.). For Inspect logs this includes `sample_metadata`, `target` and `scores` from the sample body unless the scanner passes `metadata=False`. |
 | `messages` | [list\[ChatMessage\]](https://inspect.aisi.org.uk/reference/inspect_ai.model.html#messages) | Message history. |
 | `events` | [list\[Event\]](https://inspect.aisi.org.uk/reference/inspect_ai.event.html) | Event history (e.g. model events, tool events, etc.) |

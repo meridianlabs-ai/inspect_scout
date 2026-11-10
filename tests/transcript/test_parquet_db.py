@@ -17,6 +17,7 @@ from inspect_scout._transcript.database.parquet import (
     PARQUET_TRANSCRIPTS_GLOB,
     ParquetTranscriptsDB,
 )
+from inspect_scout._transcript.database.parquet.types import INDEX_DIR
 from inspect_scout._transcript.database.reader import TranscriptsViewReader
 from inspect_scout._transcript.types import (
     Transcript,
@@ -35,6 +36,7 @@ def create_sample_transcript(
     model: str | None = None,
     task: str | None = None,
     score: JsonValue | None = None,
+    score_explanation: str | None = None,
     metadata: dict[str, Any] | None = None,
     messages: list[ChatMessage] | None = None,
     events: list[Event] | None = None,
@@ -48,6 +50,7 @@ def create_sample_transcript(
         task_set=task,
         model=model,
         score=score,
+        score_explanation=score_explanation,
         metadata=metadata or {},
         messages=messages or [ChatMessageUser(content="Test message")],
         events=events or [],
@@ -69,6 +72,7 @@ def create_test_transcripts(count: int = 10) -> list[Transcript]:
                 model=models[i % 3],
                 task=tasks[i % 3],
                 score=0.5 + (i % 10) * 0.05,
+                score_explanation=f"answer {i} matched the target",
                 metadata={
                     "temperature": 0.5 + (i % 5) * 0.1,
                     "index": i,
@@ -558,6 +562,11 @@ async def test_complex_conditions(populated_db: ParquetTranscriptsDB) -> None:
     assert len(results) == 2
 
 
+def _info_fields(t: TranscriptInfo) -> dict[str, object]:
+    """Every `TranscriptInfo` field, so a read that drops one fails loudly."""
+    return {name: getattr(t, name) for name in TranscriptInfo.model_fields}
+
+
 # Content Loading Tests
 @pytest.mark.asyncio
 async def test_read_full_content(populated_db: ParquetTranscriptsDB) -> None:
@@ -575,6 +584,8 @@ async def test_read_full_content(populated_db: ParquetTranscriptsDB) -> None:
     assert len(transcript.messages) > 0
     # Events are empty in our test data
     assert len(transcript.events) == 0
+
+    assert _info_fields(transcript) == _info_fields(infos[0])
 
 
 @pytest.mark.asyncio
@@ -606,8 +617,8 @@ async def test_read_no_content(populated_db: ParquetTranscriptsDB) -> None:
     assert len(transcript.messages) == 0
     assert len(transcript.events) == 0
 
-    # Should still have metadata
-    assert transcript.transcript_id == infos[0].transcript_id
+    assert infos[0].score_explanation is not None
+    assert _info_fields(transcript) == _info_fields(infos[0])
 
 
 # Schema & File Management Tests
@@ -1306,6 +1317,32 @@ async def test_insert_record_batch_reader_batch_size_splitting(
         assert len(await db.transcript_ids(Query())) == 100
     finally:
         await db.disconnect()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("other_type", [pa.null(), pa.string()], ids=["null", "string"])
+async def test_commit_compacts_struct_column_stored_as_another_type(
+    test_location: Path, other_type: pa.DataType
+) -> None:
+    """A column stored as struct and as null or string compacts on commit()."""
+    async with transcripts_db(str(test_location)) as db:
+        for i, extra in enumerate(
+            [pa.array([{"a": 7}]), pa.array([None], type=other_type)]
+        ):
+            table = pa.table({"transcript_id": [f"t{i}"], "extra": extra})
+            await db.insert(table.to_reader(), commit=False)
+        await db.commit()
+
+    index_dir = test_location / INDEX_DIR
+    assert len(list(index_dir.glob("_manifest_*.idx"))) == 1
+    assert not list(index_dir.glob("index_*.idx"))
+
+    async with transcripts_db(str(test_location)) as db:
+        assert await db.count() == 2
+        extras = {
+            info.transcript_id: info.metadata.get("extra") async for info in db.select()
+        }
+    assert extras == {"t0": {"a": 7}, "t1": None}
 
 
 # Schema Validation Tests

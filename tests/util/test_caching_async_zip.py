@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import zipfile
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import anyio
@@ -109,12 +110,10 @@ async def test_concurrent_access_parses_once(zip_file_a: Path) -> None:
     parse_count = 0
     original_parse = async_zip_mod._parse_central_directory
 
-    async def counting_parse(
-        filesystem: AsyncFilesystem, filename: str
-    ) -> CentralDirectory:
+    async def counting_parse(*args: Any, **kwargs: Any) -> CentralDirectory:
         nonlocal parse_count
         parse_count += 1
-        return await original_parse(filesystem, filename)
+        return await original_parse(*args, **kwargs)
 
     with patch.object(async_zip_mod, "_parse_central_directory", counting_parse):
         async with AsyncFilesystem() as fs:

@@ -9,6 +9,7 @@ import pytest
 from inspect_ai._util.registry import registry_info
 from inspect_ai.model._chat_message import ChatMessage
 from inspect_scout import llm_scanner
+from inspect_scout._scanner.filter import TIMELINE_DEFAULT_EVENTS
 from inspect_scout._scanner.result import Result
 from inspect_scout._scanner.scanner import (
     SCANNER_CONFIG,
@@ -18,7 +19,7 @@ from inspect_scout._scanner.scanner import (
     scanner_supports_streaming,
 )
 from inspect_scout._transcript.handle import TranscriptHandle
-from inspect_scout._transcript.types import Transcript
+from inspect_scout._transcript.types import Transcript, TranscriptContent
 
 # Scanner decorator tests
 
@@ -468,3 +469,43 @@ def test_streaming_declaration_refuses_a_functools_wraps_wrapper() -> None:
 
     with pytest.raises(TypeError, match="__wrapped__"):
         wrapping()
+
+
+def _named_timeline_llm_scanner(
+    content: TranscriptContent | None = None,
+) -> Scanner[Transcript]:
+    return llm_scanner(
+        question="q?", answer="boolean", timeline="target", content=content
+    )
+
+
+@scanner(timeline=["model"])
+def _model_timeline_wrapper() -> Scanner[Transcript]:
+    return llm_scanner(question="q?", answer="boolean", timeline="target")
+
+
+@scanner(timeline="all")
+def _all_timeline_wrapper() -> Scanner[Transcript]:
+    return llm_scanner(question="q?", answer="boolean", timeline="target")
+
+
+@pytest.mark.parametrize(
+    ("make_scanner", "expected"),
+    [
+        pytest.param(_named_timeline_llm_scanner, TIMELINE_DEFAULT_EVENTS, id="bare"),
+        pytest.param(
+            lambda: _named_timeline_llm_scanner(TranscriptContent(timeline="all")),
+            "all",
+            id="content-override",
+        ),
+        pytest.param(_model_timeline_wrapper, ["model"], id="declared-list"),
+        pytest.param(_all_timeline_wrapper, "all", id="declared-all"),
+    ],
+)
+def test_llm_scanner_named_timeline_filter(
+    make_scanner: Callable[[], Scanner[Transcript]],
+    expected: list[str] | str,
+) -> None:
+    """Naming a timeline requests one, deferring to any declared or passed filter."""
+    config = registry_info(make_scanner()).metadata[SCANNER_CONFIG]
+    assert config.content.timeline == expected

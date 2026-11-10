@@ -536,9 +536,9 @@ def _expand_pool_range(
 def resolve_item_dict(item: dict[str, Any], blobs: BlobSpool) -> dict[str, Any]:
     """Resolve attachment refs and pool ranges on a spooled item, in place.
 
-    Expands ``input_refs``/``call_refs`` positional ranges (same semantics as
-    ``_resolve_events_pools`` in pool.py) by fetching pool entries from
-    ``blobs`` and resolving attachment refs inside them, then resolves
+    Expands ``input_refs``/``call_refs`` positional ranges (slicing semantics,
+    as ``expand_events`` on the materialized load) by fetching pool entries
+    from ``blobs`` and resolving attachment refs inside them, then resolves
     ``attachment://`` refs throughout the rest of the item.
     """
     input_refs = item.get("input_refs")

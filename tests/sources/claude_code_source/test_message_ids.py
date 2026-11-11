@@ -319,6 +319,30 @@ async def test_split_response_id_gives_way_to_a_real_id_across_merged_sessions(
 
 
 @pytest.mark.asyncio
+async def test_copies_of_a_split_response_share_its_edit_id(tmp_path: Path) -> None:
+    # A resumed session repeats the earlier session's lines, split reply included.
+    plan = _split_reply(_lines("slug_session_1.jsonl"), 1)
+    execute = _lines("slug_session_2.jsonl")
+    resumed = [{**line, "sessionId": execute[0]["sessionId"]} for line in plan]
+    directory = tmp_path / "project"
+    directory.mkdir()
+    for name, lines in {"plan": plan, "execute": resumed + execute}.items():
+        (directory / f"{name}.jsonl").write_text(
+            "".join(json.dumps(line) + "\n" for line in lines)
+        )
+
+    [transcript] = [t async for t in claude_code(path=directory)]
+
+    copies = [
+        e.output.message.id
+        for e in transcript.events
+        if isinstance(e, ModelEvent) and e.output.choices and e.uuid == "s1-002-b"
+    ]
+    assert len(copies) == 2
+    assert copies[0] == copies[1] != "msg_s1_001"
+
+
+@pytest.mark.asyncio
 async def test_unpaired_model_events_are_an_error() -> None:
     lines = parse_events(_lines("simple_conversation.jsonl"))
     events: list[Event] = [e async for e in process_parsed_events(lines)]

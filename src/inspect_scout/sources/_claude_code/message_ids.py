@@ -86,8 +86,9 @@ def apply_edit_ids(events: Sequence[Event]) -> None:
     conversation, so every real ID is known before any edit ID is chosen.
     In event order, the first content under an ID keeps it; each other
     content takes `edit_id(ID, content)`, plus a `.1`, `.2`, ... suffix if
-    that equals another ID in the transcript. Running it again changes
-    nothing.
+    that equals another ID in the transcript. Every copy of an edit (a
+    resumed session repeating earlier lines) takes the same ID. Running it
+    again changes nothing.
 
     Args:
         events: All of the transcript's events.
@@ -100,6 +101,7 @@ def apply_edit_ids(events: Sequence[Event]) -> None:
         if message.id is not None
     }
     first: dict[str, str] = {}
+    edits: dict[tuple[str, str], str] = {}
     for event in model_events:
         for reply in _replies(event):
             if reply.id is None:
@@ -107,12 +109,15 @@ def apply_edit_ids(events: Sequence[Event]) -> None:
             content = _content_key(reply)
             if first.setdefault(reply.id, content) == content:
                 continue
-            candidate = edit_id(reply.id, content)
-            reply_id, suffix = candidate, 1
-            while reply_id in taken:
-                reply_id, suffix = f"{candidate}.{suffix}", suffix + 1
-            taken.add(reply_id)
-            first[reply_id] = content
+            reply_id = edits.get((reply.id, content))
+            if reply_id is None:
+                candidate = edit_id(reply.id, content)
+                reply_id, suffix = candidate, 1
+                while reply_id in taken:
+                    reply_id, suffix = f"{candidate}.{suffix}", suffix + 1
+                taken.add(reply_id)
+                first[reply_id] = content
+                edits[(reply.id, content)] = reply_id
             reply.id = reply_id
 
 

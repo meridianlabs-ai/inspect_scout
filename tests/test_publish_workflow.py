@@ -1,6 +1,6 @@
 """Tests for the PyPI publish workflow (.github/workflows/publish.yaml).
 
-Covers the check-tag/build/publish job split, the hashed build toolchain and
+Covers the check-tag/build/verify/publish job split, the hashed build toolchain and
 its Dependabot entry, the release-tag check (run against a throwaway git repo)
 and the dist gate (scripts/verify_dist.py, run on fabricated distributions).
 """
@@ -58,10 +58,10 @@ def test_only_the_publish_job_holds_the_publish_token() -> None:
     workflow = _load(WORKFLOW)
     jobs = workflow["jobs"]
     assert workflow["permissions"] == {}
-    assert set(jobs) == {"notify-approval", "check-tag", "build", "publish"}
+    assert set(jobs) == {"notify-approval", "check-tag", "build", "verify", "publish"}
     assert jobs["notify-approval"]["permissions"] == {}
-    # pinged only once the build passed and the publish job will wait
-    assert jobs["notify-approval"]["needs"] == "build"
+    # pinged only once the dist passed the check and the publish job will wait
+    assert jobs["notify-approval"]["needs"] == "verify"
     assert jobs["check-tag"]["permissions"] == {"contents": "read"}
     assert jobs["build"]["permissions"] == {"contents": "read"}
     assert jobs["build"]["needs"] == "check-tag"
@@ -71,10 +71,13 @@ def test_only_the_publish_job_holds_the_publish_token() -> None:
         if (job.get("permissions") or {}).get("id-token") == "write"
     ] == ["publish"]
     assert "environment" not in jobs["build"]
+    assert jobs["verify"]["permissions"] == {"contents": "read"}
+    assert jobs["verify"]["needs"] == "build"
+    assert "environment" not in jobs["verify"]
     assert jobs["publish"]["permissions"] == {"contents": "read", "id-token": "write"}
     # PyPI's trusted publisher matches this workflow file and environment.
     assert jobs["publish"]["environment"]["name"] == "pypi"
-    assert jobs["publish"]["needs"] == "build"
+    assert jobs["publish"]["needs"] == ["build", "verify"]
 
 
 def test_dispatch_publishes_only_when_confirmed() -> None:
@@ -84,15 +87,28 @@ def test_dispatch_publishes_only_when_confirmed() -> None:
     assert _jobs()["publish"]["if"] == (
         "${{ github.event_name == 'release' || inputs.confirm == 'yes' }}"
     )
+    # a dispatch without "yes" still verifies the dist
+    assert "if" not in _jobs()["verify"]
 
 
-def test_publish_job_installs_and_builds_nothing() -> None:
-    steps = _jobs()["publish"]["steps"]
+@pytest.mark.parametrize(
+    "job,last",
+    [
+        # verifies even when a dispatch without "yes" skips the publish job
+        ("verify", []),
+        # checks again the exact files that it uploads
+        ("publish", [PYPI_PUBLISH.rstrip("@")]),
+    ],
+)
+def test_dist_jobs_verify_the_build_artifact_and_build_nothing(
+    job: str, last: list[str]
+) -> None:
+    steps = _jobs()[job]["steps"]
     assert [s.get("uses", "").split("@")[0] or s["run"] for s in steps] == [
         "actions/checkout",
         "actions/download-artifact",
         f'python3 -I {VERIFY_DIST} "$GITHUB_REF_NAME"',
-        PYPI_PUBLISH.rstrip("@"),
+        *last,
     ]
     checkout, download = steps[0]["with"], steps[1]["with"]
     assert checkout == {

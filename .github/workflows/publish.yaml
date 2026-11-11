@@ -7,7 +7,7 @@ on:
   release:
     types: [published]
   # Manual break-glass path: run on the release tag (select it under "Use
-  # workflow from"). Without "yes", it builds and checks but does not publish.
+  # workflow from"). Without "yes", it builds and verifies but does not publish.
   workflow_dispatch:
     inputs:
       confirm:
@@ -24,9 +24,10 @@ concurrency:
 jobs:
   # Post the "awaiting approval" Slack ping — un-gated, in this same run, so it
   # deep-links to the run whose publish job is paused on the pypi environment.
-  # After the build, so it is sent only when the publish job will wait.
+  # After the verify job, so it is sent only for a checked dist that the
+  # publish job will wait to upload.
   notify-approval:
-    needs: build
+    needs: verify
     if: ${{ github.event_name == 'release' }}
     runs-on: ubuntu-latest
     permissions: {}
@@ -88,9 +89,33 @@ jobs:
       # the built viewer (src/inspect_scout/_view/dist) is in Git LFS
       lfs: true
 
+  # Checks the built distributions in a job with no publishing credential,
+  # before approval is requested.
+  verify:
+    name: Verify distributions
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: scripts/verify_dist.py
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact-id }}
+          path: dist/
+
+      - name: Verify distributions
+        run: python3 -I scripts/verify_dist.py "$GITHUB_REF_NAME"
+
   publish:
     name: Publish to PyPI
-    needs: build
+    needs: [build, verify]
     if: ${{ github.event_name == 'release' || inputs.confirm == 'yes' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -114,8 +139,8 @@ jobs:
           artifact-ids: ${{ needs.build.outputs.artifact-id }}
           path: dist/
 
-      # The shared build does not run this check, so it runs here on the
-      # exact files that are uploaded.
+      # The verify job did this check already. Do it again here on the exact
+      # files that are uploaded.
       - name: Verify distributions
         run: python3 -I scripts/verify_dist.py "$GITHUB_REF_NAME"
 

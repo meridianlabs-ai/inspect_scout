@@ -4,8 +4,8 @@
 Usage:
     python3 -I scripts/verify_dist.py <version> [--dist-dir dist]
 
-Run by the publish job of .github/workflows/publish.yaml on the downloaded
-files. Stdlib only, so the publish job installs nothing.
+Run by the verify job and the publish job of .github/workflows/publish.yaml
+on the downloaded files. Stdlib only, so the publish job installs nothing.
 """
 
 import argparse

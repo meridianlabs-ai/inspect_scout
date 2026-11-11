@@ -2,12 +2,18 @@
 
 import json
 from bisect import bisect_left
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from logging import getLogger
 from typing import NamedTuple
 
 import mmh3
 from inspect_ai.event import Event, ModelEvent, SpanBeginEvent, SpanEndEvent
-from inspect_ai.model import ChatMessage, ChatMessageTool, ChatMessageUser
+from inspect_ai.model import (
+    ChatMessage,
+    ChatMessageTool,
+    ChatMessageUser,
+    stable_message_ids,
+)
 from inspect_swe._claude_code._events.extraction import extract_user_message
 from inspect_swe._claude_code._events.models import (
     AssistantEvent,
@@ -16,6 +22,8 @@ from inspect_swe._claude_code._events.models import (
 )
 
 from .._message_ids import edit_id
+
+logger = getLogger(__name__)
 
 
 class UnpairedModelEventsError(RuntimeError):
@@ -77,6 +85,38 @@ def apply_source_ids(
         seen.update(id(message) for message in event.input)
         if event.output.choices:
             seen.add(id(event.output.message))
+
+
+HashIds = Callable[[Sequence[ChatMessage] | ModelEvent], None]
+
+
+def apply_source_ids_or_hash_ids(
+    conversation: Sequence[BaseEvent], events: Sequence[Event]
+) -> HashIds | None:
+    """`apply_source_ids`, or content-hash IDs if the events can't be paired.
+
+    A conversation whose model events can't be paired with its lines gets
+    inspect_ai's `stable_message_ids()` on its own model events (not nested
+    agents', which are labelled when they load), and a warning naming the
+    session, so the rest of an import keeps source IDs.
+
+    Args:
+        conversation: As for `apply_source_ids`.
+        events: As for `apply_source_ids`.
+
+    Returns:
+        `None` if source IDs were applied. Otherwise the function that gave
+        the hash IDs, for messages taken from these events.
+    """
+    try:
+        apply_source_ids(conversation, events)
+        return None
+    except UnpairedModelEventsError as ex:
+        logger.warning("%s Its messages get content-hash IDs instead.", ex)
+        hash_ids = stable_message_ids()
+        for event in _own_model_events(events):
+            hash_ids(event)
+        return hash_ids
 
 
 def _session_id(conversation: Sequence[BaseEvent]) -> str | None:

@@ -227,6 +227,7 @@ async def _trace_to_transcript(
 
     # Fallback: for traces without LLM events, try root inputs
     if not messages:
+        messages_from = None
         root_inputs = getattr(root_call, "inputs", None) or {}
         if isinstance(root_inputs, dict):
             root_messages = root_inputs.get("messages", [])

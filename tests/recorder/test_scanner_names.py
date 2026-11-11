@@ -9,6 +9,8 @@ from typing import Any
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
+from inspect_ai.model import ChatMessageUser
+from inspect_scout import Result
 from inspect_scout._recorder import file as recorder_file
 from inspect_scout._recorder.buffer import (
     RecorderBuffer,
@@ -16,8 +18,12 @@ from inspect_scout._recorder.buffer import (
     scanner_table,
 )
 from inspect_scout._recorder.file import FileRecorder
-from inspect_scout._scanspec import ScannerSpec, ScanSpec
+from inspect_scout._scanner.result import ResultReport
+from inspect_scout._scanresults import scan_results_df_async
+from inspect_scout._scanspec import ScannerSpec, ScanSpec, ScanTranscripts
+from inspect_scout._transcript.types import TranscriptInfo
 from pydantic import ValidationError
+from upath import UPath
 
 
 @pytest.fixture
@@ -111,47 +117,87 @@ async def _init_scan(tmp_path: Path, scanner: str, location: str | None = None) 
     return scan_dir
 
 
+async def _scan_with_row(location: str, scanner: str) -> str:
+    """Create a scan at `location` with one buffered result; return its location."""
+    recorder = FileRecorder()
+    await recorder.init(
+        ScanSpec(scan_name="test", scanners={scanner: ScannerSpec(name=scanner)}),
+        location,
+    )
+    await recorder.record(
+        TranscriptInfo(
+            transcript_id="t",
+            source_type="test",
+            source_id="src",
+            source_uri="test://t",
+        ),
+        scanner,
+        [
+            ResultReport(
+                input_type="message",
+                input_ids=[],
+                input=ChatMessageUser(content=""),
+                result=Result(value=1),
+                validation=None,
+                error=None,
+                events=[],
+                model_usage={},
+            )
+        ],
+        None,
+    )
+    return recorder.scan_dir.as_posix()
+
+
+async def _result_count(location: str, scanner: str) -> int:
+    """The number of result rows read back from the scan at `location`."""
+    results = await scan_results_df_async(location, scanner=scanner)
+    return len(results.scanners[scanner])
+
+
+@pytest.mark.parametrize(
+    ("scheme", "scanner", "link", "target", "refused"),
+    [
+        # sync writes to a new temp name, so it never opens this symlink
+        ("", "s", "s.parquet.tmp", "victim.parquet", False),
+        ("", "s", "s.parquet", "victim.parquet", True),
+        ("", "pkg/victim", "pkg", ".", True),
+        ("", "s", "_summary.json", "victim.parquet", True),
+        ("", "s", "_errors.jsonl", "victim.parquet", True),
+        ("local://", "s", "_summary.json", "victim.parquet", True),
+    ],
+)
 @pytest.mark.asyncio
-async def test_sync_does_not_follow_a_tmp_file_symlink_out_of_the_scan_dir(
-    tmp_path: Path, scout_buffer_dir: Path
+async def test_sync_does_not_follow_a_symlink_out_of_the_scan_dir(
+    tmp_path: Path,
+    scout_buffer_dir: Path,
+    scheme: str,
+    scanner: str,
+    link: str,
+    target: str,
+    refused: bool,
 ) -> None:
-    """A shared scan's `s.parquet.tmp` symlink must not redirect sync's write."""
-    outside = tmp_path / "elsewhere" / "notes.txt"
-    outside.parent.mkdir()
-    outside.write_text("not a parquet file\n")
-    before = hashlib.sha256(outside.read_bytes()).hexdigest()
+    """A symlink in a shared scan must not redirect a write by sync."""
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    victim = elsewhere / "victim.parquet"
+    pq.write_table(pa.table({"x": [1, 2, 3]}), victim)
+    before = hashlib.sha256(victim.read_bytes()).hexdigest()
 
-    scan_dir = await _init_scan(tmp_path, "s")
-    pq.write_table(pa.table({"x": [1, 2, 3]}), scan_dir / "s.parquet")
-    (scan_dir / "s.parquet.tmp").symlink_to(outside)
+    location = await _scan_with_row(scheme + str(tmp_path / "scans"), scanner)
+    scan_dir = Path(UPath(location).path)
+    (scan_dir / link).unlink(missing_ok=True)
+    (scan_dir / link).symlink_to(elsewhere / target)
 
-    try:
-        await FileRecorder.sync(scan_dir.as_posix(), complete=True)
-    except Exception:
-        pass
+    if refused:
+        with pytest.raises(ValueError, match="Refusing to write"):
+            await FileRecorder.sync(location, complete=True)
+    else:
+        status = await FileRecorder.sync(location, complete=True)
+        assert status.summary.complete
 
-    assert hashlib.sha256(outside.read_bytes()).hexdigest() == before
-
-
-@pytest.mark.asyncio
-async def test_sync_does_not_follow_a_directory_symlink_out_of_the_scan_dir(
-    tmp_path: Path, scout_buffer_dir: Path
-) -> None:
-    """A shared scan's `pkg` dir symlink must not route `pkg/victim` outside."""
-    outside = tmp_path / "elsewhere" / "victim.parquet"
-    outside.parent.mkdir()
-    pq.write_table(pa.table({"x": [1, 2, 3]}), outside)
-    before = hashlib.sha256(outside.read_bytes()).hexdigest()
-
-    scan_dir = await _init_scan(tmp_path, "pkg/victim")
-    (scan_dir / "pkg").symlink_to(outside.parent, target_is_directory=True)
-
-    try:
-        await FileRecorder.sync(scan_dir.as_posix(), complete=True)
-    except Exception:
-        pass
-
-    assert hashlib.sha256(outside.read_bytes()).hexdigest() == before
+    assert hashlib.sha256(victim.read_bytes()).hexdigest() == before
+    assert [p.name for p in elsewhere.iterdir()] == ["victim.parquet"]
 
 
 @pytest.mark.asyncio
@@ -181,28 +227,6 @@ async def test_sync_does_not_decode_a_percent_encoded_dotdot_out_of_the_scan_dir
     assert hashlib.sha256(outside.read_bytes()).hexdigest() == before
 
 
-@pytest.mark.asyncio
-async def test_sync_does_not_follow_a_status_file_symlink_out_of_the_scan_dir(
-    tmp_path: Path, scout_buffer_dir: Path
-) -> None:
-    """A shared scan's `_summary.json` symlink must not redirect sync's write."""
-    outside = tmp_path / "elsewhere" / "notes.txt"
-    outside.parent.mkdir()
-    outside.write_text("not a scan summary\n")
-    before = hashlib.sha256(outside.read_bytes()).hexdigest()
-
-    scan_dir = await _init_scan(tmp_path, "s")
-    (scan_dir / "_summary.json").unlink(missing_ok=True)
-    (scan_dir / "_summary.json").symlink_to(outside)
-
-    try:
-        await FileRecorder.sync(scan_dir.as_posix(), complete=True)
-    except Exception:
-        pass
-
-    assert hashlib.sha256(outside.read_bytes()).hexdigest() == before
-
-
 @pytest.mark.skipif(os.name == "nt", reason="POSIX permission bits")
 @pytest.mark.asyncio
 async def test_sync_keeps_file_permissions(
@@ -226,9 +250,14 @@ async def test_sync_keeps_file_permissions(
 async def test_sync_handles_a_long_scanner_name(
     tmp_path: Path, scout_buffer_dir: Path
 ) -> None:
-    """A name near the 255-byte file name limit still syncs."""
-    scan_dir = await _init_scan(tmp_path, "s" * 240)
-    await FileRecorder.sync(scan_dir.as_posix(), complete=True)
+    """A name whose `<name>.parquet` fills the 255-byte file name limit syncs."""
+    name = "s" * 247
+    location = await _scan_with_row(str(tmp_path / "scans"), name)
+
+    await FileRecorder.sync(location, complete=True)
+
+    assert (Path(location) / f"{name}.parquet").is_file()
+    assert await _result_count(location, name) == 1
 
 
 @pytest.mark.asyncio
@@ -266,12 +295,15 @@ async def test_sync_writes_where_fsspec_reads_a_file_uri_scan_location(
     tmp_path: Path, scout_buffer_dir: Path, name: str
 ) -> None:
     """Fsspec reads `%20`, `#` and `?` in a file:// location literally; so must sync."""
-    scan_dir = await _init_scan(tmp_path, "s", "file://" + str(tmp_path / name))
+    location = await _scan_with_row("file://" + str(tmp_path / name), "s")
 
-    status = await FileRecorder.sync("file://" + str(scan_dir), complete=True)
+    status = await FileRecorder.sync(location, complete=True)
 
     assert status.summary.complete
     assert {p.name for p in tmp_path.iterdir()} == {"buffer", name}
+    [scan_dir] = (tmp_path / name).iterdir()
+    assert (scan_dir / "s.parquet").is_file()
+    assert await _result_count(location, "s") == 1
 
 
 @pytest.mark.asyncio
@@ -282,16 +314,16 @@ async def test_sync_writes_where_fsspec_reads_a_tilde_scan_location(
     (tmp_path / "home" / "scans").mkdir(parents=True)
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     monkeypatch.chdir(tmp_path)
-    recorder = FileRecorder()
-    await recorder.init(
-        ScanSpec(scan_name="test", scanners={"s": ScannerSpec(name="s")}), "~/scans"
-    )
+    location = await _scan_with_row("~/scans", "s")
 
-    status = await FileRecorder.sync(recorder.scan_dir.as_posix(), complete=True)
+    status = await FileRecorder.sync(location, complete=True)
 
     assert status.summary.complete
     # init creates an empty literal `~/scans/scan_id=...` (unchanged here)
     assert not [p for p in (tmp_path / "~").rglob("*") if p.is_file()]
+    [scan_dir] = (tmp_path / "home" / "scans").iterdir()
+    assert (scan_dir / "s.parquet").is_file()
+    assert await _result_count(location, "s") == 1
 
 
 @pytest.mark.asyncio
@@ -307,12 +339,11 @@ async def test_resume_does_not_write_the_scan_spec_through_a_symlink(
     before = hashlib.sha256(outside.read_bytes()).hexdigest()
 
     recorder = FileRecorder()
-    spec = await recorder.resume(scan_dir.as_posix())
-    spec.scan_name = "changed"
-    try:
-        await recorder._write_scan_spec()
-    except Exception:
-        pass
+    await recorder.resume(scan_dir.as_posix())
+    with pytest.raises(ValueError, match="Refusing to write"):
+        await recorder.snapshot_transcripts(
+            ScanTranscripts(type="eval_log", transcript_ids={"t": None})
+        )
 
     assert hashlib.sha256(outside.read_bytes()).hexdigest() == before
 

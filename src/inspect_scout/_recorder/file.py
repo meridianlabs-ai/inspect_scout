@@ -340,7 +340,7 @@ class FileRecorder(ScanRecorder):
         # either way the same path is never simultaneously an input to
         # scanner_table and the target of an in-progress write, and readers
         # always observe a complete file.
-        remote = scan_dir.protocol not in ("", "file")
+        remote = not _is_local_scan_dir(scan_dir)
         async with AsyncFilesystem() as fs:
             for scanner in sorted(scan_spec.scanners.keys()):
                 if remote:
@@ -877,6 +877,14 @@ async def _compact_with_prior(
 
 def _scanner_parquet_file(scan_dir: UPath, scanner: str) -> str:
     return (scan_dir / f"{scanner}.parquet").as_posix()
+
+
+def _is_local_scan_dir(scan_dir: UPath) -> bool:
+    """True if the scan directory is on the local filesystem.
+
+    Fsspec maps both `file://` and `local://` to the local filesystem.
+    """
+    return scan_dir.protocol in ("", "file", "local")
 
 
 def _local_scan_file(scan_dir: UPath, name: str) -> Path:
@@ -1569,7 +1577,7 @@ async def _write_scan_file(
     fs: AsyncFilesystem, scan_dir: UPath, name: str, data: bytes
 ) -> None:
     """Write `name` in the scan directory, atomically on a local filesystem."""
-    if scan_dir.protocol not in ("", "file"):
+    if not _is_local_scan_dir(scan_dir):
         await fs.write_file((scan_dir / name).as_posix(), data)
         return
     target = _local_scan_file(scan_dir, name)

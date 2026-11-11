@@ -34,7 +34,7 @@ from inspect_swe._claude_code._events.tree import (
     get_conversation_events,
 )
 
-from .message_ids import apply_source_ids
+from .message_ids import apply_source_ids_or_hash_ids
 
 logger = getLogger(__name__)
 
@@ -166,7 +166,7 @@ async def _load_agent_events(
         session_file=next_session_file,
     ):
         result.append(event)
-    apply_source_ids(conversation_events, result)
+    apply_source_ids_or_hash_ids(conversation_events, result)
     return result
 
 

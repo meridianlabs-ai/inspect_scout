@@ -19,8 +19,8 @@ from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, AsyncIterator
 
-from inspect_ai.event import Event, ModelEvent
-from inspect_ai.model import ChatMessage, stable_message_ids
+from inspect_ai.event import Event
+from inspect_ai.model import ChatMessage
 
 if TYPE_CHECKING:
     from inspect_scout import Transcript
@@ -56,7 +56,7 @@ from .client import (
     read_jsonl_events,
 )
 from .events import process_parsed_events
-from .message_ids import UnpairedModelEventsError, apply_edit_ids, apply_source_ids
+from .message_ids import apply_edit_ids, apply_source_ids_or_hash_ids
 
 logger = getLogger(__name__)
 
@@ -446,16 +446,7 @@ async def _create_transcript(
     ):
         scout_events.append(event)
 
-    try:
-        apply_source_ids(events, scout_events)
-        hash_ids = None
-    except UnpairedModelEventsError as ex:
-        # Fail soft: the rest of the import still gets source IDs.
-        logger.warning("%s Its messages get content-hash IDs instead.", ex)
-        hash_ids = stable_message_ids()
-        for event in scout_events:
-            if isinstance(event, ModelEvent):
-                hash_ids(event)
+    hash_ids = apply_source_ids_or_hash_ids(events, scout_events)
 
     # Extract messages via timeline (excludes subagent messages, handles compaction)
     timeline = timeline_build(scout_events)

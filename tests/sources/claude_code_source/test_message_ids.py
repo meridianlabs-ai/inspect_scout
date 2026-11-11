@@ -9,7 +9,7 @@ import pytest
 from inspect_ai.event import Event, ModelEvent
 from inspect_scout import Transcript
 from inspect_scout.sources import claude_code
-from inspect_scout.sources._claude_code import transcripts
+from inspect_scout.sources._claude_code import message_ids, transcripts
 from inspect_scout.sources._claude_code.events import process_parsed_events
 from inspect_scout.sources._claude_code.message_ids import apply_source_ids
 from inspect_swe._claude_code._events.models import BaseEvent, parse_events
@@ -381,6 +381,37 @@ async def test_unpaired_session_gets_hash_ids_and_the_import_continues(
     assert not {m.id for m in imported["broken"].messages} & line_uuids
     assert "session broken" in caplog.text
     assert "content-hash IDs instead" in caplog.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("broken", ["sub-agent", "session"])
+async def test_unpaired_conversation_gets_hash_ids_and_others_keep_source_ids(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    broken: str,
+) -> None:
+    # The session's lines are "agent-*"; its sub-agent's are "sidechain-*".
+    prefix = {"sub-agent": "sidechain-", "session": "agent-"}[broken]
+    real = message_ids.apply_source_ids
+
+    def apply_source_ids(conversation: Sequence[BaseEvent], events: Any) -> None:
+        if conversation and str(conversation[0].uuid).startswith(prefix):
+            raise message_ids.UnpairedModelEventsError("unpaired")
+        real(conversation, events)
+
+    monkeypatch.setattr(message_ids, "apply_source_ids", apply_source_ids)
+    files = {
+        "session": _agent_session_lines(),
+        f"agent-{AGENT}": _lines("agent-atest01.jsonl"),
+    }
+    with caplog.at_level("WARNING"):
+        replies = await _reply_ids(tmp_path / "project", files)
+
+    assert "content-hash IDs instead" in caplog.text
+    # Paired model events take their line's uuid; unpaired ones keep their own.
+    assert any(c.startswith("agent-") for c in replies) is (broken != "session")
+    assert any(c.startswith("sidechain-") for c in replies) is (broken != "sub-agent")
 
 
 @pytest.mark.asyncio

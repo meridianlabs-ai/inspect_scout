@@ -344,6 +344,7 @@ async def _trace_to_transcript(
 
     # Fallback: try to extract from root span
     if not messages:
+        messages_from = None
         root_span = ordered_spans[0] if ordered_spans else None
         if root_span:
             messages = _extract_root_messages(root_span)

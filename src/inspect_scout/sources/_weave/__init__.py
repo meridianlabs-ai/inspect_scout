@@ -25,12 +25,13 @@ from inspect_ai.model import (
 from inspect_scout._transcript.types import Transcript
 
 from .._message_ids import TraceMessageIds
+from .._root_agent import root_agent_calls
 from .client import (
     WEAVE_SOURCE_TYPE,
     retry_api_call,
 )
 from .detection import detect_provider_format, get_model_name
-from .events import calls_to_events
+from .events import calls_to_events, span_call_ids, tool_call_ids
 from .extraction import (
     extract_bool,
     extract_dict,
@@ -214,10 +215,19 @@ async def _trace_to_transcript(
     messages: list[ChatMessage] = []
     messages_from: list[str] | None = None
 
-    # For traces with LLM calls, use the full conversation from the
-    # last LLM event which includes all intermediate turns (tool calls, results).
-    if llm_calls and model_events:
-        last_model = model_events[-1]
+    # For traces with LLM calls, use the full conversation from the root
+    # agent's last LLM event, which includes all intermediate turns (tool
+    # calls, results).
+    root_calls = root_agent_calls(
+        model_events,
+        parents={
+            str(call.id): getattr(call, "parent_id", None) for call in ordered_calls
+        },
+        tools=tool_call_ids(ordered_calls),
+        spans=span_call_ids(ordered_calls),
+    )
+    if root_calls:
+        last_model = root_calls[-1]
         # Use the LLM's input which has the full conversation
         messages = list(last_model.input)
         # Append the final assistant response from output

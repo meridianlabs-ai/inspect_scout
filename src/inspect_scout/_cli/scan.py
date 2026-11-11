@@ -92,6 +92,14 @@ class ScanGroup(click.Group):
 
         # Second pass: reorder args to put options before positional arguments
         # This allows: scout scan file.py -T ./logs to work correctly
+        # Boolean flags (e.g. --dry-run) never take a value, so they must not
+        # consume the next positional arg (e.g. FILE).
+        boolean_flags = {
+            opt
+            for param in self.get_params(ctx)
+            if isinstance(param, click.Option) and param.is_flag
+            for opt in param.opts + param.secondary_opts
+        }
         file_args = []
         option_args = []
         i = 0
@@ -102,7 +110,13 @@ class ScanGroup(click.Group):
                 option_args.append(arg)
                 i += 1
                 # For options that take values, check if next arg exists and is not a flag
-                if i < len(normalized_args) and not normalized_args[i].startswith("-"):
+                # (--opt=value already carries its value)
+                if (
+                    arg not in boolean_flags
+                    and "=" not in arg
+                    and i < len(normalized_args)
+                    and not normalized_args[i].startswith("-")
+                ):
                     option_args.append(normalized_args[i])
                     i += 1
             else:

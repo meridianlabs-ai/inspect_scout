@@ -111,6 +111,7 @@ async def to_model_event(span: dict[str, Any]) -> ModelEvent:
         timestamp=_get_timestamp(span, "start_timestamp"),
         completed=_get_end_timestamp(span),
         span_id=str(span.get("parent_span_id") or ""),
+        uuid=str(span["span_id"]) if span.get("span_id") else None,
     )
 
 

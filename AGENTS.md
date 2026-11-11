@@ -38,7 +38,7 @@ Devin, and similar) preparing contributions. Human contributors: see
 - **Python package** (`src/inspect_scout/`) - Core library for analyzing LLM evaluation transcripts. Provides a CLI, programmatic API, and FastAPI server. Handles transcript databases, scanners, validation, and results.
 - **React frontend** (`src/inspect_scout/_view/ts-mono/`) - TypeScript monorepo (Turborepo + pnpm workspaces) for the web UI, embedded as a git submodule. See its own [CLAUDE.md](src/inspect_scout/_view/ts-mono/CLAUDE.md) and [submodule guide](src/inspect_scout/_view/ts-mono/docs/submodule-guide.md).
 
-Development setup (`uv sync --extra dev`, the dependency cooldown, inspect_ai tracked from `main`, frontend/Git LFS setup) is in [CONTRIBUTING.md](CONTRIBUTING.md).
+Development setup (`uv sync --locked --extra dev`, frontend/Git LFS setup) is in [CONTRIBUTING.md](CONTRIBUTING.md). How dependencies are installed and changed (the lock file, the cooldown, inspect_ai tracked from `main`) is in [DEPENDENCIES.md](https://github.com/meridianlabs-ai/actions/blob/main/DEPENDENCIES.md) in meridianlabs-ai/actions.
 
 ## Principles
 
@@ -175,8 +175,8 @@ Notes:
 
 ### Common Pitfalls
 - Use the venv for all Python commands: either reference `.venv/bin/` directly or run `source .venv/bin/activate`
-- Set up or refresh the venv with `uv sync --extra dev`. Use `uv run --no-sync`, not plain `uv run`: developers often have a local editable inspect_ai installed over the locked one, and a plain `uv run` or `uv sync` reinstalls the locked version
-- After changing dependencies in `pyproject.toml`, run `uv lock` and commit `uv.lock`; CI's `uv sync --locked` fails on a stale lock. Don't override the 7-day `exclude-newer` cooldown; for an emergency release, CONTRIBUTING.md describes a dated entry
+- Set up or refresh the venv with `uv sync --locked --extra dev`. Use `uv run --no-sync`, not plain `uv run`: developers often have a local editable inspect_ai installed over the locked one, and a plain `uv run` or `uv sync` reinstalls the locked version
+- After changing dependencies in `pyproject.toml`, run `uv lock` and commit `uv.lock`; CI's `uv sync --locked` fails on a stale lock. Don't override the 7-day `exclude-newer` cooldown. Every other dependency procedure is in [DEPENDENCIES.md](https://github.com/meridianlabs-ai/actions/blob/main/DEPENDENCIES.md)
 
 
 ## TypeScript

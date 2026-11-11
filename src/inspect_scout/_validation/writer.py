@@ -12,6 +12,7 @@ from .validation import (
     _convert_csv_types,
     _flatten_labels_in_data,
     _flatten_splits_in_data,
+    _parse_id,
 )
 
 FileFormat = Literal["csv", "yaml", "json", "jsonl"]
@@ -59,7 +60,9 @@ def _load_raw_data(
                 val = row[col]
                 if pd.isna(val):
                     continue
-                case[col] = val
+                case[col] = (
+                    _parse_id(val) if col == "id" and isinstance(val, str) else val
+                )
             cases.append(case)
         is_valid = _has_valid_columns(columns)
         return cases, False, is_valid
@@ -170,7 +173,15 @@ def _write_csv_file(file_path: Path, cases: list[dict[str, Any]]) -> None:
     if not cases:
         df = pd.DataFrame(columns=["id", "target"])
     else:
-        df = pd.DataFrame(_csv_cases(cases))
+        rows = _csv_cases(cases)
+        if any("target" in row for row in rows) and any(
+            key.startswith("target_") for row in rows for key in row
+        ):
+            raise ValueError(
+                "CSV validation cannot mix scalar and dictionary targets. "
+                "Use JSON, YAML, or JSONL for mixed target types."
+            )
+        df = pd.DataFrame(rows)
 
     # Ensure id is the first column
     cols = list(df.columns)

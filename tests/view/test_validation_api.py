@@ -921,3 +921,66 @@ def test_create_empty_csv_validation(tmp_path: Path) -> None:
     path = tmp_path / "empty.csv"
     ValidationFileWriter.create_new(path, [])
     assert path.read_text() == "id,target\n"
+
+
+@pytest.mark.parametrize("case_id", [["alpha"], ["alpha", "beta"]])
+def test_created_csv_group_can_be_updated_and_deleted(
+    client: TestClient, tmp_path: Path, case_id: list[str]
+) -> None:
+    path = tmp_path / "groups.csv"
+    created = client.post(
+        "/validations",
+        json={"path": path.as_uri(), "cases": [{"id": case_id, "target": True}]},
+    )
+    assert created.status_code == 200
+    uri = _base64url(path.as_uri())
+    route = f"/validations/{uri}/{_base64url(json.dumps(case_id))}"
+    updated = client.post(route, json={"target": False})
+    assert updated.status_code == 200
+    assert validation_set(path).cases == [ValidationCase(id=case_id, target=False)]
+    assert client.get(f"/validations/{uri}").json()[0]["id"] == case_id
+    assert client.delete(route).status_code == 204
+    assert validation_set(path).cases == []
+
+
+def test_csv_mixed_target_update_preserves_other_cases(
+    client: TestClient, tmp_path: Path
+) -> None:
+    path = tmp_path / "targets.csv"
+    created = client.post(
+        "/validations",
+        json={
+            "path": path.as_uri(),
+            "cases": [{"id": "alpha", "target": True}, {"id": "beta", "target": False}],
+        },
+    )
+    assert created.status_code == 200
+    before = path.read_bytes()
+    route = f"/validations/{_base64url(path.as_uri())}/{_base64url('beta')}"
+    updated = client.post(route, json={"target": {"risk": False}})
+    assert updated.status_code == 400
+    assert "mix scalar and dictionary targets" in updated.json()["detail"]
+    assert path.read_bytes() == before
+    assert validation_set(path).cases == [
+        ValidationCase(id="alpha", target=True),
+        ValidationCase(id="beta", target=False),
+    ]
+
+
+def test_csv_mixed_target_creation_does_not_write_file(
+    client: TestClient, tmp_path: Path
+) -> None:
+    path = tmp_path / "mixed.csv"
+    response = client.post(
+        "/validations",
+        json={
+            "path": path.as_uri(),
+            "cases": [
+                {"id": "alpha", "target": True},
+                {"id": "beta", "target": {"risk": False}},
+            ],
+        },
+    )
+    assert response.status_code == 400
+    assert "mix scalar and dictionary targets" in response.json()["detail"]
+    assert not path.exists()

@@ -10,12 +10,15 @@ are stored in an `_index/` directory with two types:
 - Compacted manifests: `_manifest_<timestamp>_<uuid>.idx`
   Written during compaction, consolidates multiple index files.
 
-The discovery priority ensures concurrent operations work correctly:
-1. If any `_manifest_*.idx` exists, use the newest one
-2. Also include any `index_*.idx` files newer than that manifest
-3. If no manifest exists, use all `index_*.idx` files
+Every manifest and every incremental file is read, except files that a
+manifest still present says it replaced. A compaction deletes only files it
+listed, after writing a manifest that holds their entries, so an entry is
+never lost to another compaction, whichever of them wrote last. When several
+files list one transcript_id, one row is kept, ranked first by the data file
+the row points at.
 """
 
+import json
 import os
 import re
 import tempfile
@@ -54,10 +57,22 @@ from .types import (
 
 logger = getLogger(__name__)
 
-# Regex patterns for extracting timestamps from filenames
-# UUID part allows any alphanumeric (actual UUIDs are hex, but be permissive for testing)
-INCREMENTAL_PATTERN = re.compile(r"index_(\d{8}T\d{6})_[a-zA-Z0-9]+\.idx$")
-MANIFEST_PATTERN = re.compile(r"_manifest_(\d{8}T\d{6})_[a-zA-Z0-9]+\.idx$")
+# Parquet key-value metadata of a manifest: JSON list of the index file names
+# it replaces (the files its writer listed before writing it).
+_REPLACES_KEY = "inspect_scout.replaces"
+
+# Rank of an index row among rows for the same transcript_id, taken from the
+# data file the row points at so that it is the same whichever index file
+# carries the row. A data file written without a session id comes first:
+# session compaction writes one in place of the session's own files and then
+# deletes those. Then the newest `<timestamp>_<uuid>.parquet` name, so a
+# retried insert outranks the attempt it retried.
+_DATA_FILE_RANK = (
+    r"regexp_matches(coalesce(filename, ''), "
+    r"'(^|/)transcripts_\d{8}T\d{6}_[0-9a-zA-Z]+\.parquet$') DESC, "
+    r"coalesce(regexp_extract(filename, "
+    r"'(\d{8}T\d{6})_[0-9a-zA-Z]+\.parquet$', 1), '') DESC"
+)
 
 
 async def append_index(
@@ -122,9 +137,10 @@ async def compact_index(
     """Compact multiple index files into one.
 
     Steps:
-    1. Read all discovered index files into merged manifest
-    2. Write single compacted manifest file
-    3. (Only after success) Delete the merged index files
+    1. Read the discovered index files into merged manifest, skipping files
+       that a discovered manifest already replaced
+    2. Write single compacted manifest file, recording the files it replaces
+    3. (Only after success) Delete the discovered index files
 
     Only files discovered at the start of compaction are deleted. Files
     written concurrently by other sessions survive for the next compaction,
@@ -140,9 +156,8 @@ async def compact_index(
         CompactionResult with stats about files merged/deleted.
     """
     MAX_RETRIES = 3
-    # Use discovery for reading (gets the right files to merge).
-    # Only these files will be deleted after compaction — files written
-    # concurrently by other sessions will survive for the next compaction.
+    # Only the files discovered here will be deleted after compaction — files
+    # written concurrently by other sessions will survive for the next compaction.
     idx_files = await _discover_index_files(storage)
 
     if not idx_files:
@@ -153,13 +168,10 @@ async def compact_index(
             new_index_path="",
         )
 
-    # Load all index files into a single table with deduplication.
-    # If the same transcript_id appears in multiple index files (from retried
-    # inserts after partial failures), keep the entry from the newest file.
-    # Index files have timestamps in their names, so newer files sort later.
-    # We tag each file with its position in the sorted list.
     try:
-        merged_table = _read_and_deduplicate_index_files(conn, idx_files)
+        merged_table = _read_and_deduplicate_index_files(
+            conn, _without_replaced_files(conn, idx_files)
+        )
     except duckdb.IOException as e:
         if _is_missing_index_file(e) and _retry_count < MAX_RETRIES:
             # Files changed during operation - retry with fresh discovery
@@ -171,7 +183,9 @@ async def compact_index(
 
     # Write compacted manifest (even if only 1 file - converts incremental to manifest)
     new_filename = _generate_manifest_filename()
-    new_path = await append_index(merged_table, storage, new_filename)
+    new_path = await append_index(
+        _recording_replaced_files(merged_table, idx_files), storage, new_filename
+    )
 
     # Delete merged index files (only after successful write)
     deleted_idx_count = 0
@@ -239,23 +253,24 @@ async def create_index(
 
         # Read metadata into Arrow table with deduplication.
         # If the same transcript_id exists in multiple data files (e.g., from
-        # retried inserts after partial failures), keep only one entry.
-        # We use ROW_NUMBER() to pick one arbitrarily per transcript_id.
-        result = conn.execute(f"""
-            SELECT * EXCLUDE (_rn) FROM (
-                SELECT *{exclude_clause},
-                       ROW_NUMBER() OVER (PARTITION BY transcript_id) as _rn
-                FROM {quote_identifier(source_view)}
+        # retried inserts after partial failures, or a session being
+        # compacted), keep only one entry.
+        result = conn.execute(
+            _one_row_per_transcript(
+                f"(SELECT *{exclude_clause} FROM {quote_identifier(source_view)})"
             )
-            WHERE _rn = 1
-        """).fetch_arrow_table()
+        ).fetch_arrow_table()
 
     # Convert absolute filenames to relative paths (relative to database location)
     result = _make_filenames_relative(result, storage.location)
 
-    # Write as manifest file (this is a full rebuild, so use manifest naming)
+    # Write as manifest file (this is a full rebuild, so use manifest naming).
+    # It replaces every index file listed above, including any that cannot be
+    # deleted below.
     filename = _generate_manifest_filename()
-    new_path = await append_index(result, storage, filename)
+    new_path = await append_index(
+        _recording_replaced_files(result, existing_idx_files), storage, filename
+    )
 
     # Delete old index files (only after successful write)
     for old_file in existing_idx_files:
@@ -327,11 +342,16 @@ async def init_index_table(
     # Create table from index files
     # Handle file-not-found errors from concurrent operations with retry
     try:
-        with parquet_view(conn, idx_files, union_by_name=True) as source_view:
-            conn.execute(f"""
-                CREATE TABLE {quote_identifier(table_name)} AS
-                SELECT * FROM {quote_identifier(source_view)}
-            """)
+        live_files = _without_replaced_files(conn, idx_files)
+        with parquet_view(conn, live_files, union_by_name=True) as source_view:
+            # Several files can list one transcript, such as the manifests of
+            # two concurrent compactions.
+            rows = (
+                f"SELECT * FROM {quote_identifier(source_view)}"
+                if len(live_files) == 1
+                else _one_row_per_transcript(quote_identifier(source_view))
+            )
+            conn.execute(f"CREATE TABLE {quote_identifier(table_name)} AS {rows}")
     except duckdb.IOException as e:
         if _is_missing_index_file(e) and _retry_count < MAX_RETRIES:
             # File was deleted by concurrent operation - rediscover and retry
@@ -378,16 +398,19 @@ def _is_missing_index_file(error: duckdb.IOException) -> bool:
 async def _discover_index_files(storage: IndexStorage) -> list[str]:
     """Find index files in _index/ directory.
 
-    Implements discovery priority for handling concurrent operations:
-    1. If any _manifest_*.idx exists, use the newest one
-    2. Also include any index_*.idx files NEWER than that manifest
-    3. If no manifest exists, use all index_*.idx files
+    Returns every manifest and every incremental file. With concurrent
+    compactions the newest manifest is not a superset of the others: a
+    compaction that listed the index earlier can write its manifest later.
+    Every entry is still in some file, because a compaction deletes only the
+    files it listed, after writing a manifest that holds their entries.
+    Callers that read the files pass the result through
+    `_without_replaced_files`.
 
     Args:
         storage: Storage configuration.
 
     Returns:
-        List of index file paths to use.
+        List of index file paths (manifests first).
     """
     index_dir = storage.index_dir_path()
 
@@ -411,30 +434,14 @@ async def _discover_index_files(storage: IndexStorage) -> list[str]:
         f for f in all_idx_files if Path(f).name.startswith(INCREMENTAL_PREFIX)
     ]
 
-    if not manifest_files:
-        # No manifest - use all incremental files
-        return sorted(incremental_files)
-
-    # Use newest manifest (sorted by filename = sorted by timestamp)
-    newest_manifest = sorted(manifest_files)[-1]
-    manifest_ts = _extract_timestamp(newest_manifest)
-
-    if manifest_ts is None:
-        # Shouldn't happen, but fall back to just using manifest
-        return [newest_manifest]
-
-    # Include ALL remaining incremental files alongside the manifest.
-    # With the compact_index fix that only deletes merged files, any
-    # remaining incrementals are exactly the un-merged ones. The dedup
-    # logic in _read_and_deduplicate_index_files handles any overlaps.
-    return [newest_manifest] + sorted(incremental_files)
+    return sorted(manifest_files) + sorted(incremental_files)
 
 
 async def _list_all_index_files(storage: IndexStorage) -> list[str]:
-    """List ALL index files in _index/ directory (no priority filtering).
+    """List ALL index files in _index/ directory.
 
-    Unlike _discover_index_files(), this returns every .idx file,
-    used for cleanup operations like create_index().
+    Unlike _discover_index_files(), this returns every .idx file whatever its
+    name, used for cleanup operations like create_index().
 
     Args:
         storage: Storage configuration.
@@ -518,30 +525,6 @@ def _is_index_file(filename: str) -> bool:
     return filename.endswith(INDEX_EXTENSION)
 
 
-def _extract_timestamp(filename: str) -> str | None:
-    """Extract timestamp from an index filename.
-
-    Args:
-        filename: Index filename (path or just filename).
-
-    Returns:
-        Timestamp string (e.g., "20250101T120000") or None if not matched.
-    """
-    basename = Path(filename).name
-
-    # Try incremental pattern first
-    match = INCREMENTAL_PATTERN.search(basename)
-    if match:
-        return match.group(1)
-
-    # Try manifest pattern
-    match = MANIFEST_PATTERN.search(basename)
-    if match:
-        return match.group(1)
-
-    return None
-
-
 def _generate_timestamp() -> str:
     """Generate current UTC timestamp for filenames."""
     return datetime.now(timezone.utc).strftime(TIMESTAMP_FORMAT)
@@ -602,13 +585,13 @@ def _read_and_deduplicate_index_files(
     """Read index files and deduplicate by transcript_id.
 
     If the same transcript_id appears in multiple index files (e.g., from
-    retried inserts after partial failures), keeps the entry from the
-    newest file. Index files have timestamps in their names, so we can
-    determine which is newest by sorting.
+    retried inserts after partial failures, session compaction, or manifests
+    written by concurrent compactions), keeps one entry: see
+    `_one_row_per_transcript`.
 
     Args:
         conn: DuckDB connection.
-        idx_files: List of index file paths (should be sorted by timestamp).
+        idx_files: List of index file paths.
 
     Returns:
         PyArrow table with deduplicated entries.
@@ -642,17 +625,109 @@ def _read_and_deduplicate_index_files(
                 [order, escape_duckdb_glob(path)],
             )
 
-        # Deduplicate: keep entry from newest file (highest file order)
-        return conn.execute(f"""
-            SELECT * EXCLUDE ({file_order}, _rn) FROM (
-                SELECT *,
-                       ROW_NUMBER() OVER (
-                           PARTITION BY transcript_id
-                           ORDER BY {file_order} DESC
-                       ) as _rn
-                FROM {merged_table}
-            )
-            WHERE _rn = 1
-        """).fetch_arrow_table()
+        return conn.execute(
+            _one_row_per_transcript(merged_table, file_order)
+        ).fetch_arrow_table()
     finally:
         conn.execute(f"DROP TABLE IF EXISTS {merged_table}")
+
+
+def _one_row_per_transcript(source: str, file_order: str | None = None) -> str:
+    """Build a SELECT that keeps one row per transcript_id.
+
+    Rows are ranked by `_DATA_FILE_RANK` first, not by the index file that
+    carries them: a manifest written late by a concurrent compaction can hold
+    an older row than a manifest written before it.
+
+    Args:
+        source: Quoted relation (or parenthesized query) holding the rows.
+        file_order: Quoted column giving the position of each row's index file
+            in sorted order (manifests, then incrementals by name). The later
+            file wins among rows `_DATA_FILE_RANK` ranks equally; the column is
+            dropped from the result. Without it those rows, whose data files
+            were written in the same second, are settled by data file name.
+
+    Returns:
+        SQL text of the SELECT.
+    """
+    rank = quote_identifier(generated_identifier("index_rank"))
+    tie_break = "coalesce(filename, '')" if file_order is None else file_order
+    exclude = rank if file_order is None else f"{rank}, {file_order}"
+    return f"""
+        SELECT * EXCLUDE ({exclude}) FROM (
+            SELECT *,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY transcript_id
+                       ORDER BY {_DATA_FILE_RANK}, {tie_break} DESC
+                   ) AS {rank}
+            FROM {source}
+        )
+        WHERE {rank} = 1
+    """
+
+
+def _recording_replaced_files(table: pa.Table, idx_files: list[str]) -> pa.Table:
+    """Mark a manifest table as replacing the index files its writer listed.
+
+    Args:
+        table: Table about to be written as a manifest.
+        idx_files: Paths of the index files the manifest replaces.
+
+    Returns:
+        The table with the replaced file names in its schema metadata, which
+        Parquet stores as key-value metadata.
+    """
+    metadata = dict(table.schema.metadata or {})
+    metadata[_REPLACES_KEY.encode()] = json.dumps(
+        sorted(Path(f).name for f in idx_files)
+    ).encode()
+    return table.replace_schema_metadata(metadata)
+
+
+def _without_replaced_files(
+    conn: duckdb.DuckDBPyConnection, idx_files: list[str]
+) -> list[str]:
+    """Drop index files that a manifest in the list says it replaced.
+
+    A replaced file stays on disk when it cannot be deleted. Its entries are
+    already in the manifest that replaced it, or were dropped on purpose by a
+    rebuild, so reading it again is wasted work or wrong.
+
+    Args:
+        conn: DuckDB connection.
+        idx_files: Discovered index file paths.
+
+    Returns:
+        The paths to read, in their original order.
+    """
+    if len(idx_files) < 2:
+        return idx_files
+    replaced: set[str] = set()
+    vanished: dict[str, duckdb.IOException] = {}
+    manifests = [f for f in idx_files if Path(f).name.startswith(MANIFEST_PREFIX)]
+    # Latest name first, which is usually the latest written: a manifest names
+    # every file its writer listed, so the record inside a manifest that is
+    # itself replaced adds nothing and need not be fetched.
+    for manifest in sorted(manifests, reverse=True):
+        if Path(manifest).name in replaced:
+            continue
+        try:
+            records = conn.execute(
+                "SELECT decode(value) FROM parquet_kv_metadata(?) "
+                "WHERE decode(key) = ?",
+                [escape_duckdb_glob(manifest), _REPLACES_KEY],
+            ).fetchall()
+        except duckdb.IOException as e:
+            if not _is_missing_index_file(e):
+                raise
+            # Deleted since discovery, by a compaction or rebuild whose own
+            # manifest names it.
+            vanished[Path(manifest).name] = e
+            continue
+        for (value,) in records:
+            replaced.update(json.loads(value))
+    for name, error in vanished.items():
+        if name not in replaced:
+            # That manifest was not discovered yet: the caller rediscovers.
+            raise error
+    return [f for f in idx_files if Path(f).name not in replaced]

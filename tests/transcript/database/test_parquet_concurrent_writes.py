@@ -7,7 +7,10 @@ import pyarrow as pa
 import pytest
 from inspect_scout import transcripts_db
 from inspect_scout._transcript.database.parquet import index
-from inspect_scout._transcript.database.parquet.transcripts import ParquetTranscriptsDB
+from inspect_scout._transcript.database.parquet.transcripts import (
+    ParquetTranscriptInfo,
+    ParquetTranscriptsDB,
+)
 from inspect_scout._transcript.database.parquet.types import IndexStorage
 from inspect_scout._transcript.types import Transcript
 from inspect_scout._util.duckdb import parquet_view
@@ -192,3 +195,218 @@ async def test_missing_index_retry_is_bounded(
             else:
                 await index.compact_index(conn, storage)
     assert discoveries == 4
+
+
+def _transcript(transcript_id: str) -> Transcript:
+    return Transcript(
+        transcript_id=transcript_id,
+        source_type="test",
+        source_id="test",
+        source_uri="test://local",
+    )
+
+
+async def _delete_denied(storage: IndexStorage, path: str) -> None:
+    raise PermissionError("delete denied")
+
+
+@pytest.mark.asyncio
+async def test_overtaken_compaction_keeps_every_transcript(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A compaction that read the index before another finished cannot hide rows."""
+    location = str(tmp_path)
+    append = index.append_index
+    # The slow compaction's manifest gets the later name, so it sorts newest.
+    names = iter(
+        ["_manifest_20990101T000001_slow.idx", "_manifest_20990101T000000_fast.idx"]
+    )
+
+    async def append_after_other_writer(
+        table: pa.Table, storage: IndexStorage, filename: str
+    ) -> str:
+        monkeypatch.setattr(index, "append_index", append)
+        async with transcripts_db(location) as other:
+            await other.insert([_transcript("t3")])
+        return await append(table, storage, filename)
+
+    async with transcripts_db(location) as db:
+        await db.insert([_transcript("t1")])
+        await db.insert([_transcript("t2")], commit=False)
+        # This commit reads the index, then another writer inserts t3 and
+        # compacts before this commit writes its own manifest.
+        monkeypatch.setattr(index, "append_index", append_after_other_writer)
+        monkeypatch.setattr(index, "_generate_manifest_filename", lambda: next(names))
+        await db.commit()
+
+    async with transcripts_db(location) as db:
+        assert sorted(await db.transcript_ids()) == ["t1", "t2", "t3"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["read", "compact"])
+@pytest.mark.parametrize(
+    "stale, current",
+    [
+        pytest.param(
+            "transcripts_s_20250101T100000_aaaaaaaa.parquet",
+            "transcripts_20250101T100005_bbbbbbbb.parquet",
+            id="session-file-compacted-later",
+        ),
+        pytest.param(
+            "transcripts_s_20250101T100000_ffffffff.parquet",
+            "transcripts_20250101T100000_00000000.parquet",
+            id="session-file-compacted-in-the-same-second",
+        ),
+        pytest.param(
+            "transcripts_20250101T100000_ffffffff.parquet",
+            "transcripts_20250101T100005_00000000.parquet",
+            id="insert-retried-later",
+        ),
+    ],
+)
+async def test_late_manifest_does_not_restore_stale_row(
+    tmp_path: Path, operation: str, stale: str, current: str
+) -> None:
+    """A row is ranked by its data file, not by the manifest that carries it."""
+    storage = IndexStorage(location=str(tmp_path))
+    await index.append_index(
+        pa.table({"transcript_id": ["t1"], "filename": [current]}),
+        storage,
+        "_manifest_20250101T100006_fast.idx",
+    )
+    await index.append_index(
+        pa.table({"transcript_id": ["t1"], "filename": [stale]}),
+        storage,
+        "_manifest_20250101T100007_slow.idx",
+    )
+    with duckdb.connect(":memory:") as conn:
+        if operation == "read":
+            assert await index.init_index_table(conn, storage) == 1
+            assert conn.sql("SELECT filename FROM transcript_index").fetchall() == [
+                (current,)
+            ]
+        else:
+            result = await index.compact_index(conn, storage)
+            assert conn.read_parquet(result.new_index_path).fetchall() == [
+                ("t1", current)
+            ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["read", "compact"])
+@pytest.mark.parametrize(
+    "replacement_discovered, discoveries",
+    [(True, 1), (False, 2)],
+    ids=["replacement-discovered", "replacement-written-after-discovery"],
+)
+async def test_manifest_deleted_after_discovery(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    operation: str,
+    replacement_discovered: bool,
+    discoveries: int,
+) -> None:
+    """A deleted manifest needs a rediscovery only if its replacement was not listed."""
+    storage = IndexStorage(location=str(tmp_path))
+    t1 = pa.table({"transcript_id": ["t1"], "filename": ["data1.parquet"]})
+    deleted = await index.append_index(t1, storage, "_manifest_20250101T100000_z.idx")
+    await index.append_index(
+        pa.table({"transcript_id": ["t2"], "filename": ["data2.parquet"]}),
+        storage,
+        "index_20250101T100001_b.idx",
+    )
+    replacement = index._recording_replaced_files(t1, [deleted])
+    if replacement_discovered:
+        await index.append_index(
+            replacement, storage, "_manifest_20250101T100000_a.idx"
+        )
+    discover = index._discover_index_files
+    calls = 0
+
+    async def discover_then_delete(storage: IndexStorage) -> list[str]:
+        nonlocal calls
+        calls += 1
+        paths = await discover(storage)
+        if calls == 1:
+            if not replacement_discovered:
+                await index.append_index(
+                    replacement, storage, "_manifest_20250101T100002_c.idx"
+                )
+            Path(deleted).unlink()
+        return paths
+
+    monkeypatch.setattr(index, "_discover_index_files", discover_then_delete)
+    with duckdb.connect(":memory:") as conn:
+        if operation == "read":
+            assert await index.init_index_table(conn, storage) == 2
+        else:
+            result = await index.compact_index(conn, storage)
+            assert conn.read_parquet(result.new_index_path).order(
+                "transcript_id"
+            ).fetchall() == [("t1", "data1.parquet"), ("t2", "data2.parquet")]
+    assert calls == discoveries
+
+
+@pytest.mark.asyncio
+async def test_undeleted_index_files_do_not_duplicate_transcripts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Merged index files that could not be deleted are not read as extra rows."""
+    monkeypatch.setattr(index, "_delete_file", _delete_denied)
+    for transcript_id in ["t1", "t2"]:
+        async with transcripts_db(str(tmp_path)) as db:
+            await db.insert([_transcript(transcript_id)])
+    async with transcripts_db(str(tmp_path)) as db:
+        assert await db.count() == 2
+        assert sorted(await db.transcript_ids()) == ["t1", "t2"]
+
+
+@pytest.mark.asyncio
+async def test_rebuild_replaces_index_files_it_cannot_delete(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A rebuild decides the index even when an old manifest stays on disk."""
+    location = str(tmp_path)
+    async with transcripts_db(location) as db:
+        await db.insert([_transcript("t1")])
+        await db.insert([_transcript("t2")])
+        data_files = {
+            info.transcript_id: info.filename
+            async for info in db.select()
+            if isinstance(info, ParquetTranscriptInfo)
+        }
+    (tmp_path / data_files["t2"]).unlink()
+    old_manifests = {str(path) for path in (tmp_path / "_index").glob("*.idx")}
+    delete = index._delete_file
+
+    async def delete_except_old_manifests(storage: IndexStorage, path: str) -> None:
+        if path in old_manifests:
+            raise PermissionError("delete denied")
+        await delete(storage, path)
+
+    monkeypatch.setattr(index, "_delete_file", delete_except_old_manifests)
+    with monkeypatch.context() as rebuild, duckdb.connect(":memory:") as conn:
+        # The rebuilt manifest need not sort newest: names carry a one-second
+        # timestamp and a random suffix.
+        rebuild.setattr(
+            index,
+            "_generate_manifest_filename",
+            lambda: "_manifest_20000101T000000_r.idx",
+        )
+        await index.create_index(conn, IndexStorage(location=location))
+    assert all(Path(path).exists() for path in old_manifests)
+    async with transcripts_db(location) as db:
+        assert sorted(await db.transcript_ids()) == ["t1"]
+
+    # A later commit keeps the rebuild's decision and replaces the old manifest too.
+    async with transcripts_db(location) as db:
+        await db.insert([_transcript("t3")])
+    async with transcripts_db(location) as db:
+        assert sorted(await db.transcript_ids()) == ["t1", "t3"]
+
+    monkeypatch.setattr(index, "_delete_file", delete)
+    async with transcripts_db(location) as db:
+        await db.insert([_transcript("t4")])
+        assert sorted(await db.transcript_ids()) == ["t1", "t3", "t4"]
+    assert len(list((tmp_path / "_index").glob("*.idx"))) == 1

@@ -10,7 +10,6 @@ import pytest
 from inspect_scout._transcript.database.parquet.index import (
     _discover_data_files,
     _discover_index_files,
-    _extract_timestamp,
     _generate_manifest_filename,
     append_index,
     compact_index,
@@ -79,26 +78,6 @@ def create_sample_data_file(path: Path, transcript_ids: list[str]) -> None:
 class TestHelperFunctions:
     """Tests for helper functions."""
 
-    def test_extract_timestamp_incremental(self) -> None:
-        """Test extracting timestamp from incremental filename."""
-        ts = _extract_timestamp("index_20250101T120000_abc12345.idx")
-        assert ts == "20250101T120000"
-
-    def test_extract_timestamp_manifest(self) -> None:
-        """Test extracting timestamp from manifest filename."""
-        ts = _extract_timestamp("_manifest_20250103T100000_abc12345.idx")
-        assert ts == "20250103T100000"
-
-    def test_extract_timestamp_with_path(self) -> None:
-        """Test extracting timestamp from full path."""
-        ts = _extract_timestamp("/path/to/_index/index_20250101T120000_abc12345.idx")
-        assert ts == "20250101T120000"
-
-    def test_extract_timestamp_invalid(self) -> None:
-        """Test extracting timestamp from invalid filename."""
-        ts = _extract_timestamp("random_file.idx")
-        assert ts is None
-
     def test_generate_manifest_filename(self) -> None:
         """Test generating manifest filename."""
         filename = _generate_manifest_filename()
@@ -158,24 +137,6 @@ class TestDiscoverIndexFiles:
         assert "_manifest_20250102T100000_abc12345.idx" in filenames
         assert "index_20250101T100000_abc12345.idx" in filenames
         assert "index_20250101T110000_def67890.idx" in filenames
-
-    @pytest.mark.asyncio
-    async def test_discover_index_files_newest_manifest(
-        self, storage: IndexStorage
-    ) -> None:
-        """Uses newest manifest when multiple exist."""
-        index_dir = Path(storage.location) / INDEX_DIR
-        index_dir.mkdir(parents=True)
-
-        # Create multiple manifests
-        (index_dir / "_manifest_20250101T100000_aaa11111.idx").touch()
-        (index_dir / "_manifest_20250102T100000_bbb22222.idx").touch()
-        (index_dir / "_manifest_20250103T100000_ccc33333.idx").touch()
-
-        result = await _discover_index_files(storage)
-
-        assert len(result) == 1
-        assert "20250103T100000" in str(result[0])
 
     @pytest.mark.asyncio
     async def test_discover_index_files_includes_all_incrementals(
@@ -480,14 +441,14 @@ class TestCreateIndex:
         create_sample_data_file(location / "data.parquet", ["t1"])
 
         # Create various old index files:
-        # 1. A manifest that would be discovered
+        # 1. A manifest
         table1 = create_sample_index_table(["t1"], ["data.parquet"])
         await append_index(table1, storage, "_manifest_20250101T100000_abc12345.idx")
 
-        # 2. An older manifest that would be orphaned (not discovered)
+        # 2. An older manifest left behind by another compaction
         (index_dir / "_manifest_20250101T080000_def67890.idx").touch()
 
-        # 3. An older incremental that would be orphaned
+        # 3. An older incremental that was never merged
         (index_dir / "index_20250101T090000_old.idx").touch()
 
         # Verify we have 3 index files before
@@ -567,6 +528,28 @@ class TestCreateIndex:
 
         # t1 should appear only once
         assert transcript_ids.count("t1") == 1
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("session_id", ["s", "0s"])
+    async def test_create_index_prefers_compacted_file_to_session_file(
+        self, storage: IndexStorage, conn: duckdb.DuckDBPyConnection, session_id: str
+    ) -> None:
+        """A rebuild during session compaction indexes the file that will remain."""
+        location = Path(storage.location)
+        compacted = "transcripts_20250101T100000_00000000.parquet"
+        # The session file is still on disk; compaction deletes it next.
+        create_sample_data_file(
+            location / f"transcripts_{session_id}_20250101T100000_ffffffff.parquet",
+            ["t1"],
+        )
+        create_sample_data_file(location / compacted, ["t1"])
+
+        path = await create_index(conn, storage)
+
+        assert path is not None
+        assert conn.read_parquet(path).select(
+            "transcript_id", "filename"
+        ).fetchall() == [("t1", compacted)]
 
 
 # --- Maintenance Tests ---
@@ -947,23 +930,37 @@ class TestConcurrencyProtection:
         await _delete_file(storage, "/nonexistent/path/file.idx")
 
     @pytest.mark.asyncio
-    async def test_multiple_manifests_discovery_picks_newest(
-        self, storage: IndexStorage
+    async def test_multiple_manifests_are_merged_then_replaced(
+        self, storage: IndexStorage, conn: duckdb.DuckDBPyConnection
     ) -> None:
-        """When multiple manifests exist, discovery picks the newest one."""
-        index_dir = Path(storage.location) / INDEX_DIR
-        index_dir.mkdir(parents=True)
+        """Entries held only by an older manifest stay visible and get compacted."""
+        # Three manifests left by concurrent compactions; t1 is in all of them
+        await append_index(
+            create_sample_index_table(["t1"], ["data1.parquet"]),
+            storage,
+            "_manifest_20250101T100000_abc.idx",
+        )
+        await append_index(
+            create_sample_index_table(["t1", "t2"], ["data1.parquet", "data2.parquet"]),
+            storage,
+            "_manifest_20250101T110000_def.idx",
+        )
+        await append_index(
+            create_sample_index_table(["t1", "t3"], ["data1.parquet", "data3.parquet"]),
+            storage,
+            "_manifest_20250101T120000_ghi.idx",
+        )
 
-        # Create multiple manifests (simulating concurrent create_index calls)
-        table1 = create_sample_index_table(["t1"], ["data1.parquet"])
-        table2 = create_sample_index_table(["t2"], ["data2.parquet"])
-        table3 = create_sample_index_table(["t3"], ["data3.parquet"])
+        assert await init_index_table(conn, storage) == 3
 
-        await append_index(table1, storage, "_manifest_20250101T100000_abc.idx")
-        await append_index(table2, storage, "_manifest_20250101T110000_def.idx")
-        await append_index(table3, storage, "_manifest_20250101T120000_ghi.idx")
-
-        # Discovery should return only the newest manifest
-        idx_files = await _discover_index_files(storage)
-        assert len(idx_files) == 1
-        assert "20250101T120000" in idx_files[0]
+        result = await compact_index(conn, storage)
+        assert result.index_files_merged == 3
+        remaining = list((Path(storage.location) / INDEX_DIR).glob("*.idx"))
+        assert [str(f) for f in remaining] == [result.new_index_path]
+        assert conn.read_parquet(result.new_index_path).order(
+            "transcript_id"
+        ).fetchall() == [
+            ("t1", "data1.parquet", "test_task", "test_model"),
+            ("t2", "data2.parquet", "test_task", "test_model"),
+            ("t3", "data3.parquet", "test_task", "test_model"),
+        ]

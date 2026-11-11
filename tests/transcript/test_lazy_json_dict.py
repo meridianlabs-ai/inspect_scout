@@ -442,4 +442,3 @@ def test_to_json_string_writes_valid_json(
     import json
 
     assert json.loads(data.to_json_string()) == expected
-    assert {key: json.loads(data.value_to_json_string(key)) for key in data} == expected

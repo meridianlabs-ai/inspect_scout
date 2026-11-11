@@ -193,24 +193,29 @@ class LazyJSONDict(dict[str, Any]):
         parts = []
         for key in self.keys():
             encoded_key = json.dumps(key, ensure_ascii=False)
-            encoded_value = self.value_to_json_string(key)
+            raw = self.unparsed_json(key)
+            encoded_value = (
+                raw
+                if raw is not None
+                else to_json(super().__getitem__(key), fallback=str).decode("utf-8")
+            )
             parts.append(f"{encoded_key}:{encoded_value}")
 
         return "{" + ",".join(parts) + "}"
 
-    def value_to_json_string(self, key: str) -> str:
-        """Serialize one value, preserving unread JSON without caching parsed objects.
+    def unparsed_json(self, key: str) -> str | None:
+        """Return unread object/array JSON text without materializing it.
 
         Args:
-            key: Dictionary key to serialize.
+            key: Dictionary key to inspect.
 
         Returns:
-            JSON representation of the value.
+            Original JSON text, or None when the value needs serialization.
         """
         value = super().__getitem__(key)
         if key not in self._parsed and self._is_json_text(key, value):
             return str(value)
-        return to_json(value, fallback=str).decode("utf-8")
+        return None
 
     def to_dict(self) -> dict[str, Any]:
         """Resolve unread JSON objects and arrays for generic serializers.

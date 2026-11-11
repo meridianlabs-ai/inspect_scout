@@ -7,14 +7,17 @@ import json
 from pathlib import Path
 from typing import Any
 
+import ijson
 import pytest
 from inspect_ai.log import expand_events
 from inspect_ai.model import ChatMessage
 from inspect_scout._transcript.handle import SpooledTranscriptHandle
+from inspect_scout._transcript.json import stream_parse as stream_parse_mod
 from inspect_scout._transcript.json.passthrough import pooled_passthrough
 from inspect_scout._transcript.json.stream_parse import stream_parse_to_spool
 from inspect_scout._transcript.types import Transcript, TranscriptInfo
 from inspect_scout._transcript.util import LazyJSONDict
+from inspect_scout._util._json import to_json_bytes_compact
 from pydantic import TypeAdapter
 
 _CHAT_MESSAGE_ADAPTER: TypeAdapter[ChatMessage] = TypeAdapter(ChatMessage)
@@ -183,3 +186,36 @@ async def test_passthrough_expands_to_the_materialized_transcript(
         }
         # The index row's lazy values must come through as objects, not the
         # raw JSON strings `LazyJSONDict` stores until something parses them.
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("backend", ["python", "yajl2_c"])
+async def test_passthrough_preserves_surrogate_safe_metadata_encoding(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, backend: str
+) -> None:
+    monkeypatch.setattr(stream_parse_mod, "ijson", ijson.get_backend(backend))
+    sample = {
+        "target": "bad\ud800",
+        "scores": {"accuracy": {"value": 1, "explanation": "bad\ud800"}},
+        "messages": [],
+        "events": [],
+    }
+    metadata = LazyJSONDict({"unread": '{"count": 1}', "parsed": '{"note": "before"}'})
+    metadata["parsed"]["note"] = "bad\ud800"
+    info = TranscriptInfo(transcript_id="t1")
+    object.__setattr__(info, "metadata", metadata)
+    result = await stream_parse_to_spool(
+        io.BytesIO(json.dumps(sample).encode()), "all", "all", tmp_path
+    )
+    try:
+        expected_target = json.loads(to_json_bytes_compact(result.target))
+        expected_scores = json.loads(to_json_bytes_compact(result.scores))
+        input_json, _ = pooled_passthrough(info, result)
+    finally:
+        result.close()
+    recorded = json.loads(input_json)["metadata"]
+    assert recorded["target"] == expected_target
+    assert recorded["scores"] == expected_scores
+    assert recorded["parsed"] == {"note": r"bad\ud800"}
+    assert recorded["unread"] == {"count": 1}
+    assert dict.__getitem__(metadata, "unread") == '{"count": 1}'

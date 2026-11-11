@@ -148,8 +148,11 @@ def pooled_passthrough(
                 # It contains no attachment refs from condense_sample.
                 for chunk in result.metadata_json.chunks():
                     envelope.write(chunk)
-            elif isinstance(merged, LazyJSONDict):
-                emit(merged.value_to_json_string(key))
+            elif (
+                isinstance(merged, LazyJSONDict)
+                and (raw := merged.unparsed_json(key)) is not None
+            ):
+                emit(raw)
             else:
                 emit_bytes(to_json_bytes_compact(value))
         emit("}")

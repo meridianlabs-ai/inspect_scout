@@ -165,6 +165,11 @@ def _csv_cases(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if isinstance(row.get("target"), dict):
             target = row.pop("target")
             row.update({f"target_{key}": value for key, value in target.items()})
+        if not _has_valid_columns(list(row)):
+            raise ValueError(
+                "CSV validation cases require a target or non-empty target/label columns. "
+                "Use JSON, YAML, or JSONL for empty dictionaries."
+            )
         rows.append(row)
     return rows
 

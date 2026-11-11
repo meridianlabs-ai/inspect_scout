@@ -1004,3 +1004,32 @@ def test_csv_target_and_label_creation_does_not_write_file(
     assert response.status_code == 400
     assert "mix target and label cases" in response.json()["detail"]
     assert not path.exists()
+
+
+@pytest.mark.parametrize("field", ["target", "labels"])
+@pytest.mark.parametrize("update", [False, True])
+def test_csv_empty_dictionary_rejected_before_write(
+    client: TestClient, tmp_path: Path, field: str, update: bool
+) -> None:
+    path = tmp_path / "empty_dictionary.csv"
+    before: bytes | None = None
+    if update:
+        created = client.post(
+            "/validations",
+            json={"path": path.as_uri(), "cases": [{"id": "alpha", "target": True}]},
+        )
+        assert created.status_code == 200
+        before = path.read_bytes()
+        route = f"/validations/{_base64url(path.as_uri())}/{_base64url('alpha')}"
+        response = client.post(route, json={field: {}})
+    else:
+        response = client.post(
+            "/validations",
+            json={"path": path.as_uri(), "cases": [{"id": "alpha", field: {}}]},
+        )
+    assert response.status_code == 400
+    assert "empty dictionaries" in response.json()["detail"]
+    if before is None:
+        assert not path.exists()
+    else:
+        assert path.read_bytes() == before

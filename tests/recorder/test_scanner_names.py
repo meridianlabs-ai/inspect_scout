@@ -164,6 +164,7 @@ async def _result_count(location: str, scanner: str) -> int:
         ("", "pkg/victim", "pkg", ".", True),
         ("", "s", "_summary.json", "victim.parquet", True),
         ("", "s", "_errors.jsonl", "victim.parquet", True),
+        ("local://", "s", "s.parquet", "victim.parquet", True),
         ("local://", "s", "_summary.json", "victim.parquet", True),
     ],
 )

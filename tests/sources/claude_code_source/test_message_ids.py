@@ -1,6 +1,7 @@
 """Claude Code imports keep Claude Code's own message and call IDs."""
 
 import json
+from collections.abc import AsyncIterator, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -8,9 +9,10 @@ import pytest
 from inspect_ai.event import Event, ModelEvent
 from inspect_scout import Transcript
 from inspect_scout.sources import claude_code
+from inspect_scout.sources._claude_code import transcripts
 from inspect_scout.sources._claude_code.events import process_parsed_events
 from inspect_scout.sources._claude_code.message_ids import apply_source_ids
-from inspect_swe._claude_code._events.models import parse_events
+from inspect_swe._claude_code._events.models import BaseEvent, parse_events
 
 from tests.sources.message_id_checks import assert_message_ids_consistent, ids
 
@@ -340,6 +342,45 @@ async def test_copies_of_a_split_response_share_its_edit_id(tmp_path: Path) -> N
     ]
     assert len(copies) == 2
     assert copies[0] == copies[1] != "msg_s1_001"
+
+
+@pytest.mark.asyncio
+async def test_unpaired_session_gets_hash_ids_and_the_import_continues(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    # Two unrelated sessions in one directory; pairing fails for "broken".
+    lines = _lines("simple_conversation.jsonl")
+    for session in ("broken", "ok"):
+        copy = [{**line, "sessionId": session, "slug": session} for line in lines]
+        (tmp_path / f"{session}.jsonl").write_text(
+            "".join(json.dumps(line) + "\n" for line in copy)
+        )
+
+    async def drop_first_model_event(
+        events: Sequence[BaseEvent],
+        project_dir: Path | None = None,
+        max_depth: int = 5,
+        session_file: Path | None = None,
+    ) -> AsyncIterator[Event]:
+        dropped = session_file is None or session_file.name != "broken.jsonl"
+        async for event in process_parsed_events(
+            events, project_dir, max_depth, session_file
+        ):
+            if not dropped and isinstance(event, ModelEvent):
+                dropped = True
+                continue
+            yield event
+
+    monkeypatch.setattr(transcripts, "process_parsed_events", drop_first_model_event)
+    with caplog.at_level("WARNING"):
+        imported = {t.transcript_id: t async for t in claude_code(path=tmp_path)}
+
+    assert set(imported) == {"broken", "ok"}
+    line_uuids = {line["uuid"] for line in lines}
+    assert {m.id for m in imported["ok"].messages} & line_uuids
+    assert not {m.id for m in imported["broken"].messages} & line_uuids
+    assert "session broken" in caplog.text
+    assert "content-hash IDs instead" in caplog.text
 
 
 @pytest.mark.asyncio

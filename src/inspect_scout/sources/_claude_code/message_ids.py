@@ -18,6 +18,10 @@ from inspect_swe._claude_code._events.models import (
 from .._message_ids import edit_id
 
 
+class UnpairedModelEventsError(RuntimeError):
+    """A session's model events can't be paired with its assistant lines."""
+
+
 def apply_source_ids(
     conversation: Sequence[BaseEvent], events: Sequence[Event]
 ) -> None:
@@ -42,8 +46,9 @@ def apply_source_ids(
         events: The events converted from them.
 
     Raises:
-        RuntimeError: If the conversion didn't make one model event per
-            assistant line, so events can't be paired with their lines.
+        UnpairedModelEventsError: If the conversion didn't make one model
+            event per assistant line, so events can't be paired with their
+            lines. Nothing has been changed when it is raised.
     """
     calls = [
         (index, line)
@@ -54,7 +59,7 @@ def apply_source_ids(
     if len(calls) != len(model_events):
         # inspect_swe's converter makes exactly one model event per (merged)
         # assistant line; pairing by position depends on it.
-        raise RuntimeError(
+        raise UnpairedModelEventsError(
             f"Claude Code session {_session_id(conversation)}: conversion made "
             f"{len(model_events)} model events from {len(calls)} assistant "
             "lines, so model events can't be matched to their lines."

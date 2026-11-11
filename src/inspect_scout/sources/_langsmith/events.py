@@ -219,24 +219,6 @@ def _extract_run_metadata(run: Any) -> dict[str, Any] | None:
     return metadata if metadata else None
 
 
-def tool_run_ids(runs: list[Any]) -> set[str]:
-    """IDs of the runs that `runs_to_events()` makes tool events of."""
-    return {
-        str(run.id)
-        for run in runs
-        if str(getattr(run, "run_type", "")).lower() == "tool"
-    }
-
-
-def span_run_ids(runs: list[Any]) -> set[str]:
-    """IDs of the runs that `runs_to_events()` makes spans of."""
-    return {
-        str(run.id)
-        for run in runs
-        if str(getattr(run, "run_type", "")).lower() in ("chain", "agent")
-    }
-
-
 async def runs_to_events(runs: list[Any]) -> list[Event]:
     """Convert LangSmith runs to Scout events by type.
 

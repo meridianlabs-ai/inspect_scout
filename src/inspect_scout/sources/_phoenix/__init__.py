@@ -27,14 +27,13 @@ from inspect_ai.model import (
 from inspect_scout._transcript.types import Transcript
 
 from .._message_ids import TraceMessageIds
-from .._root_agent import root_agent_calls
 from .client import (
     PHOENIX_SOURCE_TYPE,
     get_phoenix_client,
     retry_api_call_async,
 )
 from .detection import detect_provider, get_model_name
-from .events import chain_span_ids, span_parents, spans_to_events, tool_span_ids
+from .events import spans_to_events
 from .extraction import sum_latency, sum_tokens
 from .tree import build_span_tree, flatten_tree_chronological, get_llm_spans
 
@@ -301,15 +300,9 @@ async def _build_transcript(
     messages: list[ChatMessage] = []
     messages_from: list[str] | None = None
 
-    root_calls = root_agent_calls(
-        model_events,
-        parents=span_parents(ordered_spans),
-        tools=tool_span_ids(ordered_spans),
-        spans=chain_span_ids(ordered_spans),
-    )
-    if root_calls:
-        # Find the root agent's model event with the most input messages
-        best_model = max(root_calls, key=lambda e: len(e.input))
+    if llm_spans and model_events:
+        # Find the model event with the most input messages
+        best_model = max(model_events, key=lambda e: len(e.input))
         messages = list(best_model.input)
         # Append the final assistant response from output
         if best_model.output and best_model.output.choices:

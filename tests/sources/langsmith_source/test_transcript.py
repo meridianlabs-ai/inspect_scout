@@ -17,7 +17,6 @@ from tests.sources.langsmith_source.mocks import (
     create_anthropic_llm_run,
     create_chain_run,
     create_openai_llm_run,
-    create_tool_run,
 )
 from tests.sources.message_id_checks import assert_message_ids_consistent, ids
 
@@ -347,32 +346,4 @@ async def test_anthropic_reply_keeps_its_message_id() -> None:
 
     event = next(e for e in transcript.events if isinstance(e, ModelEvent))
     assert event.output.message.id == "msg_123"
-    assert_message_ids_consistent(transcript)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "later_runs",
-    [
-        pytest.param(
-            [
-                _at(create_chain_run(run_id="sub", parent_run_id="root"), 3),
-                _llm("sub-llm", "sub", 4, [HELLO, JOKE], "sub-agent reply"),
-            ],
-            id="nested_sub_agent",
-        ),
-        pytest.param(
-            [
-                _at(create_tool_run(run_id="tool", parent_run_id="root"), 3),
-                _llm("tool-llm", "tool", 4, [HELLO, JOKE], "helper reply"),
-            ],
-            id="helper_inside_tool",
-        ),
-    ],
-)
-async def test_conversation_comes_from_root_agent(later_runs: list[MockRun]) -> None:
-    transcript = await _transcript([*_root_agent_trace(), *later_runs])
-
-    assert transcript.messages_from == ["llm-2"]
-    assert transcript.messages[-1].text == "Why did..."
     assert_message_ids_consistent(transcript)

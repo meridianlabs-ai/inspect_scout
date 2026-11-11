@@ -191,29 +191,6 @@ def to_span_end_event(span: dict[str, Any]) -> SpanEndEvent:
     )
 
 
-def span_parents(spans: list[dict[str, Any]]) -> dict[str, str | None]:
-    """Parent span ID of each span."""
-    return {_get_span_id(span): _get_parent_id(span) or None for span in spans}
-
-
-def tool_span_ids(spans: list[dict[str, Any]]) -> set[str]:
-    """IDs of the spans that `spans_to_events()` makes tool events of."""
-    return {
-        _get_span_id(span)
-        for span in spans
-        if not is_llm_span(span) and is_tool_span(span)
-    }
-
-
-def chain_span_ids(spans: list[dict[str, Any]]) -> set[str]:
-    """IDs of the spans that `spans_to_events()` makes spans of."""
-    return {
-        _get_span_id(span)
-        for span in spans
-        if not is_llm_span(span) and not is_tool_span(span) and is_chain_span(span)
-    }
-
-
 async def spans_to_events(spans: list[dict[str, Any]]) -> list[Event]:
     """Convert Phoenix spans to Scout events by type.
 

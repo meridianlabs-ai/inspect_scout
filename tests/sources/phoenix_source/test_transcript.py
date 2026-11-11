@@ -11,19 +11,12 @@ from tests.sources.message_id_checks import assert_message_ids_consistent, ids
 from tests.sources.phoenix_source.mocks import (
     create_chain_span,
     create_openai_llm_span,
-    create_tool_span,
 )
 
 SYSTEM = {"role": "system", "content": "You are a helpful assistant."}
 HELLO = {"role": "user", "content": "Hello!"}
 HI = {"role": "assistant", "content": "Hi! How can I help?"}
 JOKE = {"role": "user", "content": "Tell me a joke."}
-# A sub-agent's own conversation, longer than the root agent's.
-LONG = [
-    {"role": "system", "content": "You are a researcher."},
-    *[JOKE, HI] * 3,
-    JOKE,
-]
 
 
 def _time(second: int) -> str:
@@ -67,36 +60,4 @@ async def test_ids_come_from_each_messages_first_span() -> None:
     assert llm_1.output.message.id == "llm-1-2"
     assert ids(llm_2.input) == ["llm-1-0", "llm-1-1", "llm-1-2", "llm-2-3"]
     assert transcript.messages_from == ["llm-2"]
-    assert_message_ids_consistent(transcript)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "sub_agent_spans",
-    [
-        pytest.param(
-            [
-                create_tool_span(span_id="tool", parent_id="root", start_time=_time(3)),
-                create_chain_span(span_id="sub", parent_id="tool", start_time=_time(3)),
-                _llm("sub-llm", "sub", 3, LONG, "sub-agent reply"),
-            ],
-            id="sub_agent_inside_tool",
-        ),
-        pytest.param(
-            [
-                create_chain_span(span_id="sub", parent_id="root", start_time=_time(3)),
-                _llm("sub-llm", "sub", 3, LONG, "sub-agent reply"),
-            ],
-            id="nested_sub_agent",
-        ),
-    ],
-)
-async def test_conversation_comes_from_root_agent(
-    sub_agent_spans: list[dict[str, Any]],
-) -> None:
-    transcript = await _transcript([*_root_agent_trace(), *sub_agent_spans])
-
-    # The sub-agent's call has the longest input, but isn't the root agent's.
-    assert transcript.messages_from == ["llm-2"]
-    assert transcript.messages[-1].text == "Why did..."
     assert_message_ids_consistent(transcript)

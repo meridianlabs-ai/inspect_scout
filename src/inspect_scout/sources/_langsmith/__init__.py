@@ -24,14 +24,13 @@ from inspect_ai.model import (
 from inspect_scout._transcript.types import Transcript
 
 from .._message_ids import TraceMessageIds
-from .._root_agent import root_agent_calls
 from .client import (
     LANGSMITH_SOURCE_TYPE,
     get_langsmith_client,
     retry_api_call,
 )
 from .detection import detect_provider_format, get_model_name
-from .events import runs_to_events, span_run_ids, tool_run_ids
+from .events import runs_to_events
 from .extraction import (
     extract_bool,
     extract_dict,
@@ -294,20 +293,10 @@ async def _trace_to_transcript(
     root_run_type = str(getattr(root_run, "run_type", "")).lower()
 
     # For chain/agent runs with LLM calls, use the full conversation from the
-    # root agent's last LLM event, which includes all intermediate turns (tool
-    # calls, results). For raw LLM runs without chain wrapper, use root inputs
-    # directly.
-    root_calls = root_agent_calls(
-        model_events,
-        parents={
-            str(run.id): str(getattr(run, "parent_run_id", None) or "") or None
-            for run in ordered_runs
-        },
-        tools=tool_run_ids(ordered_runs),
-        spans=span_run_ids(ordered_runs),
-    )
-    if root_calls:
-        last_model = root_calls[-1]
+    # last LLM event which includes all intermediate turns (tool calls, results).
+    # For raw LLM runs without chain wrapper, use root inputs directly.
+    if llm_runs and model_events:
+        last_model = model_events[-1]
         # Use the LLM's input which has the full conversation
         messages = list(last_model.input)
         # Append the final assistant response from output

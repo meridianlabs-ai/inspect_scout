@@ -174,6 +174,13 @@ def _write_csv_file(file_path: Path, cases: list[dict[str, Any]]) -> None:
         df = pd.DataFrame(columns=["id", "target"])
     else:
         rows = _csv_cases(cases)
+        if any(key.startswith("label_") for row in rows for key in row) and any(
+            key == "target" or key.startswith("target_") for row in rows for key in row
+        ):
+            raise ValueError(
+                "CSV validation cannot mix target and label cases. "
+                "Use a separate validation file for each schema."
+            )
         if any("target" in row for row in rows) and any(
             key.startswith("target_") for row in rows for key in row
         ):

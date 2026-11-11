@@ -984,3 +984,23 @@ def test_csv_mixed_target_creation_does_not_write_file(
     assert response.status_code == 400
     assert "mix scalar and dictionary targets" in response.json()["detail"]
     assert not path.exists()
+
+
+@pytest.mark.parametrize("target", [True, {"risk": True}])
+def test_csv_target_and_label_creation_does_not_write_file(
+    client: TestClient, tmp_path: Path, target: bool | dict[str, bool]
+) -> None:
+    path = tmp_path / "mixed_labels.csv"
+    response = client.post(
+        "/validations",
+        json={
+            "path": path.as_uri(),
+            "cases": [
+                {"id": "alpha", "target": target},
+                {"id": "beta", "labels": {"risk": False}},
+            ],
+        },
+    )
+    assert response.status_code == 400
+    assert "mix target and label cases" in response.json()["detail"]
+    assert not path.exists()

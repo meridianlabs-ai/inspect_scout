@@ -257,4 +257,14 @@ def edit_id(source_id: str, content: str) -> str:
 
 def _content_hash(message: ChatMessage) -> str:
     data = message.model_dump(mode="json", exclude=_UNMATCHED_FIELDS, exclude_none=True)
+    content = data.get("content")
+    if (
+        isinstance(content, list)
+        and len(content) == 1
+        and set(content[0]) == {"type", "text"}
+        and content[0]["type"] == "text"
+    ):
+        # A reply is plain text as output but one text block when resent, for
+        # some providers; both are the same content.
+        data["content"] = content[0]["text"]
     return mmh3.hash_bytes(json.dumps(data, sort_keys=True).encode()).hex()

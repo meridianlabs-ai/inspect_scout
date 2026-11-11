@@ -3,7 +3,7 @@
 import time
 
 import pytest
-from inspect_ai.model import ChatMessageUser
+from inspect_ai.model import ChatMessageAssistant, ChatMessageUser, Content, ContentText
 from inspect_scout.sources._message_ids import TraceMessageIds
 
 
@@ -37,3 +37,31 @@ def test_edit_ids_depend_only_on_source_id_and_content() -> None:
     forward = edit_ids(edits)
     assert edit_ids(edits[::-1]) == forward
     assert len(set(forward.values())) == 2
+
+
+@pytest.mark.parametrize(
+    ("resent", "same_message"),
+    [
+        pytest.param("reply", True, id="plain-text"),
+        pytest.param([ContentText(text="reply")], True, id="one-text-block"),
+        pytest.param([ContentText(text="changed")], False, id="edited-text-block"),
+        pytest.param(
+            [ContentText(text="re"), ContentText(text="ply")],
+            False,
+            id="two-text-blocks",
+        ),
+    ],
+)
+def test_a_resent_reply_keeps_its_source_id_when_its_text_form_differs(
+    resent: str | list[Content], same_message: bool
+) -> None:
+    # Some providers' replies are plain text as output and one text block when
+    # sent back as input.
+    reply = ChatMessageAssistant(content="reply", id="reply-a")
+    copy = ChatMessageAssistant(content=resent, id="reply-a")
+    assigner = TraceMessageIds(source_ids=True)
+
+    assigner.apply_messages([reply], "call-1")
+    assigner.apply_messages([copy], "call-2")
+
+    assert (copy.id == "reply-a") is same_message

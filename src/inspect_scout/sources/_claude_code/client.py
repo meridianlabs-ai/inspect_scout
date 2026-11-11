@@ -12,6 +12,8 @@ from os import PathLike
 from pathlib import Path
 from typing import Any
 
+from .._util import filter_and_sort_by_mtime, iter_jsonl_values
+
 logger = getLogger(__name__)
 
 # Claude Code source type constant
@@ -198,22 +200,8 @@ def discover_session_files(
     if session_id:
         session_files = [f for f in session_files if f.stem == session_id]
 
-    # Filter by time range
-    if from_time or to_time:
-        filtered = []
-        for f in session_files:
-            mtime = datetime.fromtimestamp(f.stat().st_mtime)
-            if from_time and mtime < from_time:
-                continue
-            if to_time and mtime >= to_time:
-                continue
-            filtered.append(f)
-        session_files = filtered
-
-    # Sort by modification time (newest first)
-    session_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
-
-    return session_files
+    # Filter by time range and sort by modification time (newest first)
+    return filter_and_sort_by_mtime(session_files, from_time, to_time)
 
 
 def _find_sessions_in_directory(
@@ -421,18 +409,8 @@ def read_jsonl_events(path: Path) -> list[dict[str, Any]]:
     Returns:
         List of parsed JSON events
     """
-    events = []
     with open(path, encoding="utf-8") as f:
-        for line_num, line in enumerate(f, 1):
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                events.append(json.loads(line))
-            except json.JSONDecodeError as e:
-                logger.warning(f"Invalid JSON at {path}:{line_num}: {e}")
-                continue
-    return events
+        return list(iter_jsonl_values(f, path))
 
 
 def get_project_path_from_file(session_file: Path) -> str:
@@ -447,19 +425,3 @@ def get_project_path_from_file(session_file: Path) -> str:
     # The parent directory name is the encoded project path
     encoded = session_file.parent.name
     return decode_project_path(encoded)
-
-
-def get_source_uri(session_file: Path, session_id: str | None = None) -> str:
-    """Generate a source URI for a session file.
-
-    Args:
-        session_file: Path to the session file
-        session_id: Optional specific session within the file (for split sessions)
-
-    Returns:
-        A file:// URI pointing to the session
-    """
-    uri = f"file://{session_file}"
-    if session_id:
-        uri += f"#{session_id}"
-    return uri

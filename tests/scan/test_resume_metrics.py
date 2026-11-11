@@ -1,8 +1,10 @@
 """Resumed metrics include retained results as well as successful retries."""
 
+import asyncio
 from pathlib import Path
 
 import pytest
+from inspect_ai.model import ChatMessageUser
 from inspect_ai.scorer import mean, stderr
 from inspect_scout import (
     Result,
@@ -11,6 +13,7 @@ from inspect_scout import (
     scan,
     scan_resume,
     scanner,
+    transcripts_db,
     transcripts_from,
 )
 
@@ -92,3 +95,53 @@ def test_resume_metrics(
             resumed.summary.scanners[name].metrics
             == clean.summary.scanners[name].metrics
         )
+
+
+@scanner(name="resume_nonfinite", messages=["user"], metrics=[mean()])
+def nonfinite_metrics(marker: str) -> Scanner[ChatMessageUser]:
+    async def run(message: ChatMessageUser) -> Result:
+        if message.text == "retry" and not Path(marker).exists():
+            raise RuntimeError("Transient scanner failure")
+        return Result(value=float("nan") if message.text == "nonfinite" else 1)
+
+    return run
+
+
+def test_resume_nonfinite_metrics(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("SCOUT_SCANBUFFER_DIR", str(tmp_path / "buffer"))
+    database = str(tmp_path / "transcripts")
+
+    async def populate() -> None:
+        async with transcripts_db(database) as db:
+            await db.insert(
+                [
+                    Transcript(
+                        transcript_id="retained",
+                        messages=[
+                            ChatMessageUser(content="nonfinite"),
+                            ChatMessageUser(content="one"),
+                        ],
+                    ),
+                    Transcript(
+                        transcript_id="retry",
+                        messages=[ChatMessageUser(content="retry")],
+                    ),
+                ]
+            )
+
+    asyncio.run(populate())
+    marker = tmp_path / "recovered"
+    with temp_active_scans_store():
+        initial = scan(
+            scanners=[nonfinite_metrics(str(marker))],
+            transcripts=transcripts_from(database),
+            scans=str(tmp_path / "scans"),
+            max_processes=1,
+            display="none",
+        )
+        assert not initial.complete and len(initial.errors) == 1
+        marker.touch()
+        resumed = scan_resume(initial.location, display="none")
+    assert resumed.complete and not resumed.errors

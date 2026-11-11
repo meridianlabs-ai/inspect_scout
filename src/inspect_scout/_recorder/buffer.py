@@ -303,12 +303,17 @@ class RecorderBuffer:
             for row in table.to_pylist():
                 value = row["value"]
                 if isinstance(value, str) and row["value_type"] != "string":
-                    # Mixed scalar columns stringify booleans with Python casing.
-                    value = (
-                        value.lower() == "true"
-                        if row["value_type"] == "boolean"
-                        else json.loads(value)
-                    )
+                    # Mixed scalar columns use Python spellings for these values.
+                    if row["value_type"] == "boolean":
+                        value = value.lower() == "true"
+                    elif row["value_type"] == "number" and value in (
+                        "nan",
+                        "inf",
+                        "-inf",
+                    ):
+                        value = float(value)
+                    else:
+                        value = json.loads(value)
                 values.append(value)
             return values
 

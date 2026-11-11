@@ -1,5 +1,6 @@
 """Values used to restore metrics retain their types across buffer storage."""
 
+import math
 from pathlib import Path
 
 import pytest
@@ -18,6 +19,9 @@ from pydantic import JsonValue
     [
         [0, 1],
         [True, False],
+        [float("nan"), 1],
+        [float("inf"), 1],
+        [float("-inf"), 1],
         [None, 1, True, "1", "true", [0, 1], {"score": 0.5}],
     ],
 )
@@ -58,5 +62,9 @@ async def test_recorded_values(
     await resumed.resume(await recorder.location())
     assert await resumed.is_recorded("t1", "test")
     restored = await resumed.recorded_values("t1", "test")
-    assert restored == values
+    for actual, expected in zip(restored, values, strict=True):
+        if isinstance(expected, float) and math.isnan(expected):
+            assert isinstance(actual, float) and math.isnan(actual)
+        else:
+            assert actual == expected
     assert [type(value) for value in restored] == [type(value) for value in values]

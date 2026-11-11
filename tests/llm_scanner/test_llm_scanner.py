@@ -81,6 +81,45 @@ async def test_boolean_conversion_survives_segmentation(
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("malformed_first", [False, True])
+async def test_converted_negative_survives_malformed_segment(
+    malformed_first: bool,
+) -> None:
+    def respond(
+        input: list[ChatMessage],
+        tools: list[ToolInfo],
+        tool_choice: ToolChoice,
+        config: GenerateConfig,
+    ) -> ModelOutput:
+        malformed = any("MALFORMED" in message.text for message in input)
+        return ModelOutput.from_content(
+            model="mockllm", content="unparseable" if malformed else "ANSWER: no"
+        )
+
+    scan = llm_scanner(
+        question="Does any message contain the behavior?",
+        answer="boolean",
+        template="{{ messages }}\n{{ question }}\n{{ answer_prompt }}",
+        model=get_model("mockllm/model", custom_outputs=respond, memoize=False),
+        context_window=300,
+        value_to_float=lambda value: -2.0 if value else 3.0,
+    )
+    markers = ["MALFORMED", "VALID"] if malformed_first else ["VALID", "MALFORMED"]
+    result = await scan(
+        Transcript(
+            transcript_id="converted-negative",
+            messages=[
+                ChatMessageUser(content=marker + " word" * 200) for marker in markers
+            ],
+        )
+    )
+    assert isinstance(result, Result)
+    assert result.value == 3.0
+    assert isinstance(result.value, float)
+    assert result.parsed is False
+
+
 class TestContentParameter:
     def test_content_sets_attr(self) -> None:
         """content= sets SCANNER_CONTENT_ATTR on the scan function."""

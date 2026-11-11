@@ -137,7 +137,9 @@ class ResultReducer:
             # parsed answer when available rather than the converted score.
             boolean = result.parsed if isinstance(result.parsed, bool) else result.value
             if isinstance(boolean, bool):
-                selected = result
+                # A failed parse's fallback must not replace a converted No.
+                if boolean or selected is None or isinstance(result.parsed, bool):
+                    selected = result
                 value = boolean
                 if value:
                     break

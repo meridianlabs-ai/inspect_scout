@@ -107,6 +107,19 @@ class TestMin:
 
 class TestAny:
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("fallback_first", [False, True])
+    async def test_parsed_negative_survives_parse_failure(
+        self, fallback_first: bool
+    ) -> None:
+        negative = Result(value=3.0, parsed=False, answer="No")
+        fallback = Result(value=False)
+        results = [fallback, negative] if fallback_first else [negative, fallback]
+        result = await ResultReducer.any(results)
+        assert result.value == 3.0
+        assert isinstance(result.value, float)
+        assert result.parsed is False
+
+    @pytest.mark.asyncio
     async def test_reducing_converted_results_twice_preserves_boolean(self) -> None:
         positive = Result(value=0.0, parsed=True, answer="Yes")
         negative = Result(value=1.0, parsed=False, answer="No")

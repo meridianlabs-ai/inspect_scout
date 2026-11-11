@@ -1,7 +1,7 @@
 """Tests for the PyPI publish workflow (.github/workflows/publish.yaml).
 
-Covers the build/publish job split, the hashed build toolchain and its
-Dependabot entry, the release-tag check (run against a throwaway git repo)
+Covers the check-tag/build/publish job split, the hashed build toolchain and
+its Dependabot entry, the release-tag check (run against a throwaway git repo)
 and the dist gate (scripts/verify_dist.py, run on fabricated distributions).
 """
 
@@ -26,6 +26,9 @@ PYPI_PUBLISH = "pypa/gh-action-pypi-publish@"
 SHA_PIN = re.compile(r"@[0-9a-f]{40} # v\S+$")
 # meridianlabs-ai/actions has no version tag for the pinned commit.
 SHARED_PIN = re.compile(r"uses: meridianlabs-ai/actions/\S+@[0-9a-f]{40} # main$")
+SHARED_BUILD = re.compile(
+    r"meridianlabs-ai/actions/\.github/workflows/build-python-dist\.yml@[0-9a-f]{40}"
+)
 
 
 def _load(path: Path) -> dict[Any, Any]:
@@ -55,11 +58,18 @@ def test_only_the_publish_job_holds_the_publish_token() -> None:
     workflow = _load(WORKFLOW)
     jobs = workflow["jobs"]
     assert workflow["permissions"] == {}
-    assert set(jobs) == {"notify-approval", "build", "publish"}
+    assert set(jobs) == {"notify-approval", "check-tag", "build", "publish"}
     assert jobs["notify-approval"]["permissions"] == {}
     # pinged only once the build passed and the publish job will wait
     assert jobs["notify-approval"]["needs"] == "build"
+    assert jobs["check-tag"]["permissions"] == {"contents": "read"}
     assert jobs["build"]["permissions"] == {"contents": "read"}
+    assert jobs["build"]["needs"] == "check-tag"
+    assert [
+        name
+        for name, job in jobs.items()
+        if (job.get("permissions") or {}).get("id-token") == "write"
+    ] == ["publish"]
     assert "environment" not in jobs["build"]
     assert jobs["publish"]["permissions"] == {"contents": "read", "id-token": "write"}
     # PyPI's trusted publisher matches this workflow file and environment.
@@ -90,50 +100,25 @@ def test_publish_job_installs_and_builds_nothing() -> None:
         "sparse-checkout-cone-mode": False,
         "persist-credentials": False,
     }
-    assert download == {"name": "dist", "path": "dist/"}
+    # bound to this run's build artifact, not any artifact named dist
+    assert download == {
+        "artifact-ids": "${{ needs.build.outputs.artifact-id }}",
+        "path": "dist/",
+    }
 
 
-def test_build_job_checks_out_the_tag_with_lfs_and_no_credentials() -> None:
-    checkout = _jobs()["build"]["steps"][0]
+def test_check_tag_job_checks_out_the_tag_with_no_credentials() -> None:
+    checkout = _jobs()["check-tag"]["steps"][0]
     assert checkout["uses"].startswith("actions/checkout@")
-    assert checkout["with"] == {
-        "fetch-depth": 0,
-        "lfs": True,
-        "persist-credentials": False,
-    }
+    assert checkout["with"] == {"fetch-depth": 0, "persist-credentials": False}
 
 
-def test_build_job_builds_with_the_hashed_toolchain_and_gates_the_upload() -> None:
-    steps = _jobs()["build"]["steps"]
-    assert not [
-        s for s in steps if s.get("uses", "").startswith("actions/setup-python@")
-    ]
-    (install,) = [
-        s
-        for s in steps
-        if s.get("uses", "").startswith(
-            "meridianlabs-ai/actions/install-python-dependencies@"
-        )
-    ]
-    assert install["with"] == {
-        "versions": "hashed-requirements",
-        "python-version": "3.11",
-        "requirements-file": "scripts/build-dist/requirements.txt",
-        "package-format": "wheels-only",
-        "actions-cache": "none",
-        "environment-dir": "${{ runner.temp }}/build-venv",
-    }
-    runs = [s.get("run", "").strip() for s in steps]
-    assert not [r for r in runs if "pip install" in r]
-    python = '"$RUNNER_TEMP/build-venv/bin/python"'
-    build = runs.index(f"{python} -m build --no-isolation")
-    verify = runs.index(f'{python} -I {VERIFY_DIST} "$GITHUB_REF_NAME"')
-    upload = next(
-        i
-        for i, s in enumerate(steps)
-        if s.get("uses", "").startswith("actions/upload-artifact@")
-    )
-    assert build < verify < upload
+def test_build_job_uses_the_shared_build_with_lfs() -> None:
+    build = _jobs()["build"]
+    assert SHARED_BUILD.fullmatch(build["uses"]), build["uses"]
+    assert "steps" not in build
+    # the built viewer is in Git LFS
+    assert build["with"] == {"python-version": "3.11", "lfs": True}
 
 
 def test_pr_ci_builds_with_the_release_toolchain() -> None:
@@ -232,7 +217,7 @@ def tagged_repo(tmp_path: Path) -> Path:
         ("workflow_dispatch", "branch", "1.2.3", "", "", False),
     ],
 )
-def test_build_refuses_anything_but_a_release_tag(
+def test_check_tag_refuses_anything_but_a_release_tag(
     tagged_repo: Path,
     event: str,
     ref_type: str,
@@ -242,7 +227,7 @@ def test_build_refuses_anything_but_a_release_tag(
     ok: bool,
 ) -> None:
     _git(tagged_repo, "checkout", "-q", "--detach", ref)
-    step = _step("build", "Check release tag")
+    step = _step("check-tag", "Check release tag")
     result = subprocess.run(
         ["bash", "-e", "-c", step["run"]],
         cwd=tagged_repo,

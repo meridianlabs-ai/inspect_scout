@@ -1,27 +1,3 @@
-<!doctype html>
-<html lang="en" data-bs-theme="light">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Inspect Scout</title>
-    <link rel="icon" type="image/svg+xml" href="./assets/favicon-CLlGywfF.svg" />
-    <script>"use strict";(()=>{var b=["system","light","dark","readable-system","readable-light","readable-dark"],y=e=>b.some(r=>r===e),u=(e,r)=>{try{let a=e.getItem(r);if(!a)return"readable-system";let t=JSON.parse(a);if(t&&typeof t=="object"&&"state"in t){let s=t.state;if(s&&typeof s=="object"&&"themePreference"in s){let n=s.themePreference;if(y(n))return n}}return"readable-system"}catch{return"readable-system"}};var i=e=>{let r=e.startsWith("readable-")?"readable":"default";return{isDark:e==="dark"||e.endsWith("-dark"),variant:r}},v=e=>{if(e.isVscodeWebview){if(e.preference==="readable-light"||e.preference==="readable-dark"||e.preference==="readable-system"||!e.explicitParam){let n=k();return{kind:"apply-variant-only",variant:e.preference.startsWith("readable-")?"readable":"default",hostIsDark:n}}let s=i(e.explicitParam);return{kind:"apply",isDark:s.isDark,variant:s.variant,toggleBodyClass:!1}}let r;e.preference!=="system"&&e.preference!=="readable-system"?r=e.preference:e.explicitParam?r=e.explicitParam:r=e.prefersDark?"dark":"light",e.preference==="readable-system"&&!r.startsWith("readable-")&&(r=`readable-${r}`);let{isDark:a,variant:t}=i(r);return{kind:"apply",isDark:a,variant:t,toggleBodyClass:!0}},o=null,c=!1,d=!1,l=()=>typeof document>"u"?null:document.body,k=()=>{let e=l();if(!e)return null;let r=e.classList;return r.contains("vscode-high-contrast-light")?!1:r.contains("vscode-high-contrast")||r.contains("vscode-dark")?!0:r.contains("vscode-light")?!1:null},g=()=>"acquireVsCodeApi"in window&&typeof window.acquireVsCodeApi=="function",m=()=>{let e=l();if(d||typeof MutationObserver>"u"||!e)return;d=!0;let r=e.className;new MutationObserver(()=>{e.className!==r&&(r=e.className,o?.())}).observe(e,{attributes:!0,attributeFilter:["class"]})},f=e=>{let r=e?"dark":"light";document.documentElement.setAttribute("data-bs-theme",r),document.documentElement.style.colorScheme=r},h=e=>{let r=()=>{m();let a=new URLSearchParams(window.location.search),t=v({preference:e.readPreference?e.readPreference():"system",explicitParam:a.get(e.queryParamName),isVscodeWebview:g(),prefersDark:window.matchMedia("(prefers-color-scheme: dark)").matches});t.kind==="apply-variant-only"?(t.variant==="readable"?document.documentElement.setAttribute("data-theme-variant","readable"):document.documentElement.removeAttribute("data-theme-variant"),t.hostIsDark!==null&&f(t.hostIsDark)):(f(t.isDark),t.variant==="readable"?document.documentElement.setAttribute("data-theme-variant","readable"):document.documentElement.removeAttribute("data-theme-variant"),t.toggleBodyClass&&l()?.classList.toggle("vscode-dark",t.isDark))};return o=r,window.__APPLY_BROWSER_THEME__=r,c||(c=!0,window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>o?.())),m(),r};var p="inspect-scout-user-settings";h({queryParamName:"inspectViewThemeCategory",readPreference:()=>u(localStorage,p)})();})();</script>
-    <script type="module" crossorigin src="./assets/index-7KEVZpgS.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/rolldown-runtime-COiEfhsA.js">
-    <link rel="modulepreload" crossorigin href="./assets/compiler-runtime-C-wdNFxZ.js">
-    <link rel="modulepreload" crossorigin href="./assets/ToolButton-aSrLZtR_.js">
-    <link rel="modulepreload" crossorigin href="./assets/useLatestRef-BAYr2tsK.js">
-    <link rel="modulepreload" crossorigin href="./assets/preload-helper-CRzLMJPS.js">
-    <link rel="modulepreload" crossorigin href="./assets/type-CCg-vRJc.js">
-    <link rel="modulepreload" crossorigin href="./assets/markdownText-CMBqpU0x.js">
-    <link rel="stylesheet" crossorigin href="./assets/ToolButton-Bmrq9YiY.css">
-    <link rel="stylesheet" crossorigin href="./assets/index-B20VaHbl.css">
-  </head>
-
-  <body style="min-width: 450px">
-    <script>
-      window.__APPLY_BROWSER_THEME__?.();
-    </script>
-    <div id="app"></div>
-  </body>
-</html>
+version https://git-lfs.github.com/spec/v1
+oid sha256:ea3afa50287251946f53a2553cb6984f4f00089930eb21b6a8c92e444b52665f
+size 4182

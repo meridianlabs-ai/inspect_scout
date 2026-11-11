@@ -1,19 +1,3 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./lib-CBtriEt5-C8d4NU5c.js","./chunk-DfAF0w94-C4UxJQjU.js","./wgxpath.install-node-Csk64Aj9-Wt6ATora.js"])))=>i.map(i=>d[i]);
-import{n as e}from"./rolldown-runtime-COiEfhsA.js";import{t}from"./chunk-DfAF0w94-C4UxJQjU.js";import{t as n}from"./preload-helper-CRzLMJPS.js";var r=e({tex2svgHtml:()=>o}),i={"xmldom-sre":await n(()=>import(`./lib-CBtriEt5-C8d4NU5c.js`).then(t(1)),__vite__mapDeps([0,1]),import.meta.url),"wicked-good-xpath":await n(()=>import(`./wgxpath.install-node-Csk64Aj9-Wt6ATora.js`).then(t(1)),__vite__mapDeps([2,1]),import.meta.url),commander:{},fs:{}};globalThis.MathJax_require=e=>i[e];var a={"mathjax/es5/adaptors/liteDOM.js":()=>n(()=>import(`./liteDOM-Cp0aN3bP-jZibE8zu.js`),[],import.meta.url),"xyjax/build/xypic.js":()=>n(()=>import(`./xypic-DrMJn58R-DPiLBpLq.js`),[],import.meta.url)};globalThis.MathJax={loader:{source:{},require:e=>a[e](),load:[`adaptors/liteDOM`,`[custom]/xypic`],paths:{mathjax:`mathjax/es5`,custom:`xyjax/build`}},tex:{packages:{"[+]":[`xypic`]}},svg:{fontCache:`none`},startup:{typeset:!1}},await n(()=>import(`./tex-svg-full-BI3fonbT-CJKdjVsm.js`),[],import.meta.url),await globalThis.MathJax.startup?.promise;function o(e=``,t={}){let n=globalThis.MathJax.tex2svg(e,{display:!0,...t}),r=globalThis.MathJax.startup.adaptor,i=r.textContent(globalThis.MathJax.svgStylesheet()),a=r.outerHTML(n),o=`mjx-${Math.random().toString(16).substring(8)}`;return`
-    <span id="${o}">
-      <style>
-      #${o}{
-        display:contents;
-        mjx-assistive-mml {
-          user-select: text !important;
-          clip: auto !important;
-          color: rgba(0,0,0,0);
-        }
-        ${i}
-      }
-      </style>
-      ${a}
-    </span>
-  `}var s=Object.defineProperty,c=Object.getOwnPropertyDescriptor,l=Object.getOwnPropertyNames,u=Object.prototype.hasOwnProperty,d=(e,t)=>function(){return e&&(t=(0,e[l(e)[0]])(e=0)),t},f=(e,t)=>function(){return t||(0,e[l(e)[0]])((t={exports:{}}).exports,t),t.exports},p=(e,t,n,r)=>{if(t&&typeof t==`object`||typeof t==`function`)for(var i=l(t),a=0,o=i.length,d;a<o;a++)d=i[a],!u.call(e,d)&&d!==n&&s(e,d,{get:(e=>t[e]).bind(null,d),enumerable:!(r=c(t,d))||r.enumerable});return e},m=(e,t,n)=>(p(e,t,`default`),n&&p(n,t,`default`)),h={};m(h,r);var g=d({"src/mathjax.mts":(()=>{})}),_=f({"src/index.ts":((e,t)=>{g();function n(e,t){let n=e.posMax,r=!0,i=!0,a=t>0?e.src.charCodeAt(t-1):-1,o=t+1<=n?e.src.charCodeAt(t+1):-1;return(a===32||a===9||o>=48&&o<=57)&&(i=!1),(o===32||o===9)&&(r=!1),{can_open:r,can_close:i}}function r(e,t){if(e.src[e.pos]!==`$`)return!1;let r=n(e,e.pos);if(!r.can_open)return t||(e.pending+=`$`),e.pos+=1,!0;let i=e.pos+1,a=i;for(;(a=e.src.indexOf(`$`,a))!==-1;){let t=a-1;for(;e.src[t]===`\\`;)--t;if((a-t)%2==1)break;a+=1}if(a===-1)return t||(e.pending+=`$`),e.pos=i,!0;if(a-i===0)return t||(e.pending+=`$$`),e.pos=i+1,!0;if(r=n(e,a),!r.can_close)return t||(e.pending+=`$`),e.pos=i,!0;if(!t){let t=e.push(`math_inline`,`math`,0);t.markup=`$`,t.content=e.src.slice(i,a)}return e.pos=a+1,!0}function i(e,t,n,r){let i,a,o=!1,s=e.bMarks[t]+e.tShift[t],c=e.eMarks[t],l=``;if(s+2>c||e.src.slice(s,s+2)!==`$$`)return!1;s+=2;let u=e.src.slice(s,c);if(r)return!0;for(u.trim().slice(-2)===`$$`&&(u=u.trim().slice(0,-2),o=!0),i=t;!o&&(i++,!(i>=n||(s=e.bMarks[i]+e.tShift[i],c=e.eMarks[i],s<c&&e.tShift[i]<e.blkIndent)));)e.src.slice(s,c).trim().slice(-2)===`$$`&&(a=e.src.slice(0,c).lastIndexOf(`$$`),l=e.src.slice(s,a),o=!0);e.line=i+1;let d=e.push(`math_block`,`math`,0);return d.block=!0,d.content=(u&&u.trim()?u+`
-`:``)+e.getLines(t+1,i,e.tShift[t],!0)+(l&&l.trim()?l:``),d.map=[t,e.line],d.markup=`$$`,!0}let a=e=>{e.inline.ruler.after(`escape`,`math_inline`,r),e.block.ruler.after(`blockquote`,`math_block`,i,{alt:[`paragraph`,`reference`,`blockquote`,`list`]}),e.renderer.rules.math_inline=function(e,t){return h.tex2svgHtml(e[t].content,{display:!1})},e.renderer.rules.math_block=function(e,t){return h.tex2svgHtml(e[t].content,{display:!0})}};a.default=a,t.exports=a})})();export{_ as default};
-//# sourceMappingURL=dist-Je_Cbllh.js.map
+version https://git-lfs.github.com/spec/v1
+oid sha256:5e971799f78dcd1ab1872b22fa04a0e83e3c46965b14a82bd8c14fef27bc436f
+size 4096

@@ -340,6 +340,10 @@ def create_validation_router(
                     status_code=HTTP_404_NOT_FOUND,
                     detail="Case not found",
                 )
+        except ValueError as ex:
+            raise HTTPException(
+                status_code=HTTP_400_BAD_REQUEST, detail=str(ex)
+            ) from None
         except FileNotFoundError:
             raise HTTPException(
                 status_code=HTTP_404_NOT_FOUND,

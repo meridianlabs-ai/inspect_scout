@@ -1074,3 +1074,19 @@ def test_csv_sparse_schema_rejected_before_write(
         assert not path.exists()
     else:
         assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize("prefix", ["target", "label"])
+def test_delete_sparse_csv_case_returns_validation_error(
+    client: TestClient, tmp_path: Path, prefix: str
+) -> None:
+    path = tmp_path / "sparse.csv"
+    path.write_text(
+        f"id,{prefix}_risk,{prefix}_safe\nalpha,true,\nbeta,,false\ngamma,,true\n"
+    )
+    before = path.read_bytes()
+    route = f"/validations/{_base64url(path.as_uri())}/{_base64url('gamma')}"
+    response = client.delete(route)
+    assert response.status_code == 400
+    assert "matching dictionary target or label keys" in response.json()["detail"]
+    assert path.read_bytes() == before

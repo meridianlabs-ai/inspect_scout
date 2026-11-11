@@ -193,6 +193,14 @@ def _write_csv_file(file_path: Path, cases: list[dict[str, Any]]) -> None:
                 "CSV validation cannot mix scalar and dictionary targets. "
                 "Use JSON, YAML, or JSONL for mixed target types."
             )
+        # The reader applies every prefixed column to every case.
+        for prefix in ("target_", "label_"):
+            schemas = [{key for key in row if key.startswith(prefix)} for row in rows]
+            if any(schema != schemas[0] for schema in schemas):
+                raise ValueError(
+                    "CSV validation requires matching dictionary target or label keys "
+                    "across cases. Use a separate file for each schema."
+                )
         df = pd.DataFrame(rows)
 
     # Ensure id is the first column

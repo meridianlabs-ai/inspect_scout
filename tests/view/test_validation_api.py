@@ -1033,3 +1033,44 @@ def test_csv_empty_dictionary_rejected_before_write(
         assert not path.exists()
     else:
         assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize("field", ["target", "labels"])
+@pytest.mark.parametrize("update", [False, True])
+def test_csv_sparse_schema_rejected_before_write(
+    client: TestClient, tmp_path: Path, field: str, update: bool
+) -> None:
+    path = tmp_path / "sparse.csv"
+    before: bytes | None = None
+    if update:
+        response = client.post(
+            "/validations",
+            json={
+                "path": path.as_uri(),
+                "cases": [
+                    {"id": "alpha", field: {"risk": True}},
+                    {"id": "beta", field: {"risk": False}},
+                ],
+            },
+        )
+        assert response.status_code == 200
+        before = path.read_bytes()
+        route = f"/validations/{_base64url(path.as_uri())}/{_base64url('beta')}"
+        response = client.post(route, json={field: {"other": False}})
+    else:
+        response = client.post(
+            "/validations",
+            json={
+                "path": path.as_uri(),
+                "cases": [
+                    {"id": "alpha", field: {"risk": True}},
+                    {"id": "beta", field: {"other": False}},
+                ],
+            },
+        )
+    assert response.status_code == 400
+    assert "matching dictionary target or label keys" in response.json()["detail"]
+    if before is None:
+        assert not path.exists()
+    else:
+        assert path.read_bytes() == before

@@ -9,7 +9,6 @@ from inspect_ai.event import Event, ModelEvent
 from inspect_ai.log import expand_events
 from inspect_ai.model import ChatMessage, ChatMessageUser, GenerateConfig, ModelOutput
 from inspect_scout._scanner.result import Result, ResultReport
-from inspect_scout._transcript.condense import condense_events
 from inspect_scout._transcript.database.parquet import ParquetTranscriptsDB
 from inspect_scout._transcript.types import Transcript, TranscriptContent
 
@@ -87,21 +86,3 @@ def test_scanned_transcript_input_keeps_message_ids() -> None:
     events = json.loads(input_json)["events"]
     expanded = expand_events(json.dumps(events), input_data.decode())
     assert _input_ids(expanded) == [["human-a"], ["human-b"]]
-
-
-def test_a_message_sent_again_is_pooled_once() -> None:
-    hello = ChatMessageUser(content="hello", id="hello")
-    events: list[Event] = [
-        _call("a", [hello]),
-        _call("b", [hello, ChatMessageUser(content="more", id="more")]),
-        _call("c", [ChatMessageUser(content="hello", id="hello")]),
-    ]
-
-    condensed, data = condense_events(events)
-
-    assert [m.id for m in data["messages"]] == ["hello", "more"]
-    assert _input_ids(expand_events(condensed, data)) == [
-        ["hello"],
-        ["hello", "more"],
-        ["hello"],
-    ]

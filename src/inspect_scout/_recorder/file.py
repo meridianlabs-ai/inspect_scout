@@ -23,6 +23,7 @@ from inspect_ai._util._async import tg_collect
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import file, filesystem
 from inspect_ai._util.json import to_json_str_safe
+from pydantic import JsonValue
 from typing_extensions import override
 from upath import UPath
 
@@ -231,6 +232,12 @@ class FileRecorder(ScanRecorder):
     @override
     async def is_recorded(self, transcript_id: str, scanner: str) -> bool:
         return await self._scan_buffer.is_recorded(transcript_id, scanner)
+
+    @override
+    async def recorded_values(
+        self, transcript_id: str, scanner: str
+    ) -> list[JsonValue]:
+        return await self._scan_buffer.recorded_values(transcript_id, scanner)
 
     @override
     async def record(

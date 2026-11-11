@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Literal, Mapping, Sequence
 import duckdb
 import pandas as pd
 import pyarrow as pa
+from pydantic import JsonValue
 
 if TYPE_CHECKING:
     from pyarrow import Scalar
@@ -281,6 +282,13 @@ class ScanRecorder(abc.ABC):
 
     @abc.abstractmethod
     async def is_recorded(self, transcript_id: str, scanner: str) -> bool: ...
+
+    @abc.abstractmethod
+    async def recorded_values(
+        self, transcript_id: str, scanner: str
+    ) -> list[JsonValue]:
+        """Read values for a transcript that `is_recorded` will skip on resume."""
+        ...
 
     @abc.abstractmethod
     async def snapshot_transcripts(self, snapshot: ScanTranscripts) -> None: ...

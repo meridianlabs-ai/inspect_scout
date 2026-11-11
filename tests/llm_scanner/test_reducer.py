@@ -108,6 +108,20 @@ class TestMin:
 class TestAny:
     @pytest.mark.asyncio
     @pytest.mark.parametrize("fallback_first", [False, True])
+    async def test_failed_subgroup_does_not_replace_converted_negative(
+        self, fallback_first: bool
+    ) -> None:
+        negative = Result(value=3.0, parsed=False, answer="No")
+        fallback = await ResultReducer.any([Result(value=False), Result(value=False)])
+        assert fallback.parsed is None
+        results = [fallback, negative] if fallback_first else [negative, fallback]
+        result = await ResultReducer.any(results)
+        assert result.value == 3.0
+        assert isinstance(result.value, float)
+        assert result.parsed is False
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("fallback_first", [False, True])
     async def test_parsed_negative_survives_parse_failure(
         self, fallback_first: bool
     ) -> None:

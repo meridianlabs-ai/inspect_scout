@@ -149,7 +149,11 @@ class ResultReducer:
             value=selected.value if selected is not None else False,
             answer=answer,
         )
-        reduced.parsed = value
+        reduced.parsed = (
+            value
+            if selected is not None and isinstance(selected.parsed, bool)
+            else None
+        )
         return reduced
 
     @staticmethod

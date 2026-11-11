@@ -1,3 +1,48 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:19155c5a666c5b28d5234dceef2de1f8a69f83a5277daf6459d68c2f83fa7573
-size 766
+{
+  "version": 1,
+  "directives": {
+    "default-src": [
+      "'none'"
+    ],
+    "script-src": [
+      "'self'",
+      "'sha256-gFUzvXyXGti5f0Ma5qdfnKdtn+fL6HouDmkysUwAE4M='",
+      "'sha256-hTEVLGs7U/evjCQ3XH4NKheOkIqC/G7OvOjQBCIXFrw='",
+      "'wasm-unsafe-eval'"
+    ],
+    "worker-src": [
+      "'self'"
+    ],
+    "style-src-elem": [
+      "'self'"
+    ],
+    "style-src-attr": [
+      "'unsafe-inline'"
+    ],
+    "img-src": [
+      "'self'",
+      "data:"
+    ],
+    "media-src": [
+      "data:"
+    ],
+    "font-src": [
+      "'self'"
+    ],
+    "connect-src": [
+      "'self'"
+    ],
+    "object-src": [
+      "'none'"
+    ],
+    "frame-src": [
+      "'none'"
+    ],
+    "base-uri": [
+      "'none'"
+    ],
+    "form-action": [
+      "'none'"
+    ]
+  }
+}

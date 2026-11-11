@@ -20,7 +20,7 @@ dependencies = [
     "fastapi>=0.128.1",
     "ijson>=3.2.0",
     "importlib-metadata",
-    "inspect-ai>=0.3.283",
+    "inspect-ai>=0.3.286",
     "inspect-swe>=0.2.56",
     "jinja2>=3.0.0",
     "jsonlines>=3.0.0",
@@ -61,7 +61,7 @@ dev = [
     # tests construct directly (httpx2 arrives transitively via anthropic)
     "anthropic>=1.0.0",
     "arize-phoenix-client",
-    "google-genai>=1.69.0",
+    "google-genai>=3.0.0",
     # harbor (for the atif source tests): >=0.6.0 is the first release with the
     # ATIF v1.7 schema the source parses; harbor itself requires Python >=3.12
     "harbor>=0.6.0; python_version >= '3.12'",
@@ -93,7 +93,6 @@ doc = [
     "rich",
     "quarto-cli>=1.7"
 ]
-dist = ["twine", "build"]
 
 [tool.hatch.build]
 only-packages = true
@@ -111,6 +110,30 @@ local_scheme = "no-local-version" # Important for PyPI compatibility
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.uv]
+# 0.11.8 is the first uv that keeps uv.lock stable with a relative exclude-newer,
+# and 0.13.4 the first that no longer trusts the compromised emSign root
+# (GHSA-hq85-5cpj-mr62).
+required-version = ">=0.13.4"
+# Only resolve releases at least 7 days old (see CONTRIBUTING.md).
+exclude-newer = "7 days"
+
+# 6 hours only for direct dependencies that are a model provider SDK or an
+# Inspect package; see CONTRIBUTING.md.
+[tool.uv.exclude-newer-package]
+anthropic = "6 hours"
+google-genai = "6 hours"
+inspect-ai = "6 hours"
+inspect-swe = "6 hours"
+openai = "6 hours"
+
+# Development and CI track inspect_ai main. uv.lock records a commit, and CI
+# moves it to main's latest before installing (.github/actions/uv-sync). Only uv
+# reads this; the published package requires the inspect-ai floor above, and
+# the release PR's CI installs the newest release instead.
+[tool.uv.sources]
+inspect-ai = { git = "https://github.com/UKGovernmentBEIS/inspect_ai", branch = "main" }
 
 [tool.ruff]
 extend-exclude = ["docs"]

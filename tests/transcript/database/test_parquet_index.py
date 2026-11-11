@@ -639,6 +639,70 @@ class TestCompactIndex:
         assert "new_field" in table.column_names
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("mixed_schema", [False, True])
+    async def test_compact_index_many_files_preserves_latest_rows(
+        self,
+        storage: IndexStorage,
+        conn: duckdb.DuckDBPyConnection,
+        mixed_schema: bool,
+    ) -> None:
+        """Large indexes compact without losing schema or newest-row precedence."""
+        import pyarrow.parquet as pq
+
+        count = 1001
+        for i in range(count):
+            extra = {"extra": [i]} if mixed_schema and i % 2 == 0 else None
+            table = create_sample_index_table(
+                [f"t{i % 3}"], [f"data{i}.parquet"], extra
+            )
+            await append_index(table, storage, f"index_20250101T100000_{i:06d}.idx")
+
+        result = await compact_index(conn, storage)
+        assert result.index_files_merged == count
+        table = pq.read_table(result.new_index_path)
+        assert table.num_rows == 3
+        rows = {row["transcript_id"]: row for row in table.to_pylist()}
+        assert set(rows) == {"t0", "t1", "t2"}
+        for transcript, latest in {"t0": 999, "t1": 1000, "t2": 998}.items():
+            assert rows[transcript]["filename"] == f"data{latest}.parquet"
+            if mixed_schema:
+                assert rows[transcript]["extra"] == (
+                    latest if latest % 2 == 0 else None
+                )
+        assert set(rows["t0"]) == (
+            {"transcript_id", "filename", "task", "model", "extra"}
+            if mixed_schema
+            else {"transcript_id", "filename", "task", "model"}
+        )
+        assert not list((Path(storage.location) / INDEX_DIR).glob("index_*.idx"))
+
+    @pytest.mark.asyncio
+    async def test_compact_index_preserves_large_integer_in_mixed_metadata(
+        self, storage: IndexStorage, conn: duckdb.DuckDBPyConnection
+    ) -> None:
+        """Schema reconciliation does not round integers through a float cast."""
+        import pyarrow.parquet as pq
+
+        values = ["x", "y", 9007199254740993, 1.0]
+        for i, value in enumerate(values):
+            await append_index(
+                create_sample_index_table(
+                    [f"t{i}"], [f"data{i}.parquet"], {"extra": [value]}
+                ),
+                storage,
+                f"index_20250101T100000_{i:06d}.idx",
+            )
+
+        result = await compact_index(conn, storage)
+        rows = {
+            row["transcript_id"]: row
+            for row in pq.read_table(result.new_index_path).to_pylist()
+        }
+        assert rows["t2"]["extra"] == "9007199254740993"
+        assert rows["t3"]["extra"] == "1.0"
+        assert rows["t2"]["filename"] == "data2.parquet"
+
+    @pytest.mark.asyncio
     async def test_compact_index_deduplicates_by_transcript_id(
         self, storage: IndexStorage, conn: duckdb.DuckDBPyConnection
     ) -> None:

@@ -71,6 +71,16 @@ SECOND = ["s", "u", "r", "u2"]
             id="lone_call_above_an_agent_loop_is_ambiguous",
         ),
         pytest.param(
+            {"helper-1": ["q"], "helper-2": ["q", "qa", "q2"]}
+            | {"a": FIRST, "b": SECOND, "c": [*SECOND, "r2", "u3"]},
+            {"helper-1": "root", "helper-2": "root"}
+            | {"a": "loop", "b": "loop", "c": "loop", "loop": "root"},
+            set(),
+            {"root", "loop"},
+            ["helper-1", "helper-2", "a", "b", "c"],
+            id="multi_turn_helper_above_an_agent_loop_is_ambiguous",
+        ),
+        pytest.param(
             {"helper-fw": ["q"], "helper-sdk": ["q"], "a": FIRST, "b": SECOND},
             {"helper-fw": "root", "helper-sdk": "helper-fw"}
             | {"a": "loop", "b": "loop", "loop": "root"},

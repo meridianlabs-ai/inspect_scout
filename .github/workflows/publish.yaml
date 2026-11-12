@@ -7,7 +7,7 @@ on:
   release:
     types: [published]
   # Manual break-glass path: run on the release tag (select it under "Use
-  # workflow from"). Without "yes", it builds and checks but does not publish.
+  # workflow from"). Without "yes", it builds and verifies but does not publish.
   workflow_dispatch:
     inputs:
       confirm:
@@ -24,9 +24,10 @@ concurrency:
 jobs:
   # Post the "awaiting approval" Slack ping — un-gated, in this same run, so it
   # deep-links to the run whose publish job is paused on the pypi environment.
-  # After the build, so it is sent only when the publish job will wait.
+  # After the verify job, so it is sent only for a checked dist that the
+  # publish job will wait to upload.
   notify-approval:
-    needs: build
+    needs: verify
     if: ${{ github.event_name == 'release' }}
     runs-on: ubuntu-latest
     permissions: {}
@@ -38,21 +39,18 @@ jobs:
           message: ":rocket: *${{ github.repository }}* ${{ github.event.release.tag_name }} — PyPI publish is *awaiting approval*."
           run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-  # Builds without id-token, so the build toolchain never runs beside the
-  # publish credential; the publish job only uploads the checked artifact.
-  build:
-    name: Build and verify
+  # Checks the tag in a job with no publishing credential, before the build.
+  check-tag:
+    name: Check release tag
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # all tags for hatch-vcs, and main for the ancestry check
+          # all tags, and main for the ancestry check
           fetch-depth: 0
-          # the built viewer (src/inspect_scout/_view/dist) is in Git LFS
-          lfs: true
           persist-credentials: false
 
       - name: Check release tag
@@ -75,43 +73,49 @@ jobs:
               fail "Tag $GITHUB_REF_NAME is not on main; to publish it anyway, dispatch this workflow on the tag"
           fi
 
-      # The build frontend and backend come from scripts/build-dist/requirements.txt,
-      # pinned with hashes, and the build runs without isolation, so nothing
-      # else is resolved at build time. Dependabot updates the file weekly with
-      # a 7-day cooldown; it lives outside .github/ because Dependabot can't
-      # change files there for any ecosystem but github-actions. This job
-      # restores no Actions cache. To update the file by hand, run in
-      # scripts/build-dist:
-      #   uv pip compile --no-config --generate-hashes --python-version 3.11 \
-      #     --python-platform x86_64-unknown-linux-gnu --exclude-newer "7 days" \
-      #     --only-binary :all: --upgrade requirements.in -o requirements.txt
-      - name: Install build toolchain
-        uses: meridianlabs-ai/actions/install-python-dependencies@4757bdf4154f25f6118bf797d04160c16a07f824 # main
-        with:
-          versions: hashed-requirements
-          python-version: "3.11"
-          requirements-file: scripts/build-dist/requirements.txt
-          package-format: wheels-only
-          actions-cache: none
-          environment-dir: ${{ runner.temp }}/build-venv
+  # The build runs in the shared workflow, in a job with no publishing
+  # credential. It uses the hashed scripts/build-dist/requirements.txt, which
+  # Dependabot updates. To update the file by hand, run in scripts/build-dist:
+  #   uv pip compile --no-config --generate-hashes --python-version 3.11 \
+  #     --python-platform x86_64-unknown-linux-gnu --exclude-newer "7 days" \
+  #     --only-binary :all: --upgrade requirements.in -o requirements.txt
+  build:
+    needs: check-tag
+    permissions:
+      contents: read
+    uses: meridianlabs-ai/actions/.github/workflows/build-python-dist.yml@b6f97e6b72216233d805ce570ceb7fa2071f8a93 # main
+    with:
+      python-version: "3.11"
+      # the built viewer (src/inspect_scout/_view/dist) is in Git LFS
+      lfs: true
 
-      - name: Build
-        run: '"$RUNNER_TEMP/build-venv/bin/python" -m build --no-isolation'
+  # Checks the built distributions in a job with no publishing credential,
+  # before approval is requested.
+  verify:
+    name: Verify distributions
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: scripts/verify_dist.py
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact-id }}
+          path: dist/
 
       - name: Verify distributions
-        run: '"$RUNNER_TEMP/build-venv/bin/python" -I scripts/verify_dist.py "$GITHUB_REF_NAME"'
-
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: dist
-          path: dist/
-          if-no-files-found: error
-          # a re-run of this job replaces the earlier attempt's artifact
-          overwrite: true
+        run: python3 -I scripts/verify_dist.py "$GITHUB_REF_NAME"
 
   publish:
     name: Publish to PyPI
-    needs: build
+    needs: [build, verify]
     if: ${{ github.event_name == 'release' || inputs.confirm == 'yes' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -132,9 +136,11 @@ jobs:
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: dist
+          artifact-ids: ${{ needs.build.outputs.artifact-id }}
           path: dist/
 
+      # The verify job did this check already. Do it again here on the exact
+      # files that are uploaded.
       - name: Verify distributions
         run: python3 -I scripts/verify_dist.py "$GITHUB_REF_NAME"
 

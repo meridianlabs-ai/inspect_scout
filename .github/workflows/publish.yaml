@@ -86,7 +86,7 @@ jobs:
       #     --python-platform x86_64-unknown-linux-gnu --exclude-newer "7 days" \
       #     --only-binary :all: --upgrade requirements.in -o requirements.txt
       - name: Install build toolchain
-        uses: meridianlabs-ai/actions/install-python-dependencies@3bc608093ab8b8dd7f82764a863d9d5f9dce61a5 # main
+        uses: meridianlabs-ai/actions/install-python-dependencies@4757bdf4154f25f6118bf797d04160c16a07f824 # main
         with:
           versions: hashed-requirements
           python-version: "3.11"

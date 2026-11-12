@@ -173,6 +173,8 @@ addopts = "-n logical --dist worksteal"
 strict = true
 mypy_path = "src"
 files = ["src", "examples"]
+# The ts-mono frontend submodule has its own Python fixture scripts.
+exclude = ["src/inspect_scout/_view/ts-mono"]
 namespace_packages = true
 explicit_package_bases = true
 

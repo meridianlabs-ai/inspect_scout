@@ -1,6 +1,13 @@
 [
   {
     "file": "pyproject.toml",
+    "location": "tool.mypy",
+    "setting": "exclude",
+    "value": "src/inspect_scout/_view/ts-mono",
+    "reason": "ts-mono is the frontend submodule, a separate repo; its hand-run Python fixture scripts import packages scout does not install (inspect_swarm). inspect_ai excludes its copy the same way"
+  },
+  {
+    "file": "pyproject.toml",
     "location": "tool.mypy.overrides[harbor.*]",
     "setting": "ignore_missing_imports",
     "value": "true",

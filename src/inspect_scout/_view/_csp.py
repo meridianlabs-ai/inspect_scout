@@ -6,8 +6,10 @@ than baking it into `index.html` (the VS Code extension reads the same
 as a header. Its `sha256` sources hash the inline scripts of that same
 dist's `index.html`, so a policy is only valid for the dist it was read from.
 
-Mirrors `inspect_ai._view._csp` and `inspect_ai._view.network`; switch to
-those once Scout requires an inspect_ai release that ships them.
+Adapted from `inspect_ai._view._csp`. Scout keeps its own copy because, with a
+`root_path` (behind a proxy), its view server adds an inline base-path script
+to `index.html`, which `extra_script_sources` allows. Its `network.py` likewise differs from
+inspect_ai's by accepting proxies that rewrite the Host header.
 """
 
 import base64

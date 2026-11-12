@@ -363,6 +363,43 @@ async def test_undeleted_index_files_do_not_duplicate_transcripts(
 
 
 @pytest.mark.asyncio
+async def test_replaced_index_files_are_not_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An index file a live manifest replaced is skipped, even when it is damaged."""
+    monkeypatch.setattr(index, "_delete_file", _delete_denied)
+    for transcript_id in ["t1", "t2"]:
+        async with transcripts_db(str(tmp_path)) as db:
+            await db.insert([_transcript(transcript_id)])
+    # The first commit's incremental file, replaced by both later manifests.
+    replaced = sorted((tmp_path / "_index").glob("index_*.idx"))[0]
+    replaced.write_bytes(b"")
+    async with transcripts_db(str(tmp_path)) as db:
+        assert sorted(await db.transcript_ids()) == ["t1", "t2"]
+        await db.insert([_transcript("t3")])
+    async with transcripts_db(str(tmp_path)) as db:
+        assert sorted(await db.transcript_ids()) == ["t1", "t2", "t3"]
+
+
+@pytest.mark.asyncio
+async def test_unreadable_index_file_names_the_rebuild_command(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A damaged index file that nothing replaced fails the open with a fix."""
+    async with transcripts_db(str(tmp_path)) as db:
+        await db.insert([_transcript("t1")])
+    (tmp_path / "_index" / "_manifest_20000101T000000_old.idx").write_bytes(b"")
+    with pytest.raises(duckdb.InvalidInputException):
+        async with transcripts_db(str(tmp_path)) as db:
+            await db.count()
+    assert "Run `scout db index " in caplog.text
+    with duckdb.connect(":memory:") as conn:
+        await index.create_index(conn, IndexStorage(location=str(tmp_path)))
+    async with transcripts_db(str(tmp_path)) as db:
+        assert sorted(await db.transcript_ids()) == ["t1"]
+
+
+@pytest.mark.asyncio
 async def test_rebuild_replaces_index_files_it_cannot_delete(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

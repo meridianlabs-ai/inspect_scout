@@ -32,6 +32,7 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from inspect_ai._util.asyncfiles import AsyncFilesystem
 from inspect_ai._util.file import filesystem
+from inspect_ai._util.path import pretty_path
 from inspect_ai.util import trace_message
 from shortuuid import uuid
 
@@ -66,7 +67,8 @@ _REPLACES_KEY = "inspect_scout.replaces"
 # carries the row. A data file written without a session id comes first:
 # session compaction writes one in place of the session's own files and then
 # deletes those. Then the newest `<timestamp>_<uuid>.parquet` name, so a
-# retried insert outranks the attempt it retried.
+# retried insert written in a later second outranks the attempt it retried;
+# rows still tied are settled as described in `_one_row_per_transcript`.
 _DATA_FILE_RANK = (
     r"regexp_matches(coalesce(filename, ''), "
     r"'(^|/)transcripts_\d{8}T\d{6}_[0-9a-zA-Z]+\.parquet$') DESC, "
@@ -169,9 +171,12 @@ async def compact_index(
         )
 
     try:
-        merged_table = _read_and_deduplicate_index_files(
-            conn, _without_replaced_files(conn, idx_files)
-        )
+        live_files = _without_replaced_files(conn, idx_files)
+        merged_table = _read_and_deduplicate_index_files(conn, live_files)
+    except duckdb.InvalidInputException as e:
+        # An index file is there but cannot be read as Parquet.
+        _log_unreadable_index(storage, e)
+        raise
     except duckdb.IOException as e:
         if _is_missing_index_file(e) and _retry_count < MAX_RETRIES:
             # Files changed during operation - retry with fresh discovery
@@ -197,7 +202,7 @@ async def compact_index(
             logger.warning(f"Failed to delete old index file {old_file}: {e}")
 
     return CompactionResult(
-        index_files_merged=len(idx_files),
+        index_files_merged=len(live_files),
         index_files_deleted=deleted_idx_count,
         new_index_path=new_path,
     )
@@ -352,6 +357,10 @@ async def init_index_table(
                 else _one_row_per_transcript(quote_identifier(source_view))
             )
             conn.execute(f"CREATE TABLE {quote_identifier(table_name)} AS {rows}")
+    except duckdb.InvalidInputException as e:
+        # An index file is there but cannot be read as Parquet.
+        _log_unreadable_index(storage, e)
+        raise
     except duckdb.IOException as e:
         if _is_missing_index_file(e) and _retry_count < MAX_RETRIES:
             # File was deleted by concurrent operation - rediscover and retry
@@ -392,6 +401,15 @@ def _is_missing_index_file(error: duckdb.IOException) -> bool:
             isinstance(error, duckdb.HTTPException)
             and re.search(r"[\"']\s*:\s*404\b", message) is not None
         )
+    )
+
+
+def _log_unreadable_index(storage: IndexStorage, error: duckdb.Error) -> None:
+    """Say how to recover when an index file exists but cannot be read."""
+    logger.error(
+        f"Could not read the transcript index: {error}. "
+        f"Run `scout db index {pretty_path(storage.location)}` to rebuild it "
+        "from the data files."
     )
 
 

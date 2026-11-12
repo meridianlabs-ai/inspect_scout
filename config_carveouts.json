@@ -29,6 +29,13 @@
   },
   {
     "file": "pyproject.toml",
+    "location": "tool.ruff",
+    "setting": "extend-exclude",
+    "value": "src/inspect_scout/_view/ts-mono",
+    "reason": "ts-mono is the frontend submodule, a separate repo; ruff must not lint its Python fixture scripts or rewrite them with --fix or format. inspect_ai excludes its copy the same way"
+  },
+  {
+    "file": "pyproject.toml",
     "location": "tool.ruff.lint",
     "setting": "ignore",
     "value": "D10",

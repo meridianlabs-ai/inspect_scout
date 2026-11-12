@@ -186,14 +186,12 @@ def verify_dependabot_cooldown(
 ) -> None:
     cooldown = dependabot["cooldown"]
     assert cooldown["default-days"] == cooldown_days(config["exclude-newer"])
-    # CI moves inspect-ai to inspect_ai main, so Dependabot leaves it alone.
-    assert dependabot["ignore"] == [{"dependency-name": "inspect-ai"}]
     # Dependabot's cooldown counts whole days, so it leaves the "6 hours"
     # entries to uv. Dated entries are locked by hand.
     exempt = sorted(
         package
         for package, cooldown in config["exclude-newer-package"].items()
-        if cooldown == EXEMPT_COOLDOWN and package != "inspect-ai"
+        if cooldown == EXEMPT_COOLDOWN
     )
     assert sorted(cooldown["exclude"]) == exempt
     # The exempt packages have their own group, listed before the catch-all.

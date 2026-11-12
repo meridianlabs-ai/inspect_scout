@@ -382,17 +382,14 @@ async def test_replaced_index_files_are_not_read(
 
 
 @pytest.mark.asyncio
-async def test_unreadable_index_file_names_the_rebuild_command(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
-) -> None:
+async def test_unreadable_index_file_names_the_rebuild_command(tmp_path: Path) -> None:
     """A damaged index file that nothing replaced fails the open with a fix."""
     async with transcripts_db(str(tmp_path)) as db:
         await db.insert([_transcript("t1")])
     (tmp_path / "_index" / "_manifest_20000101T000000_old.idx").write_bytes(b"")
-    with pytest.raises(duckdb.InvalidInputException):
+    with pytest.raises(duckdb.InvalidInputException, match="Run `scout db index "):
         async with transcripts_db(str(tmp_path)) as db:
             await db.count()
-    assert "Run `scout db index " in caplog.text
     with duckdb.connect(":memory:") as conn:
         await index.create_index(conn, IndexStorage(location=str(tmp_path)))
     async with transcripts_db(str(tmp_path)) as db:

@@ -71,7 +71,7 @@ _REPLACES_KEY = "inspect_scout.replaces"
 # rows still tied are settled as described in `_one_row_per_transcript`.
 _DATA_FILE_RANK = (
     r"regexp_matches(coalesce(filename, ''), "
-    r"'(^|/)transcripts_\d{8}T\d{6}_[0-9a-zA-Z]+\.parquet$') DESC, "
+    r"'(^|[/\\])transcripts_\d{8}T\d{6}_[0-9a-zA-Z]+\.parquet$') DESC, "
     r"coalesce(regexp_extract(filename, "
     r"'(\d{8}T\d{6})_[0-9a-zA-Z]+\.parquet$', 1), '') DESC"
 )
@@ -171,12 +171,12 @@ async def compact_index(
         )
 
     try:
-        live_files = _without_replaced_files(conn, idx_files)
-        merged_table = _read_and_deduplicate_index_files(conn, live_files)
+        merged_table = _read_and_deduplicate_index_files(
+            conn, _without_replaced_files(conn, idx_files)
+        )
     except duckdb.InvalidInputException as e:
         # An index file is there but cannot be read as Parquet.
-        _log_unreadable_index(storage, e)
-        raise
+        raise _unreadable_index_error(storage, e) from e
     except duckdb.IOException as e:
         if _is_missing_index_file(e) and _retry_count < MAX_RETRIES:
             # Files changed during operation - retry with fresh discovery
@@ -202,7 +202,7 @@ async def compact_index(
             logger.warning(f"Failed to delete old index file {old_file}: {e}")
 
     return CompactionResult(
-        index_files_merged=len(live_files),
+        index_files_merged=len(idx_files),
         index_files_deleted=deleted_idx_count,
         new_index_path=new_path,
     )
@@ -359,8 +359,7 @@ async def init_index_table(
             conn.execute(f"CREATE TABLE {quote_identifier(table_name)} AS {rows}")
     except duckdb.InvalidInputException as e:
         # An index file is there but cannot be read as Parquet.
-        _log_unreadable_index(storage, e)
-        raise
+        raise _unreadable_index_error(storage, e) from e
     except duckdb.IOException as e:
         if _is_missing_index_file(e) and _retry_count < MAX_RETRIES:
             # File was deleted by concurrent operation - rediscover and retry
@@ -404,12 +403,13 @@ def _is_missing_index_file(error: duckdb.IOException) -> bool:
     )
 
 
-def _log_unreadable_index(storage: IndexStorage, error: duckdb.Error) -> None:
-    """Say how to recover when an index file exists but cannot be read."""
-    logger.error(
-        f"Could not read the transcript index: {error}. "
-        f"Run `scout db index {pretty_path(storage.location)}` to rebuild it "
-        "from the data files."
+def _unreadable_index_error(
+    storage: IndexStorage, error: duckdb.InvalidInputException
+) -> duckdb.InvalidInputException:
+    """Name the rebuild command in the error for an index file that cannot be read."""
+    return duckdb.InvalidInputException(
+        f"{error}\nRun `scout db index {pretty_path(storage.location)}` to rebuild "
+        "the index from the data files."
     )
 
 
@@ -668,17 +668,28 @@ def _one_row_per_transcript(source: str, file_order: str | None = None) -> str:
     Returns:
         SQL text of the SELECT.
     """
+    rows = quote_identifier(generated_identifier("index_rows"))
+    repeated = quote_identifier(generated_identifier("index_repeated"))
     rank = quote_identifier(generated_identifier("index_rank"))
     tie_break = "coalesce(filename, '')" if file_order is None else file_order
+    keep = "*" if file_order is None else f"* EXCLUDE ({file_order})"
     exclude = rank if file_order is None else f"{rank}, {file_order}"
+    # Only transcripts listed more than once are ranked, so a large index with a
+    # few repeated rows costs little more than reading it.
     return f"""
+        WITH {rows} AS (SELECT * FROM {source}),
+        {repeated} AS (
+            SELECT transcript_id FROM {rows} GROUP BY transcript_id HAVING count(*) > 1
+        )
+        SELECT {keep} FROM {rows} ANTI JOIN {repeated} USING (transcript_id)
+        UNION ALL BY NAME
         SELECT * EXCLUDE ({exclude}) FROM (
             SELECT *,
                    ROW_NUMBER() OVER (
                        PARTITION BY transcript_id
                        ORDER BY {_DATA_FILE_RANK}, {tie_break} DESC
                    ) AS {rank}
-            FROM {source}
+            FROM {rows} SEMI JOIN {repeated} USING (transcript_id)
         )
         WHERE {rank} = 1
     """
@@ -721,7 +732,6 @@ def _without_replaced_files(
     if len(idx_files) < 2:
         return idx_files
     replaced: set[str] = set()
-    vanished: dict[str, duckdb.IOException] = {}
     manifests = [f for f in idx_files if Path(f).name.startswith(MANIFEST_PREFIX)]
     # Latest name first, which is usually the latest written: a manifest names
     # every file its writer listed, so the record inside a manifest that is
@@ -738,14 +748,9 @@ def _without_replaced_files(
         except duckdb.IOException as e:
             if not _is_missing_index_file(e):
                 raise
-            # Deleted since discovery, by a compaction or rebuild whose own
-            # manifest names it.
-            vanished[Path(manifest).name] = e
+            # Deleted since discovery. If no other manifest names it, reading
+            # it fails the same way and the caller rediscovers.
             continue
         for (value,) in records:
             replaced.update(json.loads(value))
-    for name, error in vanished.items():
-        if name not in replaced:
-            # That manifest was not discovered yet: the caller rediscovers.
-            raise error
     return [f for f in idx_files if Path(f).name not in replaced]

@@ -536,20 +536,29 @@ class TestCreateIndex:
     ) -> None:
         """A rebuild during session compaction indexes the file that will remain."""
         location = Path(storage.location)
-        compacted = "transcripts_20250101T100000_00000000.parquet"
-        # The session file is still on disk; compaction deletes it next.
-        create_sample_data_file(
-            location / f"transcripts_{session_id}_20250101T100000_ffffffff.parquet",
-            ["t1"],
-        )
-        create_sample_data_file(location / compacted, ["t1"])
+        # Many file pairs, so that an arbitrary pick cannot choose right by chance.
+        expected = []
+        for i in range(40):
+            stamp = f"20250101T10{i:04d}"
+            compacted = f"transcripts_{stamp}_00000000.parquet"
+            # The session file is still on disk; compaction deletes it next.
+            create_sample_data_file(
+                location / f"transcripts_{session_id}_{stamp}_ffffffff.parquet",
+                [f"t{i:02d}"],
+            )
+            create_sample_data_file(location / compacted, [f"t{i:02d}"])
+            expected.append((f"t{i:02d}", compacted))
 
         path = await create_index(conn, storage)
 
         assert path is not None
-        assert conn.read_parquet(path).select(
-            "transcript_id", "filename"
-        ).fetchall() == [("t1", compacted)]
+        assert (
+            conn.read_parquet(path)
+            .select("transcript_id", "filename")
+            .order("transcript_id")
+            .fetchall()
+            == expected
+        )
 
 
 # --- Maintenance Tests ---

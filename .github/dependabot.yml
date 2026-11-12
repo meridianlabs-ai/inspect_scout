@@ -33,8 +33,9 @@ updates:
   # cooldown counts whole days, so those packages' 6-hour cooldown is left to
   # uv. They get their own group, so a broken update elsewhere can't hold them
   # up. It comes first because a package that matches both groups goes to the
-  # first. inspect-ai comes from inspect_ai main: Dependabot moves the commit
-  # recorded in uv.lock, and CI moves it again to main's latest on every run.
+  # first. inspect-ai comes from inspect_ai main. CI moves it to main's latest
+  # commit on every run, but Dependabot resolves against the commit in uv.lock,
+  # so ignoring inspect-ai breaks updates that need a newer one.
   - package-ecosystem: uv
     versioning-strategy: lockfile-only
     directory: /

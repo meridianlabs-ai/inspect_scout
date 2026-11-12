@@ -186,6 +186,8 @@ def verify_dependabot_cooldown(
 ) -> None:
     cooldown = dependabot["cooldown"]
     assert cooldown["default-days"] == cooldown_days(config["exclude-newer"])
+    # Dependabot resolves against the locked inspect-ai commit, so it must move it.
+    assert "ignore" not in dependabot
     # Dependabot's cooldown counts whole days, so it leaves the "6 hours"
     # entries to uv. Dated entries are locked by hand.
     exempt = sorted(

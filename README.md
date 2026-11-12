@@ -19,7 +19,7 @@ To work on development of Inspect Scout, clone the repository and install the lo
 ```bash
 git clone https://github.com/meridianlabs-ai/inspect_scout
 cd inspect_scout
-uv sync --extra dev
+uv sync --locked --extra dev
 ```
 
 Run linting, formatting, and tests via

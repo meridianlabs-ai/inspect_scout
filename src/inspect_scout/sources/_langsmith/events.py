@@ -22,7 +22,12 @@ from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.tool._tool_call import ToolCallError
 
 from .detection import detect_provider_format, get_model_name
-from .extraction import extract_input_messages, extract_output, extract_tools
+from .extraction import (
+    apply_langchain_message_ids,
+    extract_input_messages,
+    extract_output,
+    extract_tools,
+)
 
 
 def _get_timestamp(run: Any, attr: str = "start_time") -> datetime:
@@ -50,6 +55,10 @@ async def to_model_event(run: Any) -> ModelEvent:
     # Extract output
     outputs = getattr(run, "outputs", None) or {}
     output = await extract_output(outputs, run, format_type)
+    apply_langchain_message_ids(input_messages, inputs, output, outputs)
+    # An Anthropic response is itself a message with an ID.
+    if format_type == "anthropic" and output.choices and output.message.id is None:
+        output.message.id = output.response_id
 
     # Extract model name
     model_name = get_model_name(run)
@@ -74,6 +83,7 @@ async def to_model_event(run: Any) -> ModelEvent:
         timestamp=_get_timestamp(run, "start_time"),
         completed=_get_timestamp(run, "end_time"),
         span_id=str(getattr(run, "parent_run_id", None) or ""),
+        uuid=str(run.id) if getattr(run, "id", None) else None,
     )
 
 

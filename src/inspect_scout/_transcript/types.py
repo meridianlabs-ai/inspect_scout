@@ -233,6 +233,12 @@ class TranscriptInfo(BaseModel):
     `False` shows it as plain text. `None` (the default) and `True` are trusted, subject to the viewer-wide `trust_content` setting. For eval logs this is the task's `ViewerConfig(trust_content=...)`.
     """
 
+    messages_from: list[str] | None = Field(default=None)
+    """`uuid`s of the `ModelEvent`s whose conversation `messages` is.
+
+    `messages` is taken from these calls' input and output, in order (a trimming compaction keeps only part of an earlier call's), possibly followed by messages added after the last call. Usually one call; more than one when the conversation is spliced together across compactions or sessions. `None` when the source doesn't say (e.g. eval logs, where `messages` is the sample's own conversation).
+    """
+
     metadata: dict[str, Any] = Field(default_factory=dict)
     """Transcript source specific metadata."""
 

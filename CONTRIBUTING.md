@@ -2,6 +2,40 @@
 
 Thanks for contributing to Inspect Scout — this guide covers local setup, the checks CI runs, and how commits map to releases.
 
+<!-- BEGIN shared text from meridianlabs-ai/actions policy/CONTRIBUTING.md. Change it there, not here. -->
+## How contributions work
+
+There are two paths:
+
+- **Qualified contributors**: maintainers and individuals recorded (by
+  account id) in [`.github/qualified.yml`](.github/qualified.yml) — may open
+  PRs directly.
+
+- **Everyone else**: start from an issue a maintainer has labeled `accepted`
+  before writing code, and reference it from your PR (`Fixes #NNN`). This
+  applies regardless of your contribution history here, and regardless of
+  who filed the issue — what matters is that a maintainer has accepted it.
+  PRs that aren't linked to an accepted issue may be closed; if a linked
+  issue is later accepted, reopen the PR.
+  **Exception:** trivial documentation fixes (typos, broken links — docs
+  files only, under 25 changed lines) are always welcome directly.
+
+Whatever your path, check for an existing open PR addressing the same
+problem before opening yours: duplicates are closed in favor of the earlier
+PR unless a maintainer has asked for an alternative.
+
+Issues a maintainer has labeled `deferred` are decisions not to prioritize
+that work right now. PRs against a deferred issue are closed —
+comment on the issue with new evidence or demand if you think it should be
+revisited.
+
+**Why:** like most open-source projects, we now receive a large volume of
+unrequested, often agent-generated PRs. Reviewing a PR is time-consuming;
+agreeing on a direction in an issue first is much easier. This policy spends
+our review time on work we've agreed we want and spares you writing code we
+can't merge.
+<!-- END shared text from meridianlabs-ai/actions policy/CONTRIBUTING.md -->
+
 ## Development setup
 
 Install [uv](https://docs.astral.sh/uv/) 0.13.4 or later, then clone the repository and create the environment:
@@ -9,43 +43,19 @@ Install [uv](https://docs.astral.sh/uv/) 0.13.4 or later, then clone the reposit
 ```bash
 git clone https://github.com/meridianlabs-ai/inspect_scout
 cd inspect_scout
-uv sync --extra dev
+uv sync --locked --extra dev
 ```
 
-`uv sync` creates `.venv` with the exact versions in `uv.lock`, the `[dev]` extra included, and installs Scout editable. Run Python commands from it: `uv run <command>`, `.venv/bin/<command>`, or `source .venv/bin/activate`. `uv sync` without `--extra dev` removes the dev tools again.
+`uv sync --locked` creates `.venv` with the exact versions in `uv.lock`, the `[dev]` extra included, and installs Scout editable. It fails if `uv.lock` is out of date with `pyproject.toml`. Run Python commands from the environment: `uv run <command>`, `.venv/bin/<command>`, or `source .venv/bin/activate`. `uv sync --locked` without `--extra dev` removes the dev tools again.
 
-### Dependencies and the cooldown
+### Dependencies
 
-`uv.lock` pins every Python dependency. CI's type-check, test, build and schema jobs install their dependencies from it, and fail when `uv.lock` is out of date with `pyproject.toml`. When you change dependencies in `pyproject.toml`, run `uv lock` and commit both files.
+[DEPENDENCIES.md](https://github.com/meridianlabs-ai/actions/blob/main/DEPENDENCIES.md) in meridianlabs-ai/actions tells how the Inspect repositories install and change dependencies. It covers the lock file, the cooldown, the canaries, inspect_ai `main`, and the procedures to add or update a dependency. Follow it. It is the same for every Inspect repository, so this file does not repeat it.
 
-`pyproject.toml` sets `exclude-newer = "7 days"` under `[tool.uv]`, so `uv lock`, `uv sync` and `uv pip` only pick releases that have been on PyPI for at least seven days. A compromised release is usually found and removed within that time, before it reaches `uv.lock`, CI or your machine. A few packages wait 6 hours instead, so Scout can adopt a new release the day it ships: `inspect-ai`, `inspect-swe`, and the `anthropic`, `openai` and `google-genai` SDKs. They are listed with `"6 hours"` in `[tool.uv.exclude-newer-package]`. Only a direct dependency (a package in `dependencies` or the `dev` extra in `pyproject.toml`) that is a model provider SDK or an Inspect package gets this exception. Every other package keeps the seven-day cooldown, including the CA bundle (`certifi`). Dependabot's `uv` entry in `.github/dependabot.yml` repeats the cooldown and the list, except `inspect-ai`, which it ignores. When you add a `"6 hours"` entry, also add the package to `cooldown.exclude` and the `six-hour-cooldown` group there. `tests/test_dependency_cooldown.py` checks that each entry is a direct dependency, that dated entries (below) are less than seven days old, and that the two files match. Whether a package is a provider SDK or an Inspect package is up to review.
+For this repository:
 
-Dependabot proposes `uv.lock` updates daily, once a release has cleared its cooldown. To adopt a release sooner, run `uv lock --upgrade-package <package>` and commit `uv.lock`. A release still inside its cooldown can't be locked; wait for it rather than overriding `exclude-newer`, unless it's an emergency (below).
-
-In an emergency, for example a security fix, you can adopt a release that is less than seven days old with a one-time dated entry:
-
-1. Under `[tool.uv.exclude-newer-package]` in `pyproject.toml`, add `<package> = "<timestamp>"`. The package must be a direct dependency. Use an RFC 3339 timestamp just after the upload time of the fixed release. Don't add a dated entry to `.github/dependabot.yml`.
-2. Run `uv lock --upgrade-package <package>` and commit both files.
-3. Within seven days, once the normal cooldown includes the release, delete the entry, run `uv lock --upgrade-package <package>`, and commit both files. A plain `uv lock` doesn't reliably remove the entry from `uv.lock`, and CI then fails. A test fails when a dated entry is seven days old or older.
-
-Testing against the newest release of every dependency happens in the nightly canary in [meridianlabs-ai/canaries](https://github.com/meridianlabs-ai/canaries), so Scout's own CI doesn't need to.
-
-### inspect_ai main
-
-Development and CI track inspect_ai's `main` branch. `[tool.uv.sources]` in `pyproject.toml` points `inspect-ai` at its git repository, and `uv.lock` records a commit. Only uv reads `[tool.uv.sources]`: the published package requires the `inspect-ai>=` floor in `[project]`.
-
-- CI moves inspect-ai to the latest `main` commit before every install (`.github/actions/uv-sync`), so it always tests against inspect_ai main. Every other package stays at its locked version.
-- `uv sync --extra dev` installs the commit in `uv.lock`. To move to the latest `main` commit, run `uv sync --upgrade-package inspect-ai --extra dev`. Committing the updated `uv.lock` is optional.
-- On the release PR, CI ignores the git source and installs the newest inspect-ai release that has cleared its cooldown, so the release is tested against the inspect_ai users will get. `.github/workflows/release-pin-deps.yml` raises the floor to that release. Main keeps the git source.
-
-To work against a local inspect_ai checkout, install it over the locked one:
-
-```bash
-uv sync --extra dev
-uv pip install -e ../inspect_ai
-```
-
-Then run commands with `.venv/bin/<command>` or `uv run --no-sync <command>`. A plain `uv run` or `uv sync` reinstalls the locked inspect_ai.
+- inspect_scout needs unreleased inspect_ai changes. `[tool.uv.sources]` in `pyproject.toml` points `inspect-ai` at inspect_ai `main`.
+- The 6-hour packages are in `[tool.uv.exclude-newer-package]` in `pyproject.toml`.
 
 ### Frontend (TypeScript viewer)
 
@@ -124,6 +134,8 @@ stays out of the headline sections.
 
 Found a bug or have a feature request? Please open an issue on the [GitHub issue tracker](https://github.com/meridianlabs-ai/inspect_scout/issues).
 
+A bug report needs a crisp minimal repro that **demonstrates** the bug: a real affected input, or steps that reproduce it. Show the repro rather than asserting the cause. That lets a maintainer confirm the bug and accept the issue.
+
 ## Bug-fix pull requests
 
-A bug-fix PR should either link the issue it resolves or include a crisp minimal repro that **demonstrates** the bug: a real affected input, or steps that reproduce it, alongside the root cause. Show the repro rather than asserting the cause. That lets a reviewer confirm the diagnosis instead of reverse-engineering it, and keeps the PR from stalling. Without an issue or a demonstrated repro, review is deferred until you add one.
+If you are a maintainer or a qualified contributor and your bug-fix PR links no issue, the PR must include the repro that a bug report needs (see above). Without it, review is deferred until you add it.

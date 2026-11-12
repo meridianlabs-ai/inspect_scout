@@ -55,7 +55,7 @@ def test_only_the_publish_job_holds_the_publish_token() -> None:
     workflow = _load(WORKFLOW)
     jobs = workflow["jobs"]
     assert workflow["permissions"] == {}
-    assert set(jobs) == {"notify-approval", "build", "publish"}
+    assert set(jobs) == {"notify-approval", "build", "publish", "docs"}
     assert jobs["notify-approval"]["permissions"] == {}
     # pinged only once the build passed and the publish job will wait
     assert jobs["notify-approval"]["needs"] == "build"
@@ -65,6 +65,25 @@ def test_only_the_publish_job_holds_the_publish_token() -> None:
     # PyPI's trusted publisher matches this workflow file and environment.
     assert jobs["publish"]["environment"]["name"] == "pypi"
     assert jobs["publish"]["needs"] == "build"
+
+
+def test_docs_job_runs_only_the_shared_docs_workflow() -> None:
+    # Its id-token is for the shared workflow's Pages deploy, which runs in the
+    # github-pages environment, so PyPI's trusted publisher (environment pypi)
+    # refuses it.
+    docs = _jobs()["docs"]
+    assert docs["permissions"] == {
+        "contents": "read",
+        "pages": "write",
+        "id-token": "write",
+    }
+    assert docs["needs"] == "publish"
+    assert docs["if"] == "${{ github.event_name == 'release' }}"
+    assert docs["uses"].startswith(
+        "meridianlabs-ai/actions/.github/workflows/publish-docs.yml@"
+    )
+    assert "steps" not in docs
+    assert "environment" not in docs
 
 
 def test_dispatch_publishes_only_when_confirmed() -> None:

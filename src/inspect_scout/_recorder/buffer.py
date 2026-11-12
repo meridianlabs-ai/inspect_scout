@@ -4,7 +4,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from logging import getLogger
-from typing import Any, Final, Sequence, Set, TypeVar, cast
+from typing import Any, BinaryIO, Final, Sequence, Set, TypeVar, cast
 
 import anyio
 import jsonlines
@@ -329,19 +329,19 @@ def resolve_success_value(value: bool | None, score: JsonValue | None) -> bool |
 def scanner_table(
     buffer_dir: UPath,
     scanner: str,
-    output_file: str,
+    output_file: str | BinaryIO,
     *,
     extra_inputs: list[UPath] | None = None,
 ) -> bool:
     """Compact per-transcript buffer parquets into a single parquet file.
 
     Streams batches from the buffer (and any `extra_inputs`) directly into
-    `output_file` (a local path), so peak memory stays bounded regardless of
-    the total size of the compacted output.
+    `output_file` (a local path, or a binary file open for writing), so peak
+    memory stays bounded regardless of the total size of the compacted output.
 
     Returns:
         True if `output_file` was written, False if there was nothing to
-        compact (in which case no file is created).
+        compact (in which case nothing is written).
     """
     import pyarrow as pa
     import pyarrow.dataset as ds

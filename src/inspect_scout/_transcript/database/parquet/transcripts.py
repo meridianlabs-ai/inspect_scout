@@ -515,12 +515,15 @@ class ParquetTranscriptsDB(TranscriptsDB):
             transcript_error = row_dict.get("error")
             transcript_limit = row_dict.get("limit")
             transcript_trust_content = row_dict.get("trust_content")
+            transcript_messages_from = row_dict.get("messages_from")
 
             # resolve json
             if transcript_agent_args is not None:
                 transcript_agent_args = json.loads(transcript_agent_args)
             if transcript_model_options is not None:
                 transcript_model_options = json.loads(transcript_model_options)
+            if transcript_messages_from is not None:
+                transcript_messages_from = json.loads(transcript_messages_from)
             if isinstance(transcript_score, str) and (
                 transcript_score.startswith("{") or transcript_score.startswith("[")
             ):
@@ -559,6 +562,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 error=transcript_error,
                 limit=transcript_limit,
                 trust_content=transcript_trust_content,
+                messages_from=transcript_messages_from,
                 metadata={},
                 filename=transcript_filename,
             )
@@ -707,6 +711,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 error=t.error,
                 limit=t.limit,
                 trust_content=t.trust_content,
+                messages_from=t.messages_from,
                 metadata=t.metadata,
             )
 
@@ -1095,6 +1100,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             "error": transcript.error,
             "limit": transcript.limit,
             "trust_content": transcript.trust_content,
+            "messages_from": json.dumps(transcript.messages_from)
+            if transcript.messages_from is not None
+            else None,
             "messages": json.dumps(messages_array),
             "events": events_json,
             "timelines": (
@@ -1338,7 +1346,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
             output_path = Path(self._location) / filename
             output_path.parent.mkdir(parents=True, exist_ok=True)
             parquet_path = output_path.as_posix()
-            self._write_parquet_file(table, parquet_path)
+            # Keep incomplete fragments outside the reader's *.parquet glob.
+            local_tmp_path = output_path.parent / f".tmp_{uuid.uuid4().hex}"
+            try:
+                self._write_parquet_file(table, str(local_tmp_path))
+                os.rename(local_tmp_path, output_path)
+            finally:
+                local_tmp_path.unlink(missing_ok=True)
 
         return parquet_path
 

@@ -54,7 +54,7 @@ The **Validation** pane provides a top level view of all validation sets as well
 
 ![](images/validation-pane.png){.border}
 
-Use the validation pane to review and edit validation cases, manage [splits](#validation-splits), or copy and move validation cases between validation sets.
+Use the validation pane to review and edit validation cases, manage [splits](validation.qmd#validation-splits), or copy and move validation cases between validation sets.
 
 ### Validation Files {#validation-files}
 
@@ -71,7 +71,7 @@ If you are editing validation files directly you will need a way to discover tra
 
 ![](images/transcript-uuid-copy.png){.border}
 
-See the [File Formats](#file-formats) section below for complete details on validation set files.
+See [File Formats](validation.qmd#file-formats) for complete details on validation set files.
 
 ## Scanning
 

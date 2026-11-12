@@ -59,7 +59,8 @@ def main() -> int:
         difflib.unified_diff(old_lines, new_lines, "committed", "regenerated")
     )
     print(f"\n{SCHEMA_PATH} has structural (non-docstring) changes. Please run:")
-    print("  python scripts/export_openapi_schema.py")
+    print("  uv sync --upgrade-package inspect-ai --extra dev")
+    print("  .venv/bin/python scripts/export_openapi_schema.py")
     return 1
 
 

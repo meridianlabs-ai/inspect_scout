@@ -90,7 +90,8 @@ class LocalFilesCache:
                     await _download_file(fs, uri, marker_file)
                     marker_file.rename(cache_file)
                     return cache_file.as_posix()
-                except Exception:
+                # cancellation too: a marker left behind blocks every later reader
+                except BaseException:
                     marker_file.unlink(missing_ok=True)
                     raise
 

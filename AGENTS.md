@@ -38,7 +38,7 @@ Devin, and similar) preparing contributions. Human contributors: see
 - **Python package** (`src/inspect_scout/`) - Core library for analyzing LLM evaluation transcripts. Provides a CLI, programmatic API, and FastAPI server. Handles transcript databases, scanners, validation, and results.
 - **React frontend** (`src/inspect_scout/_view/ts-mono/`) - TypeScript monorepo (Turborepo + pnpm workspaces) for the web UI, embedded as a git submodule. See its own [CLAUDE.md](src/inspect_scout/_view/ts-mono/CLAUDE.md) and [submodule guide](src/inspect_scout/_view/ts-mono/docs/submodule-guide.md).
 
-Development setup (`uv sync --locked --extra dev`, frontend/Git LFS setup) is in [CONTRIBUTING.md](CONTRIBUTING.md). How dependencies are installed and changed (the lock file, the cooldown, inspect_ai tracked from `main`) is in [DEPENDENCIES.md](https://github.com/meridianlabs-ai/actions/blob/main/DEPENDENCIES.md) in meridianlabs-ai/actions.
+Development setup (`uv sync --locked --extra dev`, frontend/Git LFS setup) is in [CONTRIBUTING.md](CONTRIBUTING.md). How dependencies are installed and changed (the lock file, the cooldown) is in [DEPENDENCIES.md](https://github.com/meridianlabs-ai/actions/blob/main/DEPENDENCIES.md) in meridianlabs-ai/actions.
 
 ## Principles
 
@@ -219,7 +219,7 @@ pnpm install
 Pipeline: Pydantic models → openapi.json → generated.ts
 
 After Python API changes:
-1. `uv sync --upgrade-package inspect-ai --extra dev` (CI regenerates against inspect_ai main's latest commit), then `.venv/bin/python scripts/export_openapi_schema.py`—regenerates `src/inspect_scout/_view/openapi.json`
+1. `uv sync --locked --extra dev`, then `.venv/bin/python scripts/export_openapi_schema.py`—regenerates `src/inspect_scout/_view/openapi.json`
 2. In the submodule's `apps/scout`: `pnpm types:generate`—regenerates `apps/scout/src/types/generated.ts` (`pnpm build` does NOT regenerate types)
 3. Commit both: `openapi.json` in this repo, `generated.ts` in the submodule. Landing a submodule change requires the coordinated flow in [.agents/skills/land-ts-mono/SKILL.md](.agents/skills/land-ts-mono/SKILL.md)
 

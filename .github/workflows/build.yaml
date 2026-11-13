@@ -36,8 +36,9 @@ jobs:
         with:
           persist-credentials: false
       # Ruff only reads the source, so the project itself does not install.
-      - uses: ./.github/actions/uv-sync
+      - uses: meridianlabs-ai/actions/install-python-dependencies@4757bdf4154f25f6118bf797d04160c16a07f824 # main
         with:
+          versions: locked
           python-version: "3.11"
           project-install: skip
           extras: dev
@@ -60,8 +61,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: ./.github/actions/uv-sync
+      - uses: meridianlabs-ai/actions/install-python-dependencies@4757bdf4154f25f6118bf797d04160c16a07f824 # main
         with:
+          versions: locked
           python-version: ${{ matrix.python-version }}
           extras: dev
       - name: Run mypy
@@ -92,8 +94,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: ./.github/actions/uv-sync
+      - uses: meridianlabs-ai/actions/install-python-dependencies@4757bdf4154f25f6118bf797d04160c16a07f824 # main
         with:
+          versions: locked
           python-version: ${{ matrix.python-version }}
           extras: dev
       - name: Run tests
@@ -114,8 +117,9 @@ jobs:
           persist-credentials: false
       # The project's locked dependencies, not the project itself: the step
       # after the build installs the wheel.
-      - uses: ./.github/actions/uv-sync
+      - uses: meridianlabs-ai/actions/install-python-dependencies@4757bdf4154f25f6118bf797d04160c16a07f824 # main
         with:
+          versions: locked
           python-version: ${{ matrix.python-version }}
           project-install: skip
       # The release build's hashed toolchain file and build command
@@ -147,8 +151,9 @@ jobs:
           persist-credentials: false
           submodules: true
 
-      - uses: ./.github/actions/uv-sync
+      - uses: meridianlabs-ai/actions/install-python-dependencies@4757bdf4154f25f6118bf797d04160c16a07f824 # main
         with:
+          versions: locked
           python-version: "3.11"
 
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
@@ -183,14 +188,10 @@ jobs:
             exit 1
           fi
 
-      # openapi.json is generated against inspect_ai main. The release PR
-      # tests the released inspect_ai, which would show false drift.
       - name: Regenerate schema from Python source
-        if: github.head_ref != 'release-please--branches--main'
         run: uv run --no-sync python scripts/export_openapi_schema.py
 
       - name: Check schema is up to date (docstring-only drift tolerated)
-        if: github.head_ref != 'release-please--branches--main'
         run: uv run --no-sync python .github/scripts/check_openapi_drift.py
 
       - name: Ensure regeneration produced no other changes

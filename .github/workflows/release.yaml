@@ -17,7 +17,7 @@ jobs:
       contents: write # requested by the reusable workflow
       pull-requests: write # requested by the reusable workflow
     # A commit on main rather than v1: v1's reusables call their own actions by tag.
-    uses: meridianlabs-ai/actions/.github/workflows/release-please-python.yml@62bc8360498822ef3eab7c9584d1bd523de3febf # commit on main
+    uses: meridianlabs-ai/actions/.github/workflows/release-please-python.yml@4757bdf4154f25f6118bf797d04160c16a07f824 # commit on main
     with:
       # Both publishes (PyPI + the npm viewer lib) run in separate `on: release`
       # workflows, each with its own environment gate — so each posts its own

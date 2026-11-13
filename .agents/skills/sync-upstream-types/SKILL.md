@@ -160,8 +160,10 @@ order and auto-merge apply. This skill adds only these points:
 
 - Phase 1 (`land-ts-mono` step 3). The ts-mono PR has
   `apps/scout/src/types/generated.ts`. This repo's PR has `openapi.json`, the
-  gitlink at the ts-mono branch head, and `dist/` if it changed. Do not
-  commit `uv.lock`. Use titles that step 1's search finds, for example
+  gitlink at the ts-mono branch head, and `dist/` if it changed. A rebuilt
+  bundle has new hashed file names, so stage it with
+  `git add -A src/inspect_scout/_view/dist` to record the deleted and the new
+  files. Do not commit `uv.lock`. Use titles that step 1's search finds, for example
   `chore: regenerate scout types for inspect_ai main` (ts-mono) and
   `chore: regenerate schema and types for inspect_ai main` (this repo).
   In the PR body, list the ts-mono commits that the bump picks up.

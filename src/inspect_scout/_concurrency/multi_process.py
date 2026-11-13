@@ -17,11 +17,15 @@ See: https://stackoverflow.com/questions/75270606
 from __future__ import annotations
 
 import multiprocessing
+import multiprocessing.connection
 import signal
+import threading
 import time
 from multiprocessing.context import SpawnProcess
+from multiprocessing.queues import Queue
+from queue import SimpleQueue
 from types import FrameType
-from typing import Any, AsyncIterator, Awaitable, Callable
+from typing import Any, AsyncIterator, Awaitable, Callable, Sequence
 
 import anyio
 from anyio import create_task_group
@@ -47,14 +51,16 @@ from ._mp_common import (
     ResultItem,
     SemaphoreRequest,
     ShutdownSentinel,
+    UpstreamQueueItem,
     WorkerComplete,
     WorkerError,
+    WorkerExited,
     WorkerReady,
     get_log_level,
     get_plugin_directory,
     run_sync_on_thread,
 )
-from ._mp_error import WorkerProcessError
+from ._mp_error import WorkerProcessError, WorkerProcessExitError
 from ._mp_logging import find_inspect_log_handler
 from ._mp_registry import ParentSemaphoreRegistry
 from ._mp_shutdown import shutdown_subprocesses
@@ -103,6 +109,38 @@ _active: bool = False
 
 # Return/parameter type of signal.signal() (typeshed's private signal._HANDLER)
 SignalHandler = Callable[[int, FrameType | None], Any] | int | None
+
+
+# A worker killed mid-write can leave a read blocked forever. Abandoned on an anyio
+# worker thread, such a read would keep the process from exiting, since those threads
+# are non-daemon.
+class _DaemonQueueReader:
+    """Reads the upstream queue on a daemon thread, one item per `get()`."""
+
+    def __init__(self, queue: Queue[UpstreamQueueItem]) -> None:
+        self._queue = queue
+        self._requests: SimpleQueue[bool] = SimpleQueue()
+        self._items: SimpleQueue[UpstreamQueueItem | Exception] = SimpleQueue()
+        threading.Thread(target=self._read, daemon=True).start()
+
+    async def get(self) -> UpstreamQueueItem:
+        self._requests.put(True)
+        item = await run_sync_on_thread(self._items.get)
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+    def close(self) -> None:
+        """Stop the reader, releasing a `get()` abandoned by cancellation."""
+        self._requests.put(False)
+        self._items.put(_SHUTDOWN_SENTINEL)
+
+    def _read(self) -> None:
+        while self._requests.get():
+            try:
+                self._items.put(self._queue.get())
+            except Exception as ex:
+                self._items.put(ex)
 
 
 def multi_process_strategy(
@@ -232,6 +270,8 @@ def multi_process_strategy(
             # Track worker ready signals for startup coordination
             workers_ready_count = 0
 
+            monitor_scope = anyio.CancelScope()
+
             async def _producer() -> None:
                 """Producer task that feeds work items into the queue."""
                 try:
@@ -254,7 +294,7 @@ def multi_process_strategy(
 
                 while workers_finished < max_processes:
                     # Thread sleeps in kernel until data arrives or shutdown sentinel injected
-                    item = await run_sync_on_thread(upstream_queue.get)
+                    item = await upstream_reader.get()
 
                     match item:
                         case WorkerReady(worker_id):
@@ -323,7 +363,41 @@ def multi_process_strategy(
                         case WorkerError():
                             raise WorkerProcessError(item)
 
+                        case WorkerExited():
+                            raise WorkerProcessExitError(item)
+
+                # Completed workers only exit once shutdown signals them
+                monitor_scope.cancel()
                 print_diagnostics("MP Collector", "Finished collecting all items")
+
+            async def _worker_monitor() -> None:
+                """Stop the scan when a worker process dies before completing."""
+                with monitor_scope:
+                    running = dict(enumerate(processes))
+                    while running:
+                        ready: Sequence[object] = await run_sync_on_thread(
+                            multiprocessing.connection.wait,
+                            [p.sentinel for p in running.values()],
+                        )
+                        for worker_id, p in list(running.items()):
+                            if p.sentinel not in ready:
+                                continue
+                            del running[worker_id]
+                            p.join()
+                            exitcode = p.exitcode
+                            if not exitcode:
+                                continue
+                            exited = WorkerExited(worker_id, exitcode)
+                            # A signal can kill a worker mid-write, holding the
+                            # upstream queue's write lock, so a notice sent
+                            # through the queue might never arrive.
+                            if exitcode < 0:
+                                raise WorkerProcessExitError(exited)
+                            # A worker exiting with a code normally flushes its
+                            # queue writes first, so the notice lands behind
+                            # anything it sent (e.g. a more informative
+                            # WorkerError).
+                            await run_sync_on_thread(upstream_queue.put, exited)
 
             from ._mp_subprocess import subprocess_main
 
@@ -351,11 +425,13 @@ def multi_process_strategy(
             # Restore SIGINT handler in parent only (workers inherited SIG_IGN)
             signal.signal(signal.SIGINT, original_sigint_handler)
 
+            upstream_reader = _DaemonQueueReader(upstream_queue)
             try:
                 # Run producer and collector concurrently - all in one cancel scope
                 async with create_task_group() as tg:
                     tg.start_soon(_producer)
                     tg.start_soon(_upstream_collector)
+                    tg.start_soon(_worker_monitor)
 
                 # If we get here, everything completed normally
                 print_diagnostics("MP Main", "Task group exited normally")
@@ -375,6 +451,7 @@ def multi_process_strategy(
 
             finally:
                 print_diagnostics("MP Main", "In finally")
+                upstream_reader.close()
                 # Unified shutdown sequence for both clean and Ctrl-C shutdown
                 # Shield from cancellation so cleanup can complete even if we were cancelled
                 with anyio.CancelScope(shield=True):

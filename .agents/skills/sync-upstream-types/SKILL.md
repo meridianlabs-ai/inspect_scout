@@ -55,9 +55,11 @@ schema includes. The scout app also uses the same types from
 and `apps/scout/src/query/schemaCompatibility.typecheck.ts` asserts that some
 of them are identical. inspect_ai regenerates the inspect-common file with
 its own `land-ts-mono`. Check that ts-mono `origin/main` already has the
-upstream change, using a value from the diff in step 1:
+upstream change, using a value from the diff in step 1. Run all commands in
+this skill from the repo root unless a step says otherwise:
 
 ```bash
+git submodule update --init
 git -C src/inspect_scout/_view/ts-mono fetch origin
 git -C src/inspect_scout/_view/ts-mono grep -n '"zeroed"' origin/main -- packages/inspect-common/src/types/generated.ts
 ```
@@ -82,21 +84,22 @@ pnpm install --frozen-lockfile
 cd -
 ```
 
-Install the inspect_ai that `check-schema-and-types` uses. Read
-`[tool.uv.sources]` in `pyproject.toml`:
+Install the inspect_ai that `check-schema-and-types` uses. This skill
+assumes that `[tool.uv.sources]` in `pyproject.toml` points `inspect-ai` at
+inspect_ai git `main`. If that changes, install what
+`.github/actions/uv-sync` installs.
 
-- `inspect-ai` points at inspect_ai git `main`: run
-  `uv sync --upgrade-package inspect-ai --extra dev`. This installs main's
-  latest commit and also rewrites `uv.lock`. Do not commit that `uv.lock`
-  change. Run `git checkout -- uv.lock` (CI does the same). After that, run
-  Python through `.venv/bin/python` or `uv run --no-sync`. A plain `uv run`
-  syncs the venv back to the locked commit.
-- No git source (inspect-ai comes from PyPI): run
-  `uv sync --locked --extra dev`. A new release reaches CI only through a
-  `uv.lock` change, which is a dependency change under
-  [DEPENDENCIES.md](https://github.com/meridianlabs-ai/actions/blob/main/DEPENDENCIES.md).
+```bash
+uv sync --upgrade-package inspect-ai --extra dev
+git checkout -- uv.lock
+```
 
-Keep the repo's cooldown. Never add `--no-config` or `--exclude-newer false`.
+The sync installs main's latest commit and also rewrites `uv.lock`. Do not
+commit that `uv.lock` change; CI also restores it. From then on, run Python
+through `.venv/bin/python` or `uv run --no-sync`. A plain `uv run` syncs the
+venv back to the locked commit. Keep the repo's cooldown and
+[DEPENDENCIES.md](https://github.com/meridianlabs-ai/actions/blob/main/DEPENDENCIES.md).
+Never add `--no-config` or `--exclude-newer false`.
 
 Record the installed version. Its `+g<sha>` suffix names the inspect_ai
 commit. Compare it with the commit in the CI log:
@@ -142,8 +145,8 @@ Do not skip `pnpm build`. The ts-mono branch starts at ts-mono `origin/main`,
 which is often ahead of this repo's gitlink. The build writes the viewer into
 `src/inspect_scout/_view/dist`, so the bundle picks up every frontend commit
 between the old gitlink and `origin/main`. `js-dist-validation` fails unless
-you commit that rebuilt `dist/`. List the commits that the bump picks up, for
-the PR body:
+you commit that rebuilt `dist/`. Back at the repo root, list the commits that
+the bump picks up, for the PR body:
 
 ```bash
 git -C src/inspect_scout/_view/ts-mono log --oneline "$(git rev-parse HEAD:src/inspect_scout/_view/ts-mono)"..origin/main
@@ -166,7 +169,8 @@ order and auto-merge apply. This skill adds only these points:
   job is inside the `Build` workflow, so read job-level status
   (`gh run view <run-id> --json jobs`).
 - inspect_ai `main` can move while the pair is open. If
-  `check-schema-and-types` shows a new upstream diff, repeat step 4 on both
+  `check-schema-and-types` shows a new upstream diff, run the `uv sync` and
+  `git checkout -- uv.lock` from step 3 again, then repeat step 4 on both
   branches.
 - Phase 2 (`land-ts-mono` step 4). ts-mono `origin/main` can move past your
   merge before the gitlink bump. Run `pnpm build` again at the new gitlink

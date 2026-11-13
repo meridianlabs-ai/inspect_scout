@@ -967,6 +967,7 @@ async def handle_scan_interrupted(
     # and reported rather than tripping the not-None assert upstream
     with anyio.CancelScope(shield=True):
         scan_status = await recorder.sync(await recorder.location(), complete=False)
+    scan_status.interrupted = True
     display().scan_interrupted(message_or_exc, scan_status)
     return scan_status
 

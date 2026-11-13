@@ -17,6 +17,9 @@ Whoever hits the drift does the sync. Do not skip `check-schema-and-types`,
 make it optional, or merge with it red. This holds for every contributor,
 whatever part of the code their own PR changes.
 
+Run all commands in this skill from the repo root unless a step says
+otherwise.
+
 ## 1. Recognize upstream drift
 
 It is upstream drift when the check fails at "Check schema is up to date" and
@@ -55,8 +58,7 @@ schema includes. The scout app also uses the same types from
 and `apps/scout/src/query/schemaCompatibility.typecheck.ts` asserts that some
 of them are identical. inspect_ai regenerates the inspect-common file with
 its own `land-ts-mono`. Check that ts-mono `origin/main` already has the
-upstream change, using a value from the diff in step 1. Run all commands in
-this skill from the repo root unless a step says otherwise:
+upstream change, using a value from the diff in step 1:
 
 ```bash
 git submodule update --init
@@ -141,7 +143,7 @@ pnpm test
 pnpm build --force
 ```
 
-Do not skip `pnpm build`. The ts-mono branch starts at ts-mono `origin/main`,
+Do not skip `pnpm build --force`. The ts-mono branch starts at ts-mono `origin/main`,
 which is often ahead of this repo's gitlink. The build writes the viewer into
 `src/inspect_scout/_view/dist`, so the bundle picks up every frontend commit
 between the old gitlink and `origin/main`. `js-dist-validation` fails unless

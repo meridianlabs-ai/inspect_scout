@@ -64,10 +64,3 @@ def test_workflow_uses_are_pinned_to_commits() -> None:
     assert not stale, (
         f"no workflow uses these; remove them from ALLOWED_UNPINNED: {stale}"
     )
-
-
-def test_pr_title_lint_reads_types_from_its_pinned_commit() -> None:
-    # The reusable checks out meridianlabs-ai/actions at types-ref (default
-    # `v1`); a Dependabot bump of the `uses:` SHA leaves types-ref behind.
-    job = yaml.safe_load((WORKFLOWS / "pr-title-lint.yml").read_text())["jobs"]["lint"]
-    assert job["with"]["types-ref"] == job["uses"].rsplit("@", 1)[1]

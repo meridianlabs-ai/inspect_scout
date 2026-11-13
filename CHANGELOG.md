@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.6.3](https://github.com/meridianlabs-ai/inspect_scout/compare/0.6.2...0.6.3) (2026-11-13)
+
+
+### Features
+
+* imported transcripts keep the source's message IDs ([#753](https://github.com/meridianlabs-ai/inspect_scout/issues/753)) ([59c3023](https://github.com/meridianlabs-ai/inspect_scout/commit/59c3023dfd3458a388f61a38c9bddd69be6cc964))
+
+
+### Bug Fixes
+
+* compact large transcript indexes on DuckDB 1.4 ([#695](https://github.com/meridianlabs-ai/inspect_scout/issues/695)) ([eb0b194](https://github.com/meridianlabs-ai/inspect_scout/commit/eb0b1949270856482ac8bcaba21b3f8b761b41cd))
+* completing a shared scan can no longer write files outside its directory ([#764](https://github.com/meridianlabs-ai/inspect_scout/issues/764)) ([05449cd](https://github.com/meridianlabs-ai/inspect_scout/commit/05449cdf7d8e53321022dd705ac9379c8b3b448b))
+* count scanner results with no value instead of silently dropping them ([#620](https://github.com/meridianlabs-ai/inspect_scout/issues/620)) ([c02ef25](https://github.com/meridianlabs-ai/inspect_scout/commit/c02ef25c3fdbf7866ddc30e9af1b48035106bc3c))
+* keep concurrent Parquet inserts readable ([#681](https://github.com/meridianlabs-ai/inspect_scout/issues/681)) ([9b74bf6](https://github.com/meridianlabs-ai/inspect_scout/commit/9b74bf6ad4a64f66fde4bf890baad1f7fd73d8f1))
+* llm_scanner fails when a scan job or Run Scan sets message filters ([#715](https://github.com/meridianlabs-ai/inspect_scout/issues/715)) ([9ea6058](https://github.com/meridianlabs-ai/inspect_scout/commit/9ea6058adf7a5f6971b36c2bd6e71f81037fb319))
+* preserve metadata objects in saved scan inputs ([#765](https://github.com/meridianlabs-ai/inspect_scout/issues/765)) ([8fdf255](https://github.com/meridianlabs-ai/inspect_scout/commit/8fdf255bfaabb9326e1c40228199811aa8aa5fd3))
+* reading a shared scan opens only that scan's own result files ([#776](https://github.com/meridianlabs-ai/inspect_scout/issues/776)) ([6608b52](https://github.com/meridianlabs-ai/inspect_scout/commit/6608b523002ed4fe043996400b8a90cf0a8802cd))
+* respect word boundaries in regex alternatives ([#802](https://github.com/meridianlabs-ai/inspect_scout/issues/802)) ([3ec1142](https://github.com/meridianlabs-ai/inspect_scout/commit/3ec1142048e456960ed1e77c667f147ffbb03667))
+* scans stall on a transcript whose cache download was cancelled ([#755](https://github.com/meridianlabs-ai/inspect_scout/issues/755)) ([a130ded](https://github.com/meridianlabs-ai/inspect_scout/commit/a130dedb404f45560f32bb74fd6c8289076348a2))
+* scout viewer shows inspect_ai's communication and swarm events ([#777](https://github.com/meridianlabs-ai/inspect_scout/issues/777)) ([8b12ea6](https://github.com/meridianlabs-ai/inspect_scout/commit/8b12ea62b2f423144aa2d2a540f272b1699c60a0))
+
 ## [0.6.2](https://github.com/meridianlabs-ai/inspect_scout/compare/0.6.1...0.6.2) (2026-10-29)
 
 

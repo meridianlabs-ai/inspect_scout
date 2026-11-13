@@ -6,10 +6,7 @@ updates:
   # `<sha> # main` pin (meridianlabs-ai/actions, until a release tag has the
   # shared Python actions) moves to that branch's head, with no cooldown.
   - package-ecosystem: github-actions
-    # / covers the workflows; the local composite actions pin actions too.
-    directories:
-      - /
-      - /.github/actions/*
+    directory: /
     schedule:
       interval: weekly
     # Wait a week after a release before proposing it, so a compromised
@@ -27,14 +24,14 @@ updates:
       prefix: ci
     assignees:
       - epatey
-  # Bumps uv.lock. The cooldown matches `exclude-newer` in pyproject.toml, and
-  # its exclude list matches the "6 hours" entries in `exclude-newer-package`
-  # there (a dated emergency entry is locked by hand): Dependabot's
-  # cooldown counts whole days, so those packages' 6-hour cooldown is left to
-  # uv. They get their own group, so a broken update elsewhere can't hold them
-  # up. It comes first because a package that matches both groups goes to the
-  # first. inspect-ai is ignored: it comes from inspect_ai main, which CI
-  # moves to the latest commit on every run.
+  # Bumps uv.lock. The cooldown matches `exclude-newer` in pyproject.toml.
+  # Dependabot's cooldown counts whole days, so the packages with no uv
+  # cooldown (in-house, `false`) and the 6-hour provider SDKs in
+  # `exclude-newer-package` there are in `cooldown.exclude` and in
+  # six-hour-cooldown, and their cooldown is left to uv (a dated emergency
+  # entry is locked by hand). They get their own group, so a broken update
+  # elsewhere can't hold them up. It comes first because a package that
+  # matches both groups goes to the first.
   - package-ecosystem: uv
     versioning-strategy: lockfile-only
     directory: /
@@ -45,15 +42,15 @@ updates:
       exclude:
         - "anthropic"
         - "google-genai"
+        - "inspect-ai"
         - "inspect-swe"
         - "openai"
-    ignore:
-      - dependency-name: "inspect-ai"
     groups:
       six-hour-cooldown:
         patterns:
           - "anthropic"
           - "google-genai"
+          - "inspect-ai"
           - "inspect-swe"
           - "openai"
       python-packages:

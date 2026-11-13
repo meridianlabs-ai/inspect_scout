@@ -22,8 +22,9 @@ submodule gitlink (see the submodule guide in repo facts for background).
   (from repo root; requires `pnpm install` done in the submodule; it writes
   the schema then chains `pnpm --filter scout types:generate`)
 - Regeneration runs against the **installed** inspect_ai, and CI regenerates
-  against inspect_ai git `main` — so regenerate with inspect_ai at main (a
-  lagging editable install bakes in false drift)
+  against the locked inspect_ai in `uv.lock` — so regenerate after
+  `uv sync --locked --extra dev` (an editable inspect_ai install bakes in
+  false drift)
 - Generated artifacts:
   - `src/inspect_scout/_view/openapi.json` (this repo)
   - `apps/scout/src/types/generated.ts` (inside the submodule)
@@ -214,9 +215,9 @@ gate clears.
   checked-in viewer `dist/` — taking main's dist is correct when your ts-mono
   delta is types/tests only (type erasure leaves the build output identical);
   otherwise rebuild dist from your ts-mono branch.
-- Regenerate only from a venv with this repo installed AND inspect_ai at
-  main (CI regenerates against inspect_ai git main; an editable inspect_ai
-  install that lags main produces false drift). Stale submodule
+- Regenerate only from a venv with this repo installed AND the locked
+  inspect_ai (CI regenerates against `uv.lock`; an editable inspect_ai
+  install that differs from it produces false drift). Stale submodule
   `node_modules` breaks the TypeScript half — `pnpm install` in the submodule
   first.
 - Don't trust the branch's committed schema just because its CI once passed —

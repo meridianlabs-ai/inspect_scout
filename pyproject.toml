@@ -119,21 +119,14 @@ required-version = ">=0.13.4"
 # Only resolve releases at least 7 days old (see CONTRIBUTING.md).
 exclude-newer = "7 days"
 
-# 6 hours only for direct dependencies that are a model provider SDK or an
-# Inspect package; see CONTRIBUTING.md.
+# 6 hours only for direct dependencies that are a model provider SDK. Inspect
+# packages are ours, so they have no cooldown (false); see CONTRIBUTING.md.
 [tool.uv.exclude-newer-package]
 anthropic = "6 hours"
 google-genai = "6 hours"
-inspect-ai = "6 hours"
-inspect-swe = "6 hours"
+inspect-ai = false
+inspect-swe = false
 openai = "6 hours"
-
-# Development and CI track inspect_ai main. uv.lock records a commit, and CI
-# moves it to main's latest before installing (.github/actions/uv-sync). Only uv
-# reads this; the published package requires the inspect-ai floor above, and
-# the release PR's CI installs the newest release instead.
-[tool.uv.sources]
-inspect-ai = { git = "https://github.com/UKGovernmentBEIS/inspect_ai", branch = "main" }
 
 [tool.ruff]
 extend-exclude = ["docs", "src/inspect_scout/_view/ts-mono"]

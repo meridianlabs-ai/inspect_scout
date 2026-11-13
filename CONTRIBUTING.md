@@ -50,12 +50,12 @@ uv sync --locked --extra dev
 
 ### Dependencies
 
-[DEPENDENCIES.md](https://github.com/meridianlabs-ai/actions/blob/main/DEPENDENCIES.md) in meridianlabs-ai/actions tells how the Inspect repositories install and change dependencies. It covers the lock file, the cooldown, the canaries, inspect_ai `main`, and the procedures to add or update a dependency. Follow it. It is the same for every Inspect repository, so this file does not repeat it.
+[DEPENDENCIES.md](https://github.com/meridianlabs-ai/actions/blob/main/DEPENDENCIES.md) in meridianlabs-ai/actions tells how the Inspect repositories install and change dependencies. It covers the lock file, the cooldown, the canaries, and the procedures to add or update a dependency. Follow it. It is the same for every Inspect repository, so this file does not repeat it.
 
 For this repository:
 
-- inspect_scout needs unreleased inspect_ai changes. `[tool.uv.sources]` in `pyproject.toml` points `inspect-ai` at inspect_ai `main`.
-- The 6-hour packages are in `[tool.uv.exclude-newer-package]` in `pyproject.toml`.
+- inspect_ai and other Inspect packages come from PyPI, like every other dependency. They have no cooldown (`false` in `[tool.uv.exclude-newer-package]` in `pyproject.toml`); the model provider SDKs there have a 6-hour cooldown.
+- To develop against an unreleased inspect_ai, install your checkout over the locked one without committing it: `uv pip install --no-deps -e ../inspect_ai`. A PR that needs it cannot merge until that inspect_ai is published on PyPI and the `inspect-ai` floor in `pyproject.toml` and `uv.lock` here are updated.
 
 ### Frontend (TypeScript viewer)
 
@@ -95,10 +95,10 @@ pnpm build   # production build — run before committing; we ship the built JS
 
 ### Regenerating schema and types
 
-Shared types flow **Python (Pydantic models) → `openapi.json` → `generated.ts`**. These artifacts are generated, never hand-edited, and CI fails if they drift from source. After changing any Python model that crosses this boundary, regenerate and commit both artifacts. CI regenerates against inspect_ai main's latest commit, so move to it first:
+Shared types flow **Python (Pydantic models) → `openapi.json` → `generated.ts`**. These artifacts are generated, never hand-edited, and CI fails if they drift from source. After changing any Python model that crosses this boundary, regenerate and commit both artifacts:
 
 ```bash
-uv sync --upgrade-package inspect-ai --extra dev
+uv sync --locked --extra dev
 .venv/bin/python scripts/export_openapi_schema.py     # Python → openapi.json
 cd src/inspect_scout/_view/ts-mono/apps/scout && pnpm types:generate   # openapi.json → generated.ts
 ```

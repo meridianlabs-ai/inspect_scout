@@ -58,7 +58,12 @@ class ActiveScansStore(Protocol):
         ...
 
     def put_scanner_results(
-        self, scan_id: str, scanner: str, results: Sequence["ResultReport"]
+        self,
+        scan_id: str,
+        scanner: str,
+        results: Sequence["ResultReport"],
+        *,
+        complete: bool = True,
     ) -> None:
         """Store scanner results, aggregating into Summary."""
         ...
@@ -156,7 +161,12 @@ def active_scans_store() -> Generator[ActiveScansStore, None, None]:
                 kvstore.put(pid_key, json.dumps(existing))
 
             def put_scanner_results(
-                self, scan_id: str, scanner: str, results: Sequence["ResultReport"]
+                self,
+                scan_id: str,
+                scanner: str,
+                results: Sequence["ResultReport"],
+                *,
+                complete: bool = True,
             ) -> None:
                 if self._closed:
                     return
@@ -165,7 +175,7 @@ def active_scans_store() -> Generator[ActiveScansStore, None, None]:
                     existing.get("summary", {"complete": False})
                 )
                 # _report takes transcript but doesn't use it - pass dummy cast
-                summary._report(None, scanner, results, None)  # type: ignore[arg-type]
+                summary._report(None, scanner, results, None, complete=complete)  # type: ignore[arg-type]
                 existing.update(
                     {
                         "scan_id": scan_id,

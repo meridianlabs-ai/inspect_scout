@@ -14,7 +14,7 @@ from inspect_ai._util.appdirs import inspect_data_dir
 from inspect_ai._util.file import file
 from inspect_ai._util.hash import mm3_hash
 from inspect_ai.scorer import value_to_float
-from pydantic import JsonValue
+from pydantic import BaseModel, JsonValue
 from pydantic_core import to_json
 from upath import UPath
 
@@ -28,6 +28,21 @@ from .._transcript.util import LazyJSONDict
 
 SCAN_ERRORS = "_errors.jsonl"
 SCAN_SUMMARY = "_summary.json"
+
+
+class _ResultParts(BaseModel):
+    """Atomic snapshot of one transcript's current recording attempt."""
+
+    attempt: str
+    count: int = 0
+    complete: bool = False
+    errors: bool = False
+
+    def paths(self, scanner_dir: UPath) -> list[str]:
+        return [
+            (scanner_dir / f".{self.attempt}" / f"{i:08d}.parquet").as_posix()
+            for i in range(self.count)
+        ]
 
 
 # Per-buffer-dir in-process state. Multiple `RecorderBuffer` instances
@@ -72,10 +87,16 @@ class RecorderBuffer:
       <scanbuffer_dir> / "<hash_of_scan_location>" /
           scanner=<scanner_name> /
               <transcript_id>.parquet
+              <transcript_id>.parts.json
+              .<attempt_id>/<part_number>.parquet
 
     Assumptions:
       - transcript_id is a UUID (safe as filename)
-      - only one process writes a given <transcript_id>.parquet once
+      - one recording task per transcript/scanner pair
+
+    Whole-transcript writes retain the legacy parquet layout. Incremental
+    writes publish immutable parts through an atomic manifest; its completion
+    flag prevents resume from skipping an unfinished loader.
     """
 
     @staticmethod
@@ -134,6 +155,9 @@ class RecorderBuffer:
         scanner: str,
         results: Sequence[ResultReport],
         metrics: dict[str, dict[str, float]] | None,
+        *,
+        complete: bool = True,
+        append: bool = False,
     ) -> None:
         import pyarrow.parquet as pq
 
@@ -225,27 +249,46 @@ class RecorderBuffer:
             | {"timestamp": datetime.now().astimezone().isoformat()}
             for result in results
         ]
-        if not records:
-            return
-
-        table = _records_to_arrow(records)
-
         # Ensure destination directory exists
         sdir = self._buffer_dir / f"scanner={_sanitize_component(scanner)}"
         sdir.mkdir(parents=True, exist_ok=True)
 
-        # One-shot write per transcript
-        final_path = sdir / f"{transcript.transcript_id}.parquet"
-
-        # Atomic write: write to .tmp, then os.replace to final
-        tmp_path = sdir / f".{transcript.transcript_id}.parquet.tmp"
-        pq.write_table(
-            table,
-            tmp_path.as_posix(),
-            compression="zstd",
-            use_dictionary=True,
-        )
-        os.replace(tmp_path.as_posix(), final_path.as_posix())
+        manifest_path = sdir / f"{transcript.transcript_id}.parts.json"
+        if not records or not complete or append:
+            parts = (
+                _ResultParts.model_validate_json(manifest_path.read_text())
+                if append
+                else _ResultParts(attempt=uuid.uuid4().hex)
+            )
+            if records:
+                part_dir = sdir / f".{parts.attempt}"
+                part_dir.mkdir(parents=True, exist_ok=True)
+                pq.write_table(
+                    _records_to_arrow(records),
+                    (part_dir / f"{parts.count:08d}.parquet").as_posix(),
+                    compression="zstd",
+                    use_dictionary=True,
+                )
+                parts.count += 1
+            parts.complete = complete
+            parts.errors = parts.errors or any(r.error is not None for r in results)
+            # Parts are immutable and become visible only with the manifest.
+            # A sync that read an older snapshot can finish even during retry;
+            # old attempts stay until the buffer is cleaned after completion.
+            tmp_manifest = manifest_path.with_suffix(".tmp")
+            tmp_manifest.write_text(parts.model_dump_json())
+            os.replace(tmp_manifest.as_posix(), manifest_path.as_posix())
+        else:
+            final_path = sdir / f"{transcript.transcript_id}.parquet"
+            tmp_path = sdir / f".{transcript.transcript_id}.parquet.tmp"
+            pq.write_table(
+                _records_to_arrow(records),
+                tmp_path.as_posix(),
+                compression="zstd",
+                use_dictionary=True,
+            )
+            os.replace(tmp_path.as_posix(), final_path.as_posix())
+            manifest_path.unlink(missing_ok=True)
 
         # update and persist summary. the shared in-memory `Summary` is
         # the source of truth; the lock serializes mutation + write so
@@ -253,7 +296,9 @@ class RecorderBuffer:
         # updates and never observe a partial state on disk.
         async with self._state.lock:
             assert self._state.summary is not None  # set in __init__
-            self._state.summary._report(transcript, scanner, results, metrics)
+            self._state.summary._report(
+                transcript, scanner, results, metrics, complete=complete
+            )
             _persist_scan_summary(self._buffer_dir, self._state.summary)
 
         # record errors (open(..., "at") gives OS-atomic appends)
@@ -274,6 +319,10 @@ class RecorderBuffer:
 
     async def is_recorded(self, transcript_id: str, scanner: str) -> bool:
         sdir = self._buffer_dir / f"scanner={_sanitize_component(scanner)}"
+        manifest_path = sdir / f"{transcript_id}.parts.json"
+        if manifest_path.exists():
+            parts = _ResultParts.model_validate_json(manifest_path.read_text())
+            return parts.complete and not parts.errors
         transcript_file = sdir / f"{transcript_id}.parquet"
         if transcript_file.exists():
             # check if there are any non-null scan_error fields
@@ -365,9 +414,8 @@ def scanner_table(
     # the buffer is cleaned). pyarrow's ds.dataset(list) requires uniform
     # types in the list, so we expand the directory to its parquet files.
     #
-    # The buffer's per-transcript file is named `<transcript_id>.parquet`
-    # and is authoritative for that transcript_id: any rows for the same
-    # transcript_id in `extra_inputs` (a previously-compacted output that
+    # The buffer's per-transcript file or parts manifest is authoritative:
+    # any rows for the same transcript_id in `extra_inputs` (a compacted output that
     # was built from an earlier copy of these same buffer files) are
     # duplicates and must be filtered out — otherwise rows double-count
     # when `sync` runs more than once without clearing the buffer between
@@ -376,7 +424,14 @@ def scanner_table(
     buffer_inputs: list[str] = []
     buffer_tids: list[str] = []
     if sdir.exists():
+        for manifest in sdir.glob("*.parts.json"):
+            parts = _ResultParts.model_validate_json(manifest.read_text())
+            buffer_inputs.extend(parts.paths(sdir))
+            buffer_tids.append(manifest.name.removesuffix(".parts.json"))
+        part_tids = set(buffer_tids)
         for p in sdir.glob("*.parquet"):
+            if p.stem in part_tids:
+                continue
             buffer_inputs.append(str(p))
             buffer_tids.append(p.stem)
     extra_paths: list[str] = (

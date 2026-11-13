@@ -38,8 +38,8 @@ if TYPE_CHECKING:
         ParseFunctionResult,
         ParseJob,
         ReaderCMFactory,
+        ScanFunction,
         ScanMetrics,
-        ScannerJob,
     )
 
 
@@ -165,6 +165,8 @@ class ResultItem:
     transcript_info: TranscriptInfo
     scanner_name: str
     results: list[ResultReport]
+    complete: bool = True
+    append: bool = False
 
 
 @dataclass(frozen=True)
@@ -254,8 +256,8 @@ class IPCContext:
     ]
     """Function that executes a parse job yielding scanner jobs."""
 
-    scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]]
-    """Function that executes a scanner job and returns results."""
+    scan_function: ScanFunction
+    """Execute a scanner job, handing off each completed report."""
 
     reader_cm_factory: ReaderCMFactory
     """Factory that yields a context-managed `TranscriptsReader` for this worker."""

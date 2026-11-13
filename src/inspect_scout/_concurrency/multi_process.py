@@ -36,9 +36,7 @@ from inspect_ai.util._concurrency import init_concurrency
 
 from inspect_scout._display._display import display
 
-from .._scanner.result import ResultReport
 from .._transcript.transcripts import TranscriptsReader
-from .._transcript.types import TranscriptInfo
 from ._mp_common import (
     DillCallable,
     IPCContext,
@@ -63,8 +61,9 @@ from .common import (
     ParseFunctionResult,
     ParseJob,
     ReaderCMFactory,
+    RecordResults,
+    ScanFunction,
     ScanMetrics,
-    ScannerJob,
     sum_metrics,
 )
 
@@ -140,14 +139,12 @@ def multi_process_strategy(
 
     async def the_func(
         *,
-        record_results: Callable[
-            [TranscriptInfo, str, list[ResultReport]], Awaitable[None]
-        ],
+        record_results: RecordResults,
         parse_jobs: AsyncIterator[ParseJob],
         parse_function: Callable[
             [ParseJob, TranscriptsReader], Awaitable[ParseFunctionResult]
         ],
-        scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]],
+        scan_function: ScanFunction,
         update_metrics: Callable[[ScanMetrics], None] | None = None,
         reader_cm_factory: ReaderCMFactory,
     ) -> None:
@@ -277,8 +274,16 @@ def multi_process_strategy(
                                 )
                                 ipc_ctx.workers_ready_event.set()
 
-                        case ResultItem(transcript_info, scanner_name, results):
-                            await record_results(transcript_info, scanner_name, results)
+                        case ResultItem(
+                            transcript_info, scanner_name, results, complete, append
+                        ):
+                            await record_results(
+                                transcript_info,
+                                scanner_name,
+                                results,
+                                complete=complete,
+                                append=append,
+                            )
                             items_processed += 1
                             print_diagnostics(
                                 "MP Collector",

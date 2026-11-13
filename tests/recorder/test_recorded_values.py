@@ -15,18 +15,27 @@ from pydantic import JsonValue
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "values",
+    ("values", "result_type"),
     [
-        [0, 1],
-        [True, False],
-        [float("nan"), 1],
-        [float("inf"), 1],
-        [float("-inf"), 1],
-        [None, 1, True, "1", "true", [0, 1], {"score": 0.5}],
+        ([0, 1], None),
+        ([True, False], None),
+        ([float("nan"), 1], None),
+        ([float("inf"), 1], None),
+        ([float("-inf"), 1], None),
+        ([None, 1, True, "1", "true", [0, 1], {"score": 0.5}], None),
+        # A custom type labels only list and dict values, which stay JSON text.
+        ([{"acc": True}], "boolean"),
+        ([[True, False]], "boolean"),
+        ([{"acc": 1}], "number"),
+        ([1, {"acc": 1}], "number"),
+        ([True, {"acc": False}], "boolean"),
     ],
 )
 async def test_recorded_values(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, values: list[JsonValue]
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    values: list[JsonValue],
+    result_type: str | None,
 ) -> None:
     monkeypatch.setenv("SCOUT_SCANBUFFER_DIR", str(tmp_path / "buffer"))
     recorder = FileRecorder()
@@ -47,7 +56,7 @@ async def test_recorded_values(
                 input_type="message",
                 input_ids=[],
                 input=ChatMessageUser(content=""),
-                result=Result(value=value),
+                result=Result(value=value, type=result_type),
                 validation=None,
                 error=None,
                 events=[],

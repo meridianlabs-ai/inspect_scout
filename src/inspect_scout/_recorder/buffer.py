@@ -303,8 +303,12 @@ class RecorderBuffer:
             for row in table.to_pylist():
                 value = row["value"]
                 if isinstance(value, str) and row["value_type"] != "string":
-                    # Mixed scalar columns use Python spellings for these values.
-                    if row["value_type"] == "boolean":
+                    # Lists and dicts are stored as JSON text under any type
+                    # label. Scalars only become text in mixed columns, where
+                    # they use Python spellings that never start with [ or {.
+                    if value.startswith(("[", "{")):
+                        value = json.loads(value)
+                    elif row["value_type"] == "boolean":
                         value = value.lower() == "true"
                     elif row["value_type"] == "number" and value in (
                         "nan",

@@ -374,6 +374,12 @@ def scan_resume(
 ) -> Status:
     """Resume a previous scan.
 
+    Resuming runs code the scan names: it imports the scanner and validation
+    predicate source files recorded in the scan, builds its scanners,
+    predicates, model and model roles (including base URLs and model args)
+    from values in the scan, and reads transcripts from the locations the scan
+    records. Only resume scans you trust.
+
     Args:
        scan_location: Scan location to resume from.
        display: Display type: "rich", "plain", "log", or "none" (defaults to "rich").
@@ -404,6 +410,12 @@ async def scan_resume_async(
     predicate_overrides: Mapping[str, PredicateFn] | None = None,
 ) -> Status:
     """Resume a previous scan.
+
+    Resuming runs code the scan names: it imports the scanner and validation
+    predicate source files recorded in the scan, builds its scanners,
+    predicates, model and model roles (including base URLs and model args)
+    from values in the scan, and reads transcripts from the locations the scan
+    records. Only resume scans you trust.
 
     Args:
        scan_location: Scan location to resume from.

@@ -138,14 +138,17 @@ Then, from `src/inspect_scout/_view/ts-mono`, run one at a time:
 ```bash
 pnpm check    # lint, format, typecheck; the same gate as js-dist-validation
 pnpm test
-pnpm build
+pnpm build --force
 ```
 
 Do not skip `pnpm build`. The ts-mono branch starts at ts-mono `origin/main`,
 which is often ahead of this repo's gitlink. The build writes the viewer into
 `src/inspect_scout/_view/dist`, so the bundle picks up every frontend commit
 between the old gitlink and `origin/main`. `js-dist-validation` fails unless
-you commit that rebuilt `dist/`. Back at the repo root, list the commits that
+you commit that rebuilt `dist/`. Use `--force`: the copy into `dist/` runs
+in the scout vite build, and a turbo cache hit restores only
+`apps/scout/dist` and skips that copy. Check that the build log shows
+`[vite] Copied dist`. Back at the repo root, list the commits that
 the bump picks up, for the PR body:
 
 ```bash
@@ -175,7 +178,7 @@ order and auto-merge apply. This skill adds only these points:
   `git checkout -- uv.lock` from step 3 again, then repeat step 4 on both
   branches.
 - Phase 2 (`land-ts-mono` step 4). ts-mono `origin/main` can move past your
-  merge before the gitlink bump. Run `pnpm build` again at the new gitlink
+  merge before the gitlink bump. Run `pnpm build --force` again at the new gitlink
   and commit any `dist/` change with it, for the same reason as in step 4.
 
 Other open PRs stay red until they get the fix from `main`. A re-run of the

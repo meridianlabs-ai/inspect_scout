@@ -39,21 +39,23 @@ If your PR also changed a model that feeds the schema, do not use this skill.
 Regenerate in your own PR with `land-ts-mono`; that regeneration also picks
 up the upstream change.
 
-Before you start, look for an open sync pair in both repos, and use it if it
-exists:
+Before you start, look for an open sync pair in both repos (titles as in
+step 5), and use it if it exists:
 
 ```bash
 gh pr list -R meridianlabs-ai/inspect_scout --state open --search "regenerate in:title"
-gh pr list -R meridianlabs-ai/ts-mono --state open --search "scout types in:title"
+gh pr list -R meridianlabs-ai/ts-mono --state open --search "regenerate scout types in:title"
 ```
 
 ## 2. Check ts-mono's inspect-common types first
 
-Scout's `generated.ts` imports inspect-originated types from
-`@tsmono/inspect-common` (`packages/inspect-common/src/types/generated.ts`).
-inspect_ai regenerates that file with its own `land-ts-mono`. Check that
-ts-mono `origin/main` already has the upstream change, using a value from the
-diff in step 1:
+Scout's `generated.ts` has its own copy of the inspect_ai types that its
+schema includes. The scout app also uses the same types from
+`@tsmono/inspect-common` (`packages/inspect-common/src/types/generated.ts`),
+and `apps/scout/src/query/schemaCompatibility.typecheck.ts` asserts that some
+of them are identical. inspect_ai regenerates the inspect-common file with
+its own `land-ts-mono`. Check that ts-mono `origin/main` already has the
+upstream change, using a value from the diff in step 1:
 
 ```bash
 git -C src/inspect_scout/_view/ts-mono fetch origin
@@ -62,13 +64,11 @@ git -C src/inspect_scout/_view/ts-mono grep -n '"zeroed"' origin/main -- package
 
 If it does not, the inspect_ai side has not synced yet. Find the inspect_ai
 ts-mono PR for that change, or open one with inspect_ai's `land-ts-mono`, and
-land it first. Then `pnpm check` here runs against the same inspect-common
-types.
+land it first. Otherwise the two copies differ, and `pnpm check` can fail.
 
 ## 3. Prepare branches and environments
 
-Cut both branches fresh from `origin/main`. Never commit on the submodule's
-detached HEAD or on a stale local `main`.
+Cut both branches from `origin/main`, as in `land-ts-mono` step 1:
 
 ```bash
 git fetch origin
@@ -121,10 +121,12 @@ git -C src/inspect_scout/_view/ts-mono diff
 ```
 
 `check_openapi_drift.py` compares the committed schema (`HEAD`) with the
-working tree. Before you commit, it prints the upstream diff and exits 1.
-After you commit `openapi.json` (step 5), run it again. It must exit 0:
+working tree, so it fails until you commit `openapi.json`. Do what CI does:
+commit `openapi.json` (step 5), regenerate again, and then run the check. It
+must exit 0, and `git status` must show no new changes:
 
 ```bash
+.venv/bin/python scripts/export_openapi_schema.py
 uv run --no-sync python .github/scripts/check_openapi_drift.py
 ```
 
@@ -150,26 +152,25 @@ git status --short -- src/inspect_scout/_view/dist
 
 ## 5. Land with land-ts-mono
 
-Phase 1 is `land-ts-mono` step 3:
+Land the pair with `land-ts-mono` from its step 3. Its rules for the merge
+order and auto-merge apply. This skill adds only these points:
 
-1. In the submodule, commit `apps/scout/src/types/generated.ts`, push the
-   branch, and open the ts-mono PR.
-2. In this repo, commit `openapi.json`, the gitlink at the ts-mono branch
-   head, and `dist/` if it changed. Do not commit `uv.lock`. Push, and open
-   the PR.
-3. Cross-link the two PRs in their descriptions.
-
-The expected result is all green on this repo's PR except
-`submodule-on-main`. That job is inside the `Build` workflow, so read
-job-level status (`gh run view <run-id> --json jobs`). inspect_ai `main` can
-move while the pair is open. If `check-schema-and-types` shows a new upstream
-diff, repeat step 4 on both branches.
-
-Phase 2 is `land-ts-mono` step 4. After the ts-mono PR merges, its squash or
-rebase gives a new SHA. Bump the gitlink to ts-mono `origin/main`, which may
-have moved again. Then run `pnpm install --frozen-lockfile && pnpm build`,
-commit the gitlink and any `dist/` change, push, and enable auto-merge on
-this repo's PR.
+- Phase 1 (`land-ts-mono` step 3). The ts-mono PR has
+  `apps/scout/src/types/generated.ts`. This repo's PR has `openapi.json`, the
+  gitlink at the ts-mono branch head, and `dist/` if it changed. Do not
+  commit `uv.lock`. Use titles that step 1's search finds, for example
+  `chore: regenerate scout types for inspect_ai main` (ts-mono) and
+  `chore: regenerate schema and types for inspect_ai main` (this repo).
+  In the PR body, list the ts-mono commits that the bump picks up.
+- The expected phase 1 result is all green except `submodule-on-main`. That
+  job is inside the `Build` workflow, so read job-level status
+  (`gh run view <run-id> --json jobs`).
+- inspect_ai `main` can move while the pair is open. If
+  `check-schema-and-types` shows a new upstream diff, repeat step 4 on both
+  branches.
+- Phase 2 (`land-ts-mono` step 4). ts-mono `origin/main` can move past your
+  merge before the gitlink bump. Run `pnpm build` again at the new gitlink
+  and commit any `dist/` change with it, for the same reason as in step 4.
 
 Other open PRs stay red until they get the fix from `main`. A re-run of the
 failed job does not help, because a re-run tests the same merge commit. Merge

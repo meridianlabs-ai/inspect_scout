@@ -225,6 +225,8 @@ After Python API changes:
 
 CI validates sync.
 
+When `check-schema-and-types` fails on a PR that did not change these models, inspect_ai `main` changed a shared type. Follow [.agents/skills/sync-upstream-types/SKILL.md](.agents/skills/sync-upstream-types/SKILL.md). Do not skip the check or merge with it red.
+
 ## Repository skills
 
 Shared skills live in `.agents/skills`. `.claude/skills` links to that directory. Use `$skill-name` in Codex or `/skill-name` in Claude Code.

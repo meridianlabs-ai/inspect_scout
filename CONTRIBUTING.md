@@ -59,7 +59,7 @@ For this repository:
 
 ### Frontend (TypeScript viewer)
 
-The web UI lives in a git submodule at `src/inspect_scout/_view/ts-mono` (Turborepo + pnpm) and uses Git LFS for binary assets. **This is only needed if you plan to work on the frontend** — Python-only contributors can skip it.
+The web UI lives in a git submodule at `src/inspect_scout/_view/ts-mono` (Turborepo + pnpm) and uses Git LFS for binary assets. **This is only needed if you plan to work on the frontend** — Python-only contributors can skip it. You also need it to fix schema drift (see [Regenerating schema and types](#regenerating-schema-and-types)).
 
 1. [Install Git LFS](https://git-lfs.com/) and run `git lfs install`.
 2. Initialize the submodule and install dependencies:
@@ -104,6 +104,8 @@ cd src/inspect_scout/_view/ts-mono/apps/scout && pnpm types:generate   # openapi
 ```
 
 Commit the updated `src/inspect_scout/_view/openapi.json` and `apps/scout/src/types/generated.ts`. CI also verifies the submodule pointer is a commit on `ts-mono`'s `main`, so merge the submodule PR before updating the pointer.
+
+`check-schema-and-types` can also fail on a PR that changed no models. That happens when inspect_ai `main` changes a type that the schema includes. The same steps fix it, in a separate pair of PRs. [.agents/skills/sync-upstream-types/SKILL.md](.agents/skills/sync-upstream-types/SKILL.md) gives the full procedure. The check has no exemption, so the contributor who finds the drift fixes it.
 
 ## Commit messages and releases
 

@@ -11,8 +11,4 @@ jobs:
     permissions:
       pull-requests: read # read the PR title
     # A commit on main rather than v1: v1's reusables call their own actions by tag.
-    uses: meridianlabs-ai/actions/.github/workflows/pr-title-lint.yml@62bc8360498822ef3eab7c9584d1bd523de3febf # commit on main
-    with:
-      # Read the type list from the same commit (tests/test_workflow_pins.py
-      # checks they match).
-      types-ref: 62bc8360498822ef3eab7c9584d1bd523de3febf
+    uses: meridianlabs-ai/actions/.github/workflows/pr-title-lint.yml@78e42fa47e62da0926f744f28602ffee11f6516b # main

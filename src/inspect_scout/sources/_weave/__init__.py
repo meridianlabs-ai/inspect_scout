@@ -20,11 +20,11 @@ from inspect_ai.model import (
     ChatMessageAssistant,
     ChatMessageSystem,
     ChatMessageUser,
-    stable_message_ids,
 )
 
 from inspect_scout._transcript.types import Transcript
 
+from .._message_ids import TraceMessageIds
 from .client import (
     WEAVE_SOURCE_TYPE,
     retry_api_call,
@@ -205,23 +205,29 @@ async def _trace_to_transcript(
     # Get LLM calls for message extraction and metadata
     llm_calls = get_llm_calls(ordered_calls)
 
+    model_events = [e for e in events if isinstance(e, ModelEvent)]
+    message_ids = TraceMessageIds(source_ids=True)
+    for event in model_events:
+        message_ids.apply(event, str(event.uuid))
+
     # Build messages from LLM inputs + outputs
     messages: list[ChatMessage] = []
+    messages_from: list[str] | None = None
 
     # For traces with LLM calls, use the full conversation from the
     # last LLM event which includes all intermediate turns (tool calls, results).
-    if llm_calls:
-        model_events = [e for e in events if isinstance(e, ModelEvent)]
-        if model_events:
-            last_model = model_events[-1]
-            # Use the LLM's input which has the full conversation
-            messages = list(last_model.input)
-            # Append the final assistant response from output
-            if last_model.output and last_model.output.message:
-                messages.append(last_model.output.message)
+    if llm_calls and model_events:
+        last_model = model_events[-1]
+        # Use the LLM's input which has the full conversation
+        messages = list(last_model.input)
+        # Append the final assistant response from output
+        if last_model.output and last_model.output.choices:
+            messages.append(last_model.output.message)
+        messages_from = [str(last_model.uuid)]
 
     # Fallback: for traces without LLM events, try root inputs
     if not messages:
+        messages_from = None
         root_inputs = getattr(root_call, "inputs", None) or {}
         if isinstance(root_inputs, dict):
             root_messages = root_inputs.get("messages", [])
@@ -236,13 +242,9 @@ async def _trace_to_transcript(
                             messages.append(ChatMessageSystem(content=str(content)))
                         elif role == "assistant":
                             messages.append(ChatMessageAssistant(content=str(content)))
-
-    # Apply stable message IDs
-    apply_ids = stable_message_ids()
-    for event in events:
-        if isinstance(event, ModelEvent):
-            apply_ids(event)
-    apply_ids(messages)
+            TraceMessageIds().apply_messages(
+                messages, str(getattr(root_call, "id", ""))
+            )
 
     # Extract metadata from root call
     metadata = extract_metadata(root_call)
@@ -302,6 +304,7 @@ async def _trace_to_transcript(
         error=error,
         limit=limit_val,
         messages=messages,
+        messages_from=messages_from,
         events=events,
         metadata=metadata,
     )

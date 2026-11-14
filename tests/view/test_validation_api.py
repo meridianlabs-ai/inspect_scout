@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from inspect_scout import ValidationCase, validation_set
+from inspect_scout._validation.writer import ValidationFileWriter
 from inspect_scout._view._api_v2 import v2_api_app
 from starlette.status import (
     HTTP_400_BAD_REQUEST,
@@ -878,3 +880,44 @@ def _git_init(path: Path) -> None:
         check=True,
         capture_output=True,
     )
+
+
+@pytest.mark.parametrize("extension", ["csv", "json", "yaml", "jsonl"])
+@pytest.mark.parametrize(
+    "case",
+    [
+        ValidationCase(id="alpha", target=True),
+        ValidationCase(id="alpha", labels={"risk": True, "safe": False}),
+        ValidationCase(id="alpha", target={"risk": True, "score": 0.5}),
+        ValidationCase(id=["alpha"], target=False),
+        ValidationCase(id=["alpha", "beta"], target=True),
+        ValidationCase(id=["comma,id", 'quote"id', "犬", "line\nbreak"], target=True),
+        ValidationCase(id=["001", "NA"], target=True, split="dev", predicate="eq"),
+    ],
+)
+def test_create_validation_round_trip(
+    client: TestClient, tmp_path: Path, extension: str, case: ValidationCase
+) -> None:
+    path = tmp_path / f"round_trip.{extension}"
+    response = client.post(
+        "/validations",
+        json={"path": path.as_uri(), "cases": [case.model_dump(exclude_none=True)]},
+    )
+    assert response.status_code == 200
+    assert validation_set(path).cases == [case]
+
+
+def test_csv_writer_preserves_structured_cases(tmp_path: Path) -> None:
+    path = tmp_path / "cases.csv"
+    case = ValidationCase(id=["alpha", "beta"], target={"risk": True, "score": 0.5})
+    writer = ValidationFileWriter.create_new(path, [case])
+    rows = writer.read_cases()
+    writer.write_cases(rows)
+    assert validation_set(path).cases == [case]
+    assert list(rows[0])[0] == "id"
+
+
+def test_create_empty_csv_validation(tmp_path: Path) -> None:
+    path = tmp_path / "empty.csv"
+    ValidationFileWriter.create_new(path, [])
+    assert path.read_text() == "id,target\n"

@@ -530,7 +530,7 @@ class TestCreateIndex:
         assert transcript_ids.count("t1") == 1
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("session_id", ["s", "0s"])
+    @pytest.mark.parametrize("session_id", ["s", "20250101T100000"])
     async def test_create_index_prefers_compacted_file_to_session_file(
         self, storage: IndexStorage, conn: duckdb.DuckDBPyConnection, session_id: str
     ) -> None:
@@ -943,19 +943,26 @@ class TestConcurrencyProtection:
         self, storage: IndexStorage, conn: duckdb.DuckDBPyConnection
     ) -> None:
         """Entries held only by an older manifest stay visible and get compacted."""
-        # Three manifests left by concurrent compactions; t1 is in all of them
+        # Three manifests left by concurrent compactions of this version, each
+        # with its record of replaced files; t1 is in all of them
         await append_index(
-            create_sample_index_table(["t1"], ["data1.parquet"]),
+            create_sample_index_table(
+                ["t1"], ["data1.parquet"]
+            ).replace_schema_metadata({"inspect_scout.replaces": "[]"}),
             storage,
             "_manifest_20250101T100000_abc.idx",
         )
         await append_index(
-            create_sample_index_table(["t1", "t2"], ["data1.parquet", "data2.parquet"]),
+            create_sample_index_table(
+                ["t1", "t2"], ["data1.parquet", "data2.parquet"]
+            ).replace_schema_metadata({"inspect_scout.replaces": "[]"}),
             storage,
             "_manifest_20250101T110000_def.idx",
         )
         await append_index(
-            create_sample_index_table(["t1", "t3"], ["data1.parquet", "data3.parquet"]),
+            create_sample_index_table(
+                ["t1", "t3"], ["data1.parquet", "data3.parquet"]
+            ).replace_schema_metadata({"inspect_scout.replaces": "[]"}),
             storage,
             "_manifest_20250101T120000_ghi.idx",
         )

@@ -1943,14 +1943,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
     def _index_filename_for_parquet(self, parquet_filename: str) -> str:
         """Generate index filename matching parquet file's timestamp/uuid.
 
-        Strips the session ID prefix where the timestamp can be told apart
-        from it, so the index filename follows ``index_{timestamp}_{uuid}.idx``.
-        A session ID that itself starts with a digit and contains ``T`` is kept.
-        The session ID is only needed
-        in parquet filenames (for ``_list_session_files``). Which entry
-        deduplication keeps for a compacted session does not depend on this
-        name: a compacted (session-free) data file replaces the session files
-        it was built from.
+        Drops everything before the first ``_``-separated part that starts
+        with a digit and contains ``T``, which is normally the timestamp, so
+        the index filename follows ``index_{timestamp}_{uuid}.idx``. If a part
+        of the session ID has that shape, the name keeps the session ID from
+        that part on. The session ID is only needed in parquet filenames (for
+        ``_list_session_files``). Which entry deduplication keeps for a
+        compacted session does not depend on this name: a compacted
+        (session-free) data file replaces the session files it was built from.
 
         Args:
             parquet_filename: Name of the parquet file.

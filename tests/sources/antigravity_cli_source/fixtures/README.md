@@ -22,13 +22,19 @@ embed prompts, paths, and account details.
   calls, `send_message` report, and — after the final planner step — the
   `send_message` result, a stream-error `ERROR_MESSAGE`, and a user turn
   that never got a response (exercises trailing-step preservation inside
-  the agent span and the errored `ModelEvent` that carries them).
+  the agent span: the tool span, the failed `ModelEvent` the error
+  records, and the user turn's `InfoEvent`).
 - `eeeeeeee-…0005` — typed tool results (`RUN_COMMAND`, `VIEW_FILE`,
   `INVOKE_SUBAGENT`), which third-party parsers document for agy versions
   outside the corpus (the corpus records every result as `GENERIC`); the
   typed spawn result names `ffffffff-…0006`.
 - `ffffffff-…0006` — the sub-agent spawned by `eeeeeeee-…0005` (minimal:
   prompt + `send_message` report).
+- `77777777-…0007` — a user-only recording: prompt + `{{ CHECKPOINT 0 }}`
+  and no planner step (exercises that no model call, failed or not, is
+  invented for it).
+- `88888888-…0008` — a recording that ends on a successful tool result
+  (exercises that no model call is added after it).
 
 Tests that need a `conversations/<id>.db` (generation metadata / token
 usage) construct one at runtime via `helpers.write_generation_db`.

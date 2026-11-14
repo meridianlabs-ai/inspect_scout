@@ -36,9 +36,6 @@ from inspect_scout._transcript.messages import (
 )
 from inspect_scout._transcript.timeline import TimelineMessages
 from inspect_scout.sources import antigravity_cli
-from inspect_scout.sources._antigravity_cli.events import (
-    UNANSWERED_MODEL_CALL_ERROR,
-)
 
 from tests.sources.antigravity_cli_source.helpers import (
     generation_blob,
@@ -51,7 +48,19 @@ PARENT_ID = "cccccccc-0000-0000-0000-000000000003"
 CHILD_ID = "dddddddd-0000-0000-0000-000000000004"
 TYPED_ID = "eeeeeeee-0000-0000-0000-000000000005"
 TYPED_CHILD_ID = "ffffffff-0000-0000-0000-000000000006"
-TOP_LEVEL_IDS = {SIMPLE_ID, COMPACTION_ID, PARENT_ID, TYPED_ID}
+USER_ONLY_ID = "77777777-0000-0000-0000-000000000007"
+TOOL_ENDED_ID = "88888888-0000-0000-0000-000000000008"
+TOP_LEVEL_IDS = {
+    SIMPLE_ID,
+    COMPACTION_ID,
+    PARENT_ID,
+    TYPED_ID,
+    USER_ONLY_ID,
+    TOOL_ENDED_ID,
+}
+STREAM_ERROR = (
+    "Error: The stream was interrupted. Please continue the task you were working on."
+)
 
 
 @pytest.fixture
@@ -241,7 +250,7 @@ async def test_subagent_inlined_as_agent_span(fixtures_dir: Path) -> None:
     assert transcript.metadata["subagent_conversation_ids"] == [CHILD_ID]
 
     # the child's model events are inlined between the span boundaries: two
-    # completed calls plus the unanswered one carrying its trailing steps
+    # completed calls plus the one its trailing stream error records as failed
     begin_index = transcript.events.index(span_begins[0])
     end_index = next(
         i
@@ -253,7 +262,7 @@ async def test_subagent_inlined_as_agent_span(fixtures_dir: Path) -> None:
         for e in transcript.events[begin_index + 1 : end_index]
         if isinstance(e, ModelEvent)
     ]
-    assert [e.error for e in inlined] == [None, None, UNANSWERED_MODEL_CALL_ERROR]
+    assert [e.error for e in inlined] == [None, None, STREAM_ERROR]
 
     # ...and nest under the span in the event tree (span_id re-parenting),
     # leaving only the parent's own two model calls at the root
@@ -269,12 +278,12 @@ async def test_subagent_inlined_as_agent_span(fixtures_dir: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_subagent_steps_after_final_planner_survive(fixtures_dir: Path) -> None:
-    """A child's trailing tool result and error reach the timeline.
+    """A child's trailing tool result, error, and user turn reach the timeline.
 
     They follow the child's last planner step, so no completed ModelEvent's
     input holds them and the child's own message list is not kept. The tool
-    span and InfoEvent keep them in the timeline; the unanswered ModelEvent
-    that closes the span keeps them reachable as messages.
+    span, the failed ModelEvent the stream error records, and the user
+    turn's InfoEvent keep them.
     """
     transcripts = [
         t async for t in antigravity_cli(path=fixtures_dir, conversation_id=PARENT_ID)
@@ -298,28 +307,26 @@ async def test_subagent_steps_after_final_planner_survive(fixtures_dir: Path) ->
     assert tool_events[-1].completed is not None
     assert tool_events[-1].completed.isoformat() == "2026-08-23T13:04:01+00:00"
 
-    [error] = [n for n in agent.children if isinstance(n, InfoEvent)]
-    assert error.data == (
-        "Error: The stream was interrupted. Please continue the task you were "
-        "working on."
-    )
-
-    # the trailing user turn has no event of its own: it, the tool result,
-    # and the error ride in the unanswered ModelEvent that closes the span
-    unanswered = agent.children[-1]
-    assert isinstance(unanswered, ModelEvent)
-    assert unanswered.error == UNANSWERED_MODEL_CALL_ERROR
-    assert [m.role for m in unanswered.input] == [
+    # the stream error is the child's failed third call, made with the
+    # context at the failure (so the trailing tool result is its last input)
+    [failed] = [n for n in agent.children if isinstance(n, ModelEvent) and n.error]
+    assert failed.error == STREAM_ERROR
+    assert [m.role for m in failed.input] == [
         "user",
         "assistant",
         "tool",
         "tool",
         "assistant",
         "tool",
-        "system",
-        "user",
     ]
-    assert unanswered.input[-1].text == "Any update?"
+    assert isinstance(failed.input[-1], ChatMessageTool)
+
+    # the user turn after it appears in no ModelEvent input: an InfoEvent
+    # keeps it in the timeline
+    trailing = agent.children[-1]
+    assert isinstance(trailing, InfoEvent)
+    assert trailing.data == "Any update?"
+    assert trailing.metadata == {"step_type": "USER_INPUT"}
 
     # the parent's own spawn call is a tool span at the root, before the agent span
     [spawn] = [n for n in tree if isinstance(n, EventTreeSpan) and n.type == "tool"]
@@ -328,11 +335,14 @@ async def test_subagent_steps_after_final_planner_survive(fixtures_dir: Path) ->
 
 
 @pytest.mark.asyncio
-async def test_subagent_trailing_steps_reach_scanner_input(fixtures_dir: Path) -> None:
-    """transcript_messages() (what scanners read) includes a child's trailing steps.
+async def test_subagent_trailing_tool_result_reaches_scanner_input(
+    fixtures_dir: Path,
+) -> None:
+    """transcript_messages() (what scanners read) includes a child's trailing tool result.
 
-    span_messages() reconstructs from the last ModelEvent's input, so without
-    the unanswered event the child's segment would stop at "Report sent.".
+    span_messages() reconstructs from the last ModelEvent's input: the failed
+    call's, which holds the result. The error text itself is that event's
+    ``error`` and the user turn after it an InfoEvent; neither is a message.
     """
     transcripts = [
         t async for t in antigravity_cli(path=fixtures_dir, conversation_id=PARENT_ID)
@@ -351,10 +361,8 @@ async def test_subagent_trailing_steps_reach_scanner_input(fixtures_dir: Path) -
         "tool",
         "assistant",
         "tool",
-        "system",
-        "user",
     ]
-    assert child.messages[-1].text == "Any update?"
+    assert child.messages[-1].text.endswith("Message delivered")
 
 
 @pytest.mark.asyncio
@@ -737,10 +745,12 @@ async def test_token_counting(fixtures_dir: Path, tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_top_level_trailing_user_turn_reaches_scanner_input(
-    tmp_path: Path,
-) -> None:
-    """A conversation that ends on a user turn keeps it in scanner input too."""
+async def test_top_level_trailing_user_turn_is_kept(tmp_path: Path) -> None:
+    """A conversation that ends on a user turn keeps it, with no call after it.
+
+    Transcript.messages and an InfoEvent carry the turn; no ModelEvent input
+    does, so scanner input ends at the last reply.
+    """
     cid = "55555555-0000-0000-0000-000000000005"
     root = tmp_path / "root"
     _write_transcript(
@@ -758,6 +768,54 @@ async def test_top_level_trailing_user_turn_reaches_scanner_input(
 
     [transcript] = [t async for t in antigravity_cli(path=root)]
     assert [m.role for m in transcript.messages] == ["user", "assistant", "user"]
+    assert [e.event for e in transcript.events] == ["model", "info"]
+    [info] = [e for e in transcript.events if isinstance(e, InfoEvent)]
+    assert info.data == "are you there?"
+
+
+@pytest.mark.asyncio
+async def test_user_only_recording_has_no_events(fixtures_dir: Path) -> None:
+    """A recording with only a prompt holds no model call to report, failed or not.
+
+    With no events, transcript_messages() reads Transcript.messages, so the
+    prompt still reaches scanners.
+    """
+    [transcript] = [
+        t
+        async for t in antigravity_cli(path=fixtures_dir, conversation_id=USER_ONLY_ID)
+    ]
+    assert transcript.events == []
+    assert [m.role for m in transcript.messages] == ["user"]
 
     segments = await _scanner_segments(transcript)
-    assert [m.text for m in segments[-1].messages] == ["hi", "hello", "are you there?"]
+    assert [[m.text for m in s.messages] for s in segments] == [["Is anyone there?"]]
+
+
+@pytest.mark.asyncio
+async def test_tool_ended_recording_adds_no_model_call(fixtures_dir: Path) -> None:
+    """A recording that ends on a successful tool result adds no call after it.
+
+    The ToolEvent and Transcript.messages keep the result. span_messages()
+    reads only ModelEvent inputs, so scanner input ends at the call that
+    made it, as for the final tool result of an eval log.
+    """
+    [transcript] = [
+        t
+        async for t in antigravity_cli(path=fixtures_dir, conversation_id=TOOL_ENDED_ID)
+    ]
+    assert [e.event for e in transcript.events] == [
+        "model",
+        "span_begin",
+        "tool",
+        "span_end",
+    ]
+    [model_event] = [e for e in transcript.events if isinstance(e, ModelEvent)]
+    assert model_event.error is None
+    [tool_event] = [e for e in transcript.events if isinstance(e, ToolEvent)]
+    assert tool_event.function == "list_dir"
+    assert isinstance(tool_event.result, str)
+    assert tool_event.result.endswith("src/ tests/")
+    assert [m.role for m in transcript.messages] == ["user", "assistant", "tool"]
+
+    segments = await _scanner_segments(transcript)
+    assert [[m.role for m in s.messages] for s in segments] == [["user", "assistant"]]

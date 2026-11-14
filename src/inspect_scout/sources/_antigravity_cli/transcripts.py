@@ -58,9 +58,9 @@ from .events import (
     step_to_messages,
     step_tool_calls,
     to_compaction_event,
+    to_error_model_event,
     to_info_event,
     to_model_event,
-    to_unanswered_model_event,
     unknown_tool_call,
 )
 
@@ -345,6 +345,12 @@ def _convert_steps(
     # steps and the ordinals stay valid.
     generation_ordinal = 0
     planner_count = sum(1 for step in steps if step.type == "PLANNER_RESPONSE")
+    # User turns after the last model call (completed or failed) appear in
+    # no ModelEvent's input, so they get InfoEvents (see to_info_event).
+    last_call = next(
+        (s for s in reversed(steps) if s.type in ("PLANNER_RESPONSE", "ERROR_MESSAGE")),
+        None,
+    )
     generations_aligned = len(generations) == planner_count
     trusted_generations = generations
 
@@ -444,7 +450,15 @@ def _convert_steps(
                     conversation_id,
                 )
             )
-        elif step.type in ("SYSTEM_MESSAGE", "ERROR_MESSAGE"):
+        elif step.type == "ERROR_MESSAGE":
+            events.append(
+                to_error_model_event(step, context, current_model or "unknown")
+            )
+        elif step.type == "SYSTEM_MESSAGE" or (
+            step.type == "USER_INPUT"
+            and last_call is not None
+            and step.step_index > last_call.step_index
+        ):
             events.append(to_info_event(step))
 
         messages.extend(new_messages)
@@ -477,12 +491,6 @@ def _convert_steps(
     for call in final.abandoned:
         events.extend(
             _create_tool_span_events(call, None, final.started, conversation_id)
-        )
-    # A context that ends on anything but an assistant message stopped where
-    # the next model call would have been made (see to_unanswered_model_event).
-    if context and not isinstance(context[-1], ChatMessageAssistant):
-        events.append(
-            to_unanswered_model_event(steps[-1], context, current_model or "unknown")
         )
 
     return messages, events, info

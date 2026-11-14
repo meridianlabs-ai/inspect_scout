@@ -18,7 +18,6 @@ from inspect_ai.model import (
 )
 from inspect_scout.sources._antigravity_cli.client import GenerationInfo
 from inspect_scout.sources._antigravity_cli.events import (
-    UNANSWERED_MODEL_CALL_ERROR,
     Step,
     StepToolCall,
     ToolCallPairer,
@@ -576,22 +575,56 @@ class TestConvertSteps:
         assert tool_event.completed == tool_event.timestamp
 
     def test_system_text_yields_info_event(self) -> None:
-        """ERROR_MESSAGE/SYSTEM_MESSAGE steps are kept in the timeline as InfoEvents."""
+        """SYSTEM_MESSAGE steps are kept in the timeline as InfoEvents."""
         steps = [
             _planner(1, content="Working."),
             Step(
                 step_index=2,
                 source="SYSTEM",
-                type="ERROR_MESSAGE",
-                content="Error: interrupted",
+                type="SYSTEM_MESSAGE",
+                content="Subagent finished.",
             ),
         ]
         messages, events, _ = _convert(steps)
         [info_event] = [e for e in events if isinstance(e, InfoEvent)]
         assert info_event.source == "antigravity_cli"
-        assert info_event.data == "Error: interrupted"
-        assert info_event.metadata == {"step_type": "ERROR_MESSAGE"}
+        assert info_event.data == "Subagent finished."
+        assert info_event.metadata == {"step_type": "SYSTEM_MESSAGE"}
         assert isinstance(messages[-1], ChatMessageSystem)
+
+    def test_error_step_yields_failed_model_event(self) -> None:
+        """An ERROR_MESSAGE records a model call that failed mid-stream."""
+        steps = [
+            _planner(1, ("view_file", {"AbsolutePath": "/x"}), content="Looking."),
+            _result(2, "def foo(): ..."),
+            # the interrupted call: an empty planner step with no event of its own
+            _planner(3),
+            Step(
+                step_index=4,
+                source="SYSTEM",
+                type="ERROR_MESSAGE",
+                content="Error: interrupted",
+                created_at="2026-08-25T10:00:05Z",
+            ),
+            _planner(5, content="Retrying."),
+        ]
+        messages, events, _ = _convert(steps)
+        model_events = [e for e in events if isinstance(e, ModelEvent)]
+        assert [e.error for e in model_events] == [None, "Error: interrupted", None]
+        failed = model_events[1]
+        assert failed.output.choices == []
+        # the context the failed call was made with
+        assert [m.role for m in failed.input] == ["assistant", "tool"]
+        assert failed.timestamp.isoformat() == "2026-08-25T10:00:05+00:00"
+        assert failed.completed == failed.timestamp
+        assert not any(isinstance(e, InfoEvent) for e in events)
+        # the error text is fed back to the model, so it precedes the retry
+        assert [m.role for m in model_events[2].input] == [
+            "assistant",
+            "tool",
+            "system",
+        ]
+        assert isinstance(messages[-2], ChatMessageSystem)
 
     def test_result_after_dropped_result_is_unknown(self) -> None:
         """A valid result after a dropped step is not attributed to a stale call."""
@@ -647,55 +680,64 @@ class TestConvertSteps:
             "model-1",
         ]
 
-    def test_trailing_steps_yield_unanswered_model_event(self) -> None:
-        """Messages after the last planner step ride in an errored ModelEvent."""
+    @pytest.mark.parametrize(
+        ("steps", "expected"),
+        [
+            pytest.param(
+                [Step(step_index=0, type="USER_INPUT", content="hi")],
+                [],
+                id="user-only",
+            ),
+            pytest.param(
+                [
+                    Step(step_index=0, type="USER_INPUT", content="hi"),
+                    _planner(1, content="hello"),
+                ],
+                ["model"],
+                id="ends-on-reply",
+            ),
+            pytest.param(
+                [_planner(1, ("view_file", {})), _result(2, "def foo(): ...")],
+                ["model", "span_begin", "tool", "span_end"],
+                id="ends-on-tool-result",
+            ),
+            pytest.param(
+                [
+                    _planner(1, content="hello"),
+                    Step(step_index=2, type="USER_INPUT", content="Any update?"),
+                ],
+                ["model", "info"],
+                id="ends-on-user-turn",
+            ),
+        ],
+    )
+    def test_trailing_steps_add_no_model_call(
+        self, steps: list[Step], expected: list[str]
+    ) -> None:
+        """Steps after the last planner step never get a ModelEvent of their own.
+
+        A user-only or tool-ended recording holds no failed call to report.
+        A user turn after the last call gets an InfoEvent, since no
+        ModelEvent input will carry it.
+        """
+        _, events, _ = _convert(steps)
+        assert [e.event for e in events] == expected
+        assert all(e.error is None for e in events if isinstance(e, ModelEvent))
+
+    def test_trailing_user_turn_info_event_carries_request_text(self) -> None:
+        """The InfoEvent for a trailing user turn strips the prompt chrome."""
         steps = [
-            _planner(
-                1,
-                ("view_file", {"AbsolutePath": "/x"}),
-                content="Looking.",
-                created_at="2026-08-25T10:00:01Z",
-            ),
-            _result(2, "def foo(): ..."),
+            Step(step_index=0, type="USER_INPUT", content="hi"),
+            _planner(1, content="hello"),
             Step(
-                step_index=3,
-                source="SYSTEM",
-                type="ERROR_MESSAGE",
-                content="Error: interrupted",
-            ),
-            Step(
-                step_index=4,
+                step_index=2,
                 type="USER_INPUT",
-                content="Any update?",
+                content=CHROME_CONTENT,
                 created_at="2026-08-25T10:00:05Z",
             ),
         ]
         _, events, _ = _convert(steps)
-        model_events = [e for e in events if isinstance(e, ModelEvent)]
-        assert len(model_events) == 2
-        unanswered = model_events[-1]
-        assert events[-1] is unanswered
-        assert unanswered.pending is None
-        assert unanswered.error == UNANSWERED_MODEL_CALL_ERROR
-        assert unanswered.output.choices == []
-        assert unanswered.completed is None
-        # the context the never-completed call would have received
-        assert [m.role for m in unanswered.input] == [
-            "assistant",
-            "tool",
-            "system",
-            "user",
-        ]
-        assert unanswered.input[-1].text == "Any update?"
-        assert unanswered.timestamp.isoformat() == "2026-08-25T10:00:05+00:00"
-
-    def test_no_unanswered_event_when_planner_step_is_last(self) -> None:
-        """A conversation that ends on a completed model call gets no extra event."""
-        steps = [
-            Step(step_index=0, type="USER_INPUT", content="hi"),
-            _planner(1, content="hello"),
-        ]
-        _, events, _ = _convert(steps)
-        model_events = [e for e in events if isinstance(e, ModelEvent)]
-        assert len(model_events) == 1
-        assert model_events[0].error is None
+        [info_event] = [e for e in events if isinstance(e, InfoEvent)]
+        assert info_event.data == "Say hello"
+        assert info_event.metadata == {"step_type": "USER_INPUT"}
+        assert info_event.timestamp.isoformat() == "2026-08-25T10:00:05+00:00"

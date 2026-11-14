@@ -21,7 +21,10 @@ agy 1.1.14–1.1.19:
 - ``CHECKPOINT`` at the start of every conversation (``{{ CHECKPOINT 0 }}``)
   is a session preamble, not compaction; later checkpoints are real
   compaction boundaries.
-- ``ERROR_MESSAGE``/``SYSTEM_MESSAGE`` are model-visible system text.
+- ``SYSTEM_MESSAGE`` is model-visible system text. ``ERROR_MESSAGE`` records
+  a model call that failed mid-stream: in the corpus every one directly
+  follows an empty ``PLANNER_RESPONSE`` (the interrupted call, which
+  carries no output) and its text is fed back to the model.
 - ``step_index`` increments per step, but a step that produced no record
   leaves a hole: in the corpus every hole follows a planner step whose call
   was declined or whose turn was interrupted (the result is never written),
@@ -29,10 +32,11 @@ agy 1.1.14–1.1.19:
   index per tool-using session (specstory's format doc). See
   `ToolCallPairer` for how holes are handled.
 
-Events follow claude_code: a ModelEvent per planner step, a tool span per
-tool call (built in transcripts.py), and an InfoEvent per system text step,
-so timeline consumers see what happens after a conversation's final planner
-step as well.
+Events follow claude_code: a ModelEvent per planner step (errored for an
+``ERROR_MESSAGE``), a tool span per tool call (built in transcripts.py), and
+an InfoEvent per system text step and per user turn after the final model
+call, so timeline consumers see what happens after a conversation's final
+planner step as well.
 """
 
 from __future__ import annotations
@@ -295,43 +299,36 @@ def to_model_event(
 
 
 def to_info_event(step: Step) -> InfoEvent:
-    """Convert a ``SYSTEM_MESSAGE``/``ERROR_MESSAGE`` step to an `InfoEvent`.
+    """Convert a ``SYSTEM_MESSAGE`` or trailing ``USER_INPUT`` step to an `InfoEvent`.
 
-    The text also enters the message stream as a ChatMessageSystem; the
-    event keeps it in the timeline when it follows a conversation's final
-    planner step (and so appears in no ModelEvent's input).
+    The text also enters the message stream; the event keeps it in the
+    timeline when it follows a conversation's final model call (and so
+    appears in no ModelEvent's input). Only `ModelEvent` carries messages,
+    so this is a timeline record, not scanner input.
     """
+    content = step.content or ""
     return InfoEvent(
         source="antigravity_cli",
-        data=step.content or "",
+        data=parse_user_request(content) if step.type == "USER_INPUT" else content,
         metadata={"step_type": step.type},
         timestamp=parse_timestamp(step.created_at) or utcnow(),
     )
 
 
-UNANSWERED_MODEL_CALL_ERROR = (
-    "no response recorded: transcript ends before a model reply"
-)
-
-
-def to_unanswered_model_event(
+def to_error_model_event(
     step: Step,
     prior_messages: list[ChatMessage],
     model: str,
 ) -> ModelEvent:
-    """A `ModelEvent` for input after ``step`` that the transcript never answers.
+    """Convert an ``ERROR_MESSAGE`` step to a failed `ModelEvent`.
 
-    A transcript that ends with tool results, system text, or a user turn
-    and no further ``PLANNER_RESPONSE`` stops where the next model call
-    would have been made: an interrupted stream, a cancelled sub-agent, a
-    session still live when read. The event carries that context as its
-    input, no output, and ``error`` set, the shape inspect_ai leaves in a
-    finished log for a call cancelled mid-flight (``pending`` is live-run
-    state, cleared on every completion path). Emitting one keeps the
-    trailing messages reachable through ``ModelEvent.input`` for consumers
-    that reconstruct messages from events (``span_messages()``), which
-    otherwise stop at the last completed call.
+    The step records a model call interrupted mid-stream (see the module
+    docstring), so the event takes the context the call was made with as
+    its input, no output, and the recorded text as ``error``, the shape
+    inspect_ai leaves for a call that raised. The interrupted call's own
+    planner step is empty and produces nothing of its own.
     """
+    timestamp = parse_timestamp(step.created_at) or utcnow()
     return ModelEvent(
         model=model,
         input=list(prior_messages),
@@ -339,8 +336,9 @@ def to_unanswered_model_event(
         tool_choice="auto",
         config=GenerateConfig(),
         output=ModelOutput(model=model, metadata={"antigravity_cli_synthesized": True}),
-        error=UNANSWERED_MODEL_CALL_ERROR,
-        timestamp=parse_timestamp(step.created_at) or utcnow(),
+        error=step.content,
+        timestamp=timestamp,
+        completed=timestamp,
     )
 
 

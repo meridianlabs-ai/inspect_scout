@@ -1943,12 +1943,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
     def _index_filename_for_parquet(self, parquet_filename: str) -> str:
         """Generate index filename matching parquet file's timestamp/uuid.
 
-        Strips any session ID prefix so the index filename always follows
-        ``index_{timestamp}_{uuid}.idx`` format. The session ID is only needed
-        in parquet filenames (for ``_list_session_files``); the index filename
-        must use just the timestamp+uuid portion so that alphabetical ordering
-        gives compacted (session-free) entries higher ``_file_order`` than
-        their session-scoped predecessors during deduplication.
+        Drops everything before the first ``_``-separated part that starts
+        with a digit and contains ``T``, which is normally the timestamp, so
+        the index filename follows ``index_{timestamp}_{uuid}.idx``. If a part
+        of the session ID has that shape, the name keeps the session ID from
+        that part on. The session ID is only needed in parquet filenames (for
+        ``_list_session_files``). Which entry deduplication keeps for a
+        compacted session does not depend on this name: a compacted
+        (session-free) data file replaces the session files it was built from.
 
         Args:
             parquet_filename: Name of the parquet file.
@@ -2045,7 +2047,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         1. Find all session's parquet files
         2. Read all session data into Arrow table via DuckDB
         3. Write to new file(s) using existing logic (which creates index entries)
-        4. Index compaction (in commit()) deduplicates, keeping newest entries
+        4. Index compaction (in commit()) deduplicates, keeping the new files' entries
         5. Delete old session parquet files (now orphaned from index)
 
         Args:
@@ -2111,7 +2113,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 await self._write_arrow_batch(accumulated_batches, session_id=None)
 
             # 4. Index compaction will happen in commit() after this method returns
-            # Deduplication keeps newest file_order entries → new files win
+            # Deduplication prefers session-free files → new files win
 
             # 5. Delete old session parquet files (now orphaned)
             for f in session_files:

@@ -104,8 +104,7 @@ def _load_file(file: str | Path) -> pd.DataFrame:
     suffix = str(path.suffix).lower()
 
     if suffix == ".csv":
-        # Use automatic type detection (pandas default)
-        df = pd.read_csv(path)
+        df = _read_csv(path)
 
         # Auto-detect headerless 2-column CSV (for backwards compatibility)
         # If we have exactly 2 columns and no "id" column, check if first row looks like data
@@ -120,7 +119,7 @@ def _load_file(file: str | Path) -> pd.DataFrame:
                 or str(name).startswith("label_")
                 for name in col_names
             ):
-                df = pd.read_csv(path, header=None, names=["id", "target"])
+                df = _read_csv(path, headerless=True)
                 first_row = df.iloc[0].tolist() if len(df) > 0 else []
                 logger.warning(
                     f"CSV '{path.name}' has no recognized headers. "
@@ -164,6 +163,25 @@ def _load_file(file: str | Path) -> pd.DataFrame:
         raise ValueError(
             f"Unsupported file format: {suffix}. Supported formats: .csv, .json, .jsonl, .yaml, .yml"
         )
+
+
+def _read_csv(path: Path, *, headerless: bool = False) -> pd.DataFrame:
+    names = ["id", "target"] if headerless else None
+    with path.open("r", encoding="utf-8", newline="") as file:
+        df = pd.read_csv(file, names=names)
+        if "id" in df.columns:
+            # Read IDs without numeric or missing-value inference. Keep the
+            # default inference for targets and other columns.
+            file.seek(0)
+            ids = pd.read_csv(
+                file,
+                names=names,
+                usecols=["id"],
+                dtype=str,
+                keep_default_na=False,
+            )
+            df["id"] = ids["id"]
+    return df
 
 
 def _convert_csv_types(df: pd.DataFrame) -> pd.DataFrame:

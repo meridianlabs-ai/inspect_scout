@@ -1923,7 +1923,7 @@ requires-dist = [
     { name = "huggingface-hub", marker = "extra == 'dev'" },
     { name = "ijson", specifier = ">=3.2.0" },
     { name = "importlib-metadata" },
-    { name = "inspect-ai", specifier = ">=0.3.286" },
+    { name = "inspect-ai", specifier = ">=0.3.290" },
     { name = "inspect-swe", specifier = ">=0.2.56" },
     { name = "jinja2", specifier = ">=3.0.0" },
     { name = "jsonlines", specifier = ">=3.0.0" },

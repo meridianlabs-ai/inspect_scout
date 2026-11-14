@@ -36,7 +36,7 @@ jobs:
         with:
           persist-credentials: false
       # Ruff only reads the source, so the project itself does not install.
-      - uses: meridianlabs-ai/actions/install-python-dependencies@4757bdf4154f25f6118bf797d04160c16a07f824 # main
+      - uses: meridianlabs-ai/actions/install-python-dependencies@fbaa145b46c22a0e640234afba9bdac73cab13eb # main
         with:
           versions: locked
           python-version: "3.11"
@@ -61,7 +61,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: meridianlabs-ai/actions/install-python-dependencies@4757bdf4154f25f6118bf797d04160c16a07f824 # main
+      - uses: meridianlabs-ai/actions/install-python-dependencies@fbaa145b46c22a0e640234afba9bdac73cab13eb # main
         with:
           versions: locked
           python-version: ${{ matrix.python-version }}
@@ -94,7 +94,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: meridianlabs-ai/actions/install-python-dependencies@4757bdf4154f25f6118bf797d04160c16a07f824 # main
+      - uses: meridianlabs-ai/actions/install-python-dependencies@fbaa145b46c22a0e640234afba9bdac73cab13eb # main
         with:
           versions: locked
           python-version: ${{ matrix.python-version }}
@@ -117,7 +117,7 @@ jobs:
           persist-credentials: false
       # The project's locked dependencies, not the project itself: the step
       # after the build installs the wheel.
-      - uses: meridianlabs-ai/actions/install-python-dependencies@4757bdf4154f25f6118bf797d04160c16a07f824 # main
+      - uses: meridianlabs-ai/actions/install-python-dependencies@fbaa145b46c22a0e640234afba9bdac73cab13eb # main
         with:
           versions: locked
           python-version: ${{ matrix.python-version }}
@@ -151,7 +151,7 @@ jobs:
           persist-credentials: false
           submodules: true
 
-      - uses: meridianlabs-ai/actions/install-python-dependencies@4757bdf4154f25f6118bf797d04160c16a07f824 # main
+      - uses: meridianlabs-ai/actions/install-python-dependencies@fbaa145b46c22a0e640234afba9bdac73cab13eb # main
         with:
           versions: locked
           python-version: "3.11"

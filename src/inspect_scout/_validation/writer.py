@@ -162,13 +162,29 @@ def _csv_cases(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
         row = dict(case)
         if isinstance(row.get("id"), list):
             row["id"] = json.dumps(row["id"], ensure_ascii=False)
+        elif isinstance(row.get("id"), str) and isinstance(_parse_id(row["id"]), list):
+            # The reader parses these as group IDs, so the case could not be
+            # found again by its scalar ID.
+            raise ValueError(
+                f"CSV validation reads ID {row['id']!r} as a group ID. "
+                "Pass the ID as a list, or use JSON, YAML, or JSONL."
+            )
         if isinstance(row.get("target"), dict):
             target = row.pop("target")
             row.update({f"target_{key}": value for key, value in target.items()})
+        for key, value in row.items():
+            if key.startswith(("target_", "label_")) and (
+                value is None or key in ("target_", "label_")
+            ):
+                raise ValueError(
+                    "CSV validation dictionary targets and labels require "
+                    "non-empty keys and non-null values. "
+                    "Use JSON, YAML, or JSONL for these cases."
+                )
         if not _has_valid_columns(list(row)):
             raise ValueError(
-                "CSV validation cases require a target or non-empty target/label columns. "
-                "Use JSON, YAML, or JSONL for empty dictionaries."
+                "CSV validation cases require a target or non-empty target/label "
+                "columns. Use JSON, YAML, or JSONL for empty dictionaries."
             )
         rows.append(row)
     return rows
@@ -327,6 +343,9 @@ class ValidationFileWriter:
         Returns:
             Index of the matching case, or None if not found.
         """
+        if isinstance(case_id, str) and self.format == "csv":
+            # Match the reader, which parses comma-separated CSV IDs as groups.
+            case_id = _parse_id(case_id)
         search_id = case_id if isinstance(case_id, list) else [case_id]
         search_id_set = set(search_id) if len(search_id) > 1 else None
         search_id_single = search_id[0] if len(search_id) == 1 else None

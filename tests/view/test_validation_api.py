@@ -1133,3 +1133,88 @@ def test_delete_sparse_csv_case_returns_validation_error(
     assert response.status_code == 400
     assert "matching dictionary target or label keys" in response.json()["detail"]
     assert path.read_bytes() == before
+
+
+# The case route already decodes a JSON array as a group ID, so a JSON-like
+# scalar ID can only arrive through creation.
+@pytest.mark.parametrize(
+    ("case_id", "update"), [("a,b", False), ("a,b", True), ('["a"]', False)]
+)
+def test_csv_scalar_id_read_as_group_rejected_before_write(
+    client: TestClient, tmp_path: Path, case_id: str, update: bool
+) -> None:
+    path = tmp_path / "ids.csv"
+    before: bytes | None = None
+    if update:
+        created = client.post(
+            "/validations",
+            json={"path": path.as_uri(), "cases": [{"id": "alpha", "target": True}]},
+        )
+        assert created.status_code == 200
+        before = path.read_bytes()
+        route = f"/validations/{_base64url(path.as_uri())}/{_base64url(case_id)}"
+        response = client.post(route, json={"target": False})
+    else:
+        response = client.post(
+            "/validations",
+            json={"path": path.as_uri(), "cases": [{"id": case_id, "target": True}]},
+        )
+    assert response.status_code == 400
+    assert "as a group ID" in response.json()["detail"]
+    if before is None:
+        assert not path.exists()
+    else:
+        assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize("target", [{"risk": None, "safe": True}, {"": True}])
+@pytest.mark.parametrize("update", [False, True])
+def test_csv_null_or_unnamed_dictionary_value_rejected_before_write(
+    client: TestClient, tmp_path: Path, target: dict[str, object], update: bool
+) -> None:
+    path = tmp_path / "values.csv"
+    before: bytes | None = None
+    if update:
+        created = client.post(
+            "/validations",
+            json={
+                "path": path.as_uri(),
+                "cases": [{"id": "alpha", "target": {"risk": True, "safe": True}}],
+            },
+        )
+        assert created.status_code == 200
+        before = path.read_bytes()
+        route = f"/validations/{_base64url(path.as_uri())}/{_base64url('alpha')}"
+        response = client.post(route, json={"target": target})
+    else:
+        response = client.post(
+            "/validations",
+            json={"path": path.as_uri(), "cases": [{"id": "alpha", "target": target}]},
+        )
+    assert response.status_code == 400
+    assert "non-null values" in response.json()["detail"]
+    if before is None:
+        assert not path.exists()
+    else:
+        assert path.read_bytes() == before
+
+
+def test_csv_handwritten_comma_id_found_by_scalar_route(
+    client: TestClient, tmp_path: Path
+) -> None:
+    path = tmp_path / "handwritten.csv"
+    path.write_text('id,target\n"a,b",true\ngamma,false\n')
+    before = path.read_bytes()
+    route = f"/validations/{_base64url(path.as_uri())}/{_base64url('a,b')}"
+
+    retrieved = client.get(route)
+    assert retrieved.status_code == 200
+    assert retrieved.json() == {"id": ["a", "b"], "target": True}
+
+    updated = client.post(route, json={"target": False})
+    assert updated.status_code == 400
+    assert "as a group ID" in updated.json()["detail"]
+    assert path.read_bytes() == before
+
+    assert client.delete(route).status_code == 204
+    assert validation_set(path).cases == [ValidationCase(id="gamma", target=False)]

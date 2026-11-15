@@ -1120,19 +1120,46 @@ def test_csv_sparse_schema_rejected_before_write(
 
 
 @pytest.mark.parametrize("prefix", ["target", "label"])
-def test_delete_sparse_csv_case_returns_validation_error(
+def test_handwritten_sparse_csv_keeps_working(
     client: TestClient, tmp_path: Path, prefix: str
 ) -> None:
     path = tmp_path / "sparse.csv"
     path.write_text(
         f"id,{prefix}_risk,{prefix}_safe\nalpha,true,\nbeta,,false\ngamma,,true\n"
     )
+    uri = _base64url(path.as_uri())
+    assert client.delete(f"/validations/{uri}/{_base64url('gamma')}").status_code == 204
+    field = "target" if prefix == "target" else "labels"
+    updated = client.post(
+        f"/validations/{uri}/{_base64url('beta')}",
+        json={field: {"risk": True, "safe": False}},
+    )
+    assert updated.status_code == 200
+    assert path.read_text() == (
+        f"id,{prefix}_risk,{prefix}_safe\nalpha,True,\nbeta,True,False\n"
+    )
+
     before = path.read_bytes()
-    route = f"/validations/{_base64url(path.as_uri())}/{_base64url('gamma')}"
-    response = client.delete(route)
-    assert response.status_code == 400
-    assert "matching dictionary target or label keys" in response.json()["detail"]
+    sparse = client.post(
+        f"/validations/{uri}/{_base64url('delta')}", json={field: {"risk": True}}
+    )
+    assert sparse.status_code == 400
+    assert "matching dictionary target or label keys" in sparse.json()["detail"]
     assert path.read_bytes() == before
+
+
+def test_handwritten_blank_csv_target_keeps_working(
+    client: TestClient, tmp_path: Path
+) -> None:
+    path = tmp_path / "blank.csv"
+    path.write_text("id,target\nalpha,\nbeta,yes\ngamma,no\n")
+    uri = _base64url(path.as_uri())
+    updated = client.post(
+        f"/validations/{uri}/{_base64url('beta')}", json={"target": "no"}
+    )
+    assert updated.status_code == 200
+    assert client.delete(f"/validations/{uri}/{_base64url('gamma')}").status_code == 204
+    assert path.read_text() == "id,target\nalpha,\nbeta,no\n"
 
 
 # The case route already decodes a JSON array as a group ID, so a JSON-like
@@ -1167,10 +1194,13 @@ def test_csv_scalar_id_read_as_group_rejected_before_write(
         assert path.read_bytes() == before
 
 
-@pytest.mark.parametrize("target", [{"risk": None, "safe": True}, {"": True}])
+@pytest.mark.parametrize(
+    "target",
+    [{"risk": None, "safe": True}, {"risk": "", "safe": True}, {"": True}, ""],
+)
 @pytest.mark.parametrize("update", [False, True])
-def test_csv_null_or_unnamed_dictionary_value_rejected_before_write(
-    client: TestClient, tmp_path: Path, target: dict[str, object], update: bool
+def test_csv_empty_target_value_rejected_before_write(
+    client: TestClient, tmp_path: Path, target: object, update: bool
 ) -> None:
     path = tmp_path / "values.csv"
     before: bytes | None = None
@@ -1192,7 +1222,7 @@ def test_csv_null_or_unnamed_dictionary_value_rejected_before_write(
             json={"path": path.as_uri(), "cases": [{"id": "alpha", "target": target}]},
         )
     assert response.status_code == 400
-    assert "non-null values" in response.json()["detail"]
+    assert "non-empty keys and values" in response.json()["detail"]
     if before is None:
         assert not path.exists()
     else:
@@ -1218,3 +1248,17 @@ def test_csv_handwritten_comma_id_found_by_scalar_route(
 
     assert client.delete(route).status_code == 204
     assert validation_set(path).cases == [ValidationCase(id="gamma", target=False)]
+
+
+@pytest.mark.parametrize("target", [[1, 2], {"risk": [1, 2]}, {"risk": {"level": 1}}])
+def test_csv_nested_target_rejected_before_write(
+    client: TestClient, tmp_path: Path, target: object
+) -> None:
+    path = tmp_path / "nested.csv"
+    response = client.post(
+        "/validations",
+        json={"path": path.as_uri(), "cases": [{"id": "alpha", "target": target}]},
+    )
+    assert response.status_code == 400
+    assert "nested target or label values" in response.json()["detail"]
+    assert not path.exists()

@@ -174,7 +174,7 @@ def _read_back_as_missing(value: str) -> bool:
     # The second column keeps a whitespace-only value off a blank line.
     pd.DataFrame({"value": [value], "row": [0]}).to_csv(buffer, index=False)
     buffer.seek(0)
-    return bool(pd.isna(pd.read_csv(buffer, dtype=str).iloc[0, 0]))
+    return bool(pd.read_csv(buffer, dtype=str)["value"].isna().iloc[0])
 
 
 def _check_new_csv_row(case: dict[str, Any], row: dict[str, Any]) -> None:

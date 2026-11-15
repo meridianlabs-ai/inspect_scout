@@ -1196,7 +1196,14 @@ def test_csv_scalar_id_read_as_group_rejected_before_write(
 
 @pytest.mark.parametrize(
     "target",
-    [{"risk": None, "safe": True}, {"risk": "", "safe": True}, {"": True}, ""],
+    [
+        {"risk": None, "safe": True},
+        {"risk": "", "safe": True},
+        {"risk": "NA", "safe": True},
+        {"risk": "null", "safe": True},
+        {"": True},
+        "",
+    ],
 )
 @pytest.mark.parametrize("update", [False, True])
 def test_csv_empty_target_value_rejected_before_write(
@@ -1261,4 +1268,43 @@ def test_csv_nested_target_rejected_before_write(
     )
     assert response.status_code == 400
     assert "nested target or label values" in response.json()["detail"]
+    assert not path.exists()
+
+
+@pytest.mark.parametrize(
+    ("original", "update", "expected"),
+    [
+        ("id,target_x\nalpha,1\n", {"target": True}, "id,target\nalpha,True\n"),
+        (
+            "id,target_x\nalpha,1\n",
+            {"labels": {"risk": True}},
+            "id,label_risk\nalpha,True\n",
+        ),
+        ("id,target\nalpha,1\n", {"target": {"x": 2}}, "id,target_x\nalpha,2\n"),
+    ],
+)
+def test_csv_single_case_can_change_schema(
+    client: TestClient,
+    tmp_path: Path,
+    original: str,
+    update: dict[str, object],
+    expected: str,
+) -> None:
+    path = tmp_path / "single.csv"
+    path.write_text(original)
+    route = f"/validations/{_base64url(path.as_uri())}/{_base64url('alpha')}"
+    assert client.post(route, json=update).status_code == 200
+    assert path.read_text() == expected
+
+
+def test_csv_empty_group_id_rejected_before_write(
+    client: TestClient, tmp_path: Path
+) -> None:
+    path = tmp_path / "empty_group.csv"
+    response = client.post(
+        "/validations",
+        json={"path": path.as_uri(), "cases": [{"id": [], "target": True}]},
+    )
+    assert response.status_code == 400
+    assert "group IDs must not be empty" in response.json()["detail"]
     assert not path.exists()

@@ -1,5 +1,6 @@
 """Read and write validation files preserving format."""
 
+import io
 import json
 from pathlib import Path
 from typing import Any, Literal
@@ -166,9 +167,19 @@ def _csv_row(case: dict[str, Any]) -> dict[str, Any]:
     return row
 
 
+def _read_back_as_missing(value: str) -> bool:
+    """Whether pandas reads this cell back as a missing value (e.g. "NA")."""
+    buffer = io.StringIO()
+    pd.DataFrame({"value": [value]}).to_csv(buffer, index=False)
+    buffer.seek(0)
+    return bool(pd.isna(pd.read_csv(buffer, dtype=str).iloc[0, 0]))
+
+
 def _check_new_csv_row(case: dict[str, Any], row: dict[str, Any]) -> None:
     """Reject a created or updated case that would not survive a CSV reload."""
     case_id = case.get("id")
+    if case_id == []:
+        raise ValueError("CSV validation group IDs must not be empty.")
     if isinstance(case_id, str) and isinstance(_parse_id(case_id), list):
         # The reader parses these as group IDs, so the case could not be
         # found again by its scalar ID.
@@ -178,7 +189,9 @@ def _check_new_csv_row(case: dict[str, Any], row: dict[str, Any]) -> None:
         )
     for key, value in row.items():
         if (key == "target" or key.startswith(("target_", "label_"))) and (
-            value is None or value == "" or key in ("target_", "label_")
+            value is None
+            or key in ("target_", "label_")
+            or (isinstance(value, str) and _read_back_as_missing(value))
         ):
             # Empty cells are read back as missing values.
             raise ValueError(
@@ -284,6 +297,9 @@ def _write_csv_file(
         rows = [_csv_row(case) for case in flattened]
         for index in changed:
             _check_new_csv_row(flattened[index], rows[index])
+        if len(changed) == len(rows):
+            # No existing row is kept, so the file's old columns do not apply.
+            columns = []
         _check_csv_schema(rows, changed, columns)
         row_keys = [key for row in rows for key in row]
         df = pd.DataFrame(

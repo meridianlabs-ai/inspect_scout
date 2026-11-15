@@ -924,23 +924,42 @@ def test_create_empty_csv_validation(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("case_id", [["alpha"], ["alpha", "beta"]])
-def test_created_csv_group_can_be_updated_and_deleted(
+def test_created_csv_group_case_lifecycle(
     client: TestClient, tmp_path: Path, case_id: list[str]
 ) -> None:
     path = tmp_path / "groups.csv"
     created = client.post(
         "/validations",
-        json={"path": path.as_uri(), "cases": [{"id": case_id, "target": True}]},
+        json={
+            "path": path.as_uri(),
+            "cases": [
+                {"id": case_id, "target": True},
+                {"id": "gamma", "target": True},
+            ],
+        },
     )
     assert created.status_code == 200
     uri = _base64url(path.as_uri())
     route = f"/validations/{uri}/{_base64url(json.dumps(case_id))}"
-    updated = client.post(route, json={"target": False})
-    assert updated.status_code == 200
-    assert validation_set(path).cases == [ValidationCase(id=case_id, target=False)]
-    assert client.get(f"/validations/{uri}").json()[0]["id"] == case_id
+
+    retrieved = client.get(route)
+    assert retrieved.status_code == 200
+    assert retrieved.json() == {"id": case_id, "target": True}
+
+    for target in (False, True, False):
+        updated = client.post(route, json={"target": target})
+        assert updated.status_code == 200
+        assert validation_set(path).cases == [
+            ValidationCase(id=case_id, target=target),
+            ValidationCase(id="gamma", target=True),
+        ]
+    assert client.get(route).json() == {"id": case_id, "target": False}
+    listed = client.get(f"/validations/{uri}").json()
+    assert [case["id"] for case in listed] == [case_id, "gamma"]
+
     assert client.delete(route).status_code == 204
-    assert validation_set(path).cases == []
+    assert client.get(route).status_code == 404
+    assert validation_set(path).cases == [ValidationCase(id="gamma", target=True)]
 
 
 def test_csv_mixed_target_update_preserves_other_cases(
@@ -965,6 +984,30 @@ def test_csv_mixed_target_update_preserves_other_cases(
         ValidationCase(id="alpha", target=True),
         ValidationCase(id="beta", target=False),
     ]
+
+
+@pytest.mark.parametrize(
+    ("cases", "update"),
+    [
+        ([{"id": "alpha", "target": True}], {"labels": {"risk": True}}),
+        ([{"id": "alpha", "labels": {"risk": True}}], {"target": True}),
+    ],
+)
+def test_csv_target_and_label_update_preserves_file(
+    client: TestClient,
+    tmp_path: Path,
+    cases: list[dict[str, object]],
+    update: dict[str, object],
+) -> None:
+    path = tmp_path / "schema.csv"
+    created = client.post("/validations", json={"path": path.as_uri(), "cases": cases})
+    assert created.status_code == 200
+    before = path.read_bytes()
+    route = f"/validations/{_base64url(path.as_uri())}/{_base64url('beta')}"
+    response = client.post(route, json=update)
+    assert response.status_code == 400
+    assert "cannot mix target and label cases" in response.json()["detail"]
+    assert path.read_bytes() == before
 
 
 def test_csv_mixed_target_creation_does_not_write_file(

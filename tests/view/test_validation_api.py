@@ -1308,3 +1308,19 @@ def test_csv_empty_group_id_rejected_before_write(
     assert response.status_code == 400
     assert "group IDs must not be empty" in response.json()["detail"]
     assert not path.exists()
+
+
+@pytest.mark.parametrize("target", [" ", "\t", {"risk": " "}])
+def test_csv_whitespace_target_round_trips(
+    client: TestClient, tmp_path: Path, target: object
+) -> None:
+    path = tmp_path / "whitespace.csv"
+    response = client.post(
+        "/validations",
+        json={"path": path.as_uri(), "cases": [{"id": "alpha", "target": target}]},
+    )
+    assert response.status_code == 200
+    cases = validation_set(path).cases
+    assert [case.model_dump(exclude_none=True) for case in cases] == [
+        {"id": "alpha", "target": target}
+    ]

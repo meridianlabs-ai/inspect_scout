@@ -2,6 +2,7 @@
 
 import io
 import json
+import math
 from pathlib import Path
 from typing import Any, Literal
 
@@ -170,7 +171,8 @@ def _csv_row(case: dict[str, Any]) -> dict[str, Any]:
 def _read_back_as_missing(value: str) -> bool:
     """Whether pandas reads this cell back as a missing value (e.g. "NA")."""
     buffer = io.StringIO()
-    pd.DataFrame({"value": [value]}).to_csv(buffer, index=False)
+    # The second column keeps a whitespace-only value off a blank line.
+    pd.DataFrame({"value": [value], "row": [0]}).to_csv(buffer, index=False)
     buffer.seek(0)
     return bool(pd.isna(pd.read_csv(buffer, dtype=str).iloc[0, 0]))
 
@@ -190,6 +192,7 @@ def _check_new_csv_row(case: dict[str, Any], row: dict[str, Any]) -> None:
     for key, value in row.items():
         if (key == "target" or key.startswith(("target_", "label_"))) and (
             value is None
+            or (isinstance(value, float) and math.isnan(value))
             or key in ("target_", "label_")
             or (isinstance(value, str) and _read_back_as_missing(value))
         ):

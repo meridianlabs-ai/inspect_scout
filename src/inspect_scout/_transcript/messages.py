@@ -520,26 +520,121 @@ def span_messages(
         list. When ``True``: one ``list[ChatMessage]`` per kept region.
         Empty list if no ``ModelEvent`` is found.
     """
+    if not split_compactions:
+        return span_conversation(source, compaction=compaction).messages
+
+    events = _compaction_regions(_span_events(source), compaction)
+    if events is None:
+        return []
+
+    # One list per compaction region
+    regions: list[list[ChatMessage]] = []
+    current_model_events: list[ModelEvent] = []
+
+    for event in events:
+        if isinstance(event, ModelEvent):
+            current_model_events.append(event)
+        elif isinstance(event, CompactionEvent):
+            if current_model_events:
+                regions.append(_segment_messages(current_model_events[-1]))
+            current_model_events = []
+
+    if current_model_events:
+        regions.append(_segment_messages(current_model_events[-1]))
+
+    return regions
+
+
+@dataclass
+class SpanConversation:
+    """A span's conversation and the model calls it came from."""
+
+    messages: list[ChatMessage]
+    """Merged message list, as returned by `span_messages()`."""
+
+    model_events: list[ModelEvent]
+    """The model events whose input and output `messages` is taken from, in order."""
+
+
+def span_conversation(
+    source: Timeline | TimelineSpan | list[Event],
+    *,
+    compaction: Literal["all", "last"] | int = "all",
+) -> SpanConversation:
+    """Extract a span's merged conversation and the model calls it came from.
+
+    Same merge as `span_messages()` (see there for `source` and
+    `compaction`), also returning the model events whose input and output
+    the messages were taken from.
+    """
+    events = _compaction_regions(_span_events(source), compaction)
+    if events is None:
+        return SpanConversation(messages=[], model_events=[])
+
+    merged: list[ChatMessage] = []
+    sources: list[ModelEvent] = []
+    current_model_events_merge: list[ModelEvent] = []
+    pending_trim_pre_event: ModelEvent | None = None
+
+    for event in events:
+        if isinstance(event, ModelEvent):
+            # If we have a pending trim, compute prefix now that we have
+            # the first post-compaction ModelEvent
+            if pending_trim_pre_event is not None:
+                prefix = _trim_prefix(
+                    list(pending_trim_pre_event.input), list(event.input)
+                )
+                if prefix:
+                    merged.extend(prefix)
+                    sources.append(pending_trim_pre_event)
+                pending_trim_pre_event = None
+
+            current_model_events_merge.append(event)
+
+        elif isinstance(event, CompactionEvent):
+            if event.type == "summary":
+                # Graft pre-compaction messages onto the merged list
+                if current_model_events_merge:
+                    merged.extend(_segment_messages(current_model_events_merge[-1]))
+                    sources.append(current_model_events_merge[-1])
+                current_model_events_merge = []
+
+            elif event.type == "trim":
+                # Save pre-compaction input for prefix extraction
+                if current_model_events_merge:
+                    pending_trim_pre_event = current_model_events_merge[-1]
+                current_model_events_merge = []
+
+            # Edit: no action, continue accumulating
+
+    # Append final segment
+    if current_model_events_merge:
+        merged.extend(_segment_messages(current_model_events_merge[-1]))
+        sources.append(current_model_events_merge[-1])
+
+    return SpanConversation(messages=merged, model_events=sources)
+
+
+def _span_events(source: Timeline | TimelineSpan | list[Event]) -> list[Event]:
     # Normalize Timeline to TimelineSpan
     if isinstance(source, Timeline):
         source = source.root
 
     # Extract events from TimelineSpan if needed
     if isinstance(source, TimelineSpan):
-        events = [
+        return [
             item.event for item in source.content if isinstance(item, TimelineEvent)
         ]
-    else:
-        events = source
+    return source
 
-    # Filter to ModelEvents and CompactionEvents
-    model_events: list[ModelEvent] = []
-    for event in events:
-        if isinstance(event, ModelEvent):
-            model_events.append(event)
 
+def _compaction_regions(
+    events: list[Event], compaction: Literal["all", "last"] | int
+) -> list[Event] | None:
+    """Slice events to the compaction regions kept, or None if no model events."""
+    model_events = [event for event in events if isinstance(event, ModelEvent)]
     if not model_events:
-        return []
+        return None
 
     # Normalize compaction to n: int | None
     n: int | None
@@ -550,10 +645,9 @@ def span_messages(
     else:
         n = compaction
 
-    # "last 1" shortcut: just return the final ModelEvent's messages
+    # "last 1" shortcut: just the final ModelEvent's messages
     if n == 1:
-        msgs = _segment_messages(model_events[-1])
-        return [msgs] if split_compactions else msgs
+        return [model_events[-1]]
 
     # If n is specified, slice events to keep only the last n regions.
     # Regions are separated by CompactionEvents.
@@ -569,60 +663,7 @@ def span_messages(
             cut_index = compaction_indices[-(n)]
             events = events[cut_index:]
 
-    # Split mode: return one list per compaction region
-    if split_compactions:
-        regions: list[list[ChatMessage]] = []
-        current_model_events: list[ModelEvent] = []
-
-        for event in events:
-            if isinstance(event, ModelEvent):
-                current_model_events.append(event)
-            elif isinstance(event, CompactionEvent):
-                if current_model_events:
-                    regions.append(_segment_messages(current_model_events[-1]))
-                current_model_events = []
-
-        if current_model_events:
-            regions.append(_segment_messages(current_model_events[-1]))
-
-        return regions
-
-    # Merge across compaction boundaries
-    merged: list[ChatMessage] = []
-    current_model_events_merge: list[ModelEvent] = []
-    pending_trim_pre_input: list[ChatMessage] | None = None
-
-    for event in events:
-        if isinstance(event, ModelEvent):
-            # If we have a pending trim, compute prefix now that we have
-            # the first post-compaction ModelEvent
-            if pending_trim_pre_input is not None:
-                prefix = _trim_prefix(pending_trim_pre_input, list(event.input))
-                merged.extend(prefix)
-                pending_trim_pre_input = None
-
-            current_model_events_merge.append(event)
-
-        elif isinstance(event, CompactionEvent):
-            if event.type == "summary":
-                # Graft pre-compaction messages onto the merged list
-                if current_model_events_merge:
-                    merged.extend(_segment_messages(current_model_events_merge[-1]))
-                current_model_events_merge = []
-
-            elif event.type == "trim":
-                # Save pre-compaction input for prefix extraction
-                if current_model_events_merge:
-                    pending_trim_pre_input = list(current_model_events_merge[-1].input)
-                current_model_events_merge = []
-
-            # Edit: no action, continue accumulating
-
-    # Append final segment
-    if current_model_events_merge:
-        merged.extend(_segment_messages(current_model_events_merge[-1]))
-
-    return merged
+    return events
 
 
 def span_tools(source: Timeline | TimelineSpan | list[Event]) -> list[ToolInfo]:

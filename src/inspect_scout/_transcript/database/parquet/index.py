@@ -34,8 +34,8 @@ from shortuuid import uuid
 
 from ...._query.sql import quote_identifier
 from ...._util.duckdb import (
-    create_parquet_view,
-    drop_view,
+    escape_duckdb_glob,
+    generated_identifier,
     parquet_view,
     relation_columns,
 )
@@ -157,14 +157,11 @@ async def compact_index(
     # If the same transcript_id appears in multiple index files (from retried
     # inserts after partial failures), keep the entry from the newest file.
     # Index files have timestamps in their names, so newer files sort later.
-    # We tag each file with its position in the sorted list (_file_order).
+    # We tag each file with its position in the sorted list.
     try:
         merged_table = _read_and_deduplicate_index_files(conn, idx_files)
     except duckdb.IOException as e:
-        error_msg = str(e).lower()
-        if (
-            "could not open file" in error_msg or "no such file" in error_msg
-        ) and _retry_count < MAX_RETRIES:
+        if _is_missing_index_file(e) and _retry_count < MAX_RETRIES:
             # Files changed during operation - retry with fresh discovery
             logger.warning(
                 f"Index file access failed during compaction (attempt {_retry_count + 1}), retrying"
@@ -336,10 +333,7 @@ async def init_index_table(
                 SELECT * FROM {quote_identifier(source_view)}
             """)
     except duckdb.IOException as e:
-        error_msg = str(e).lower()
-        if (
-            "could not open file" in error_msg or "no such file" in error_msg
-        ) and _retry_count < MAX_RETRIES:
+        if _is_missing_index_file(e) and _retry_count < MAX_RETRIES:
             # File was deleted by concurrent operation - rediscover and retry
             logger.warning(
                 f"Index file access failed (attempt {_retry_count + 1}), retrying"
@@ -365,6 +359,20 @@ async def init_index_table(
     migrate_table(conn, table_name)
 
     return row_count
+
+
+def _is_missing_index_file(error: duckdb.IOException) -> bool:
+    """Recognize DuckDB's local and HTTP missing-file errors."""
+    message = str(error).lower()
+    return (
+        "could not open file" in message
+        or "no such file" in message
+        or "no files found that match the pattern" in message
+        or (
+            isinstance(error, duckdb.HTTPException)
+            and re.search(r"[\"']\s*:\s*404\b", message) is not None
+        )
+    )
 
 
 async def _discover_index_files(storage: IndexStorage) -> list[str]:
@@ -612,33 +620,39 @@ def _read_and_deduplicate_index_files(
                 f"SELECT * FROM {quote_identifier(source_view)}"
             ).fetch_arrow_table()
 
-    # Read each file with an order tag. Higher order = newer file.
-    # The idx_files list is sorted with older files first, so we use
-    # the list index as the order (newer files have higher indices).
-    source_views: list[str] = []
+    # Unify the schemas in one bind that reads no rows, then insert each file by
+    # name with its own statement: one SQL union over every file exceeds DuckDB
+    # 1.4's expression depth on large indexes, and before DuckDB 1.5.3 a
+    # multi-file scan cannot read a struct column from a file that stores the
+    # column as another type.
+    merged_table = quote_identifier(generated_identifier("index_merge"))
+    file_order = quote_identifier(generated_identifier("index_order"))
+    ordered_files = sorted(idx_files)
     try:
-        subqueries = []
-        for i, path in enumerate(sorted(idx_files)):
-            source_view = create_parquet_view(conn, path)
-            source_views.append(source_view)
-            subqueries.append(
-                f"SELECT *, {i} AS _file_order FROM {quote_identifier(source_view)}"
+        with parquet_view(conn, ordered_files, union_by_name=True) as source_view:
+            conn.execute(
+                f"CREATE TEMP TABLE {merged_table} AS "
+                f"SELECT *, 0 AS {file_order} FROM {quote_identifier(source_view)} "
+                "WITH NO DATA"
+            )
+        for order, path in enumerate(ordered_files):
+            conn.execute(
+                f"INSERT INTO {merged_table} BY NAME "
+                f"SELECT *, ? AS {file_order} FROM read_parquet(?)",
+                [order, escape_duckdb_glob(path)],
             )
 
-        union_query = " UNION ALL BY NAME ".join(subqueries)
-
-        # Deduplicate: keep entry from newest file (highest _file_order)
+        # Deduplicate: keep entry from newest file (highest file order)
         return conn.execute(f"""
-            SELECT * EXCLUDE (_file_order, _rn) FROM (
+            SELECT * EXCLUDE ({file_order}, _rn) FROM (
                 SELECT *,
                        ROW_NUMBER() OVER (
                            PARTITION BY transcript_id
-                           ORDER BY _file_order DESC
+                           ORDER BY {file_order} DESC
                        ) as _rn
-                FROM ({union_query})
+                FROM {merged_table}
             )
             WHERE _rn = 1
         """).fetch_arrow_table()
     finally:
-        for source_view in source_views:
-            drop_view(conn, source_view)
+        conn.execute(f"DROP TABLE IF EXISTS {merged_table}")

@@ -139,6 +139,7 @@ class Summary(BaseModel):
                         id=entry_id,
                         target=result.validation.target,
                         valid=result.validation.valid,
+                        errored=result.validation.errored,
                     )
                 )
             agg_errors += 1 if result.error is not None else 0

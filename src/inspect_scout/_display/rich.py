@@ -482,17 +482,20 @@ def bytes_to_gigabytes(input: int) -> str:
 def _summary_validation(validation: ValidationResults | None) -> str | None:
     """Return balanced accuracy as a formatted string.
 
-    Uses pre-computed metrics from ValidationResults.
-    Returns None if no validation data or no entries with targets.
+    Uses pre-computed metrics from ValidationResults. Cases whose scan errored
+    are appended as `(n errored)` so the accuracy is not read as covering them.
+    Returns None if no validation data or nothing to show.
     """
     if validation is None or validation.metrics is None:
         return None
 
-    return (
-        f"{validation.metrics.accuracy:.2f}"
-        if validation.metrics.accuracy is not None
-        else None
-    )
+    metrics = validation.metrics
+    parts: list[str] = []
+    if metrics.accuracy is not None:
+        parts.append(f"{metrics.accuracy:.2f}")
+    if metrics.errored:
+        parts.append(f"({metrics.errored:,} errored)")
+    return " ".join(parts) or None
 
 
 def _summary_metric(metrics: dict[str, dict[str, float]] | None) -> str | None:

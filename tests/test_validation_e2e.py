@@ -22,6 +22,7 @@ from inspect_scout._scanner.loader import Loader
 from inspect_scout._scanresults import scan_results_db, scan_results_df
 from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._transcript.types import Transcript
+from inspect_scout._util.refusal import RefusalError
 from pydantic import JsonValue
 
 # Test data location
@@ -931,3 +932,63 @@ async def test_validation_message_pairs_with_list_ids_e2e() -> None:
         assert all(isinstance(v, bool) for v in deserialized_results), (
             "All validation results should be boolean"
         )
+
+
+# ============================================================================
+# Errored Cases
+# ============================================================================
+
+
+@scanner(name="erroring_scanner", messages="all")
+def erroring_scanner_factory(refuse: str, crash: str) -> Scanner[Transcript]:
+    """Scanner that refuses one transcript, crashes on another, else says True."""
+
+    async def scan_transcript(transcript: Transcript) -> Result:
+        if transcript.transcript_id == refuse:
+            raise RefusalError("content filter refused the request")
+        if transcript.transcript_id == crash:
+            raise RuntimeError("judge crashed")
+        return Result(value=True)
+
+    return scan_transcript
+
+
+@pytest.mark.asyncio
+async def test_validation_counts_errored_cases() -> None:
+    """Labelled cases whose scan raised are counted as errored, not dropped."""
+    transcript_ids = await get_n_transcript_ids(4)
+    refused, crashed = transcript_ids[:2]
+    # The two cases that run both answer True: one target matches, one doesn't.
+    validation = create_validation_set(transcript_ids, [True, True, True, False])
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        status = scan(
+            scanners=[erroring_scanner_factory(refuse=refused, crash=crashed)],
+            transcripts=transcripts_from(LOGS_DIR),
+            validation=validation,
+            scans=tmpdir,
+            limit=4,
+            max_processes=1,
+        )
+
+        summary = status.summary["erroring_scanner"]
+        assert summary.errors == 2
+        assert summary.validation is not None
+        metrics = summary.validation.metrics
+        assert metrics is not None
+        assert metrics.errored == 2
+        # the confusion matrix covers only the two cases that were scored
+        assert (metrics.tp, metrics.fp, metrics.tn, metrics.fn) == (1, 1, 0, 0)
+        assert metrics.total == 2
+        assert metrics.precision == 0.5
+        errored_ids = {e.id for e in summary.validation.entries if e.errored}
+        assert errored_ids == {refused, crashed}
+
+        # the errored rows keep their target but carry no verdict
+        results = scan_results_df(status.location, scanner="erroring_scanner")
+        df = results.scanners["erroring_scanner"]
+        errored_rows = df[df["transcript_id"].isin([refused, crashed])]
+        assert len(errored_rows) == 2
+        assert errored_rows["scan_error"].notna().all()
+        assert errored_rows["validation_target"].tolist() == ["true", "true"]
+        assert errored_rows["validation_result"].isna().all()

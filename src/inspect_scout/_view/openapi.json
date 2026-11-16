@@ -13060,6 +13060,11 @@
       "ValidationEntry": {
         "description": "A single validation result with its target.",
         "properties": {
+          "errored": {
+            "default": false,
+            "title": "Errored",
+            "type": "boolean"
+          },
           "id": {
             "anyOf": [
               {
@@ -13095,7 +13100,8 @@
         "required": [
           "id",
           "target",
-          "valid"
+          "valid",
+          "errored"
         ],
         "title": "ValidationEntry",
         "type": "object"
@@ -13155,6 +13161,11 @@
             "description": "Balanced accuracy: (Recall + Specificity) / 2.",
             "readOnly": true,
             "title": "Accuracy"
+          },
+          "errored": {
+            "default": 0,
+            "title": "Errored",
+            "type": "integer"
           },
           "f1": {
             "anyOf": [
@@ -13224,6 +13235,7 @@
             "type": "integer"
           },
           "total": {
+            "description": "Scored cases: TP + FP + TN + FN. Errored cases are not included.",
             "readOnly": true,
             "title": "Total",
             "type": "integer"
@@ -13239,6 +13251,7 @@
           "fp",
           "tn",
           "fn",
+          "errored",
           "total",
           "precision",
           "recall",

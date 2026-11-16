@@ -4,7 +4,16 @@ import traceback
 from contextlib import asynccontextmanager
 from logging import getLogger
 from pathlib import Path
-from typing import Any, AsyncIterator, Awaitable, Callable, Mapping, Sequence, cast
+from typing import (
+    Any,
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Mapping,
+    NamedTuple,
+    Sequence,
+    cast,
+)
 
 import anyio
 import yaml
@@ -51,7 +60,7 @@ from inspect_scout._transcript.local_files_cache import (
 from inspect_scout._util.attachments import resolve_event_attachments
 from inspect_scout._util.refusal import RefusalError
 from inspect_scout._validation.predicates import PredicateFn
-from inspect_scout._validation.types import ValidationSet
+from inspect_scout._validation.types import ValidationCase, ValidationSet
 from inspect_scout._validation.validate import validate
 from inspect_scout._view.notify import view_notify_scan
 
@@ -1304,6 +1313,17 @@ async def _scan_one(
                     traceback=traceback.format_exc(),
                     refusal=isinstance(ex, RefusalError),
                 )
+                # A labelled case whose scan raised is still a validation
+                # case: record it as errored so the metrics count it instead
+                # of scoring only the cases that happened to succeed.
+                if (
+                    validation
+                    and job.scanner_name in validation
+                    and type_and_ids is not None
+                ):
+                    validation_result = _errored_validation(
+                        validation[job.scanner_name], type_and_ids[1]
+                    )
 
             # Materialize a streamed handle for the record. Results must be
             # self-contained (readable without the original logs), and a
@@ -1528,28 +1548,65 @@ def _resolve_validation(
         }
 
 
+class _FoundCase(NamedTuple):
+    case: ValidationCase
+    predicate: str | None
+    """Effective predicate name for storage (None if callable)."""
+
+
+def _validation_case_for(
+    validation_set: ValidationSet, scan_ids: str | list[str]
+) -> _FoundCase | None:
+    """The validation case for `scan_ids` and its predicate name, if there is one."""
+    # normalize scan_ids to str for single-element lists
+    scan_ids = scan_ids[0] if len(scan_ids) == 1 else scan_ids
+
+    v_case = next(
+        (c for c in validation_set.cases if c.id == scan_ids),
+        None,
+    )
+    if v_case is None:
+        return None
+
+    # Determine effective predicate (per-case overrides global, default to "eq")
+    effective_predicate = v_case.predicate or validation_set.predicate or "eq"
+    # Convert to string for storage (None if callable)
+    predicate_str = (
+        effective_predicate if isinstance(effective_predicate, str) else None
+    )
+    return _FoundCase(case=v_case, predicate=predicate_str)
+
+
+def _errored_validation(
+    validation_set: ValidationSet, scan_ids: str | list[str]
+) -> ResultValidation | None:
+    """Validation record for a case whose scan raised before it was validated."""
+    found = _validation_case_for(validation_set, scan_ids)
+    if found is None:
+        return None
+    return ResultValidation(
+        target=(
+            cast(JsonValue, found.case.labels)
+            if found.case.labels is not None
+            else found.case.target
+        ),
+        valid=False,
+        predicate=found.predicate,
+        split=found.case.split,
+        errored=True,
+    )
+
+
 async def _validate_scan(
     validation_set: ValidationSet,
     scan_ids: str | list[str],
     scan_result: Result,
 ) -> ResultValidation | None:
-    # normalize scan_ids to str for single-element lists
-    scan_ids = scan_ids[0] if len(scan_ids) == 1 else scan_ids
+    found = _validation_case_for(validation_set, scan_ids)
 
-    # is there a validation case for the scan_ids?
-    v_case = next(
-        (c for c in validation_set.cases if c.id == scan_ids),
-        None,
-    )
-
-    # if so then perform the validation and return it
-    if v_case:
-        # Determine effective predicate (per-case overrides global, default to "eq")
-        effective_predicate = v_case.predicate or validation_set.predicate or "eq"
-        # Convert to string for storage (None if callable)
-        predicate_str = (
-            effective_predicate if isinstance(effective_predicate, str) else None
-        )
+    # if there is a case then perform the validation and return it
+    if found:
+        v_case, predicate_str = found.case, found.predicate
 
         async with span("validation"):
             # Handle label-based validation for resultsets

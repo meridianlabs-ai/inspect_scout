@@ -11,7 +11,13 @@ from inspect_scout._recorder.validation import (
     ValidationResults,
     compute_validation_metrics,
 )
-from inspect_scout._scanner.result import Error, Result, ResultReport, as_resultset
+from inspect_scout._scanner.result import (
+    Error,
+    Result,
+    ResultReport,
+    ResultValidation,
+    as_resultset,
+)
 from inspect_scout._transcript.types import Transcript
 from inspect_scout._validation.validate import is_positive_value
 
@@ -67,6 +73,11 @@ class TestValidationMetrics:
     def test_total(self) -> None:
         metrics = ValidationMetrics(tp=5, fp=2, tn=3, fn=1)
         assert metrics.total == 11
+
+    def test_errored_is_not_in_total(self) -> None:
+        metrics = ValidationMetrics(tp=5, fp=2, tn=3, fn=1, errored=4)
+        assert metrics.total == 11
+        assert metrics.errored == 4
 
     def test_precision(self) -> None:
         metrics = ValidationMetrics(tp=8, fp=2, tn=0, fn=0)
@@ -269,6 +280,57 @@ class TestComputeValidationMetrics:
         assert metrics.tn == 1
         assert metrics.precision == 1.0
         assert metrics.recall == 1.0
+
+    def test_errored_entries_counted_outside_matrix(self) -> None:
+        """Errored entries are counted in `errored`, never as a verdict."""
+        validations = [
+            ValidationEntry(id="t1", target=True, valid=True),  # TP
+            ValidationEntry(id="t2", target=True, valid=False),  # FN
+            ValidationEntry(id="t3", target=True, valid=False, errored=True),
+            ValidationEntry(id="t4", target=False, valid=False, errored=True),
+        ]
+        result = compute_validation_metrics(validations)
+        assert result is not None
+        metrics, per_key = result
+        assert per_key is None
+        assert metrics.errored == 2
+        assert (metrics.tp, metrics.fp, metrics.tn, metrics.fn) == (1, 0, 0, 1)
+        assert metrics.total == 2
+        assert metrics.recall == 0.5
+
+    def test_all_errored_still_reports_metrics(self) -> None:
+        """A set where every scan errored reports the count, not None."""
+        validations = [
+            ValidationEntry(id="t1", target=True, valid=False, errored=True),
+            ValidationEntry(id="t2", target=False, valid=False, errored=True),
+        ]
+        result = compute_validation_metrics(validations)
+        assert result is not None
+        metrics, _ = result
+        assert metrics.errored == 2
+        assert metrics.total == 0
+        assert metrics.accuracy is None
+
+    def test_errored_dict_target_counts_per_key(self) -> None:
+        """An errored labels case counts against each key; a scalar target only on total."""
+        validations = [
+            ValidationEntry(
+                id="t1", target={"a": True, "b": False}, valid={"a": True, "b": True}
+            ),
+            ValidationEntry(
+                id="t2", target={"a": True, "b": False}, valid=False, errored=True
+            ),
+            ValidationEntry(id="t3", target=True, valid=False, errored=True),
+        ]
+        result = compute_validation_metrics(validations)
+        assert result is not None
+        metrics, per_key = result
+        assert per_key is not None
+        assert per_key["a"].errored == 1
+        assert per_key["b"].errored == 1
+        assert (per_key["a"].tp, per_key["b"].tn) == (1, 1)
+        assert metrics.errored == 3
+        assert metrics.total == 2
 
 
 class TestSummaryResultsetCounting:
@@ -508,3 +570,48 @@ class TestSummaryModelUsage:
         assert usage.input_tokens_cache_write is None
         assert usage.reasoning_tokens is None
         assert usage.total_cost is None
+
+
+class TestSummaryErroredValidation:
+    """Tests that _report carries an errored validation case into the metrics."""
+
+    def test_errored_case_counted_outside_matrix(self) -> None:
+        error = Error(
+            transcript_id="t1",
+            scanner="scanner",
+            error="judge crashed",
+            traceback="",
+            refusal=True,
+        )
+        errored = ResultReport(
+            input_type="transcript",
+            input_ids=["t1"],
+            input=Transcript(transcript_id="t1"),
+            result=None,
+            validation=ResultValidation(target=True, valid=False, errored=True),
+            error=error,
+            events=[],
+            model_usage={},
+        )
+        scored = ResultReport(
+            input_type="transcript",
+            input_ids=["t2"],
+            input=Transcript(transcript_id="t2"),
+            result=Result(value=True),
+            validation=ResultValidation(target=True, valid=True),
+            error=None,
+            events=[],
+            model_usage={},
+        )
+        summary = Summary(scanners=["scanner"])
+        summary._report(
+            Transcript(transcript_id="t1"), "scanner", [errored, scored], None
+        )
+        scanner = summary.scanners["scanner"]
+        assert scanner.errors == 1
+        assert scanner.validation is not None
+        assert [e.errored for e in scanner.validation.entries] == [True, False]
+        assert scanner.validation.metrics is not None
+        assert scanner.validation.metrics.errored == 1
+        assert scanner.validation.metrics.tp == 1
+        assert scanner.validation.metrics.total == 1

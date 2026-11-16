@@ -15,6 +15,7 @@ from inspect_scout._display.util import (
 )
 from inspect_scout._recorder.recorder import Status
 from inspect_scout._recorder.summary import Summary
+from inspect_scout._recorder.validation import ValidationEntry, ValidationResults
 from inspect_scout._scanspec import ScannerSpec, ScanSpec
 from rich.console import Console
 
@@ -191,3 +192,31 @@ def test_text_progress_cleans_caption_and_filename(
         task = progress._progress.tasks[0]
         _assert_safe(task.description)
         _assert_safe(task.fields["text"])
+
+
+def test_scanners_table_shows_errored_validation_cases() -> None:
+    """The validation cell names the cases whose scan errored, if any."""
+    spec = ScanSpec(
+        scan_name="scan",
+        scan_args={},
+        scanners={"s": ScannerSpec(name="s")},
+        transcripts=None,
+    )
+    summary = Summary(scanners=["s"])
+    summary["s"].validation = ValidationResults.from_entries(
+        [
+            ValidationEntry(id="t1", target=True, valid=True),
+            ValidationEntry(id="t2", target=False, valid=True),
+        ]
+    )
+    assert "errored" not in _render(scanners_table(spec, summary))
+
+    summary["s"].validation = ValidationResults.from_entries(
+        [
+            ValidationEntry(id="t1", target=True, valid=True),
+            ValidationEntry(id="t2", target=False, valid=True),
+            ValidationEntry(id="t3", target=True, valid=False, errored=True),
+        ]
+    )
+    rendered = _render(scanners_table(spec, summary))
+    assert "1.00 (1 errored)" in rendered

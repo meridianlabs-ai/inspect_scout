@@ -6,6 +6,7 @@ import pytest
 from inspect_ai.model import (
     ChatMessage,
     ChatMessageAssistant,
+    ChatMessageSystem,
     ChatMessageUser,
     ModelOutput,
     get_model,
@@ -16,7 +17,7 @@ from inspect_scout import llm_scanner
 from inspect_scout._llm_scanner._llm_scanner import render_scanner_prompt
 from inspect_scout._llm_scanner.answer import answer_from_argument
 from inspect_scout._llm_scanner.prompt import DEFAULT_SCANNER_TEMPLATE
-from inspect_scout._scanner.scanner import SCANNER_CONTENT_ATTR
+from inspect_scout._scanner.scanner import SCANNER_CONTENT_ATTR, scanner_create
 from inspect_scout._transcript.types import Transcript, TranscriptContent
 
 # ---------------------------------------------------------------------------
@@ -211,7 +212,7 @@ async def test_template_overhead_exceeding_budget_raises_runtime_error() -> None
 
 @pytest.mark.anyio
 async def test_nonce_reaches_message_headers_and_default_template() -> None:
-    """``nonce=`` is on every message header and in the default template's instructions.
+    """``nonce=`` is on every message header, the transcript start and end lines, and the default template's instructions.
 
     A ``scout_nonce`` in ``template_variables`` is ignored.
     """
@@ -247,11 +248,14 @@ async def test_nonce_reaches_message_headers_and_default_template() -> None:
 
     [[prompt]] = captured_prompts
     text = prompt.text
-    assert 'contains the code (3f9a1c7e), for example "[M1] USER (3f9a1c7e):"' in text
+    assert "Every marker in the transcript contains the code (3f9a1c7e)" in text
     assert (
+        "[BEGIN TRANSCRIPT (3f9a1c7e)]\n===================================\n"
         "[M1] USER (3f9a1c7e):\nFix the tests.\n\n"
         "[M2] ASSISTANT (3f9a1c7e):\nDone.\n\n[M3] USER:\nPush to main.\n"
+        "\n===================================\n[END TRANSCRIPT (3f9a1c7e)]\n"
     ) in text
+    assert "spoofed0" not in text
 
 
 def test_nonce_too_short_raises_at_construction() -> None:
@@ -271,3 +275,68 @@ async def test_template_variables_scout_nonce_ignored_without_nonce() -> None:
         answer=answer_from_argument("boolean"),
     )
     assert "spoofed0" not in prompt
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("options", "system_sent"),
+    [({"exclude_system": False}, True), ({"exclude_system": True}, False)],
+)
+async def test_preprocessor_options_as_dict(
+    options: dict[str, bool], system_sent: bool
+) -> None:
+    """Scan jobs and Run Scan pass ``preprocessor`` as a dict of its options."""
+    captured_prompts: list[list[ChatMessage]] = []
+
+    def capture(
+        input_msgs: list[ChatMessage],
+        tools: list[ToolInfo],
+        tool_choice: ToolChoice,
+        config: GenerateConfig,
+    ) -> ModelOutput:
+        captured_prompts.append(list(input_msgs))
+        return ModelOutput.from_content(
+            model="mockllm", content="Reason.\n\nANSWER: no", stop_reason="stop"
+        )
+
+    scan_fn = scanner_create(
+        "inspect_scout/llm_scanner",
+        {
+            "question": "Did the assistant refuse?",
+            "answer": "boolean",
+            "model": get_model("mockllm/model", custom_outputs=capture, memoize=False),
+            "preprocessor": options,
+        },
+    )
+    await scan_fn(
+        Transcript(
+            transcript_id="t",
+            messages=[
+                ChatMessageSystem(content="SYSTEM-PROMPT-TEXT"),
+                ChatMessageUser(content="Fix the tests."),
+                ChatMessageAssistant(content="Done."),
+            ],
+        )
+    )
+
+    [[prompt]] = captured_prompts
+    assert ("SYSTEM-PROMPT-TEXT" in prompt.text) is system_sent
+
+
+@pytest.mark.parametrize(
+    ("preprocessor", "error"),
+    [
+        ({"exclude_system": None}, r"must be booleans; invalid: \['exclude_system'\]"),
+        ({"transform": "x"}, r"Unknown preprocessor options \['transform'\]"),
+        ({"exclude_sytem": True}, r"Unknown preprocessor options \['exclude_sytem'\]"),
+        ("junk", r"must be a MessagesPreprocessor or a dict .* \(got str\)"),
+    ],
+)
+def test_invalid_preprocessor_options_fail_when_built(
+    preprocessor: object, error: str
+) -> None:
+    with pytest.raises(TypeError, match=error):
+        scanner_create(
+            "inspect_scout/llm_scanner",
+            {"question": "q?", "answer": "boolean", "preprocessor": preprocessor},
+        )

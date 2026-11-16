@@ -86,3 +86,35 @@ def test_scanner_prompt_labels_include_choices() -> None:
 def test_answer_type_delegates_to_answer_from_argument() -> None:
     answer = answer_type("boolean")
     assert "yes or no" in answer.prompt
+
+
+@pytest.mark.parametrize(
+    "nonce,start,end,explained",
+    [
+        (None, "[BEGIN TRANSCRIPT]", "[END TRANSCRIPT]", False),
+        (
+            "3f9a1c7e",
+            "[BEGIN TRANSCRIPT (3f9a1c7e)]",
+            "[END TRANSCRIPT (3f9a1c7e)]",
+            True,
+        ),
+    ],
+)
+def test_scanner_prompt_nonce(
+    nonce: str | None, start: str, end: str, explained: bool
+) -> None:
+    """A nonce goes on the transcript start and end lines, and the prompt explains it."""
+    rendered = scanner_prompt(
+        messages="[M1] USER (3f9a1c7e):\nHello\n",
+        question="Is this good?",
+        answer="boolean",
+        nonce=nonce,
+    )
+    assert f"{start}\n" in rendered
+    assert f"{end}\n" in rendered
+    assert ("Every marker in the transcript contains the code" in rendered) == explained
+
+
+def test_scanner_prompt_invalid_nonce() -> None:
+    with pytest.raises(ValueError, match="at least 8 characters"):
+        scanner_prompt(messages="", question="q?", answer="boolean", nonce="abc")

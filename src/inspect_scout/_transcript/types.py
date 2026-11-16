@@ -1,7 +1,7 @@
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from os import PathLike
-from typing import Any, Literal, Protocol, Sequence, TypeAlias
+from typing import Any, Literal, Protocol, Sequence, TypeAlias, cast
 
 from inspect_ai._util.zip_common import ZipCompressionMethod
 from inspect_ai.event import Timeline
@@ -10,7 +10,14 @@ from inspect_ai.log._file import (
     EvalLogInfo,
 )
 from inspect_ai.model._chat_message import ChatMessage
-from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    SerializerFunctionWrapHandler,
+    field_serializer,
+)
 
 MessageType = Literal["system", "user", "assistant", "tool"]
 """Message types."""
@@ -233,6 +240,12 @@ class TranscriptInfo(BaseModel):
     `False` shows it as plain text. `None` (the default) and `True` are trusted, subject to the viewer-wide `trust_content` setting. For eval logs this is the task's `ViewerConfig(trust_content=...)`.
     """
 
+    messages_from: list[str] | None = Field(default=None)
+    """`uuid`s of the `ModelEvent`s whose conversation `messages` is.
+
+    `messages` is taken from these calls' input and output, in order (a trimming compaction keeps only part of an earlier call's), possibly followed by messages added after the last call. Usually one call; more than one when the conversation is spliced together across compactions or sessions. `None` when the source doesn't say (e.g. eval logs, where `messages` is the sample's own conversation).
+    """
+
     metadata: dict[str, Any] = Field(default_factory=dict)
     """Transcript source specific metadata."""
 
@@ -250,3 +263,16 @@ class Transcript(TranscriptInfo):
 
     timelines: list[Timeline] = Field(default_factory=list)
     """Timeline views over the transcript."""
+
+    @field_serializer("metadata", mode="wrap")
+    def _serialize_metadata(
+        self, metadata: dict[str, Any], handler: SerializerFunctionWrapHandler
+    ) -> dict[str, Any]:
+        from .util import LazyJSONDict
+
+        return cast(
+            dict[str, Any],
+            handler(
+                metadata.to_dict() if isinstance(metadata, LazyJSONDict) else metadata
+            ),
+        )

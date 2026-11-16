@@ -54,7 +54,7 @@ def compile_pattern(
         pattern = re.escape(pattern)  # Escape special chars for literal matching
 
     if word_boundary:
-        pattern = rf"\b{pattern}\b"
+        pattern = rf"\b(?:{pattern})\b"
 
     flags = re.IGNORECASE if ignore_case else 0
 

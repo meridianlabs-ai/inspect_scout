@@ -1,0 +1,24 @@
+# Fails when the shared text in CONTRIBUTING.md or AGENTS.md differs from
+# policy/ in meridianlabs-ai/actions at the pinned commit. Change the text
+# there, then move the pin.
+name: Policy text check
+
+on:
+  pull_request:
+    paths: [CONTRIBUTING.md, AGENTS.md, .github/workflows/policy-text-check.yml]
+  push:
+    branches: [main]
+    paths: [CONTRIBUTING.md, AGENTS.md, .github/workflows/policy-text-check.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  policy-text-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: meridianlabs-ai/actions/policy-text-check@4757bdf4154f25f6118bf797d04160c16a07f824 # main

@@ -101,7 +101,7 @@ def _location_type(location: str | PathLike[str]) -> Literal["eval_log", "databa
     # Treat a directory as eval logs only if it actually contains `.eval`
     # files. Note: this does not detect the rarer JSON eval log format
     # (timestamped `*.json` files); revisit if that becomes a concern.
-    if location_path.exists() and next(location_path.rglob("*.eval"), None) is not None:
+    if next(location_path.rglob("*.eval"), None) is not None:
         return TRANSCRIPT_SOURCE_EVAL_LOG
 
     return TRANSCRIPT_SOURCE_DATABASE

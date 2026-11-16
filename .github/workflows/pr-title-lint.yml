@@ -4,8 +4,11 @@ on:
   pull_request:
     types: [opened, edited, reopened, synchronize]
 
+permissions: {}
+
 jobs:
   lint:
     permissions:
-      pull-requests: read
-    uses: meridianlabs-ai/actions/.github/workflows/pr-title-lint.yml@v1
+      pull-requests: read # read the PR title
+    # A commit on main rather than v1: v1's reusables call their own actions by tag.
+    uses: meridianlabs-ai/actions/.github/workflows/pr-title-lint.yml@78e42fa47e62da0926f744f28602ffee11f6516b # main

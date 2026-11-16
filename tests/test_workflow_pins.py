@@ -1,0 +1,66 @@
+"""Every action and reusable workflow in .github/workflows is pinned to a commit.
+
+A tag or branch can be moved to new code; a commit SHA cannot. The trailing
+comment names the version or branch the SHA came from.
+"""
+
+import pathlib
+import re
+from collections.abc import Iterator
+from typing import Any
+
+import yaml
+
+WORKFLOWS = pathlib.Path(__file__).parents[1] / ".github" / "workflows"
+
+PINNED = re.compile(r"[^@\s]+@[0-9a-f]{40}")
+
+# References allowed to stay unpinned, each with the reason.
+ALLOWED_UNPINNED = {
+    # Shared agent stubs. meridianlabs-ai/agents has callers track its main,
+    # so a merged change reaches every Meridian repo on its next run.
+    "meridianlabs-ai/agents/.github/workflows/claude.yml@main",
+    "meridianlabs-ai/agents/.github/workflows/claude-review.yml@main",
+}
+
+
+def workflow_uses(workflow: dict[str, Any]) -> Iterator[str]:
+    """Yield each `uses:` value: job-level reusable calls and step actions."""
+    for job in (workflow.get("jobs") or {}).values():
+        if "uses" in job:
+            yield job["uses"]
+        for step in job.get("steps") or []:
+            if "uses" in step:
+                yield step["uses"]
+
+
+def test_workflow_uses_are_pinned_to_commits() -> None:
+    checked = 0
+    unpinned: set[str] = set()
+    allowed_seen: set[str] = set()
+    for path in sorted([*WORKFLOWS.glob("*.yml"), *WORKFLOWS.glob("*.yaml")]):
+        text = path.read_text()
+        for uses in workflow_uses(yaml.safe_load(text)):
+            checked += 1
+            if uses in ALLOWED_UNPINNED:
+                allowed_seen.add(uses)
+                continue
+            if uses.startswith("./"):
+                continue
+            trailers = re.findall(
+                rf"uses:\s*{re.escape(uses)}(.*)$", text, re.MULTILINE
+            )
+            commented = bool(trailers) and all(
+                re.match(r"\s+#\s*\S", trailer) for trailer in trailers
+            )
+            if not PINNED.fullmatch(uses) or not commented:
+                unpinned.add(f"{path.name}: {uses}")
+    assert checked > 0, f"no `uses:` found under {WORKFLOWS}"
+    assert not unpinned, (
+        "pin these to a full commit SHA with a version comment "
+        "(`owner/repo@<sha> # vX.Y.Z`):\n" + "\n".join(sorted(unpinned))
+    )
+    stale = ALLOWED_UNPINNED - allowed_seen
+    assert not stale, (
+        f"no workflow uses these; remove them from ALLOWED_UNPINNED: {stale}"
+    )

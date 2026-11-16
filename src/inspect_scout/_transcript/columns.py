@@ -150,6 +150,11 @@ class Columns:
         """Limit that halted execution."""
         return Column("limit")
 
+    @property
+    def trust_content(self) -> Column:
+        """Whether model output may be rendered richly (False shows it as plain text)."""
+        return Column("trust_content")
+
     def __getattr__(self, name: str) -> Column:
         """Access columns using dot notation."""
         if name.startswith("_"):

@@ -1,13 +1,14 @@
 import io
 import json
-import re
 from collections.abc import AsyncIterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import IO, Any, Callable
 
-import ijson  # type: ignore
+import ijson
 from inspect_ai._util.async_bytes_reader import AsyncBytesReader, adapt_to_reader
 from inspect_ai.event import timeline_load
+from inspect_ai.event._validate import validate_chat_messages
+from inspect_ai.log import EventsData, expand_events
 from pydantic import JsonValue
 
 from ..types import (
@@ -17,10 +18,12 @@ from ..types import (
     TranscriptContent,
     TranscriptInfo,
 )
-from ..util import filter_transcript
-from .pool import resolve_pools
+from ..util import filter_transcript, merge_metadata
+from .hydrate import hydrate_nested_tool_events
 from .reducer import (
     ATTACHMENT_PREFIX,
+    ATTACHMENT_PREFIX_LEN,
+    ATTACHMENT_REF_LEN,
     ATTACHMENTS_PREFIX,
     CALL_POOL_ITEM_PREFIX,
     EVENTS_DATA_CALLS_ITEM_PREFIX,
@@ -32,10 +35,12 @@ from .reducer import (
     SCORES_PREFIX,
     TARGET_PREFIX,
     TIMELINES_ITEM_PREFIX,
+    CoroutineGen,
     ListProcessingConfig,
     ParseState,
     attachments_coroutine,
     call_pool_item_coroutine,
+    event_has_pool_refs,
     event_item_coroutine,
     message_item_coroutine,
     message_pool_item_coroutine,
@@ -45,10 +50,11 @@ from .reducer import (
     timeline_item_coroutine,
 )
 
-# Pre-compiled regex patterns for performance
-ATTACHMENT_PATTERN = re.compile(r"attachment://([a-f0-9]{32})")
-
-# Section constants for prefix classification
+# Section constants for prefix classification. Mirrored (minus timelines,
+# which streaming skips) by the `_SECTION_*` block in json/stream_parse.py --
+# keep both constant blocks and both classify/dispatch loops (the HOT PATH
+# comment below, and the one in stream_parse.py's `stream_parse_to_spool`)
+# in sync when either changes.
 _SECTION_OTHER = 0
 _SECTION_MESSAGES = 1
 _SECTION_EVENTS = 2
@@ -105,16 +111,20 @@ class RawTranscript:
     model: str | None
     model_options: dict[str, Any] | None
     score: JsonValue
+    score_explanation: str | None
     success: bool | None
     message_count: int | None
     total_time: float | None
     total_tokens: int | None
     error: str | None
     limit: str | None
+    trust_content: bool | None
     metadata: dict[str, Any]
     messages: list[dict[str, Any]]
     events: list[dict[str, Any]]
     timelines: list[dict[str, Any]] | None = None
+    message_pool: list[dict[str, Any]] = field(default_factory=list)
+    call_pool: list[Any] = field(default_factory=list)
 
 
 async def load_filtered_transcript(
@@ -123,16 +133,14 @@ async def load_filtered_transcript(
     messages: MessageFilter,
     events: EventFilter,
     *,
+    metadata: bool = True,
     on_early_exit: Callable[[], None] | None = None,
 ) -> Transcript:
-    """
-    Transform and filter JSON sample data into a Transcript.
+    """Transform and filter JSON sample data into a Transcript.
 
-    Uses a two-phase approach:
-    1. Stream parse and filter messages/events while collecting attachment references
-    2. Resolve attachment references with actual values
-
-    Falls back to non-streaming json5 parser if streaming fails (e.g., NaN/Inf values).
+    Stream-parses and filters messages/events while collecting attachment
+    refs, then resolves those refs. Falls back to a non-streaming json5
+    parser if streaming fails (e.g. NaN/Inf values).
 
     Args:
         sample_bytes: Byte stream of JSON sample data
@@ -141,27 +149,36 @@ async def load_filtered_transcript(
             list=include matching)
         events: Filter for event types (None=exclude all, "all"=include all,
             list=include matching)
+        metadata: Whether to read the sample's metadata, target and scores from
+            the body; when False the summary values already on ``t`` are kept.
         on_early_exit: Test-only callback invoked immediately before the
             early-exit break
 
     Returns:
-        Transcript object with filtered messages and events, resolved attachments.
-        Metadata includes sample_metadata, target, and scores from the sample JSON.
-        ``input`` is not unthinned: the sample JSON's input can contain attachment
-        refs whose resolution requires parsing the attachments section — which follows
-        events, defeating the early-exit optimization.
+        Transcript with filtered messages/events and resolved attachments.
+        Unless ``metadata=False``, metadata includes sample_metadata, target,
+        and scores from the body. Stored timelines are returned only when
+        ``events`` is ``"all"``: they resolve against the loaded events and may
+        reference any of them, so a partial event list yields no timelines.
+        ``input`` is not unthinned: resolving its refs requires the attachments
+        section, which follows events and would defeat the early-exit
+        optimization.
     """
     try:
-        # Phase 1: Parse, filter, and collect attachment references
         async with adapt_to_reader(sample_bytes) as reader:
             transcript, attachment_refs = await _parse_and_filter(
-                reader, t, messages, events, on_early_exit=on_early_exit
+                reader,
+                t,
+                messages,
+                events,
+                metadata=metadata,
+                on_early_exit=on_early_exit,
             )
-        # Phase 2: Resolve attachment references
         return _resolve_attachments(transcript, attachment_refs)
     except ijson.JSONError:
-        # Fallback to json5 for JSON5 features (NaN, Inf, etc.)
-        return await _load_with_json5_fallback(sample_bytes, t, messages, events)
+        return await _load_with_json5_fallback(
+            sample_bytes, t, messages, events, metadata=metadata
+        )
 
 
 async def _load_with_json5_fallback(
@@ -169,6 +186,8 @@ async def _load_with_json5_fallback(
     t: TranscriptInfo,
     messages: MessageFilter,
     events: EventFilter,
+    *,
+    metadata: bool = True,
 ) -> Transcript:
     """Fallback parser using json5 for JSON5 features (NaN, Inf, etc.)."""
     if hasattr(sample_bytes, "__aiter__"):
@@ -179,7 +198,8 @@ async def _load_with_json5_fallback(
         io_source = sample_bytes
     io_source.seek(0)
     data = json.load(io.TextIOWrapper(io_source, encoding="utf-8"))
-    _resolve_pools_from_dict(data)
+    message_pool, call_pool = _pools_from_dict(data)
+    keep_timelines = events == "all"
 
     return filter_transcript(
         _resolve_attachments(
@@ -197,20 +217,26 @@ async def _load_with_json5_fallback(
                 model=t.model,
                 model_options=t.model_options,
                 score=t.score,
+                score_explanation=t.score_explanation,
                 success=t.success,
                 message_count=t.message_count,
                 total_time=t.total_time,
                 total_tokens=t.total_tokens,
                 error=t.error,
                 limit=t.limit,
-                metadata=_merge_unthinned_from_dict(t.metadata, data),
+                trust_content=t.trust_content,
+                metadata=_merge_unthinned_from_dict(t.metadata, data)
+                if metadata
+                else t.metadata,
                 messages=data.get("messages", []),
                 events=data.get("events", []),
-                timelines=data.get("timelines"),
+                timelines=data.get("timelines") if keep_timelines else None,
+                message_pool=message_pool,
+                call_pool=call_pool,
             ),
             data.get("attachments", {}),
         ),
-        TranscriptContent(messages, events),
+        TranscriptContent(messages, events, timeline="all" if keep_timelines else None),
     )
 
 
@@ -223,24 +249,22 @@ def _merge_unthinned(base: dict[str, Any], state: ParseState) -> dict[str, Any]:
         overrides["target"] = state.target
     if state.scores:
         overrides["scores"] = state.scores
-    return base.copy() | overrides if overrides else base
+    return merge_metadata(base, overrides)
 
 
-def _resolve_pools_from_dict(data: dict[str, Any]) -> None:
-    """Resolve v3 pools in a fully-parsed sample dict (mutates in-place).
+def _pools_from_dict(data: dict[str, Any]) -> tuple[list[Any], list[Any]]:
+    """Message and call pools from a fully-parsed sample dict.
 
-    Accepts either pool shape (see reducer.py); no-op if neither present.
+    Accepts either pool shape (see reducer.py); empty if neither present.
     """
-    from .pool import _resolve_events_pools
-
     events_data = data.get("events_data")
     if isinstance(events_data, dict):
         message_pool = events_data.get("messages") or []
         call_pool = events_data.get("calls") or []
     else:
-        message_pool = data.get("message_pool", [])
-        call_pool = data.get("call_pool", [])
-    _resolve_events_pools(data.get("events", []), message_pool, call_pool)
+        message_pool = data.get("message_pool") or []
+        call_pool = data.get("call_pool") or []
+    return message_pool, call_pool
 
 
 def _merge_unthinned_from_dict(
@@ -254,7 +278,7 @@ def _merge_unthinned_from_dict(
         overrides["target"] = data["target"]
     if data.get("scores"):
         overrides["scores"] = data["scores"]
-    return base.copy() | overrides if overrides else base
+    return merge_metadata(base, overrides)
 
 
 async def _parse_and_filter(
@@ -263,20 +287,19 @@ async def _parse_and_filter(
     messages_filter: MessageFilter,
     events_filter: EventFilter,
     *,
+    metadata: bool = True,
     on_early_exit: Callable[[], None] | None = None,
 ) -> tuple[RawTranscript, dict[str, str]]:
-    """
-    Phase 1: Single-pass stream parse, filter, and collect attachment references.
+    """Single-pass stream parse, filter, and collect attachment references.
 
     Returns:
         Tuple of (partial transcript, attachment references dict)
     """
-    # Create processing configurations
     messages_config = (
         ListProcessingConfig(
             array_item_prefix="messages.item",
             filter_field="role",
-            filter_list=messages_filter,  # type:ignore
+            filter_list=messages_filter,
         )
         if messages_filter is not None
         else None
@@ -286,7 +309,7 @@ async def _parse_and_filter(
         ListProcessingConfig(
             array_item_prefix="events.item",
             filter_field="event",
-            filter_list=events_filter,  # type:ignore
+            filter_list=events_filter,
         )
         if events_filter is not None
         else None
@@ -294,16 +317,17 @@ async def _parse_and_filter(
 
     state = ParseState()
 
-    # Initialize coroutine processors
     messages_coro = (
         message_item_coroutine(state, messages_config) if messages_config else None
     )
     events_coro = event_item_coroutine(state, events_config) if events_config else None
-    timelines_coro = timeline_item_coroutine(state)
-    attachments_coro = attachments_coroutine(state)
-    metadata_coro = metadata_coroutine(state)
-    target_coro = target_coroutine(state)
-    scores_coro = scores_coroutine(state)
+    timelines_coro = timeline_item_coroutine(state) if events_filter == "all" else None
+    attachments_coro = attachments_coroutine(state, events_coro is not None)
+    # With `metadata=False` nothing is overlaid, so `_merge_unthinned` hands
+    # back `t.metadata` itself -- the index's LazyJSONDict, uncopied.
+    metadata_coro = metadata_coroutine(state) if metadata else None
+    target_coro: CoroutineGen | None = target_coroutine(state) if metadata else None
+    scores_coro: CoroutineGen | None = scores_coroutine(state) if metadata else None
     # One coroutine per pool prefix (see reducer.py for the two shapes);
     # both target the same state field, so only the matching one activates.
     message_pool_coros = (
@@ -323,45 +347,55 @@ async def _parse_and_filter(
         else []
     )
 
+    pending_fields = {"target", "scores", "metadata"}
+    if messages_filter is not None:
+        pending_fields.add("messages")
+
     last_prefix = ""
     current_section = _SECTION_OTHER
 
     async for prefix, event, value in ijson.parse_async(sample_json, use_float=True):
-        # Early exit: skip events/attachments when they aren't needed.
-        # JSON field order is: ...target, messages, output, scores, metadata,
-        # store, events, attachments, events_data — so by the time we see
-        # "events" start_array, metadata and scores have already been parsed.
-        # Exiting before events_data is safe: it only matters when events do.
+        if prefix == "" and event == "map_key":
+            pending_fields.discard(value)
+
+        # Earlier top-level fields are complete when the events array starts.
         if (
             events_coro is None
             and prefix == "events"
             and event == "start_array"
             and not state.attachment_refs
+            and not pending_fields
         ):
             if on_early_exit is not None:
                 on_early_exit()
             break
 
-        # Inline prefix classification for performance (56M+ calls in hot path).
-        # WARNING: every operation here can run millions of times per parse.
-        # Avoid string slicing, startswith, or any allocation in common paths.
-        # Profile before changing.
+        # HOT PATH: this classification runs 56M+ times per large parse. Avoid
+        # string slicing, startswith, or any allocation in common paths.
+        # Profile before changing. Mirrored in json/stream_parse.py's
+        # `stream_parse_to_spool` (minus the _SECTION_TIMELINES branch, which
+        # streaming skips -- see its own comment). A change to this decision
+        # tree needs the same change there.
         if prefix != last_prefix:
             last_prefix = prefix
             p_len = len(prefix)
             if p_len == 0 or prefix[0] not in ("m", "e", "a", "t", "s", "c"):
                 current_section = _SECTION_OTHER
             elif p_len < _MIN_SECTION_PREFIX_LEN:
-                # Short prefixes: "scores" (6), "target" (6)
+                # Short prefixes: "events" (6), "scores" (6), "target" (6)
                 if prefix == "scores":
                     current_section = _SECTION_SCORES
                 elif prefix == "target":
                     current_section = _SECTION_TARGET
+                elif prefix == "events":
+                    # The section's own start_array, which fires even for an
+                    # empty array -- unlike "events.item".
+                    state.events_seen = True
+                    current_section = _SECTION_OTHER
                 else:
                     current_section = _SECTION_OTHER
             elif prefix[0] == "m":
-                # Both "messages" and "metadata" start with "me", check 3rd char
-                # (safe because we already checked p_len >= _MIN_SECTION_PREFIX_LEN)
+                # "messages" vs "metadata": both start "me", discriminate on 3rd char.
                 if (
                     p_len >= _MESSAGES_ITEM_PREFIX_LEN
                     and prefix[2] == "s"
@@ -381,7 +415,7 @@ async def _parse_and_filter(
                 else:
                     current_section = _SECTION_OTHER
             elif prefix[0] == "e":
-                # events array, or one of the events_data.* pool sub-arrays.
+                # events array, or an events_data.* pool sub-array.
                 if (
                     p_len >= _EVENTS_ITEM_PREFIX_LEN
                     and prefix[:_EVENTS_ITEM_PREFIX_LEN] == EVENTS_ITEM_PREFIX
@@ -428,23 +462,22 @@ async def _parse_and_filter(
             else:
                 current_section = _SECTION_OTHER
 
-        # Dispatch to coroutines (optimized to avoid redundant None checks)
         if current_section == _SECTION_MESSAGES and messages_coro:
             messages_coro.send((prefix, event, value))
         elif current_section == _SECTION_EVENTS and events_coro:
             events_coro.send((prefix, event, value))
         elif current_section == _SECTION_ATTACHMENTS:
             attachments_coro.send((prefix, event, value))
-        elif current_section == _SECTION_METADATA:
+        elif current_section == _SECTION_METADATA and metadata_coro:
             metadata_coro.send((prefix, event, value))
         elif current_section == _SECTION_TARGET and target_coro is not None:
             try:
                 target_coro.send((prefix, event, value))
             except StopIteration:
                 target_coro = None
-        elif current_section == _SECTION_TIMELINES:
+        elif current_section == _SECTION_TIMELINES and timelines_coro:
             timelines_coro.send((prefix, event, value))
-        elif current_section == _SECTION_SCORES:
+        elif current_section == _SECTION_SCORES and scores_coro:
             scores_coro.send((prefix, event, value))
         elif current_section == _SECTION_MESSAGE_POOL and message_pool_coros:
             for coro in message_pool_coros:
@@ -452,9 +485,6 @@ async def _parse_and_filter(
         elif current_section == _SECTION_CALL_POOL and call_pool_coros:
             for coro in call_pool_coros:
                 coro.send((prefix, event, value))
-
-    # Resolve v3 pool references before returning
-    resolve_pools(state)
 
     return (
         RawTranscript(
@@ -471,16 +501,20 @@ async def _parse_and_filter(
             model=t.model,
             model_options=t.model_options,
             score=t.score,
+            score_explanation=t.score_explanation,
             success=t.success,
             message_count=t.message_count,
             total_time=t.total_time,
             total_tokens=t.total_tokens,
             error=t.error,
             limit=t.limit,
+            trust_content=t.trust_content,
             metadata=_merge_unthinned(t.metadata, state),
             messages=state.messages,
             events=state.events,
             timelines=state.timelines if state.timelines else None,
+            message_pool=state.message_pool,
+            call_pool=state.call_pool,
         ),
         state.attachments,
     )
@@ -501,18 +535,15 @@ def _resolve_attachments(
     """
 
     def resolve_string(text: str) -> str:
-        """Replace attachment references in a string."""
-        # Fast path: skip regex if no attachment prefix found
-        if ATTACHMENT_PREFIX not in text:
+        """Resolve a string that is itself an attachment reference.
+
+        A ref is never a substring: `create_attachment` replaces the whole
+        field, and inspect_ai reads refs back with `startswith`. Substituting
+        one found mid-string would rewrite author-written text.
+        """
+        if len(text) != ATTACHMENT_REF_LEN or not text.startswith(ATTACHMENT_PREFIX):
             return text
-
-        def replace_ref(match: re.Match[str]) -> str:
-            attachment_id = match.group(1)
-            return attachments.get(
-                attachment_id, match.group(0)
-            )  # Return original if not found
-
-        return ATTACHMENT_PATTERN.sub(replace_ref, text)
+        return attachments.get(text[ATTACHMENT_PREFIX_LEN:], text)
 
     # Resolve references in messages (already raw dicts, no need to model_dump)
     resolved_messages = []
@@ -520,10 +551,13 @@ def _resolve_attachments(
         resolved_dict = _resolve_dict_attachments(message_dict, resolve_string)
         resolved_messages.append(resolved_dict)
 
-    # Resolve references in events (already raw dicts, no need to model_dump)
+    # Resolve references in events (already raw dicts, no need to model_dump).
+    # `_resolve_dict_attachments` walks nested dicts too, so by the time a
+    # nested event is hydrated its refs are already resolved: identity resolve.
     resolved_events = []
     for event_dict in transcript.events:
         resolved_dict = _resolve_dict_attachments(event_dict, resolve_string)
+        hydrate_nested_tool_events(resolved_dict, lambda d: d)
         resolved_events.append(resolved_dict)
 
     # Create new transcript with resolved data
@@ -543,18 +577,44 @@ def _resolve_attachments(
         "model": transcript.model,
         "model_options": transcript.model_options,
         "score": transcript.score,
+        "score_explanation": transcript.score_explanation,
         "success": transcript.success,
         "message_count": transcript.message_count,
         "total_time": transcript.total_time,
         "total_tokens": transcript.total_tokens,
         "error": transcript.error,
         "limit": transcript.limit,
+        "trust_content": transcript.trust_content,
         "metadata": {},  # Placeholder to avoid validation
         "messages": resolved_messages,
         "events": resolved_events,
     }
 
     validated = Transcript.model_validate(transcript_data)
+
+    # Expand pool refs only after validation, against pool entries validated
+    # once: every event then shares the same message objects. Expanding the
+    # raw dicts first would validate (and attachment-walk) one copy per ref,
+    # which is quadratic in conversation length. Pools are skipped when no
+    # retained event references them (e.g. an events filter without "model").
+    if (transcript.message_pool or transcript.call_pool) and any(
+        event_has_pool_refs(event) for event in transcript.events
+    ):
+        validated.events = expand_events(
+            validated.events,
+            EventsData(
+                messages=validate_chat_messages(
+                    [
+                        _resolve_dict_attachments(message, resolve_string)
+                        for message in transcript.message_pool
+                    ]
+                ),
+                calls=[
+                    _resolve_dict_attachments(call, resolve_string)
+                    for call in transcript.call_pool
+                ],
+            ),
+        )
 
     # Resolve timelines with event UUID context (events must be validated first)
     if transcript.timelines:

@@ -6,8 +6,8 @@ Prints nothing when the ledger is unchanged.
 Usage: python3 suppressions_pr_delta.py <base.json> <head.json>
 """
 
-import html
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -17,6 +17,26 @@ from pathlib import Path
 from check_suppressions import Delta, Ledger, diff_ledgers, totals
 
 MARKER = "<!-- suppressions-delta -->"
+
+# Shown instead of a ledger key that check_suppressions.py could not have
+# written, so a PR's hand-edited suppressions.json cannot put arbitrary text
+# in the bot's comment.
+UNRECOGNISED_KEY = "(unrecognised key)"
+
+# A repo-relative .py/.pyi path, as `git ls-files` lists them.
+_SEGMENT = r"(?!\.\.?(?:/|$))[A-Za-z0-9_.+-]+"
+_FILE_KEY_RE = re.compile(rf"{_SEGMENT}(?:/{_SEGMENT})*\.pyi?")
+
+# The rule keys check_suppressions._rules produces.
+_RULE_KEY_RE = re.compile(
+    r"(?:noqa(?::[A-Z]+[0-9]+)?"
+    r"|type: ignore(?:\[[\w-]+\])?"
+    r"|pyright: ignore(?:\[[\w-]+\])?"
+    r"|mypy: ignore-errors"
+    r"|mypy: disable-error-code\[[\w-]+\])"
+    r"(?: \(file-wide\))?",
+    re.ASCII,
+)
 
 
 def _load(path: str) -> Ledger:
@@ -28,9 +48,23 @@ def _load(path: str) -> Ledger:
 
 
 def _cell(value: str) -> str:
-    """Render untrusted ledger text safely inside a Markdown table cell."""
-    value = value.replace("\r", " ").replace("\n", " ")
-    return f"<code>{html.escape(value).replace('|', '&#124;')}</code>"
+    r"""Render untrusted text as a literal code span inside a Markdown table cell.
+
+    The fence is one backtick longer than any backtick run in the value, so
+    nothing in it is parsed as Markdown. `\|` keeps a pipe from ending the
+    table cell.
+    """
+    value = value.replace("\r", " ").replace("\n", " ").replace("|", "\\|")
+    fence = "`" * (max(map(len, re.findall("`+", value)), default=0) + 1)
+    # A code span strips one space from each end when both are present.
+    if value[:1] in ("`", " ", "") or value[-1:] in ("`", " "):
+        value = f" {value} "
+    return f"{fence}{value}{fence}"
+
+
+def _key_cell(value: str, pattern: re.Pattern[str]) -> str:
+    """`_cell(value)` if the ledger key matches `pattern`, else a placeholder."""
+    return _cell(value) if pattern.fullmatch(value) else UNRECOGNISED_KEY
 
 
 def render(base: Ledger, head: Ledger) -> str | None:
@@ -75,7 +109,10 @@ def render(base: Ledger, head: Ledger) -> str | None:
             if row.before.undescribed == row.after.undescribed
             else f" (reason-less {row.before.undescribed} → {row.after.undescribed})"
         )
-        return f"| {_cell(file)} | {_cell(rule)} | {change_cell}{reason_note} |"
+        return (
+            f"| {_key_cell(file, _FILE_KEY_RE)} | {_key_cell(rule, _RULE_KEY_RE)} "
+            f"| {change_cell}{reason_note} |"
+        )
 
     table = "\n".join(render_row(row) for row in rows)
 

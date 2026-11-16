@@ -1,7 +1,6 @@
 # tests/scanjobs/test_refresh.py
 import asyncio
 import logging
-import sys
 from collections.abc import AsyncIterator, Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -18,9 +17,6 @@ from inspect_scout._scanjobs.refresh import (
     listing_to_scans,
 )
 from inspect_scout._scanjobs.store import ScanIndexStore
-
-if sys.version_info < (3, 11):
-    from exceptiongroup import ExceptionGroup
 
 
 def _file(name: str, *, mtime: float, size: int, etag: str | None = None) -> FileInfo:

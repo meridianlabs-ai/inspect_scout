@@ -41,7 +41,7 @@ submodule gitlink (see the submodule guide in repo facts for background).
   tree). A true fast-forward push straight to `main` would keep the SHA, but
   that is not a path the PR UI offers.
 - Submodule checks before pushing: `pnpm typecheck` and `pnpm test` from the ts-mono root (turbo), not per-package tsc
-- Pipeline internals: "Type Sharing" section of `CLAUDE.md`; submodule workflows: `src/inspect_scout/_view/ts-mono/docs/submodule-guide.md`
+- Pipeline internals: "Type Sharing" section of `AGENTS.md`; submodule workflows: `src/inspect_scout/_view/ts-mono/docs/submodule-guide.md`
 - Sibling consumer: `inspect_ai` (also embeds ts-mono, at `src/inspect_ai/_view/ts-mono`; its regen `python src/inspect_ai/_view/schema.py` produces `packages/inspect-common/src/types/generated.ts`). Types flow inspect_ai → scout: scout's `generated.ts` imports inspect-originated types from `@tsmono/inspect-common`, and nothing on the inspect_ai side duplicates scout's types — so scout Python changes rarely require a sibling sync (see step 2a).
 
 ## Recognize the situation

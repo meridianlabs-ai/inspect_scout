@@ -30,6 +30,7 @@ from .._transcript.types import TranscriptInfo
 from . import _mp_common
 from ._iterator import iterator_from_queue
 from ._mp_common import IPCContext, LoggingItem, run_sync_on_thread
+from ._mp_error import worker_error
 from ._mp_logging import patch_inspect_log_handler
 from ._mp_registry import ChildSemaphoreRegistry
 from .common import ScanMetrics
@@ -143,10 +144,13 @@ def subprocess_main(
                         )
                         print_diagnostics("Worker main", "All tasks completed normally")
                     except Exception as ex:
-                        print_diagnostics("Worker main", f"Work task error: {ex}")
-                        # Send exception back to main process via upstream queue
+                        error = worker_error(worker_id, ex)
+                        print_diagnostics(
+                            "Worker main", f"Work task error: {error.message}"
+                        )
+                        # Send detached diagnostics, not a third-party exception
                         # (in a thread: the bounded queue can block when full)
-                        await run_sync_on_thread(ipc_ctx.upstream_queue.put, ex)
+                        await run_sync_on_thread(ipc_ctx.upstream_queue.put, error)
                         raise
                     finally:
                         # CRITICAL: Cancel the shutdown monitor to prevent hang.

@@ -27,7 +27,7 @@ A dataclass containing immutable configuration (parse/scan functions, task count
 ### 2. Multiprocessing Queues
 Two bounded queues handle data flow:
 - **parse_job_queue** (Main → Workers): Lightweight ParseJob metadata with `None` sentinels for completion
-- **upstream_queue** (Workers → Main): Multiplexed stream of results, metrics, semaphore requests, and control messages (using strongly-typed dataclasses: `ResultItem`, `MetricsItem`, `SemaphoreRequest`, `WorkerComplete`, `ShutdownSentinel`, `Exception`). Main uses pattern matching to discriminate message types.
+- **upstream_queue** (Workers → Main): Multiplexed stream of results, metrics, logging, semaphore requests, and control messages (`ResultItem`, `MetricsItem`, `LoggingItem`, `SemaphoreRequest`, `WorkerReady`, `WorkerComplete`, `ShutdownSentinel`, `WorkerError`). Main uses pattern matching to discriminate message types. Fatal worker errors use detached scalar diagnostics instead of pickling exception objects; other messages retain their existing structures.
 
 Queue operations use `anyio.to_thread.run_sync()` for blocking `.get()` calls to avoid blocking the event loop.
 
@@ -87,3 +87,7 @@ SIGINT delivered only to parent (workers have `SIGINT=SIG_IGN`). Parent's task g
 6. **Cleanup**: Close queues, wait for feeder threads, cancel join threads
 
 **Key design:** Workers ignore SIGINT to avoid races. Parent coordinates shutdown via condition variable + drain-while-waiting to unblock feeder threads. Most queue items are drained during Phase 2 while workers exit, preventing feeder thread deadlock. Shutdown sentinel injection prevents collector deadlock if workers are forcibly terminated.
+
+### Worker error transport
+
+The collector raises `WorkerProcessError` from a `WorkerError` diagnostic. See [exception handling](exception_handling.md) for the containment boundary and public reporting behavior.

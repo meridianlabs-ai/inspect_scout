@@ -154,6 +154,9 @@ class RecorderBuffer:
             transcript.model_options, "generate_config", m
         )
         transcript_score = resolve_metadata_var(transcript.score, "score", m)
+        transcript_score_explanation = resolve_metadata_var(
+            transcript.score_explanation, "score_explanation", m
+        )
         transcript_success = resolve_success_value(
             transcript.success, cast(JsonValue | None, transcript_score)
         )
@@ -186,12 +189,15 @@ class RecorderBuffer:
                     "transcript_model": transcript_model,
                     "transcript_model_options": transcript_model_options,
                     "transcript_score": transcript_score,
+                    "transcript_score_explanation": transcript_score_explanation,
                     "transcript_success": transcript_success,
                     "transcript_message_count": transcript_message_count,
                     "transcript_total_time": transcript_total_time,
                     "transcript_total_tokens": transcript_total_tokens,
                     "transcript_error": transcript_error,
                     "transcript_limit": transcript_limit,
+                    # no metadata fallback: trust only ever comes from the field
+                    "transcript_trust_content": transcript.trust_content,
                     "transcript_metadata": transcript.metadata,
                     "scan_id": self._spec.scan_id,
                     "scan_tags": self._spec.tags or [],
@@ -392,22 +398,38 @@ def scanner_table(
     # build dataset
     dataset: ds.Dataset = ds.dataset(inputs, format="parquet")
 
-    # discover the unified schema up-front. This ensures column order/types are stable.
-    # if there are absolutely no fragments under sdir, accessing .schema may raise.
+    # pyarrow infers the dataset schema from the first fragment only, which drops
+    # any column that only later files carry (a scan resumed across an upgrade).
+    # Union the field names across all inputs instead; first-seen type wins.
+    fields: dict[str, pa.Field[Any]] = {}
     try:
-        schema: pa.Schema = dataset.schema
+        for path in inputs:
+            for field in pq.read_schema(path):
+                fields.setdefault(field.name, field)
     except Exception as e:
         raise RuntimeError(
             f"Unable to discover dataset schema under {sdir}: {e}"
         ) from e
+    schema = pa.schema(fields.values())
 
     # Correct schema to handle type inconsistencies across files:
-    # 1. Promote null-type columns to string (unknown type)
-    # 2. Force 'value' and 'transcript_score' columns to string since they can have
+    # 1. Pin columns with a known type (`fixed_types`): the first file may hold
+    #    them as all-null, which would otherwise demote them to string, or lack
+    #    them entirely (written by an older version), which would drop them
+    # 2. Promote other null-type columns to string (unknown type)
+    # 3. Force 'value' and 'transcript_score' columns to string since they can have
     #    mixed types across different result reports / transcripts
+    fixed_types: dict[str, pa.DataType] = {
+        "transcript_success": pa.bool_(),
+        "transcript_trust_content": pa.bool_(),
+    }
     corrected_fields = []
     for field in schema:
-        if pa.types.is_null(field.type):
+        if field.name in fixed_types:
+            corrected_fields.append(
+                pa.field(field.name, fixed_types[field.name], nullable=True)
+            )
+        elif pa.types.is_null(field.type):
             # Promote null type to string
             corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))
         elif field.name in {"value", "transcript_score"}:
@@ -415,6 +437,11 @@ def scanner_table(
             corrected_fields.append(pa.field(field.name, pa.string(), nullable=True))
         else:
             corrected_fields.append(field)
+    corrected_fields.extend(
+        pa.field(name, type, nullable=True)
+        for name, type in fixed_types.items()
+        if name not in schema.names
+    )
     schema = pa.schema(corrected_fields)
 
     # state for bounded accumulation -> large-ish row groups
@@ -532,12 +559,22 @@ def _sanitize_component(name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_\-=+.,@]", "_", name)
 
 
-def _normalize_scalar(v: Any) -> Any:
+_SERIALIZED_INPUT_COLUMNS = frozenset({"input", "input_data"})
+"""Columns `ResultReport.to_df_columns` fills with pre-serialized UTF-8 JSON."""
+
+
+def _normalize_scalar(key: str, v: Any) -> Any:
     if v is None:
         return None
     if isinstance(v, bool):
         return v
     if isinstance(v, (str, int, float)):
+        return v
+    # `input`/`input_data` arrive pre-serialized as UTF-8 JSON; pyarrow decodes
+    # UTF-8 into a string column directly, while `to_json` below would wrap the
+    # buffer in quotes. Scoped by key because any other column can hold
+    # arbitrary user bytes, which pyarrow rejects with `ArrowInvalid`.
+    if key in _SERIALIZED_INPUT_COLUMNS and isinstance(v, (bytes, bytearray)):
         return v
     # datetime/date
     try:
@@ -562,7 +599,7 @@ def _records_to_arrow(records: list[dict[str, Any]]) -> "pa.Table":
     import pyarrow as pa
 
     # First normalize scalars
-    norm = [{k: _normalize_scalar(v) for k, v in r.items()} for r in records]
+    norm = [{k: _normalize_scalar(k, v) for k, v in r.items()} for r in records]
 
     # Check for mixed-type columns and convert them to strings
     if norm:
@@ -571,7 +608,14 @@ def _records_to_arrow(records: list[dict[str, Any]]) -> "pa.Table":
         for record in norm:
             for key, value in record.items():
                 if value is not None:
-                    val_type = type(value).__name__
+                    # str and buffers are all text for a string column, so a
+                    # column mixing them is not "mixed": stringifying here
+                    # would write b'...' into the cell.
+                    val_type = (
+                        "str"
+                        if isinstance(value, (bytes, bytearray))
+                        else type(value).__name__
+                    )
                     if key not in columns_types:
                         columns_types[key] = set()
                     columns_types[key].add(val_type)
@@ -581,8 +625,15 @@ def _records_to_arrow(records: list[dict[str, Any]]) -> "pa.Table":
         if mixed_cols:
             for record in norm:
                 for col in mixed_cols:
-                    if col in record and record[col] is not None:
-                        record[col] = str(record[col])
+                    value = record.get(col)
+                    if value is not None:
+                        # decode rather than `str()`, which would write the
+                        # b'...' repr into the cell
+                        record[col] = (
+                            value.decode()
+                            if isinstance(value, (bytes, bytearray))
+                            else str(value)
+                        )
 
     # Build arrays column-wise so string columns can use large_string offsets.
     # This avoids the ~2GB limit of Arrow's default string offset type.
@@ -598,7 +649,10 @@ def _records_to_arrow(records: list[dict[str, Any]]) -> "pa.Table":
     for column in columns:
         values = [record.get(column) for record in norm]
         non_null_values = [value for value in values if value is not None]
-        if non_null_values and all(isinstance(value, str) for value in non_null_values):
+        if non_null_values and all(
+            isinstance(value, (str, bytes, bytearray)) for value in non_null_values
+        ):
+            # pyarrow decodes UTF-8 bytes into a string column directly
             arrays[column] = pa.array(values, type=pa.large_string())
         else:
             arrays[column] = pa.array(values)

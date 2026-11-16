@@ -16,9 +16,8 @@ from inspect_ai.model._chat_message import (
     ChatMessageUser,
 )
 from inspect_ai.model._generate_config import GenerateConfig
-from inspect_scout._scanner._loaders import (
-    create_implicit_loader,
-)
+from inspect_scout._scanner._loaders import create_implicit_loader
+from inspect_scout._transcript.handle import TranscriptHandle
 from inspect_scout._transcript.timeline import Timeline
 from inspect_scout._transcript.types import Transcript, TranscriptContent
 
@@ -429,3 +428,36 @@ def test_bare_list_type_should_raise_error() -> None:
     # Should raise RuntimeError because element_type cannot be determined
     with pytest.raises(RuntimeError):
         create_implicit_loader(_bare_list, does_not_matter_filter)
+
+
+@pytest.mark.parametrize(
+    ("annotation", "expected_loader"),
+    [
+        pytest.param(
+            Transcript | TranscriptHandle, "IdentityLoader", id="transcript-and-handle"
+        ),
+        pytest.param(Transcript | int, None, id="incompatible-member-rejected"),
+    ],
+)
+def test_transcript_or_handle_union_takes_the_identity_loader(
+    annotation: Any, expected_loader: str | None
+) -> None:
+    """A `Transcript | <handle types>` union routes to the identity loader.
+
+    Asserts through `create_implicit_loader`, since that routing — not the
+    predicate — is what a handle-accepting scanner needs at registration.
+    ``None`` marks an annotation that is not a transcript-or-handle union and
+    so falls through to the message/event loaders, which reject it.
+    """
+
+    async def scanner_fn(input: Any) -> Any:
+        return None
+
+    scanner_fn.__annotations__["input"] = annotation
+
+    if expected_loader is None:
+        with pytest.raises(RuntimeError):
+            create_implicit_loader(scanner_fn, does_not_matter_filter)
+    else:
+        loader = create_implicit_loader(scanner_fn, does_not_matter_filter)
+        assert registry_unqualified_name(loader) == expected_loader

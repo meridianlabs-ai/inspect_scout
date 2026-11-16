@@ -159,6 +159,12 @@ TRANSCRIPT_SCHEMA_FIELDS: list[SchemaField] = [
         description='Limit that caused the task to exit (e.g. "tokens", "messages", etc.).',
     ),
     SchemaField(
+        name="trust_content",
+        pyarrow_type=pa.bool_(),
+        required=False,
+        description="Whether model output may be rendered richly (False shows it as plain text).",
+    ),
+    SchemaField(
         name="messages",
         pyarrow_type=pa.large_string(),
         required=False,

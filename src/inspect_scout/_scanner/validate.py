@@ -25,6 +25,7 @@ from inspect_ai.event._sample_init import SampleInitEvent
 from inspect_ai.event._sample_limit import SampleLimitEvent
 from inspect_ai.event._sandbox import SandboxEvent
 from inspect_ai.event._score import ScoreEvent
+from inspect_ai.event._sentinel import SentinelEvent
 from inspect_ai.event._span import SpanBeginEvent, SpanEndEvent
 from inspect_ai.event._state import StateEvent
 from inspect_ai.event._store import StoreEvent
@@ -37,6 +38,7 @@ from inspect_ai.model._chat_message import (
     ChatMessageUser,
 )
 
+from .._transcript.handle import is_transcript_handle_type
 from .._transcript.types import EventType, MessageType, Transcript
 from .._util.type_hints import is_union_type
 
@@ -57,6 +59,7 @@ TYPE_TO_EVENT_FILTER: dict[type[Any], str] = {
     StateEvent: "state",
     StoreEvent: "store",
     ApprovalEvent: "approval",
+    SentinelEvent: "sentinel",
     InputEvent: "input",
     ScoreEvent: "score",
     ErrorEvent: "error",
@@ -395,6 +398,7 @@ def _get_event_types_from_filter(
         "state": StateEvent,
         "store": StoreEvent,
         "approval": ApprovalEvent,
+        "sentinel": SentinelEvent,
         "compaction": CompactionEvent,
         "branch": BranchEvent,
         "input": InputEvent,
@@ -504,6 +508,20 @@ def _is_compatible_with_type(scanner_type: Any, target_type: Any) -> bool:
         # Direct equality
         if scanner_type == target_type:
             return True
+
+        # A `Transcript | TranscriptHandle` union is compatible wherever a bare
+        # Transcript is. Requiring a genuine handle member among the non-
+        # matching members keeps this from swallowing partial non-handle
+        # unions, which the coverage check below rejects.
+        union_members = _get_union_members(scanner_type)
+        if union_members is not None:
+            others = {
+                m for m in union_members if not _is_compatible_with_type(m, target_type)
+            }
+            if 0 < len(others) < len(union_members) and all(
+                is_transcript_handle_type(m) for m in others
+            ):
+                return True
 
         # Unions never match on origin alone (every union's origin is Union,
         # so a partial union would wrongly match a full one)

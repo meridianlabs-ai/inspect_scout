@@ -35,6 +35,7 @@ def create_sample_transcript(
     model: str | None = None,
     task: str | None = None,
     score: JsonValue | None = None,
+    score_explanation: str | None = None,
     metadata: dict[str, Any] | None = None,
     messages: list[ChatMessage] | None = None,
     events: list[Event] | None = None,
@@ -48,6 +49,7 @@ def create_sample_transcript(
         task_set=task,
         model=model,
         score=score,
+        score_explanation=score_explanation,
         metadata=metadata or {},
         messages=messages or [ChatMessageUser(content="Test message")],
         events=events or [],
@@ -69,6 +71,7 @@ def create_test_transcripts(count: int = 10) -> list[Transcript]:
                 model=models[i % 3],
                 task=tasks[i % 3],
                 score=0.5 + (i % 10) * 0.05,
+                score_explanation=f"answer {i} matched the target",
                 metadata={
                     "temperature": 0.5 + (i % 5) * 0.1,
                     "index": i,
@@ -558,6 +561,11 @@ async def test_complex_conditions(populated_db: ParquetTranscriptsDB) -> None:
     assert len(results) == 2
 
 
+def _info_fields(t: TranscriptInfo) -> dict[str, object]:
+    """Every `TranscriptInfo` field, so a read that drops one fails loudly."""
+    return {name: getattr(t, name) for name in TranscriptInfo.model_fields}
+
+
 # Content Loading Tests
 @pytest.mark.asyncio
 async def test_read_full_content(populated_db: ParquetTranscriptsDB) -> None:
@@ -575,6 +583,8 @@ async def test_read_full_content(populated_db: ParquetTranscriptsDB) -> None:
     assert len(transcript.messages) > 0
     # Events are empty in our test data
     assert len(transcript.events) == 0
+
+    assert _info_fields(transcript) == _info_fields(infos[0])
 
 
 @pytest.mark.asyncio
@@ -606,8 +616,8 @@ async def test_read_no_content(populated_db: ParquetTranscriptsDB) -> None:
     assert len(transcript.messages) == 0
     assert len(transcript.events) == 0
 
-    # Should still have metadata
-    assert transcript.transcript_id == infos[0].transcript_id
+    assert infos[0].score_explanation is not None
+    assert _info_fields(transcript) == _info_fields(infos[0])
 
 
 # Schema & File Management Tests

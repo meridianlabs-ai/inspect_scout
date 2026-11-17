@@ -134,6 +134,35 @@ class TestAny:
         assert result.parsed is False
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("inner_fallback_first", [False, True])
+    @pytest.mark.parametrize("outer_fallback_first", [False, True])
+    async def test_nested_reduction_keeps_converted_negative(
+        self, inner_fallback_first: bool, outer_fallback_first: bool
+    ) -> None:
+        negative = Result(value=3.0, parsed=False, answer="No")
+        inner_results = [Result(value=False), negative]
+        if not inner_fallback_first:
+            inner_results.reverse()
+        inner = await ResultReducer.any(inner_results)
+        outer_results = [Result(value=False), inner]
+        if not outer_fallback_first:
+            outer_results.reverse()
+        result = await ResultReducer.any(outer_results)
+        assert result.value == 3.0
+        assert isinstance(result.value, float)
+        assert result.parsed is False
+        assert result.answer == "No"
+
+    @pytest.mark.asyncio
+    async def test_all_unparsed_results_stay_unparsed(self) -> None:
+        inner = await ResultReducer.any([Result(value=False), Result(value=False)])
+        result = await ResultReducer.any([inner, Result(value=False)])
+        for reduced in (inner, result):
+            assert reduced.value is False
+            assert reduced.parsed is None
+            assert reduced.answer == "No"
+
+    @pytest.mark.asyncio
     async def test_reducing_converted_results_twice_preserves_boolean(self) -> None:
         positive = Result(value=0.0, parsed=True, answer="Yes")
         negative = Result(value=1.0, parsed=False, answer="No")

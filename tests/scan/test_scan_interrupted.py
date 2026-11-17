@@ -67,3 +67,29 @@ async def test_cancelled_scan_returns_interrupted_status(tmp_path: Path) -> None
 
     assert statuses, "cancelled scan did not return a status"
     assert not statuses[0].complete
+    assert statuses[0].interrupted
+
+
+@scanner(name="failing_probe_scanner", messages="all")
+def failing_probe_scanner() -> Scanner[Transcript]:
+    async def scan_transcript(transcript: Transcript) -> Result:
+        raise RuntimeError("a transcript error, recorded rather than raised")
+
+    return scan_transcript
+
+
+@pytest.mark.asyncio
+async def test_scan_with_transcript_errors_is_not_interrupted(tmp_path: Path) -> None:
+    top_level_sync_init("none")
+    with temp_active_scans_store():
+        status = await scan_async(
+            scanners=[failing_probe_scanner()],
+            transcripts=transcripts_from(LOGS_DIR),
+            scans=str(tmp_path),
+            limit=1,
+            max_processes=1,
+        )
+
+    assert status.errors
+    assert not status.complete
+    assert not status.interrupted

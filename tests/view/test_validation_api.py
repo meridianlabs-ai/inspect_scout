@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from inspect_scout import ValidationCase, validation_set
+from inspect_scout._validation.writer import ValidationFileWriter
 from inspect_scout._view._api_v2 import v2_api_app
 from starlette.status import (
     HTTP_400_BAD_REQUEST,
@@ -878,3 +880,447 @@ def _git_init(path: Path) -> None:
         check=True,
         capture_output=True,
     )
+
+
+@pytest.mark.parametrize("extension", ["csv", "json", "yaml", "jsonl"])
+@pytest.mark.parametrize(
+    "case",
+    [
+        ValidationCase(id="alpha", target=True),
+        ValidationCase(id="alpha", labels={"risk": True, "safe": False}),
+        ValidationCase(id="alpha", target={"risk": True, "score": 0.5}),
+        ValidationCase(id=["alpha"], target=False),
+        ValidationCase(id=["alpha", "beta"], target=True),
+        ValidationCase(id=["comma,id", 'quote"id', "犬", "line\nbreak"], target=True),
+        ValidationCase(id=["001", "NA"], target=True, split="dev", predicate="eq"),
+    ],
+)
+def test_create_validation_round_trip(
+    client: TestClient, tmp_path: Path, extension: str, case: ValidationCase
+) -> None:
+    path = tmp_path / f"round_trip.{extension}"
+    response = client.post(
+        "/validations",
+        json={"path": path.as_uri(), "cases": [case.model_dump(exclude_none=True)]},
+    )
+    assert response.status_code == 200
+    assert validation_set(path).cases == [case]
+
+
+def test_csv_writer_preserves_structured_cases(tmp_path: Path) -> None:
+    path = tmp_path / "cases.csv"
+    case = ValidationCase(id=["alpha", "beta"], target={"risk": True, "score": 0.5})
+    writer = ValidationFileWriter.create_new(path, [case])
+    rows = writer.read_cases()
+    writer.write_cases(rows)
+    assert validation_set(path).cases == [case]
+    assert list(rows[0])[0] == "id"
+
+
+def test_create_empty_csv_validation(tmp_path: Path) -> None:
+    path = tmp_path / "empty.csv"
+    ValidationFileWriter.create_new(path, [])
+    assert path.read_text() == "id,target\n"
+
+
+@pytest.mark.parametrize("case_id", [["alpha"], ["alpha", "beta"]])
+def test_created_csv_group_case_lifecycle(
+    client: TestClient, tmp_path: Path, case_id: list[str]
+) -> None:
+    path = tmp_path / "groups.csv"
+    created = client.post(
+        "/validations",
+        json={
+            "path": path.as_uri(),
+            "cases": [
+                {"id": case_id, "target": True},
+                {"id": "gamma", "target": True},
+            ],
+        },
+    )
+    assert created.status_code == 200
+    uri = _base64url(path.as_uri())
+    route = f"/validations/{uri}/{_base64url(json.dumps(case_id))}"
+
+    retrieved = client.get(route)
+    assert retrieved.status_code == 200
+    assert retrieved.json() == {"id": case_id, "target": True}
+
+    for target in (False, True, False):
+        updated = client.post(route, json={"target": target})
+        assert updated.status_code == 200
+        assert validation_set(path).cases == [
+            ValidationCase(id=case_id, target=target),
+            ValidationCase(id="gamma", target=True),
+        ]
+    assert client.get(route).json() == {"id": case_id, "target": False}
+    listed = client.get(f"/validations/{uri}").json()
+    assert [case["id"] for case in listed] == [case_id, "gamma"]
+
+    assert client.delete(route).status_code == 204
+    assert client.get(route).status_code == 404
+    assert validation_set(path).cases == [ValidationCase(id="gamma", target=True)]
+
+
+def test_csv_mixed_target_update_preserves_other_cases(
+    client: TestClient, tmp_path: Path
+) -> None:
+    path = tmp_path / "targets.csv"
+    created = client.post(
+        "/validations",
+        json={
+            "path": path.as_uri(),
+            "cases": [{"id": "alpha", "target": True}, {"id": "beta", "target": False}],
+        },
+    )
+    assert created.status_code == 200
+    before = path.read_bytes()
+    route = f"/validations/{_base64url(path.as_uri())}/{_base64url('beta')}"
+    updated = client.post(route, json={"target": {"risk": False}})
+    assert updated.status_code == 400
+    assert "mix scalar and dictionary targets" in updated.json()["detail"]
+    assert path.read_bytes() == before
+    assert validation_set(path).cases == [
+        ValidationCase(id="alpha", target=True),
+        ValidationCase(id="beta", target=False),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("cases", "update"),
+    [
+        ([{"id": "alpha", "target": True}], {"labels": {"risk": True}}),
+        ([{"id": "alpha", "labels": {"risk": True}}], {"target": True}),
+    ],
+)
+def test_csv_target_and_label_update_preserves_file(
+    client: TestClient,
+    tmp_path: Path,
+    cases: list[dict[str, object]],
+    update: dict[str, object],
+) -> None:
+    path = tmp_path / "schema.csv"
+    created = client.post("/validations", json={"path": path.as_uri(), "cases": cases})
+    assert created.status_code == 200
+    before = path.read_bytes()
+    route = f"/validations/{_base64url(path.as_uri())}/{_base64url('beta')}"
+    response = client.post(route, json=update)
+    assert response.status_code == 400
+    assert "cannot mix target and label cases" in response.json()["detail"]
+    assert path.read_bytes() == before
+
+
+def test_csv_mixed_target_creation_does_not_write_file(
+    client: TestClient, tmp_path: Path
+) -> None:
+    path = tmp_path / "mixed.csv"
+    response = client.post(
+        "/validations",
+        json={
+            "path": path.as_uri(),
+            "cases": [
+                {"id": "alpha", "target": True},
+                {"id": "beta", "target": {"risk": False}},
+            ],
+        },
+    )
+    assert response.status_code == 400
+    assert "mix scalar and dictionary targets" in response.json()["detail"]
+    assert not path.exists()
+
+
+@pytest.mark.parametrize("target", [True, {"risk": True}])
+def test_csv_target_and_label_creation_does_not_write_file(
+    client: TestClient, tmp_path: Path, target: bool | dict[str, bool]
+) -> None:
+    path = tmp_path / "mixed_labels.csv"
+    response = client.post(
+        "/validations",
+        json={
+            "path": path.as_uri(),
+            "cases": [
+                {"id": "alpha", "target": target},
+                {"id": "beta", "labels": {"risk": False}},
+            ],
+        },
+    )
+    assert response.status_code == 400
+    assert "mix target and label cases" in response.json()["detail"]
+    assert not path.exists()
+
+
+@pytest.mark.parametrize("field", ["target", "labels"])
+@pytest.mark.parametrize("update", [False, True])
+def test_csv_empty_dictionary_rejected_before_write(
+    client: TestClient, tmp_path: Path, field: str, update: bool
+) -> None:
+    path = tmp_path / "empty_dictionary.csv"
+    before: bytes | None = None
+    if update:
+        created = client.post(
+            "/validations",
+            json={"path": path.as_uri(), "cases": [{"id": "alpha", "target": True}]},
+        )
+        assert created.status_code == 200
+        before = path.read_bytes()
+        route = f"/validations/{_base64url(path.as_uri())}/{_base64url('alpha')}"
+        response = client.post(route, json={field: {}})
+    else:
+        response = client.post(
+            "/validations",
+            json={"path": path.as_uri(), "cases": [{"id": "alpha", field: {}}]},
+        )
+    assert response.status_code == 400
+    assert "empty dictionaries" in response.json()["detail"]
+    if before is None:
+        assert not path.exists()
+    else:
+        assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize("field", ["target", "labels"])
+@pytest.mark.parametrize("update", [False, True])
+def test_csv_sparse_schema_rejected_before_write(
+    client: TestClient, tmp_path: Path, field: str, update: bool
+) -> None:
+    path = tmp_path / "sparse.csv"
+    before: bytes | None = None
+    if update:
+        response = client.post(
+            "/validations",
+            json={
+                "path": path.as_uri(),
+                "cases": [
+                    {"id": "alpha", field: {"risk": True}},
+                    {"id": "beta", field: {"risk": False}},
+                ],
+            },
+        )
+        assert response.status_code == 200
+        before = path.read_bytes()
+        route = f"/validations/{_base64url(path.as_uri())}/{_base64url('beta')}"
+        response = client.post(route, json={field: {"other": False}})
+    else:
+        response = client.post(
+            "/validations",
+            json={
+                "path": path.as_uri(),
+                "cases": [
+                    {"id": "alpha", field: {"risk": True}},
+                    {"id": "beta", field: {"other": False}},
+                ],
+            },
+        )
+    assert response.status_code == 400
+    assert "matching dictionary target or label keys" in response.json()["detail"]
+    if before is None:
+        assert not path.exists()
+    else:
+        assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize("prefix", ["target", "label"])
+def test_handwritten_sparse_csv_keeps_working(
+    client: TestClient, tmp_path: Path, prefix: str
+) -> None:
+    path = tmp_path / "sparse.csv"
+    path.write_text(
+        f"id,{prefix}_risk,{prefix}_safe\nalpha,true,\nbeta,,false\ngamma,,true\n"
+    )
+    uri = _base64url(path.as_uri())
+    assert client.delete(f"/validations/{uri}/{_base64url('gamma')}").status_code == 204
+    field = "target" if prefix == "target" else "labels"
+    updated = client.post(
+        f"/validations/{uri}/{_base64url('beta')}",
+        json={field: {"risk": True, "safe": False}},
+    )
+    assert updated.status_code == 200
+    assert path.read_text() == (
+        f"id,{prefix}_risk,{prefix}_safe\nalpha,True,\nbeta,True,False\n"
+    )
+
+    before = path.read_bytes()
+    sparse = client.post(
+        f"/validations/{uri}/{_base64url('delta')}", json={field: {"risk": True}}
+    )
+    assert sparse.status_code == 400
+    assert "matching dictionary target or label keys" in sparse.json()["detail"]
+    assert path.read_bytes() == before
+
+
+def test_handwritten_blank_csv_target_keeps_working(
+    client: TestClient, tmp_path: Path
+) -> None:
+    path = tmp_path / "blank.csv"
+    path.write_text("id,target\nalpha,\nbeta,yes\ngamma,no\n")
+    uri = _base64url(path.as_uri())
+    updated = client.post(
+        f"/validations/{uri}/{_base64url('beta')}", json={"target": "no"}
+    )
+    assert updated.status_code == 200
+    assert client.delete(f"/validations/{uri}/{_base64url('gamma')}").status_code == 204
+    assert path.read_text() == "id,target\nalpha,\nbeta,no\n"
+
+
+# The case route already decodes a JSON array as a group ID, so a JSON-like
+# scalar ID can only arrive through creation.
+@pytest.mark.parametrize(
+    ("case_id", "update"), [("a,b", False), ("a,b", True), ('["a"]', False)]
+)
+def test_csv_scalar_id_read_as_group_rejected_before_write(
+    client: TestClient, tmp_path: Path, case_id: str, update: bool
+) -> None:
+    path = tmp_path / "ids.csv"
+    before: bytes | None = None
+    if update:
+        created = client.post(
+            "/validations",
+            json={"path": path.as_uri(), "cases": [{"id": "alpha", "target": True}]},
+        )
+        assert created.status_code == 200
+        before = path.read_bytes()
+        route = f"/validations/{_base64url(path.as_uri())}/{_base64url(case_id)}"
+        response = client.post(route, json={"target": False})
+    else:
+        response = client.post(
+            "/validations",
+            json={"path": path.as_uri(), "cases": [{"id": case_id, "target": True}]},
+        )
+    assert response.status_code == 400
+    assert "as a group ID" in response.json()["detail"]
+    if before is None:
+        assert not path.exists()
+    else:
+        assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        {"risk": None, "safe": True},
+        {"risk": "", "safe": True},
+        {"risk": "NA", "safe": True},
+        {"risk": "null", "safe": True},
+        {"": True},
+        "",
+    ],
+)
+@pytest.mark.parametrize("update", [False, True])
+def test_csv_empty_target_value_rejected_before_write(
+    client: TestClient, tmp_path: Path, target: object, update: bool
+) -> None:
+    path = tmp_path / "values.csv"
+    before: bytes | None = None
+    if update:
+        created = client.post(
+            "/validations",
+            json={
+                "path": path.as_uri(),
+                "cases": [{"id": "alpha", "target": {"risk": True, "safe": True}}],
+            },
+        )
+        assert created.status_code == 200
+        before = path.read_bytes()
+        route = f"/validations/{_base64url(path.as_uri())}/{_base64url('alpha')}"
+        response = client.post(route, json={"target": target})
+    else:
+        response = client.post(
+            "/validations",
+            json={"path": path.as_uri(), "cases": [{"id": "alpha", "target": target}]},
+        )
+    assert response.status_code == 400
+    assert "non-empty keys and values" in response.json()["detail"]
+    if before is None:
+        assert not path.exists()
+    else:
+        assert path.read_bytes() == before
+
+
+def test_csv_handwritten_comma_id_found_by_scalar_route(
+    client: TestClient, tmp_path: Path
+) -> None:
+    path = tmp_path / "handwritten.csv"
+    path.write_text('id,target\n"a,b",true\ngamma,false\n')
+    before = path.read_bytes()
+    route = f"/validations/{_base64url(path.as_uri())}/{_base64url('a,b')}"
+
+    retrieved = client.get(route)
+    assert retrieved.status_code == 200
+    assert retrieved.json() == {"id": ["a", "b"], "target": True}
+
+    updated = client.post(route, json={"target": False})
+    assert updated.status_code == 400
+    assert "as a group ID" in updated.json()["detail"]
+    assert path.read_bytes() == before
+
+    assert client.delete(route).status_code == 204
+    assert validation_set(path).cases == [ValidationCase(id="gamma", target=False)]
+
+
+@pytest.mark.parametrize("target", [[1, 2], {"risk": [1, 2]}, {"risk": {"level": 1}}])
+def test_csv_nested_target_rejected_before_write(
+    client: TestClient, tmp_path: Path, target: object
+) -> None:
+    path = tmp_path / "nested.csv"
+    response = client.post(
+        "/validations",
+        json={"path": path.as_uri(), "cases": [{"id": "alpha", "target": target}]},
+    )
+    assert response.status_code == 400
+    assert "nested target or label values" in response.json()["detail"]
+    assert not path.exists()
+
+
+@pytest.mark.parametrize(
+    ("original", "update", "expected"),
+    [
+        ("id,target_x\nalpha,1\n", {"target": True}, "id,target\nalpha,True\n"),
+        (
+            "id,target_x\nalpha,1\n",
+            {"labels": {"risk": True}},
+            "id,label_risk\nalpha,True\n",
+        ),
+        ("id,target\nalpha,1\n", {"target": {"x": 2}}, "id,target_x\nalpha,2\n"),
+    ],
+)
+def test_csv_single_case_can_change_schema(
+    client: TestClient,
+    tmp_path: Path,
+    original: str,
+    update: dict[str, object],
+    expected: str,
+) -> None:
+    path = tmp_path / "single.csv"
+    path.write_text(original)
+    route = f"/validations/{_base64url(path.as_uri())}/{_base64url('alpha')}"
+    assert client.post(route, json=update).status_code == 200
+    assert path.read_text() == expected
+
+
+def test_csv_empty_group_id_rejected_before_write(
+    client: TestClient, tmp_path: Path
+) -> None:
+    path = tmp_path / "empty_group.csv"
+    response = client.post(
+        "/validations",
+        json={"path": path.as_uri(), "cases": [{"id": [], "target": True}]},
+    )
+    assert response.status_code == 400
+    assert "group IDs must not be empty" in response.json()["detail"]
+    assert not path.exists()
+
+
+@pytest.mark.parametrize("target", [" ", "\t", {"risk": " "}])
+def test_csv_whitespace_target_round_trips(
+    client: TestClient, tmp_path: Path, target: object
+) -> None:
+    path = tmp_path / "whitespace.csv"
+    response = client.post(
+        "/validations",
+        json={"path": path.as_uri(), "cases": [{"id": "alpha", "target": target}]},
+    )
+    assert response.status_code == 200
+    cases = validation_set(path).cases
+    assert [case.model_dump(exclude_none=True) for case in cases] == [
+        {"id": "alpha", "target": target}
+    ]

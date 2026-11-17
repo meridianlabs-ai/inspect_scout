@@ -38,7 +38,7 @@ Devin, and similar) preparing contributions. Human contributors: see
 - **Python package** (`src/inspect_scout/`) - Core library for analyzing LLM evaluation transcripts. Provides a CLI, programmatic API, and FastAPI server. Handles transcript databases, scanners, validation, and results.
 - **React frontend** (`src/inspect_scout/_view/ts-mono/`) - TypeScript monorepo (Turborepo + pnpm workspaces) for the web UI, embedded as a git submodule. See its own [CLAUDE.md](src/inspect_scout/_view/ts-mono/CLAUDE.md) and [submodule guide](src/inspect_scout/_view/ts-mono/docs/submodule-guide.md).
 
-Development setup (`uv sync --extra dev`, the dependency cooldown, inspect_ai tracked from `main`, frontend/Git LFS setup) is in [CONTRIBUTING.md](CONTRIBUTING.md).
+Development setup (`uv sync --locked --extra dev`, frontend/Git LFS setup) is in [CONTRIBUTING.md](CONTRIBUTING.md). How dependencies are installed and changed (the lock file, the cooldown) is in [DEPENDENCIES.md](https://github.com/meridianlabs-ai/actions/blob/main/DEPENDENCIES.md) in meridianlabs-ai/actions.
 
 ## Principles
 
@@ -175,8 +175,8 @@ Notes:
 
 ### Common Pitfalls
 - Use the venv for all Python commands: either reference `.venv/bin/` directly or run `source .venv/bin/activate`
-- Set up or refresh the venv with `uv sync --extra dev`. Use `uv run --no-sync`, not plain `uv run`: developers often have a local editable inspect_ai installed over the locked one, and a plain `uv run` or `uv sync` reinstalls the locked version
-- After changing dependencies in `pyproject.toml`, run `uv lock` and commit `uv.lock`; CI's `uv sync --locked` fails on a stale lock. Don't override the 7-day `exclude-newer` cooldown; for an emergency release, CONTRIBUTING.md describes a dated entry
+- Set up or refresh the venv with `uv sync --locked --extra dev`. Use `uv run --no-sync`, not plain `uv run`: developers often have a local editable inspect_ai installed over the locked one, and a plain `uv run` or `uv sync` reinstalls the locked version
+- After changing dependencies in `pyproject.toml`, run `uv lock` and commit `uv.lock`; CI's `uv sync --locked` fails on a stale lock. Don't override the 7-day `exclude-newer` cooldown. Every other dependency procedure is in [DEPENDENCIES.md](https://github.com/meridianlabs-ai/actions/blob/main/DEPENDENCIES.md)
 
 
 ## TypeScript
@@ -219,11 +219,13 @@ pnpm install
 Pipeline: Pydantic models → openapi.json → generated.ts
 
 After Python API changes:
-1. `uv sync --upgrade-package inspect-ai --extra dev` (CI regenerates against inspect_ai main's latest commit), then `.venv/bin/python scripts/export_openapi_schema.py`—regenerates `src/inspect_scout/_view/openapi.json`
+1. `uv sync --locked --extra dev`, then `.venv/bin/python scripts/export_openapi_schema.py`—regenerates `src/inspect_scout/_view/openapi.json`
 2. In the submodule's `apps/scout`: `pnpm types:generate`—regenerates `apps/scout/src/types/generated.ts` (`pnpm build` does NOT regenerate types)
 3. Commit both: `openapi.json` in this repo, `generated.ts` in the submodule. Landing a submodule change requires the coordinated flow in [.agents/skills/land-ts-mono/SKILL.md](.agents/skills/land-ts-mono/SKILL.md)
 
 CI validates sync.
+
+When `check-schema-and-types` fails on a PR that did not change these models, inspect_ai `main` changed a shared type. Follow [.agents/skills/sync-upstream-types/SKILL.md](.agents/skills/sync-upstream-types/SKILL.md). Do not skip the check or merge with it red.
 
 ## Repository skills
 

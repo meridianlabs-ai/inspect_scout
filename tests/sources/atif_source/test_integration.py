@@ -32,6 +32,7 @@ from inspect_scout.sources import atif
 from inspect_scout.sources._atif.client import ATIF_SOURCE_TYPE
 
 from tests.sources.atif_source.helpers import make_trajectory, write_trajectory
+from tests.sources.message_id_checks import assert_message_ids_consistent, ids
 
 
 @pytest.fixture
@@ -592,8 +593,8 @@ async def test_date_extraction(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_stable_message_ids_recur_across_model_events(tmp_path: Path) -> None:
-    """Identical messages get the same `id` everywhere they appear."""
+async def test_message_ids_come_from_step_ids(tmp_path: Path) -> None:
+    """Messages take their step's ID, and keep it in every model call."""
     trajectory = make_trajectory(
         [
             Step(step_id=1, source="user", message="hi"),
@@ -602,6 +603,15 @@ async def test_stable_message_ids_recur_across_model_events(tmp_path: Path) -> N
                 source="agent",
                 message="Hello",
                 model_name="gpt-4",
+                tool_calls=[
+                    ToolCall(tool_call_id="c1", function_name="ls", arguments={})
+                ],
+                observation=Observation(
+                    results=[
+                        ObservationResult(source_call_id="c1", content="a"),
+                        ObservationResult(source_call_id="c1", content="b"),
+                    ]
+                ),
                 metrics=Metrics(prompt_tokens=10, completion_tokens=5),
             ),
             Step(
@@ -612,20 +622,99 @@ async def test_stable_message_ids_recur_across_model_events(tmp_path: Path) -> N
                 metrics=Metrics(prompt_tokens=20, completion_tokens=5),
             ),
         ],
+        trajectory_id="traj",
     )
     path = tmp_path / "trajectory.json"
     write_trajectory(path, trajectory)
-    transcripts = [t async for t in atif(path=path)]
-    assert len(transcripts) == 1
-    transcript = transcripts[0]
 
-    # The "User: hi" message in transcript.messages should match the
-    # "User: hi" message in both ModelEvent.input lists.
-    user_msg = transcript.messages[0]
-    model_events = [e for e in transcript.events if isinstance(e, ModelEvent)]
-    assert len(model_events) == 2
-    for event in model_events:
-        assert event.input[0].id == user_msg.id
+    [transcript] = [t async for t in atif(path=path)]
+
+    assert ids(transcript.messages) == [
+        "traj-1",
+        "traj-2",
+        "traj-2-1",
+        "traj-2-2",
+        "traj-3",
+    ]
+    first, last = [e for e in transcript.events if isinstance(e, ModelEvent)]
+    assert ids(first.input) == ["traj-1"]
+    assert ids(last.input) == ["traj-1", "traj-2", "traj-2-1", "traj-2-2"]
+    assert (first.uuid, last.uuid) == ("traj-2", "traj-3")
+    assert transcript.messages_from == ["traj-3"]
+    assert_message_ids_consistent(transcript)
+
+
+@pytest.mark.asyncio
+async def test_subagent_message_ids_differ_from_parent(tmp_path: Path) -> None:
+    """Inlined subagent steps don't reuse the parent's step IDs."""
+    sub = Trajectory(
+        session_id="sub-0",
+        agent=Agent(name="reviewer", version="0.1.0"),
+        steps=[
+            Step(step_id=1, source="user", message="review"),
+            Step(
+                step_id=2,
+                source="agent",
+                message="looks fine",
+                metrics=Metrics(prompt_tokens=5, completion_tokens=5),
+            ),
+        ],
+    )
+    write_trajectory(tmp_path / "sub-0.json", sub)
+    parent = make_trajectory(
+        [
+            Step(step_id=1, source="user", message="do work"),
+            Step(
+                step_id=2,
+                source="agent",
+                message="delegate",
+                tool_calls=[
+                    ToolCall(tool_call_id="c1", function_name="Task", arguments={})
+                ],
+                observation=Observation(
+                    results=[
+                        ObservationResult(
+                            source_call_id="c1",
+                            content="done",
+                            subagent_trajectory_ref=[
+                                SubagentTrajectoryRef(
+                                    session_id="sub-0", trajectory_path="sub-0.json"
+                                )
+                            ],
+                        )
+                    ]
+                ),
+                metrics=Metrics(prompt_tokens=10, completion_tokens=5),
+            ),
+        ]
+    )
+    write_trajectory(tmp_path / "parent.json", parent)
+
+    [transcript] = [t async for t in atif(path=tmp_path / "parent.json")]
+
+    calls = [e for e in transcript.events if isinstance(e, ModelEvent)]
+    [parent_call] = [e for e in calls if e.span_id is None]
+    [sub_call] = [e for e in calls if e.span_id is not None]
+    assert set(ids(parent_call.input)).isdisjoint(ids(sub_call.input))
+    assert parent_call.uuid != sub_call.uuid
+    assert transcript.messages_from == [parent_call.uuid]
+    assert_message_ids_consistent(transcript)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "fixture",
+    [
+        "openhands_hello-world.trajectory.json",
+        "openhands_hello-world.trajectory.no_function_calling.json",
+        "terminus_2_hello-world-context-summarization-linear-history.trajectory.json",
+    ],
+)
+async def test_fixture_message_ids_agree_with_events(
+    fixtures_dir: Path, fixture: str
+) -> None:
+    [transcript] = [t async for t in atif(path=fixtures_dir / fixture)]
+    assert_message_ids_consistent(transcript)
 
 
 @pytest.mark.asyncio

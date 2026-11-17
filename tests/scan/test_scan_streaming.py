@@ -14,13 +14,16 @@ import json
 import tempfile
 from collections.abc import Awaitable, Callable
 from pathlib import Path
+from zipfile import ZipFile
 
+import ijson
 import pytest
 from inspect_ai.model import ModelOutput
 from inspect_scout import Scanner, llm_scanner, scan, scanner
 from inspect_scout._scanresults import scan_results_df
 from inspect_scout._transcript import handle as handle_mod
 from inspect_scout._transcript.factory import transcripts_from
+from inspect_scout._transcript.json import stream_parse as stream_parse_mod
 from inspect_scout._transcript.json.stream_parse import StreamParseResult
 from inspect_scout._transcript.types import (
     Transcript,
@@ -166,7 +169,12 @@ _ATTACHMENT_LOG = LOGS_DIR / (
 )
 
 
-def _scan_input_column(monkeypatch: pytest.MonkeyPatch, *, spool_threshold: int) -> str:
+def _scan_input_column(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    spool_threshold: int,
+    log_path: Path = _ATTACHMENT_LOG,
+) -> str:
     """`scan_results_df`'s `input` value for a one-transcript scan."""
     monkeypatch.setattr(
         "inspect_scout._util.constants.SPOOL_THRESHOLD_BYTES", spool_threshold
@@ -174,7 +182,7 @@ def _scan_input_column(monkeypatch: pytest.MonkeyPatch, *, spool_threshold: int)
     with tempfile.TemporaryDirectory() as tmpdir:
         status = scan(
             scanners=[attachment_scanner_factory()],
-            transcripts=transcripts_from(str(_ATTACHMENT_LOG)),
+            transcripts=transcripts_from(str(log_path)),
             scans=tmpdir,
             limit=1,
             max_processes=1,  # in-process so the monkeypatched threshold applies
@@ -220,6 +228,18 @@ def test_recorded_input_resolves_attachments_like_materialized(
     assert streamed == control
 
 
+@pytest.mark.parametrize("spool_threshold", [0, 2**62], ids=["spooled", "materialized"])
+def test_recorded_input_preserves_metadata_objects(
+    monkeypatch: pytest.MonkeyPatch, spool_threshold: int
+) -> None:
+    """Reading a saved scan input must preserve the index metadata's types."""
+    recorded = json.loads(
+        _scan_input_column(monkeypatch, spool_threshold=spool_threshold)
+    )
+    for key in ("eval_metadata", "task_args", "generate_config", "model_roles"):
+        assert isinstance(recorded["metadata"][key], dict), key
+
+
 def test_unreadable_record_input_is_an_error_row(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -262,3 +282,24 @@ def test_unreadable_record_input_is_an_error_row(
         assert len(df) == 1
         assert "spool vanished" in str(df["scan_error"].iloc[0])
         assert df["value"].notna().all(), "the scan's own result must be kept"
+
+
+def test_spooled_scan_with_python_backend_handles_surrogate_target(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(stream_parse_mod, "ijson", ijson.get_backend("python"))
+    log_path = tmp_path / "surrogate.eval"
+    with ZipFile(_ATTACHMENT_LOG) as source, ZipFile(log_path, "w") as destination:
+        for entry in source.infolist():
+            data = source.read(entry)
+            if entry.filename.startswith("samples/"):
+                sample = json.loads(data)
+                sample["target"] = "bad\ud800"
+                data = json.dumps(sample).encode()
+            destination.writestr(entry, data)
+
+    recorded = json.loads(
+        _scan_input_column(monkeypatch, spool_threshold=0, log_path=log_path)
+    )
+    assert recorded["metadata"]["target"] == r"bad\ud800"
+    assert isinstance(recorded["metadata"]["eval_metadata"], dict)

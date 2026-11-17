@@ -13,14 +13,9 @@ import yaml
 
 WORKFLOWS = Path(__file__).parents[1] / ".github" / "workflows"
 CREDENTIAL_JOBS = [
-    # Builds what the publish job uploads.
-    ("publish.yaml", "build"),
     ("publish.yaml", "publish"),
     ("publish.yaml", "notify-approval"),
     ("npm-publish.yml", "notify-approval"),
-    # Runs `uv lock`, which may build sdists, and hands push-floor a version.
-    ("release-pin-deps.yml", "floor"),
-    ("release-pin-deps.yml", "push-floor"),
 ]
 
 

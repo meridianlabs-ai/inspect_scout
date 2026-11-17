@@ -153,8 +153,8 @@ class Transcripts(abc.ABC):
         # Handle edge case of empty validation cases
         if not unique_ids:
             # Return empty result set by using an impossible condition
-            sample_id_column = Column("sample_id")
-            condition = sample_id_column.in_([])
+            id_column = Column("transcript_id")
+            condition = id_column.in_([])
             transcripts._query.where.append(condition)
             return transcripts
 
@@ -162,18 +162,18 @@ class Transcripts(abc.ABC):
         # Note: SQLite has a default limit of 999 parameters per query
         # If we exceed this, we'll need to split into chunks
         MAX_SQL_PARAMS = 999
-        sample_id_column = Column("sample_id")
+        id_column = Column("transcript_id")
 
         if len(unique_ids) <= MAX_SQL_PARAMS:
             # Simple case: single IN clause
-            condition = sample_id_column.in_(unique_ids)
+            condition = id_column.in_(unique_ids)
         else:
             # Split into chunks and OR them together
             chunks = [
                 unique_ids[i : i + MAX_SQL_PARAMS]
                 for i in range(0, len(unique_ids), MAX_SQL_PARAMS)
             ]
-            conditions = [sample_id_column.in_(chunk) for chunk in chunks]
+            conditions = [id_column.in_(chunk) for chunk in chunks]
             condition = conditions[0]
             for cond in conditions[1:]:
                 condition = condition | cond

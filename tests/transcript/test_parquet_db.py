@@ -17,6 +17,7 @@ from inspect_scout._transcript.database.parquet import (
     PARQUET_TRANSCRIPTS_GLOB,
     ParquetTranscriptsDB,
 )
+from inspect_scout._transcript.database.parquet.types import INDEX_DIR
 from inspect_scout._transcript.database.reader import TranscriptsViewReader
 from inspect_scout._transcript.types import (
     Transcript,
@@ -1316,6 +1317,77 @@ async def test_insert_record_batch_reader_batch_size_splitting(
         assert len(await db.transcript_ids(Query())) == 100
     finally:
         await db.disconnect()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("other_type", [pa.null(), pa.string()], ids=["null", "string"])
+async def test_commit_compacts_struct_column_stored_as_another_type(
+    test_location: Path, other_type: pa.DataType
+) -> None:
+    """A column stored as struct and as null or string compacts on commit()."""
+    async with transcripts_db(str(test_location)) as db:
+        for i, extra in enumerate(
+            [pa.array([{"a": 7}]), pa.array([None], type=other_type)]
+        ):
+            table = pa.table({"transcript_id": [f"t{i}"], "extra": extra})
+            await db.insert(table.to_reader(), commit=False)
+        await db.commit()
+
+    index_dir = test_location / INDEX_DIR
+    assert len(list(index_dir.glob("_manifest_*.idx"))) == 1
+    assert not list(index_dir.glob("index_*.idx"))
+
+    async with transcripts_db(str(test_location)) as db:
+        assert await db.count() == 2
+        extras = {
+            info.transcript_id: info.metadata.get("extra") async for info in db.select()
+        }
+    assert extras == {"t0": {"a": 7}, "t1": None}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "session_id, same_second",
+    [("3aTbcdefghij", False), ("s", True)],
+    ids=["session-id-shaped-like-a-timestamp", "compacted-in-the-second-it-wrote"],
+)
+async def test_compacted_session_stays_readable(
+    test_location: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    session_id: str,
+    same_second: bool,
+) -> None:
+    """Transcripts stay readable after their session's files are compacted."""
+    if same_second:
+        # One timestamp for every data file; the compacted file's suffix sorts first.
+        suffixes = iter(["ffffffff", "eeeeeeee", "00000000"])
+
+        def same_second_name(
+            self: ParquetTranscriptsDB, session_id: str | None = None
+        ) -> str:
+            session = f"{session_id}_" if session_id else ""
+            return f"transcripts_{session}20250101T100000_{next(suffixes)}.parquet"
+
+        monkeypatch.setattr(
+            ParquetTranscriptsDB, "_generate_parquet_filename", same_second_name
+        )
+
+    async with transcripts_db(str(test_location)) as db:
+        for i in range(2):
+            await db.insert(
+                [create_sample_transcript(id=f"t{i}")],
+                session_id=session_id,
+                commit=False,
+            )
+        await db.commit(session_id)
+    assert len(list(test_location.glob("*.parquet"))) == 1
+
+    async with transcripts_db(str(test_location)) as db:
+        infos = [info async for info in db.select()]
+        assert sorted(info.transcript_id for info in infos) == ["t0", "t1"]
+        for info in infos:
+            transcript = await db.read(info, TranscriptContent(messages="all"))
+            assert transcript.messages
 
 
 # Schema Validation Tests

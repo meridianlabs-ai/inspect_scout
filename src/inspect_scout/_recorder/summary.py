@@ -21,6 +21,13 @@ class ScannerSummary(BaseModel):
     results: int = Field(default=0)
     """Scans which returned truthy results."""
 
+    unscored: int = Field(default=0)
+    """Top-level results whose `value` is `None` (excluded from metrics).
+
+    Not a count of scans or metric inputs: a scan can report several results,
+    and `None` members of a result set are not counted.
+    """
+
     errors: int = Field(default=0)
     """Scans which resulted in errors."""
 
@@ -96,11 +103,14 @@ class Summary(BaseModel):
         # Collect validation entries from results
         new_entries: list[ValidationEntry] = []
         agg_results = 0
+        agg_unscored = 0
         agg_errors = 0
         agg_tokens = 0
         agg_model_usage: dict[str, ModelUsage] = {}
 
         for result in results:
+            if result.result is not None and result.result.value is None:
+                agg_unscored += 1
             if result.result and result.result.value:
                 if result.result.type == "resultset" and isinstance(
                     result.result.value, list
@@ -138,7 +148,7 @@ class Summary(BaseModel):
             for model, usage in result.model_usage.items():
                 if model not in agg_model_usage:
                     agg_model_usage[model] = ModelUsage()
-                agg_model_usage[model] = add_model_usage(agg_model_usage[model], usage)
+                agg_model_usage[model] = agg_model_usage[model] + usage
 
         # insert if required
         if scanner not in self.scanners:
@@ -148,15 +158,14 @@ class Summary(BaseModel):
         tot_results = self.scanners[scanner]
         tot_results.scans += 1
         tot_results.results += agg_results
+        tot_results.unscored += agg_unscored
         tot_results.metrics = metrics
         tot_results.errors += agg_errors
         tot_results.tokens += agg_tokens
         for model, usage in agg_model_usage.items():
             if model not in tot_results.model_usage:
                 tot_results.model_usage[model] = ModelUsage()
-            tot_results.model_usage[model] = add_model_usage(
-                tot_results.model_usage[model], usage
-            )
+            tot_results.model_usage[model] = tot_results.model_usage[model] + usage
 
         # Aggregate validation entries and rebuild ValidationResults with metrics
         if new_entries:
@@ -177,16 +186,3 @@ class Summary(BaseModel):
 
     def __getitem__(self, scanner: str) -> ScannerSummary:
         return self.scanners[scanner]
-
-
-def add_model_usage(a: ModelUsage, b: ModelUsage) -> ModelUsage:
-    return ModelUsage(
-        input_tokens=a.input_tokens + b.input_tokens,
-        output_tokens=a.output_tokens + b.output_tokens,
-        total_tokens=a.total_tokens + b.total_tokens,
-        input_tokens_cache_write=(a.input_tokens_cache_write or 0)
-        + (b.input_tokens_cache_write or 0),
-        input_tokens_cache_read=(a.input_tokens_cache_read or 0)
-        + (b.input_tokens_cache_read or 0),
-        reasoning_tokens=(a.reasoning_tokens or 0) + (b.reasoning_tokens or 0),
-    )

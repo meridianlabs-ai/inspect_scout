@@ -1,0 +1,401 @@
+"""Tests for the PyPI publish workflow (.github/workflows/publish.yaml).
+
+Covers the check-tag/build/verify/publish job split, the hashed build toolchain and
+its Dependabot entry, the release-tag check (run against a throwaway git repo)
+and the dist gate (scripts/verify_dist.py, run on fabricated distributions).
+"""
+
+import io
+import os
+import re
+import subprocess
+import sys
+import tarfile
+import zipfile
+from pathlib import Path
+from typing import Any
+
+import pytest
+import yaml
+
+REPO = Path(__file__).parents[1]
+WORKFLOW = REPO / ".github" / "workflows" / "publish.yaml"
+REQUIREMENTS = REPO / "scripts" / "build-dist" / "requirements.txt"
+VERIFY_DIST = "scripts/verify_dist.py"
+PYPI_PUBLISH = "pypa/gh-action-pypi-publish@"
+SHA_PIN = re.compile(r"@[0-9a-f]{40} # v\S+$")
+# meridianlabs-ai/actions has no version tag for the pinned commit.
+SHARED_PIN = re.compile(r"uses: meridianlabs-ai/actions/\S+@[0-9a-f]{40} # main$")
+SHARED_BUILD = re.compile(
+    r"meridianlabs-ai/actions/\.github/workflows/build-python-dist\.yml@[0-9a-f]{40}"
+)
+
+
+def _load(path: Path) -> dict[Any, Any]:
+    loaded = yaml.safe_load(path.read_text())
+    assert isinstance(loaded, dict)
+    return loaded
+
+
+def _jobs() -> dict[str, Any]:
+    jobs: dict[str, Any] = _load(WORKFLOW)["jobs"]
+    return jobs
+
+
+def _step(job: str, name: str) -> dict[str, Any]:
+    step: dict[str, Any] = next(
+        s for s in _jobs()[job]["steps"] if s.get("name") == name
+    )
+    return step
+
+
+# ---------------------------------------------------------------------------
+# Workflow wiring
+# ---------------------------------------------------------------------------
+
+
+def test_only_the_publish_job_holds_the_publish_token() -> None:
+    workflow = _load(WORKFLOW)
+    jobs = workflow["jobs"]
+    assert workflow["permissions"] == {}
+    assert set(jobs) == {
+        "notify-approval",
+        "check-tag",
+        "build",
+        "verify",
+        "publish",
+        "docs",
+    }
+    assert jobs["notify-approval"]["permissions"] == {}
+    # pinged only once the dist passed the check and the publish job will wait
+    assert jobs["notify-approval"]["needs"] == "verify"
+    assert jobs["check-tag"]["permissions"] == {"contents": "read"}
+    assert jobs["build"]["permissions"] == {"contents": "read"}
+    assert jobs["build"]["needs"] == "check-tag"
+    # docs: see test_docs_job_runs_only_the_shared_docs_workflow
+    assert [
+        name
+        for name, job in jobs.items()
+        if (job.get("permissions") or {}).get("id-token") == "write"
+    ] == ["publish", "docs"]
+    assert "environment" not in jobs["build"]
+    assert jobs["verify"]["permissions"] == {"contents": "read"}
+    assert jobs["verify"]["needs"] == "build"
+    assert "environment" not in jobs["verify"]
+    assert jobs["publish"]["permissions"] == {"contents": "read", "id-token": "write"}
+    # PyPI's trusted publisher matches this workflow file and environment.
+    assert jobs["publish"]["environment"]["name"] == "pypi"
+    assert jobs["publish"]["needs"] == ["build", "verify"]
+
+
+def test_docs_job_runs_only_the_shared_docs_workflow() -> None:
+    # Its id-token is for the shared workflow's Pages deploy, which runs in the
+    # github-pages environment, so PyPI's trusted publisher (environment pypi)
+    # refuses it.
+    docs = _jobs()["docs"]
+    assert docs["permissions"] == {
+        "contents": "read",
+        "pages": "write",
+        "id-token": "write",
+    }
+    assert docs["needs"] == "publish"
+    assert docs["if"] == "${{ github.event_name == 'release' }}"
+    assert docs["uses"].startswith(
+        "meridianlabs-ai/actions/.github/workflows/publish-docs.yml@"
+    )
+    assert "steps" not in docs
+    assert "environment" not in docs
+
+
+def test_dispatch_publishes_only_when_confirmed() -> None:
+    workflow = _load(WORKFLOW)
+    # PyYAML reads the `on` key as True.
+    assert "confirm" in workflow[True]["workflow_dispatch"]["inputs"]
+    assert _jobs()["publish"]["if"] == (
+        "${{ github.event_name == 'release' || inputs.confirm == 'yes' }}"
+    )
+    # a dispatch without "yes" still verifies the dist
+    assert "if" not in _jobs()["verify"]
+
+
+@pytest.mark.parametrize(
+    "job,last",
+    [
+        # verifies even when a dispatch without "yes" skips the publish job
+        ("verify", []),
+        # checks again the exact files that it uploads
+        ("publish", [PYPI_PUBLISH.rstrip("@")]),
+    ],
+)
+def test_dist_jobs_verify_the_build_artifact_and_build_nothing(
+    job: str, last: list[str]
+) -> None:
+    steps = _jobs()[job]["steps"]
+    assert [s.get("uses", "").split("@")[0] or s["run"] for s in steps] == [
+        "actions/checkout",
+        "actions/download-artifact",
+        f'python3 -I {VERIFY_DIST} "$GITHUB_REF_NAME"',
+        *last,
+    ]
+    checkout, download = steps[0]["with"], steps[1]["with"]
+    assert checkout == {
+        "sparse-checkout": VERIFY_DIST,
+        "sparse-checkout-cone-mode": False,
+        "persist-credentials": False,
+    }
+    # bound to this run's build artifact, not any artifact named dist
+    assert download == {
+        "artifact-ids": "${{ needs.build.outputs.artifact-id }}",
+        "path": "dist/",
+    }
+
+
+def test_check_tag_job_checks_out_the_tag_with_no_credentials() -> None:
+    checkout = _jobs()["check-tag"]["steps"][0]
+    assert checkout["uses"].startswith("actions/checkout@")
+    assert checkout["with"] == {"fetch-depth": 0, "persist-credentials": False}
+
+
+def test_build_job_uses_the_shared_build_with_lfs() -> None:
+    build = _jobs()["build"]
+    assert SHARED_BUILD.fullmatch(build["uses"]), build["uses"]
+    assert "steps" not in build
+    # the built viewer is in Git LFS
+    assert build["with"] == {"python-version": "3.11", "lfs": True}
+
+
+def test_pr_ci_builds_with_the_release_toolchain() -> None:
+    build_yaml = REPO / ".github" / "workflows" / "build.yaml"
+    steps = _load(build_yaml)["jobs"]["py-build"]["steps"]
+    build = next(s for s in steps if s.get("name") == "Build package")
+    assert build["run"].strip().splitlines() == [
+        'uv venv --python .venv/bin/python "$RUNNER_TEMP/build-venv"',
+        'uv pip install --no-config --python "$RUNNER_TEMP/build-venv/bin/python" '
+        "--require-hashes --only-binary :all: --no-deps "
+        "-r scripts/build-dist/requirements.txt",
+        '"$RUNNER_TEMP/build-venv/bin/python" -m build --no-isolation',
+    ]
+
+
+def test_requirements_pin_every_package_with_hashes() -> None:
+    requirements = REQUIREMENTS.read_text()
+    pins = re.findall(r"^([A-Za-z0-9_.-]+)==\S+ \\$", requirements, re.MULTILINE)
+    assert {"build", "hatchling", "hatch-vcs"} <= set(pins)
+    requirement_lines = [
+        line
+        for line in requirements.splitlines()
+        if line and not line.startswith(("#", " "))
+    ]
+    assert len(requirement_lines) == len(pins)
+    assert requirements.count("--hash=sha256:") >= len(pins)
+    assert '--exclude-newer "7 days"' in WORKFLOW.read_text()
+
+
+def test_dependabot_updates_the_build_toolchain_with_a_cooldown() -> None:
+    updates = _load(REPO / ".github" / "dependabot.yml")["updates"]
+    (update,) = [u for u in updates if u.get("directory") == "/scripts/build-dist"]
+    assert update["package-ecosystem"] == "uv"
+    assert update["cooldown"]["default-days"] == 7
+    assert update["schedule"]["interval"] == "weekly"
+    assert [group["patterns"] for group in update["groups"].values()] == [["*"]]
+
+
+def test_actions_are_pinned_to_commit_shas() -> None:
+    uses = [
+        line.strip()
+        for line in WORKFLOW.read_text().splitlines()
+        if line.strip().startswith(("uses:", "- uses:"))
+    ]
+    assert uses
+    for line in uses:
+        assert SHA_PIN.search(line) or SHARED_PIN.search(line), line
+
+
+# ---------------------------------------------------------------------------
+# Release-tag check
+# ---------------------------------------------------------------------------
+
+
+def _git(repo: Path, *args: str) -> None:
+    config = [
+        "user.name=t",
+        "user.email=t@t",
+        "commit.gpgsign=false",
+        "tag.gpgsign=false",
+    ]
+    flags = [arg for c in config for arg in ("-c", c)]
+    subprocess.run(
+        ["git", "-C", str(repo), *flags, *args], check=True, capture_output=True
+    )
+
+
+@pytest.fixture
+def tagged_repo(tmp_path: Path) -> Path:
+    """A repo with tag 1.2.3 on origin/main and tag 1.2.4 off it."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "commit", "-q", "--allow-empty", "-m", "a")
+    _git(repo, "tag", "1.2.3")
+    _git(repo, "tag", "v1.2.3")
+    _git(repo, "update-ref", "refs/remotes/origin/main", "HEAD")
+    _git(repo, "commit", "-q", "--allow-empty", "-m", "b")
+    _git(repo, "tag", "1.2.4")
+    return repo
+
+
+@pytest.mark.parametrize(
+    "event,ref_type,ref,release_tag,prerelease,ok",
+    [
+        ("release", "tag", "1.2.3", "1.2.3", "false", True),
+        ("release", "branch", "main", "1.2.3", "false", False),
+        ("release", "tag", "v1.2.3", "v1.2.3", "false", False),
+        ("release", "tag", "1.2.3", "1.2.4", "false", False),
+        ("release", "tag", "1.2.4", "1.2.4", "false", False),
+        ("release", "tag", "1.2.3", "1.2.3", "true", False),
+        # the break-glass dispatch may publish a tag that is not on main
+        ("workflow_dispatch", "tag", "1.2.4", "", "", True),
+        ("workflow_dispatch", "branch", "main", "", "", False),
+        # a branch named like a release
+        ("workflow_dispatch", "branch", "1.2.3", "", "", False),
+    ],
+)
+def test_check_tag_refuses_anything_but_a_release_tag(
+    tagged_repo: Path,
+    event: str,
+    ref_type: str,
+    ref: str,
+    release_tag: str,
+    prerelease: str,
+    ok: bool,
+) -> None:
+    _git(tagged_repo, "checkout", "-q", "--detach", ref)
+    step = _step("check-tag", "Check release tag")
+    result = subprocess.run(
+        ["bash", "-e", "-c", step["run"]],
+        cwd=tagged_repo,
+        env={
+            **os.environ,
+            "GITHUB_REF_TYPE": ref_type,
+            "GITHUB_REF_NAME": ref,
+            "EVENT_NAME": event,
+            "RELEASE_TAG": release_tag,
+            "PRERELEASE": prerelease,
+        },
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    assert (result.returncode == 0) == ok, result.stdout + result.stderr
+
+
+# ---------------------------------------------------------------------------
+# Dist gate
+# ---------------------------------------------------------------------------
+
+VIEW = "inspect_scout/_view/dist/"
+GOOD_WHEEL = {
+    "inspect_scout/__init__.py": b"",
+    VIEW + "index.html": b"<!doctype html>",
+    VIEW + "content-security-policy.json": b'{"version": 1}',
+    VIEW + "assets/index-abc.js": b"console.log(1)",
+    VIEW + "assets/index-abc.css": b"body{}",
+}
+LFS_POINTER = b"version https://git-lfs.github.com/spec/v1\noid sha256:00\nsize 1\n"
+
+
+def _write_dist(
+    dist: Path,
+    wheel_members: dict[str, bytes],
+    version: str = "1.2.3",
+    sdist_version: str | None = None,
+) -> None:
+    dist.mkdir()
+    with zipfile.ZipFile(dist / f"inspect_scout-{version}-py3-none-any.whl", "w") as zf:
+        for name, data in wheel_members.items():
+            zf.writestr(name, data)
+    sdist_version = sdist_version or version
+    with tarfile.open(dist / f"inspect_scout-{sdist_version}.tar.gz", "w:gz") as tf:
+        info = tarfile.TarInfo(f"inspect_scout-{sdist_version}/PKG-INFO")
+        tf.addfile(info, io.BytesIO(b""))
+
+
+def _verify(dist: Path, version: str = "1.2.3") -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            str(REPO / VERIFY_DIST),
+            version,
+            "--dist-dir",
+            str(dist),
+        ],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+
+def test_gate_accepts_a_complete_dist(tmp_path: Path) -> None:
+    _write_dist(tmp_path / "dist", GOOD_WHEEL)
+    result = _verify(tmp_path / "dist")
+    assert result.returncode == 0, result.stdout
+
+
+def _without(*names: str) -> dict[str, bytes]:
+    return {k: v for k, v in GOOD_WHEEL.items() if k not in names}
+
+
+@pytest.mark.parametrize(
+    "members,error",
+    [
+        ({"inspect_scout/__init__.py": b""}, "index.html is missing"),
+        (_without(VIEW + "index.html"), "index.html is missing"),
+        ({**GOOD_WHEEL, VIEW + "index.html": b""}, "index.html is empty"),
+        (_without(VIEW + "assets/index-abc.js"), "no non-empty .js assets"),
+        ({**GOOD_WHEEL, VIEW + "assets/index-abc.js": b""}, "no non-empty .js assets"),
+        (_without(VIEW + "assets/index-abc.css"), "no non-empty .css assets"),
+        (
+            _without(VIEW + "content-security-policy.json"),
+            "content-security-policy.json is missing",
+        ),
+        (
+            {**GOOD_WHEEL, VIEW + "content-security-policy.json": LFS_POINTER},
+            "content-security-policy.json is not valid JSON",
+        ),
+    ],
+)
+def test_gate_rejects_a_wheel_without_the_viewer(
+    tmp_path: Path, members: dict[str, bytes], error: str
+) -> None:
+    _write_dist(tmp_path / "dist", members)
+    result = _verify(tmp_path / "dist")
+    assert result.returncode == 1
+    assert error in result.stdout
+
+
+@pytest.mark.parametrize(
+    "version,sdist_version,error",
+    [
+        ("1.2.4.dev3", None, "-py3-none-any.whl has version 1.2.4.dev3"),
+        ("1.2.3", "1.2.4.dev3", ".tar.gz has version 1.2.4.dev3"),
+    ],
+)
+def test_gate_rejects_the_wrong_version(
+    tmp_path: Path, version: str, sdist_version: str | None, error: str
+) -> None:
+    _write_dist(tmp_path / "dist", GOOD_WHEEL, version, sdist_version)
+    result = _verify(tmp_path / "dist")
+    assert result.returncode == 1
+    assert f"{error}, expected 1.2.3" in result.stdout
+
+
+def test_gate_rejects_extra_or_missing_files(tmp_path: Path) -> None:
+    dist = tmp_path / "dist"
+    _write_dist(dist, GOOD_WHEEL)
+    (dist / "inspect_scout-1.2.3-py3-none-any.whl.metadata").write_text("")
+    result = _verify(dist)
+    assert result.returncode == 1
+    assert "exactly one wheel and one sdist" in result.stdout
+
+    assert _verify(tmp_path / "missing").returncode == 1

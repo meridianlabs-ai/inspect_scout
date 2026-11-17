@@ -1,9 +1,10 @@
+import json
 import os
 import shutil
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Final, Sequence, Set, TypeVar, cast
+from typing import Any, BinaryIO, Final, Sequence, Set, TypeVar, cast
 
 import anyio
 import jsonlines
@@ -288,6 +289,40 @@ class RecorderBuffer:
     def errors(self) -> list[Error]:
         return read_scan_errors(str(self._error_file))
 
+    async def recorded_values(
+        self, transcript_id: str, scanner: str
+    ) -> list[JsonValue]:
+        def read() -> list[JsonValue]:
+            path = (
+                self._buffer_dir
+                / f"scanner={_sanitize_component(scanner)}"
+                / f"{transcript_id}.parquet"
+            )
+            table = pq.read_table(path.as_posix(), columns=["value", "value_type"])
+            values: list[JsonValue] = []
+            for row in table.to_pylist():
+                value = row["value"]
+                if isinstance(value, str) and row["value_type"] != "string":
+                    # Lists and dicts are stored as JSON text under any type
+                    # label. Scalars only become text in mixed columns, where
+                    # they use Python spellings that never start with [ or {.
+                    if value.startswith(("[", "{")):
+                        value = json.loads(value)
+                    elif row["value_type"] == "boolean":
+                        value = value.lower() == "true"
+                    elif row["value_type"] == "number" and value in (
+                        "nan",
+                        "inf",
+                        "-inf",
+                    ):
+                        value = float(value)
+                    else:
+                        value = json.loads(value)
+                values.append(value)
+            return values
+
+        return await anyio.to_thread.run_sync(read)
+
     def scan_summary(self) -> Summary:
         assert self._state.summary is not None  # set in __init__
         return self._state.summary
@@ -323,19 +358,19 @@ def resolve_success_value(value: bool | None, score: JsonValue | None) -> bool |
 def scanner_table(
     buffer_dir: UPath,
     scanner: str,
-    output_file: str,
+    output_file: str | BinaryIO,
     *,
     extra_inputs: list[UPath] | None = None,
 ) -> bool:
     """Compact per-transcript buffer parquets into a single parquet file.
 
     Streams batches from the buffer (and any `extra_inputs`) directly into
-    `output_file` (a local path), so peak memory stays bounded regardless of
-    the total size of the compacted output.
+    `output_file` (a local path, or a binary file open for writing), so peak
+    memory stays bounded regardless of the total size of the compacted output.
 
     Returns:
         True if `output_file` was written, False if there was nothing to
-        compact (in which case no file is created).
+        compact (in which case nothing is written).
     """
     import pyarrow as pa
     import pyarrow.dataset as ds

@@ -16,7 +16,12 @@ from jinja2 import Environment
 
 from inspect_scout._util.jinja import StrictOnUseUndefined
 
-from .._scanner.extract import MessagesPreprocessor, check_nonce, message_numbering
+from .._scanner.extract import (
+    MessagesPreprocessor,
+    as_messages_preprocessor,
+    check_nonce,
+    message_numbering,
+)
 from .._scanner.result import Result
 from .._scanner.scanner import (
     SCANNER_CONTENT_ATTR,
@@ -236,7 +241,9 @@ def llm_scanner(
             can return variables.
         preprocessor: Transform conversation messages before analysis.
             Controls exclusion of system messages, reasoning tokens, and tool calls.
-            Defaults to removing system messages. Note: custom ``transform``
+            A dict of these options also works, as in scan job YAML (e.g.
+            ``{"exclude_reasoning": true}``). Defaults to removing system
+            messages. Note: custom ``transform``
             functions that accept a ``Transcript`` are not supported when
             ``context_window`` or timeline scanning produces multiple segments,
             as the transform receives ``list[ChatMessage]`` per segment.
@@ -250,7 +257,7 @@ def llm_scanner(
             ``True`` for default caching, a :class:`CachePolicy` for explicit
             expiry/scope, or ``None`` (default) for no caching. Threaded
             through to ``model.generate()`` via ``GenerateConfig.cache``.
-        retry_refusals: Retry model refusals. Pass an ``int`` for number of retries (defaults to 3). Pass ``False`` to not retry refusals. If the limit of refusals is exceeded then a ``RuntimeError`` is raised.
+        retry_refusals: Retry model refusals. Pass an ``int`` for number of retries (defaults to 3). Pass ``True`` to use the default or ``False`` to not retry refusals. If the limit of refusals is exceeded then a ``RuntimeError`` is raised.
         name: Scanner name.
             Use this to assign a name when passing ``llm_scanner()`` directly to ``scan()`` rather than delegating to it from another scanner.
         content: Override the transcript content filters for this scanner.
@@ -305,6 +312,7 @@ def llm_scanner(
         ``Result`` (single segment) or ``list[Result]`` (multiple segments).
     """
     check_nonce(nonce)
+    preprocessor = as_messages_preprocessor(preprocessor)
 
     # Resolve template form once at factory time.
     # - None or tuple: structured 2-block render with cache_prompt=True.
@@ -336,13 +344,8 @@ def llm_scanner(
     )
 
     # resolve retry_refusals
-    retry_refusals = (
-        retry_refusals
-        if isinstance(retry_refusals, int)
-        else 3
-        if retry_refusals is True
-        else 0
-    )
+    if isinstance(retry_refusals, bool):
+        retry_refusals = 3 if retry_refusals else 0
 
     async def scan(transcript: Transcript | TranscriptHandle) -> Result:
         # Match the concrete handle classes: TranscriptHandle is a plain

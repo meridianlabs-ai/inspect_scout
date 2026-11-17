@@ -515,12 +515,15 @@ class ParquetTranscriptsDB(TranscriptsDB):
             transcript_error = row_dict.get("error")
             transcript_limit = row_dict.get("limit")
             transcript_trust_content = row_dict.get("trust_content")
+            transcript_messages_from = row_dict.get("messages_from")
 
             # resolve json
             if transcript_agent_args is not None:
                 transcript_agent_args = json.loads(transcript_agent_args)
             if transcript_model_options is not None:
                 transcript_model_options = json.loads(transcript_model_options)
+            if transcript_messages_from is not None:
+                transcript_messages_from = json.loads(transcript_messages_from)
             if isinstance(transcript_score, str) and (
                 transcript_score.startswith("{") or transcript_score.startswith("[")
             ):
@@ -559,6 +562,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 error=transcript_error,
                 limit=transcript_limit,
                 trust_content=transcript_trust_content,
+                messages_from=transcript_messages_from,
                 metadata={},
                 filename=transcript_filename,
             )
@@ -707,6 +711,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 error=t.error,
                 limit=t.limit,
                 trust_content=t.trust_content,
+                messages_from=t.messages_from,
                 metadata=t.metadata,
             )
 
@@ -1095,6 +1100,9 @@ class ParquetTranscriptsDB(TranscriptsDB):
             "error": transcript.error,
             "limit": transcript.limit,
             "trust_content": transcript.trust_content,
+            "messages_from": json.dumps(transcript.messages_from)
+            if transcript.messages_from is not None
+            else None,
             "messages": json.dumps(messages_array),
             "events": events_json,
             "timelines": (
@@ -1338,7 +1346,13 @@ class ParquetTranscriptsDB(TranscriptsDB):
             output_path = Path(self._location) / filename
             output_path.parent.mkdir(parents=True, exist_ok=True)
             parquet_path = output_path.as_posix()
-            self._write_parquet_file(table, parquet_path)
+            # Keep incomplete fragments outside the reader's *.parquet glob.
+            local_tmp_path = output_path.parent / f".tmp_{uuid.uuid4().hex}"
+            try:
+                self._write_parquet_file(table, str(local_tmp_path))
+                os.rename(local_tmp_path, output_path)
+            finally:
+                local_tmp_path.unlink(missing_ok=True)
 
         return parquet_path
 
@@ -1929,12 +1943,14 @@ class ParquetTranscriptsDB(TranscriptsDB):
     def _index_filename_for_parquet(self, parquet_filename: str) -> str:
         """Generate index filename matching parquet file's timestamp/uuid.
 
-        Strips any session ID prefix so the index filename always follows
-        ``index_{timestamp}_{uuid}.idx`` format. The session ID is only needed
-        in parquet filenames (for ``_list_session_files``); the index filename
-        must use just the timestamp+uuid portion so that alphabetical ordering
-        gives compacted (session-free) entries higher ``_file_order`` than
-        their session-scoped predecessors during deduplication.
+        Drops everything before the first ``_``-separated part that starts
+        with a digit and contains ``T``, which is normally the timestamp, so
+        the index filename follows ``index_{timestamp}_{uuid}.idx``. If a part
+        of the session ID has that shape, the name keeps the session ID from
+        that part on. The session ID is only needed in parquet filenames (for
+        ``_list_session_files``). Which entry deduplication keeps for a
+        compacted session does not depend on this name: a compacted
+        (session-free) data file replaces the session files it was built from.
 
         Args:
             parquet_filename: Name of the parquet file.
@@ -2031,7 +2047,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
         1. Find all session's parquet files
         2. Read all session data into Arrow table via DuckDB
         3. Write to new file(s) using existing logic (which creates index entries)
-        4. Index compaction (in commit()) deduplicates, keeping newest entries
+        4. Index compaction (in commit()) deduplicates, keeping the new files' entries
         5. Delete old session parquet files (now orphaned from index)
 
         Args:
@@ -2097,7 +2113,7 @@ class ParquetTranscriptsDB(TranscriptsDB):
                 await self._write_arrow_batch(accumulated_batches, session_id=None)
 
             # 4. Index compaction will happen in commit() after this method returns
-            # Deduplication keeps newest file_order entries → new files win
+            # Deduplication prefers session-free files → new files win
 
             # 5. Delete old session parquet files (now orphaned)
             for f in session_files:

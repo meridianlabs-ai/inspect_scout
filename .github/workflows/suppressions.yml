@@ -26,22 +26,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      # setup-python rather than the runner's system python: Ubuntu 24.04
-      # marks system python externally-managed, so `pip install` there fails.
-      - name: Set up Python
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: "3.11"
+          persist-credentials: false
 
       # The gate is stdlib-only by design: no dependency install needed.
+      # py-test in build.yaml runs its tests from uv.lock.
       - name: Check suppressions ledger
         run: python3 scripts/check_suppressions.py
-
-      # --noconftest / addopts="": the gate test is self-contained; skip
-      # tests/conftest.py and the xdist addopts so a bare pytest install
-      # suffices.
-      - name: Test the gate script
-        run: |
-          python3 -m pip install --quiet pytest
-          python3 -m pytest --noconftest -o addopts="" -q tests/test_check_suppressions.py

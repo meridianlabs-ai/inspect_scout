@@ -12,6 +12,61 @@ from inspect_scout._transcript.types import Transcript, TranscriptContent
 from inspect_scout._transcript.util import LazyJSONDict, filter_transcript
 
 
+@pytest.mark.parametrize("read_first", [False, True])
+def test_transcript_serialization_preserves_lazy_metadata(read_first: bool) -> None:
+    """Saved metadata must not depend on which fields the scanner accessed."""
+    metadata = LazyJSONDict(
+        {
+            "config": '{"temperature": 0.7, "nested": {"enabled": true}}',
+            "tags": '["evaluation", "日本語"]',
+            "text": '{"literal": "text"}',
+            "invalid": "{not json",
+            "already_parsed": '{"keep": "a string"}',
+            "empty": None,
+            "number_text": "42",
+            "boolean_text": "true",
+            "null_text": "null",
+            "quoted_text": '"quoted"',
+        },
+        json_keys=[
+            "config",
+            "tags",
+            "invalid",
+            "already_parsed",
+            "number_text",
+            "boolean_text",
+            "null_text",
+            "quoted_text",
+        ],
+    )
+    metadata.mark_parsed(["already_parsed"])
+    if read_first:
+        metadata["config"]["nested"]["enabled"] = False
+    transcript = Transcript.model_construct(transcript_id="t1", metadata=metadata)
+    expected = {
+        "config": {"temperature": 0.7, "nested": {"enabled": not read_first}},
+        "tags": ["evaluation", "日本語"],
+        "text": '{"literal": "text"}',
+        "invalid": "{not json",
+        "already_parsed": '{"keep": "a string"}',
+        "empty": None,
+        "number_text": "42",
+        "boolean_text": "true",
+        "null_text": "null",
+        "quoted_text": '"quoted"',
+    }
+
+    assert json.loads(transcript.model_dump_json())["metadata"] == expected
+    assert transcript.model_dump()["metadata"] == expected
+    assert (
+        Transcript.model_validate_json(transcript.model_dump_json()).metadata
+        == expected
+    )
+    assert transcript.model_dump(include={"metadata": {"config"}}) == {
+        "metadata": {"config": expected["config"]}
+    }
+
+
 @pytest.mark.asyncio
 async def test_lazy_dict_survives_parquet_select(
     parquet_db_with_nested_metadata: ParquetTranscriptsDB,

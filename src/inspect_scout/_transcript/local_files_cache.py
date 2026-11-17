@@ -2,6 +2,10 @@
 
 Provides transparent caching of remote files (e.g., S3) to local disk,
 with multiprocess coordination via marker files.
+
+Set `SCOUT_DISABLE_REMOTE_FILE_CACHE=1` to read remote files in place instead. That
+suits a filesystem that serves ranged reads efficiently: each sample is then one
+ranged read rather than a copy of its whole file, made once per process.
 """
 
 import atexit
@@ -21,6 +25,14 @@ from inspect_ai.util import trace_action, trace_message
 logger = getLogger(__name__)
 
 
+def _remote_file_cache_disabled() -> bool:
+    return os.getenv("SCOUT_DISABLE_REMOTE_FILE_CACHE", "false").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
 class LocalFilesCache:
     """Cache for remote files with automatic cleanup.
 
@@ -35,9 +47,12 @@ class LocalFilesCache:
 
         Args:
             cache_dir: Directory to store cached files. Created immediately.
+                Only files this cache downloads count toward its size cap.
         """
         self._cache_dir = cache_dir
         self._cache_dir.mkdir(parents=True, exist_ok=True)
+        # Listing the directory instead would race with off-loop downloads' temp files.
+        self._cache_size = 0
 
     @property
     def cache_dir(self) -> Path:
@@ -47,27 +62,22 @@ class LocalFilesCache:
     async def resolve_remote_uri_to_local(self, fs: AsyncFilesystem, uri: str) -> str:
         """Resolve a URI to a local file path, downloading if necessary.
 
-        If the URI is already local, returns it unchanged. If remote,
-        downloads to cache (or waits for another process to finish downloading)
-        and returns the cached file path.
+        If the URI is local, or `SCOUT_DISABLE_REMOTE_FILE_CACHE` is set, returns it
+        unchanged. If remote, downloads to cache (or waits for another process to
+        finish downloading) and returns the cached file path.
 
         Args:
             fs: AsyncFilesystem instance for reading remote files.
             uri: File URI (local path or remote URL like s3://)
 
         Returns:
-            Local file path that can be accessed directly.
+            The local cache path, or the original URI when not cached.
         """
-        if filesystem(uri).is_local():
+        if filesystem(uri).is_local() or _remote_file_cache_disabled():
             return uri
 
         # Check total cache size - skip caching if cache is full
-        total_cache_size = sum(
-            f.stat().st_size
-            for f in self._cache_dir.iterdir()
-            if f.is_file() and not f.suffix == ".downloading"
-        )
-        if total_cache_size > self.MAX_CACHE_FILE_SIZE:
+        if self._cache_size > self.MAX_CACHE_FILE_SIZE:
             return uri
 
         # Generate unique cache filename from URI hash
@@ -88,7 +98,9 @@ class LocalFilesCache:
             with trace_action(logger, "Scout Cache Download", f"Downloading {uri}"):
                 try:
                     await _download_file(fs, uri, marker_file)
+                    size = marker_file.stat().st_size
                     marker_file.rename(cache_file)
+                    self._cache_size += size
                     return cache_file.as_posix()
                 # cancellation too: a marker left behind blocks every later reader
                 except BaseException:

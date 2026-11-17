@@ -15,11 +15,14 @@ permissions:
 
 jobs:
   no-git-deps:
-    # Only gate the Release Please release PR.
-    if: ${{ github.head_ref == 'release-please--branches--main' }}
+    # Only gate the Release Please release PR. A fork branch can have the same
+    # name, so the head must also be this repository.
+    if: ${{ github.head_ref == 'release-please--branches--main' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"

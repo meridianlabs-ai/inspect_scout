@@ -1,0 +1,11 @@
+# Qualified contributors — see CONTRIBUTING.md ("How contributions work").
+# Maintainers are qualified without an entry.
+#
+# STRICT FORMAT (the same as inspect_ai's; read line by line, not as YAML):
+#   - exactly one top-level key: `users:`
+#   - entries are `  - <numeric account id>` — one per line, nothing else
+users:
+  - 245131
+  - 2798829
+  - 42191920
+  - 180970537

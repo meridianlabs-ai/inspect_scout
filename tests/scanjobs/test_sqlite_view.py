@@ -113,7 +113,7 @@ def _write_corrupt_scan(scans_dir: Path, scan_id: str) -> None:
     """Write a scan dir whose _scan.json fails ScanSpec validation."""
     scan_dir = scans_dir / f"scan_id={scan_id}"
     scan_dir.mkdir(parents=True)
-    # Missing required scan_name/scanners -> ValidationError when read back.
+    # Missing required scan_name/scanners -> ValueError when read back.
     (scan_dir / _SCAN_JSON).write_text('{"garbage": true}')
 
 

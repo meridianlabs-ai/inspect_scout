@@ -1,10 +1,11 @@
-"""Options are honoured on either side of FILE in `scout scan`."""
+"""Options are honoured on either side of FILE or a subcommand in `scout scan`."""
 
 import importlib
 import os
 from pathlib import Path
 from typing import Any, Callable
 
+import click
 import pytest
 from click.testing import CliRunner
 from inspect_scout import Status
@@ -75,3 +76,56 @@ def test_cli_scan_options_after_file_are_honoured(
     assert spec.transcripts is not None
     assert spec.options.limit == 1
     assert spec.options.max_transcripts == expected_max_transcripts
+
+
+@pytest.mark.parametrize(
+    "args, subcommand, expected_params",
+    [
+        pytest.param(
+            ["--dry-run", "resume", "./results", "--fail-on-error"],
+            "resume",
+            {"scan_location": "./results", "fail_on_error": True},
+            id="flag-resume",
+        ),
+        pytest.param(
+            ["--fail-on-error", "list", "./results", "--display", "none"],
+            "list",
+            {"scans_dir": "./results", "display": "none"},
+            id="flag-list",
+        ),
+        pytest.param(
+            ["--limit", "3", "list", "./results", "--display", "none"],
+            "list",
+            {"scans_dir": "./results", "display": "none"},
+            id="opt-value-list",
+        ),
+    ],
+)
+def test_cli_scan_subcommand_options_after_group_options_are_honoured(
+    args: list[str],
+    subcommand: str,
+    expected_params: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = importlib.import_module(f"inspect_scout._cli.scan_{subcommand}")
+    received: list[dict[str, Any]] = []
+
+    def stop_after_parse(ctx: click.Context, *args: Any, **kwargs: Any) -> None:
+        received.append(dict(ctx.params))
+        ctx.exit(0)
+
+    monkeypatch.setattr(module, "process_common_options", stop_after_parse)
+    result = CliRunner().invoke(scout, ["scan", *args], catch_exceptions=False)
+
+    assert result.exit_code == 0, result.output
+    assert len(received) == 1
+    assert expected_params.items() <= received[0].items()
+
+
+def test_cli_scan_subcommand_help_after_group_flag() -> None:
+    result = CliRunner().invoke(
+        scout, ["scan", "--fail-on-error", "resume", "--help"], catch_exceptions=False
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Usage: scout scan resume [OPTIONS] SCAN_LOCATION" in result.output

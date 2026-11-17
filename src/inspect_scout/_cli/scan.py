@@ -100,7 +100,7 @@ class ScanGroup(click.Group):
             if isinstance(param, click.Option) and param.is_flag
             for opt in param.opts + param.secondary_opts
         }
-        file_args = []
+        file_args: list[str] = []
         option_args = []
         i = 0
         while i < len(normalized_args):
@@ -119,6 +119,12 @@ class ScanGroup(click.Group):
                 ):
                     option_args.append(normalized_args[i])
                     i += 1
+            elif not file_args and arg in self.commands:
+                # A subcommand after group options (e.g. --fail-on-error resume):
+                # keep it and everything after it in order so the subcommand
+                # parses its own options.
+                file_args.extend(normalized_args[i:])
+                break
             else:
                 file_args.append(arg)
                 i += 1

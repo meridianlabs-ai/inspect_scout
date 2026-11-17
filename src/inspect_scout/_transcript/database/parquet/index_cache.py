@@ -31,7 +31,7 @@ from ...._util.duckdb import parquet_view
 from .types import IndexStorage
 
 # Cache version - bump this to invalidate all existing caches
-INDEX_CACHE_VERSION = 1
+INDEX_CACHE_VERSION = 2
 
 
 def _location_cache_dir(storage: IndexStorage) -> Path:

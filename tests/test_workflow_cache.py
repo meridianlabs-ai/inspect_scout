@@ -16,9 +16,6 @@ CREDENTIAL_JOBS = [
     ("publish.yaml", "publish"),
     ("publish.yaml", "notify-approval"),
     ("npm-publish.yml", "notify-approval"),
-    # Runs `uv lock`, which may build sdists, and hands push-floor a version.
-    ("release-pin-deps.yml", "floor"),
-    ("release-pin-deps.yml", "push-floor"),
 ]
 
 

@@ -1,6 +1,8 @@
 """Read and write validation files preserving format."""
 
+import io
 import json
+import math
 from pathlib import Path
 from typing import Any, Literal
 
@@ -12,6 +14,7 @@ from .validation import (
     _convert_csv_types,
     _flatten_labels_in_data,
     _flatten_splits_in_data,
+    _parse_id,
 )
 
 FileFormat = Literal["csv", "yaml", "json", "jsonl"]
@@ -59,7 +62,9 @@ def _load_raw_data(
                 val = row[col]
                 if pd.isna(val):
                     continue
-                case[col] = val
+                case[col] = (
+                    _parse_id(val) if col == "id" and isinstance(val, str) else val
+                )
             cases.append(case)
         is_valid = _has_valid_columns(columns)
         return cases, False, is_valid
@@ -153,6 +158,168 @@ def _nest_by_splits(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return result
 
 
+def _csv_row(case: dict[str, Any]) -> dict[str, Any]:
+    row = dict(case)
+    if isinstance(row.get("id"), list):
+        row["id"] = json.dumps(row["id"], ensure_ascii=False)
+    if isinstance(row.get("target"), dict):
+        target = row.pop("target")
+        row.update({f"target_{key}": value for key, value in target.items()})
+    return row
+
+
+def _read_back_as_missing(value: str) -> bool:
+    """Whether pandas reads this cell back as a missing value (e.g. "NA")."""
+    buffer = io.StringIO()
+    # The second column keeps a whitespace-only value off a blank line.
+    pd.DataFrame({"value": [value], "row": [0]}).to_csv(buffer, index=False)
+    buffer.seek(0)
+    return bool(pd.read_csv(buffer, dtype=str)["value"].isna().iloc[0])
+
+
+def _check_new_csv_row(case: dict[str, Any], row: dict[str, Any]) -> None:
+    """Reject a created or updated case that would not survive a CSV reload."""
+    case_id = case.get("id")
+    if case_id == []:
+        raise ValueError("CSV validation group IDs must not be empty.")
+    if isinstance(case_id, str) and isinstance(_parse_id(case_id), list):
+        # The reader parses these as group IDs, so the case could not be
+        # found again by its scalar ID.
+        raise ValueError(
+            f"CSV validation reads ID {case_id!r} as a group ID. "
+            "Pass the ID as a list, or use JSON, YAML, or JSONL."
+        )
+    for key, value in row.items():
+        if (key == "target" or key.startswith(("target_", "label_"))) and (
+            value is None
+            or (isinstance(value, float) and math.isnan(value))
+            or key in ("target_", "label_")
+            or (isinstance(value, str) and _read_back_as_missing(value))
+        ):
+            # Empty cells are read back as missing values.
+            raise ValueError(
+                "CSV validation targets and labels require non-empty keys and "
+                "values. Use JSON, YAML, or JSONL for these cases."
+            )
+        if (key == "target" or key.startswith(("target_", "label_"))) and isinstance(
+            value, (list, dict)
+        ):
+            raise ValueError(
+                "CSV validation cannot store nested target or label values. "
+                "Use JSON, YAML, or JSONL for these cases."
+            )
+    if not _has_valid_columns(list(row)):
+        raise ValueError(
+            "CSV validation cases require a target or non-empty target/label "
+            "columns. Use JSON, YAML, or JSONL for empty dictionaries."
+        )
+
+
+def _csv_kinds(row: dict[str, Any]) -> set[str]:
+    kinds = set()
+    if "target" in row:
+        kinds.add("scalar")
+    if any(key.startswith("target_") for key in row):
+        kinds.add("dict")
+    if any(key.startswith("label_") for key in row):
+        kinds.add("label")
+    return kinds
+
+
+def _check_csv_schema(
+    rows: list[dict[str, Any]], changed: set[int], columns: list[str]
+) -> None:
+    """Check that changed rows fit the schema of the other rows.
+
+    Rows that are not changed are written back as they were read, so files
+    edited by hand keep working as before.
+    """
+    all_kinds = set().union(*(_csv_kinds(row) for row in rows))
+    for index in changed:
+        kinds = _csv_kinds(rows[index])
+        if ("label" in kinds and all_kinds & {"scalar", "dict"}) or (
+            kinds & {"scalar", "dict"} and "label" in all_kinds
+        ):
+            raise ValueError(
+                "CSV validation cannot mix target and label cases. "
+                "Use a separate validation file for each schema."
+            )
+        if ("scalar" in kinds and "dict" in all_kinds) or (
+            "dict" in kinds and "scalar" in all_kinds
+        ):
+            raise ValueError(
+                "CSV validation cannot mix scalar and dictionary targets. "
+                "Use JSON, YAML, or JSONL for mixed target types."
+            )
+
+    # The reader applies every prefixed column to every case, so a changed
+    # row must have exactly the keys of the existing file or other rows.
+    unchanged = [row for index, row in enumerate(rows) if index not in changed]
+    for prefix in ("target_", "label_"):
+        expected = {key for key in columns if key.startswith(prefix)} | {
+            key for row in unchanged for key in row if key.startswith(prefix)
+        }
+        if not expected:
+            expected = {
+                key
+                for index in changed
+                for key in rows[index]
+                if key.startswith(prefix)
+            }
+        for index in changed:
+            keys = {key for key in rows[index] if key.startswith(prefix)}
+            if keys != expected:
+                raise ValueError(
+                    "CSV validation requires matching dictionary target or label "
+                    "keys across cases. Use a separate file for each schema."
+                )
+
+
+def _write_csv_file(
+    file_path: Path,
+    cases: list[dict[str, Any]],
+    changed: set[int] | None = None,
+    columns: list[str] | None = None,
+) -> None:
+    """Write cases to a CSV file.
+
+    Args:
+        file_path: The CSV file to write.
+        cases: All cases in the file.
+        changed: Indices of the cases being created or updated. These are
+            checked before anything is written. None means all cases.
+        columns: Columns of the existing file, kept in their original order.
+    """
+    columns = list(columns or [])
+    if not cases:
+        df = pd.DataFrame(columns=["id", "target"])
+    else:
+        if changed is None:
+            changed = set(range(len(cases)))
+        flattened = _flatten_labels_in_data(cases)
+        rows = [_csv_row(case) for case in flattened]
+        for index in changed:
+            _check_new_csv_row(flattened[index], rows[index])
+        if len(changed) == len(rows):
+            # No existing row is kept, so the file's old columns do not apply.
+            columns = []
+        _check_csv_schema(rows, changed, columns)
+        row_keys = [key for row in rows for key in row]
+        df = pd.DataFrame(
+            rows,
+            columns=list(dict.fromkeys([*columns, *row_keys])) or None,
+        )
+
+    # Ensure id is the first column
+    cols = list(df.columns)
+    if "id" in cols:
+        cols.remove("id")
+        cols = ["id"] + cols
+        df = df[cols]
+
+    df.to_csv(file_path, index=False)
+
+
 class ValidationFileWriter:
     """Read and write validation files preserving their format.
 
@@ -175,6 +342,7 @@ class ValidationFileWriter:
 
         self._format = self._detect_format()
         self._has_nested_splits = False
+        self._csv_columns: list[str] = []
 
     def _detect_format(self) -> FileFormat:
         """Detect the file format from the extension."""
@@ -202,10 +370,17 @@ class ValidationFileWriter:
             List of case dictionaries with flattened structure.
         """
         cases, self._has_nested_splits, _ = _load_raw_data(self.file_path)
+        if self._format == "csv":
+            self._csv_columns = [
+                str(column) for column in pd.read_csv(self.file_path, nrows=0).columns
+            ]
         return cases
 
     def write_cases(
-        self, cases: list[dict[str, Any]], nested_splits: bool | None = None
+        self,
+        cases: list[dict[str, Any]],
+        nested_splits: bool | None = None,
+        changed: set[int] | None = None,
     ) -> None:
         """Write cases to the validation file.
 
@@ -213,35 +388,21 @@ class ValidationFileWriter:
             cases: List of case dictionaries to write.
             nested_splits: Whether to use nested split format for YAML/JSON.
                           If None, preserves the original format detected on read.
+            changed: Indices of created or updated cases, which CSV files check
+                before writing. None means all cases.
         """
         use_nested = (
             nested_splits if nested_splits is not None else self._has_nested_splits
         )
 
         if self._format == "csv":
-            self._write_csv(cases)
+            _write_csv_file(self.file_path, cases, changed, self._csv_columns)
         elif self._format == "yaml":
             self._write_structured(cases, use_nested, "yaml")
         elif self._format == "json":
             self._write_structured(cases, use_nested, "json")
         elif self._format == "jsonl":
             self._write_jsonl(cases)
-
-    def _write_csv(self, cases: list[dict[str, Any]]) -> None:
-        """Write cases to CSV format."""
-        if not cases:
-            df = pd.DataFrame(columns=["id", "target"])
-        else:
-            df = pd.DataFrame(cases)
-
-        # Ensure id is the first column
-        cols = list(df.columns)
-        if "id" in cols:
-            cols.remove("id")
-            cols = ["id"] + cols
-            df = df[cols]
-
-        df.to_csv(self.file_path, index=False)
 
     def _write_structured(
         self,
@@ -279,6 +440,9 @@ class ValidationFileWriter:
         Returns:
             Index of the matching case, or None if not found.
         """
+        if isinstance(case_id, str) and self.format == "csv":
+            # Match the reader, which parses comma-separated CSV IDs as groups.
+            case_id = _parse_id(case_id)
         search_id = case_id if isinstance(case_id, list) else [case_id]
         search_id_set = set(search_id) if len(search_id) > 1 else None
         search_id_single = search_id[0] if len(search_id) == 1 else None
@@ -313,9 +477,10 @@ class ValidationFileWriter:
         if index is not None:
             cases[index] = case_dict
         else:
+            index = len(cases)
             cases.append(case_dict)
 
-        self.write_cases(cases)
+        self.write_cases(cases, changed={index})
 
     def delete_case(self, case_id: str | list[str]) -> bool:
         """Delete a case from the validation file.
@@ -330,7 +495,7 @@ class ValidationFileWriter:
             return False
 
         del cases[index]
-        self.write_cases(cases)
+        self.write_cases(cases, changed=set())
         return True
 
     @classmethod
@@ -364,16 +529,7 @@ class ValidationFileWriter:
         case_dicts = [c.model_dump(exclude_none=True) for c in cases]
 
         if suffix == ".csv":
-            if not case_dicts:
-                df = pd.DataFrame(columns=["id", "target"])
-            else:
-                df = pd.DataFrame(case_dicts)
-                cols = list(df.columns)
-                if "id" in cols:
-                    cols.remove("id")
-                    cols = ["id"] + cols
-                    df = df[cols]
-            df.to_csv(file_path, index=False)
+            _write_csv_file(file_path, case_dicts)
 
         elif suffix in {".yaml", ".yml", ".json"}:
             data = _unflatten_columns(case_dicts)

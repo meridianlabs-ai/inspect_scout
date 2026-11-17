@@ -235,7 +235,7 @@ def test_for_validation_dict_single_scanner() -> None:
     condition = filtered._query.where[0]
     sql, params = condition_as_sql(condition, "sqlite")
 
-    assert sql == '"sample_id" IN (?, ?)'
+    assert sql == '"transcript_id" IN (?, ?)'
     assert params == ["id1", "id2"]
 
 
@@ -263,7 +263,7 @@ def test_for_validation_dict_multiple_scanners() -> None:
     sql, params = condition_as_sql(condition, "sqlite")
 
     # Should merge all IDs from both scanners
-    assert sql == '"sample_id" IN (?, ?, ?, ?)'
+    assert sql == '"transcript_id" IN (?, ?, ?, ?)'
     assert set(params) == {"id1", "id2", "id3", "id4"}
 
 
@@ -291,7 +291,7 @@ def test_for_validation_dict_overlapping_ids() -> None:
     sql, params = condition_as_sql(condition, "sqlite")
 
     # Should deduplicate id2
-    assert sql == '"sample_id" IN (?, ?, ?)'
+    assert sql == '"transcript_id" IN (?, ?, ?)'
     assert set(params) == {"id1", "id2", "id3"}
 
 
@@ -316,7 +316,7 @@ def test_for_validation_dict_with_list_ids() -> None:
     condition = filtered._query.where[0]
     sql, params = condition_as_sql(condition, "sqlite")
 
-    assert sql == '"sample_id" IN (?, ?, ?)'
+    assert sql == '"transcript_id" IN (?, ?, ?)'
     assert set(params) == {"id1", "id2", "id3"}
 
 

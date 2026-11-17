@@ -2,6 +2,10 @@
 
 Provides transparent caching of remote files (e.g., S3) to local disk,
 with multiprocess coordination via marker files.
+
+Set `SCOUT_DISABLE_REMOTE_FILE_CACHE=1` to read remote files in place instead. That
+suits a filesystem that serves ranged reads efficiently: each sample is then one
+ranged read rather than a copy of its whole file, made once per process.
 """
 
 import atexit
@@ -19,6 +23,14 @@ from inspect_ai._util.file import filesystem
 from inspect_ai.util import trace_action, trace_message
 
 logger = getLogger(__name__)
+
+
+def _remote_file_cache_disabled() -> bool:
+    return os.getenv("SCOUT_DISABLE_REMOTE_FILE_CACHE", "false").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
 
 
 class LocalFilesCache:
@@ -50,18 +62,18 @@ class LocalFilesCache:
     async def resolve_remote_uri_to_local(self, fs: AsyncFilesystem, uri: str) -> str:
         """Resolve a URI to a local file path, downloading if necessary.
 
-        If the URI is already local, returns it unchanged. If remote,
-        downloads to cache (or waits for another process to finish downloading)
-        and returns the cached file path.
+        If the URI is local, or `SCOUT_DISABLE_REMOTE_FILE_CACHE` is set, returns it
+        unchanged. If remote, downloads to cache (or waits for another process to
+        finish downloading) and returns the cached file path.
 
         Args:
             fs: AsyncFilesystem instance for reading remote files.
             uri: File URI (local path or remote URL like s3://)
 
         Returns:
-            Local file path that can be accessed directly.
+            The local cache path, or the original URI when not cached.
         """
-        if filesystem(uri).is_local():
+        if filesystem(uri).is_local() or _remote_file_cache_disabled():
             return uri
 
         # Check total cache size - skip caching if cache is full

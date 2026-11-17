@@ -1,4 +1,7 @@
-"""Tests for the local cache of remote transcript files."""
+"""Tests for the local cache of remote transcript files.
+
+A `memory://` location stands in for remote storage.
+"""
 
 import asyncio
 import threading
@@ -98,3 +101,29 @@ async def test_files_are_not_cached_once_the_cache_exceeds_its_size_cap(
     # The cap is checked before each download, so the third one takes the cache past it.
     assert [Path(path).parent == cache.cache_dir for path in resolved[:3]] == [True] * 3
     assert resolved[3] == uris[3]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("setting", "cached"), [(None, True), ("0", True), ("1", False)]
+)
+async def test_scout_disable_remote_file_cache_reads_remote_files_in_place(
+    tmp_path: Path,
+    remote_dir: UPath,
+    monkeypatch: pytest.MonkeyPatch,
+    setting: str | None,
+    cached: bool,
+) -> None:
+    if setting is None:
+        monkeypatch.delenv("SCOUT_DISABLE_REMOTE_FILE_CACHE", raising=False)
+    else:
+        monkeypatch.setenv("SCOUT_DISABLE_REMOTE_FILE_CACHE", setting)
+    remote = remote_dir / "a.eval"
+    remote.write_bytes(b"x")
+    cache = LocalFilesCache(tmp_path / "cache")
+
+    async with AsyncFilesystem() as fs:
+        resolved = await cache.resolve_remote_uri_to_local(fs, remote.as_posix())
+
+    assert (resolved != remote.as_posix()) is cached
+    assert any(cache.cache_dir.iterdir()) is cached

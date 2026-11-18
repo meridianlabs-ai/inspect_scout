@@ -224,6 +224,8 @@ def my_scanner() -> Scanner[ModelEvent | ToolEvent]:
     return scan
 ```
 
+The events of one transcript are scanned in parallel (see [Items Scanned in Parallel](#parallel-items)).
+
 ## Message Scanners {#messages}
 
 To write a scanner that targets messages, write a function that takes the message type(s) you want to process. For example, this scanner will only see tool messages:
@@ -247,6 +249,8 @@ def my_scanner() -> Scanner[ChatMessageUser | ChatMessageAssistant]:
 
     return scan
 ```
+
+The messages of one transcript are scanned in parallel (see [Items Scanned in Parallel](#parallel-items)).
 
 ## Timeline Scanners {#timelines}
 
@@ -320,7 +324,9 @@ def assistant_refusals() -> Scanner[list[ChatMessage]]:
     return scan
 ```
 
-The items a loader yields for one transcript are scanned at the same time, up to `max_connections`. So a scanner must not keep state from one item to the next, and a loader must not change an object after it yields it. Set `max_connections` to 1 to scan the items one at a time, in order.
+### Items Scanned in Parallel {#parallel-items}
+
+The items a loader yields for one transcript are scanned at the same time, up to `max_connections`. This includes the messages or events given to a message or event scanner. So a scanner must not keep state from one item to the next, and a loader must not change an object after it yields it. Set `max_connections` to 1 to scan the items one at a time, in order. Note that this also limits every other model call in the scan to one at a time.
 
 ## Streaming Large Transcripts {#streaming}
 

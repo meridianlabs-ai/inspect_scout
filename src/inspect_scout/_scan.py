@@ -1222,6 +1222,9 @@ async def _scan_one(
         ) -> None:
             try:
                 await scan_item(index, loader_result, item_transcript)
+            except anyio.get_cancelled_exc_class() as ex:
+                cancelled.append(ex)
+                raise
             finally:
                 window.release()
 
@@ -1290,10 +1293,6 @@ async def _scan_one(
 
             # special case for errors that should bring down the scan
             except PrerequisiteError:
-                raise
-
-            except anyio.get_cancelled_exc_class() as ex:
-                cancelled.append(ex)
                 raise
 
             except Exception as ex:  # pylint: disable=W0718

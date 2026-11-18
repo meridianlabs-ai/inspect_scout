@@ -22,9 +22,11 @@ from inspect_scout import Loader, Result, Scanner, loader, scan, scanner, transc
 from inspect_scout._concurrency.common import ScannerJob
 from inspect_scout._scan import _scan_one
 from inspect_scout._scanner.result import ResultReport
+from inspect_scout._scanner.scanner import mark_streaming_support
 from inspect_scout._scanresults import scan_results_df
 from inspect_scout._transcript.factory import transcripts_from
-from inspect_scout._transcript.types import Transcript
+from inspect_scout._transcript.handle import MaterializedTranscriptHandle
+from inspect_scout._transcript.types import Transcript, TranscriptInfo
 
 _TIMEOUT = 20
 _ITEMS = 8
@@ -480,3 +482,29 @@ def test_same_results_at_max_connections_1_and_n(tmp_path: Path) -> None:
     parallel_tracker = _Tracker()
     assert rows(_ITEMS, parallel_tracker) == sequential
     assert parallel_tracker.items["t"].max_in_flight == _ITEMS
+
+
+@pytest.mark.asyncio
+async def test_cancellation_reading_handle_back_for_record_propagates() -> None:
+    """The scan succeeds, then reading the streamed transcript back cancels."""
+
+    async def load() -> Transcript:
+        raise asyncio.CancelledError()
+
+    @scanner(messages="all", events="all")
+    def handle_scanner() -> Scanner[Transcript]:
+        async def scan_transcript(transcript: Transcript) -> Result:
+            return Result(value="ok")
+
+        mark_streaming_support(scan_transcript, True)
+        return scan_transcript
+
+    job = ScannerJob(
+        union_transcript=MaterializedTranscriptHandle(
+            load, TranscriptInfo(transcript_id="t")
+        ),
+        scanner=handle_scanner(),
+        scanner_name="s",
+    )
+    with pytest.raises(asyncio.CancelledError), anyio.fail_after(_TIMEOUT):
+        await _scan_one(job, max_items=_ITEMS, fail_on_error=False)

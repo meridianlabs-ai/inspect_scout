@@ -23,4 +23,4 @@ jobs:
     permissions:
       issues: write # create and update labels
     steps:
-      - uses: meridianlabs-ai/actions/sync-labels@fbaa145b46c22a0e640234afba9bdac73cab13eb # main
+      - uses: meridianlabs-ai/actions/sync-labels@5e38536660a7c7a03feef16a2e88b41fa54f52c5 # main

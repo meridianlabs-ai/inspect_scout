@@ -1292,6 +1292,10 @@ async def _scan_one(
             except PrerequisiteError:
                 raise
 
+            except anyio.get_cancelled_exc_class() as ex:
+                cancelled.append(ex)
+                raise
+
             except Exception as ex:  # pylint: disable=W0718
                 if fail_on_error:
                     raise
@@ -1364,6 +1368,9 @@ async def _scan_one(
         # doesn't hold an extra pulled item.
         window = anyio.Semaphore(max_items)
         indexed: list[tuple[int, ResultReport]] = []
+        # The task group drops a child's own cancellation instead of raising
+        # it, so keep it here and re-raise it after the group.
+        cancelled: list[BaseException] = []
         it = aiter(loader_iterations)
         try:
             async with anyio.create_task_group() as tg:
@@ -1395,8 +1402,11 @@ async def _scan_one(
                         scan_item_in_window, index, loader_result, item_transcript
                     )
         except ExceptionGroup as ex:
-            # Surface the failure itself, as before items ran in parallel.
+            # Callers (fail_on_error, PrerequisiteError handling) expect the
+            # item's exception itself, not the task group's wrapper.
             raise ex.exceptions[0] from None
+        if cancelled:
+            raise cancelled[0]
 
         # Items finish in any order; report them in loader order.
         return [report for _, report in sorted(indexed, key=itemgetter(0))]

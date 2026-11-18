@@ -320,6 +320,8 @@ def assistant_refusals() -> Scanner[list[ChatMessage]]:
     return scan
 ```
 
+The items a loader yields for one transcript are scanned at the same time, up to `max_connections`. So a scanner must not keep state from one item to the next, and a loader must not change an object after it yields it. Set `max_connections` to 1 to scan the items one at a time, in order.
+
 ## Streaming Large Transcripts {#streaming}
 
 By default a scanner receives a fully materialized `Transcript`. A scanner that declares streaming support receives a `TranscriptHandle` for every eligible job (a sub-threshold, JSON-format or database-backed transcript arrives as a materialized handle that loads on first use). For `.eval`-format samples larger than 64 MiB the handle is *spooled*: it replays messages and events one at a time from an on-disk spool, so peak memory no longer scales with the largest sample.

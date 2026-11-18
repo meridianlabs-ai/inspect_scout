@@ -128,10 +128,14 @@ async def _finish_in_reverse(tracker: _Tracker, key: str, index: int) -> None:
 def _tracked_scan(
     tracker: _Tracker,
     wait: ItemWait,
-    raise_on: dict[int, Exception] | None,
+    raise_on: dict[int, BaseException] | None,
     generate: bool,
 ) -> Scanner[ChatMessageUser]:
-    """Record entry/exit, wait as told, and return the max in flight seen."""
+    """Record entry/exit and wait as told.
+
+    The value is the max in flight seen, or with `generate`, the item's text
+    and the model's reply (the same whatever ran alongside it).
+    """
 
     async def scan_message(message: ChatMessageUser) -> Result:
         key, index = _parse(message)
@@ -139,10 +143,13 @@ def _tracked_scan(
         await wait(tracker, key, index)
         if raise_on and index in raise_on:
             raise raise_on[index]
-        if generate:
-            await get_model().generate([message])
+        value = (
+            f"{message.text}: {(await get_model().generate([message])).completion}"
+            if generate
+            else tracker.items[key].max_in_flight
+        )
         await tracker.exit(key, index)
-        return Result(value=tracker.items[key].max_in_flight, explanation=str(index))
+        return Result(value=value, explanation=str(index))
 
     return scan_message
 
@@ -151,7 +158,7 @@ def _tracked_scan(
 def _tracked_scanner(
     tracker: _Tracker,
     wait: ItemWait = _no_wait,
-    raise_on: dict[int, Exception] | None = None,
+    raise_on: dict[int, BaseException] | None = None,
 ) -> Scanner[ChatMessageUser]:
     return _tracked_scan(tracker, wait, raise_on, generate=False)
 
@@ -244,10 +251,14 @@ async def test_item_error_recorded_others_continue() -> None:
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "exception,fail_on_error",
-    [(ValueError("item 3"), True), (PrerequisiteError("item 3"), False)],
+    [
+        (ValueError("item 3"), True),
+        (PrerequisiteError("item 3"), False),
+        (asyncio.CancelledError(), False),
+    ],
 )
 async def test_item_failure_raises_bare_exception(
-    exception: Exception, fail_on_error: bool
+    exception: BaseException, fail_on_error: bool
 ) -> None:
     tracker = _Tracker()
     with pytest.raises(type(exception)) as raised:
@@ -443,16 +454,19 @@ def _stable(value: Any) -> Any:
 
 
 def test_same_results_at_max_connections_1_and_n(tmp_path: Path) -> None:
-    def rows(max_connections: int) -> list[dict[str, Any]]:
+    def rows(max_connections: int, tracker: _Tracker) -> list[dict[str, Any]]:
+        # At N, hold items so all 8 overlap and finish in reverse.
+        wait = _no_wait if max_connections == 1 else _finish_in_reverse
         df = _scan_df(
             tmp_path / str(max_connections),
-            _tracked_generating_scanner(_Tracker()),
+            _tracked_generating_scanner(tracker, wait),
             ["t"],
             max_connections=max_connections,
         )
         return [
             {
                 "input_ids": row["input_ids"],
+                "value": row["value"],
                 "explanation": row["explanation"],
                 "model_usage": json.loads(row["scan_model_usage"]),
                 "events": _stable(json.loads(row["scan_events"])),
@@ -460,6 +474,9 @@ def test_same_results_at_max_connections_1_and_n(tmp_path: Path) -> None:
             for _, row in df.iterrows()
         ]
 
-    sequential = rows(1)
+    sequential = rows(1, _Tracker())
     assert len(sequential) == _ITEMS
-    assert rows(_ITEMS) == sequential
+    assert sequential[0]["value"].startswith("t-0: ")
+    parallel_tracker = _Tracker()
+    assert rows(_ITEMS, parallel_tracker) == sequential
+    assert parallel_tracker.items["t"].max_in_flight == _ITEMS

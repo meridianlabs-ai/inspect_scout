@@ -1,8 +1,10 @@
+import itertools
 import json
 import os
 import traceback
 from contextlib import asynccontextmanager
 from logging import getLogger
+from operator import itemgetter
 from pathlib import Path
 from typing import Any, AsyncIterator, Awaitable, Callable, Mapping, Sequence, cast
 
@@ -20,7 +22,7 @@ from inspect_ai._util.json import jsonable_python
 from inspect_ai._util.path import pretty_path
 from inspect_ai._util.platform import platform_init as init_platform
 from inspect_ai._util.rich import clean_control_characters
-from inspect_ai.model._generate_config import GenerateConfig
+from inspect_ai.model._generate_config import GenerateConfig, active_generate_config
 from inspect_ai.model._model import (
     Model,
     ModelRoles,
@@ -703,9 +705,18 @@ async def _scan_async_inner(
                             _reports_for_parse_error(job, ex, scanner_names_list),
                         )
 
+                # Loader items of one transcript are scanned in parallel up to
+                # the scan's resolved `max_connections` (which defaults to
+                # `max_transcripts`).
+                max_items = (
+                    active_generate_config().max_connections
+                    or scan.spec.options.max_transcripts
+                )
+
                 async def _scan_function(job: ScannerJob) -> list[ResultReport]:
                     return await _scan_one(
                         job,
+                        max_items=max_items,
                         validation=scan.validation,
                         fail_on_error=fail_on_error,
                     )
@@ -1113,6 +1124,7 @@ async def _transcript_for_record(handle: TranscriptHandle) -> ReportInput:
 async def _scan_one(
     job: ScannerJob,
     *,
+    max_items: int,
     validation: dict[str, ValidationSet] | None = None,
     fail_on_error: bool = False,
 ) -> list[ResultReport]:
@@ -1120,9 +1132,11 @@ async def _scan_one(
 
     This is the core dispatch primitive: iterates the scanner's loader over
     the union transcript, invokes the scanner on each yielded input, and
-    builds a `ResultReport` for each invocation. Captures inspect-side
-    events and model usage per call. Errors are turned into Error records
-    on the report unless `fail_on_error=True`.
+    builds a `ResultReport` for each invocation. Up to `max_items` yielded
+    inputs are scanned at once; reports are returned in loader order, and
+    `max_items=1` scans them one at a time in loader order. Captures
+    inspect-side events and model usage per call. Errors are turned into
+    Error records on the report unless `fail_on_error=True`.
 
     A `TranscriptHandle` union transcript is passed straight to a
     handle-capable scanner (no materialization); errors raised lazily during
@@ -1148,10 +1162,7 @@ async def _scan_one(
     # scans within the same worker task)
     init_model_usage(initial_usage={})
 
-    inspect_transcript = InspectTranscript()
-    init_transcript(inspect_transcript)
-
-    results: list[ResultReport] = []
+    init_transcript(InspectTranscript())
 
     scanner_config = config_for_scanner(job.scanner)
     loader = scanner_config.loader
@@ -1201,41 +1212,29 @@ async def _scan_one(
             except Exception as ex:  # pylint: disable=W0718
                 if fail_on_error:
                     raise
-                results.append(_stream_error_report(ex))
-                return results
+                return [_stream_error_report(ex)]
             loader_iterations = loader(transcript)
 
-        # Iterate explicitly so a lazy parse error raised by the iteration is
-        # contained per-transcript rather than propagating. PrerequisiteError
-        # still re-raises.
-        it = aiter(loader_iterations)
-        while True:
-            # Each yielded item gets its own Inspect transcript, so the
-            # report's `events` describe that invocation alone (the loader
-            # work that produced the item plus its scan) rather than a
-            # snapshot of every earlier item's history; the shared
-            # transcript grew the recorded events quadratically in the
-            # item count.
-            inspect_transcript = InspectTranscript()
-            init_transcript(inspect_transcript)
+        async def scan_item_in_window(
+            index: int,
+            loader_result: ScannerInput | TranscriptHandle,
+            item_transcript: InspectTranscript,
+        ) -> None:
             try:
-                loader_result = await anext(it)
-            except StopAsyncIteration:
-                break
-            except PrerequisiteError:
-                raise
-            except Exception as ex:  # pylint: disable=W0718
-                if fail_on_error:
-                    raise
-                results.append(_stream_error_report(ex))
-                break
+                await scan_item(index, loader_result, item_transcript)
+            finally:
+                window.release()
 
+        async def scan_item(
+            index: int,
+            loader_result: ScannerInput | TranscriptHandle,
+            item_transcript: InspectTranscript,
+        ) -> None:
             result: Result | list[Result] | None = None
             final_result: Result | None = None
             error: Error | None = None
-            # Both reset per iteration and before the `try`: the error path below
-            # reads them, so a raise inside the `try` must not leave them holding
-            # the previous item's validation/ids (this runs in a loop) or unbound.
+            # Both set before the `try`: the error path below reads them, so a
+            # raise inside the `try` must not leave them unbound.
             validation_result: ResultValidation | None = None
             type_and_ids: tuple[ScannerInputNames, list[str]] | None = None
 
@@ -1270,8 +1269,7 @@ async def _scan_one(
                     assert loader_input is not None
                     type_and_ids = get_input_type_and_ids(loader_input)
                 if type_and_ids is None:
-                    init_model_usage(initial_usage={})
-                    continue
+                    return
 
                 # do scan
                 async with span("scan"):
@@ -1340,28 +1338,68 @@ async def _scan_one(
 
             # always append a result (success or error) if we have type_and_ids
             if type_and_ids is not None:
-                results.append(
-                    # all of this data needs to be pickleable (i.e. no async
-                    # functions that capture the task group)
-                    ResultReport(
-                        input_type=type_and_ids[0],
-                        input_ids=type_and_ids[1],
-                        input=report_input,
-                        result=final_result,
-                        validation=validation_result,
-                        error=error,
-                        events=jsonable_python(
-                            resolve_event_attachments(inspect_transcript)
+                indexed.append(
+                    (
+                        index,
+                        # all of this data needs to be pickleable (i.e. no async
+                        # functions that capture the task group)
+                        ResultReport(
+                            input_type=type_and_ids[0],
+                            input_ids=type_and_ids[1],
+                            input=report_input,
+                            result=final_result,
+                            validation=validation_result,
+                            error=error,
+                            events=jsonable_python(
+                                resolve_event_attachments(item_transcript)
+                            ),
+                            model_usage=model_usage(),
                         ),
-                        model_usage=model_usage(),
                     )
                 )
 
-            # Usage is reported per yielded item, so reset it before the next
-            # one rather than letting it accumulate across the loop (#586).
-            init_model_usage(initial_usage={})
+        # Pull the loader here, one item at a time (an async iterator can't be
+        # pulled from several tasks), and scan each item in a child task, at
+        # most `max_items` at once. Admit before pulling so a full window
+        # doesn't hold an extra pulled item.
+        window = anyio.Semaphore(max_items)
+        indexed: list[tuple[int, ResultReport]] = []
+        it = aiter(loader_iterations)
+        try:
+            async with anyio.create_task_group() as tg:
+                for index in itertools.count():
+                    await window.acquire()
+                    # Each yielded item gets its own Inspect transcript and
+                    # model usage, so the report describes that invocation
+                    # alone (the loader work that produced the item plus its
+                    # scan) (#586, #661). The child task copies both from this
+                    # context when started, so reset them before every pull.
+                    item_transcript = InspectTranscript()
+                    init_transcript(item_transcript)
+                    init_model_usage(initial_usage={})
+                    # Iterate explicitly so a lazy parse error raised by the
+                    # iteration is contained per-transcript rather than
+                    # propagating. PrerequisiteError still re-raises.
+                    try:
+                        loader_result = await anext(it)
+                    except StopAsyncIteration:
+                        break
+                    except PrerequisiteError:
+                        raise
+                    except Exception as ex:  # pylint: disable=W0718
+                        if fail_on_error:
+                            raise
+                        indexed.append((index, _stream_error_report(ex)))
+                        break
+                    tg.start_soon(
+                        scan_item_in_window, index, loader_result, item_transcript
+                    )
+        except ExceptionGroup as ex:
+            # Surface the failure itself, as before items ran in parallel.
+            raise ex.exceptions[0] from None
 
-        return results
+        # Items finish in any order; report them in loader order.
+        return [report for _, report in sorted(indexed, key=itemgetter(0))]
     finally:
         if job.on_complete is not None:
             await job.on_complete()

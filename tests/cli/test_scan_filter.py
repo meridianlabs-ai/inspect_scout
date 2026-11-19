@@ -27,24 +27,33 @@ def job() -> ScanJob:
 
 
 @pytest.mark.parametrize(
-    "project, scan_file, transcripts",
+    "project, scan_file, transcripts, expected",
     [
-        pytest.param(f"transcripts: {LOGS_DIR}\n", "scanner", [], id="project"),
+        pytest.param(f"transcripts: {LOGS_DIR}\n", "scanner", [], 100, id="project"),
         pytest.param(
             f"transcripts: {LOGS_DIR}\n"
             "filter: \"task_set in ('popularity', 'theory_of_mind')\"\n",
             "scanner",
             [],
+            100,
             id="project-with-filter",
         ),
-        pytest.param(None, "scanjob", [], id="scanjob"),
-        pytest.param(None, "scanner", ["-T", str(LOGS_DIR)], id="cli"),
+        pytest.param(
+            f"transcripts: {LOGS_DIR}\nfilter: \"task_set = 'theory_of_mind'\"\n",
+            "scanner",
+            [],
+            0,
+            id="project-with-conflicting-filter",
+        ),
+        pytest.param(None, "scanjob", [], 100, id="scanjob"),
+        pytest.param(None, "scanner", ["-T", str(LOGS_DIR)], 100, id="cli"),
     ],
 )
 def test_cli_scan_filter(
     project: str | None,
     scan_file: str,
     transcripts: list[str],
+    expected: int,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -89,4 +98,4 @@ def test_cli_scan_filter(
     assert result.exit_code == 0, result.output
     assert len(statuses) == 1
     assert statuses[0].spec.transcripts is not None
-    assert len(statuses[0].spec.transcripts.transcript_ids) == 100
+    assert len(statuses[0].spec.transcripts.transcript_ids) == expected

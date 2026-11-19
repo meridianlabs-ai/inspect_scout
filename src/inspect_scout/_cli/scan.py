@@ -565,7 +565,6 @@ def scan_command(
     # tx might have been from env so enable it to be overridden by project/scanjob
     tx = resolve_scan_option(ctx, "transcripts", tx, scanjob.transcripts)
 
-    # apply filter (AND combined with any project/scanjob filter)
     if tx is not None:
         tx = reduce(lambda t, f: t.where(f), filter, tx)
 

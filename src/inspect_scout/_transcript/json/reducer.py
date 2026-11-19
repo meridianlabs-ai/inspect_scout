@@ -2,14 +2,18 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import AsyncIterator, Callable, Sequence
 from dataclasses import dataclass, field
+from types import ModuleType
 from typing import Any, Generator, Literal, ParamSpec, Protocol
 
+import ijson
+from anyio.lowlevel import checkpoint
 from ijson import ObjectBuilder
 from ijson.utils import (
     coroutine as _ijson_coroutine,
 )
+from inspect_ai._util.async_bytes_reader import AsyncBytesReader
 
 # Public constants / prefixes
 ATTACHMENT_PREFIX = "attachment://"
@@ -308,6 +312,55 @@ def metadata_coroutine(state: ParseState) -> CoroutineGen:  # pragma: no cover
         except Exception:
             builder = None
             continue
+
+
+_READ_SIZE = 64 * 1024
+"""Bytes asked of the source per read: what ijson's own readers ask for."""
+
+
+async def json_event_batches(
+    reader: AsyncBytesReader, backend: ModuleType
+) -> AsyncIterator[list[tuple[str, str, Any]]]:
+    """Yield the events of ``backend.parse_async(reader, use_float=True)``, a batch per read.
+
+    Each read is awaited here, where a cancellation can be thrown into it.
+    ijson's C reader drives ``read()`` by hand and drops a read that is
+    cancelled, so its source is cleaned up with nothing to drive that.
+    `backend` is ``ijson`` or one of its backends.
+
+    A batch is the parser's own list, emptied when the next one is asked for:
+    use it up first. The loops over it are the parsers' hot path, and a copy
+    per read shows there. The generator holds nothing that needs closing, so
+    it is safe to abandon.
+    """
+    events = ijson.sendable_list()
+    parser = backend.parse_coro(events, use_float=True)
+    # ijson's C reader hands control back before its first read and after each
+    # read that completed no event; so does this, so a source that never waits
+    # still lets a cancellation in where it did
+    await checkpoint()
+    while True:
+        chunk = await reader.read(_READ_SIZE)
+        try:
+            # an empty read ends the parse, as it does in ijson's own readers
+            parser.send(chunk)
+            ended = not chunk
+        except StopIteration:
+            ended = True
+        except BaseException:
+            # the traceback keeps this frame alive through a caller's fallback
+            # parse: don't let it hold what the read parsed, which is not
+            # delivered, or the parser's buffer
+            del events[:]
+            del parser
+            raise
+        if events:
+            yield events
+            del events[:]
+        else:
+            await checkpoint()
+        if ended:
+            return
 
 
 class JsonTextWriter:

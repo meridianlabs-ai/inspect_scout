@@ -86,6 +86,7 @@ def _convert(
         conversation_id="root",
         records_by_id={},
         roles=roles if roles is not None else {},
+        unlinked_results=[],
         depth=0,
         inlining=frozenset(),
     )
@@ -399,6 +400,7 @@ class TestCreateSubagentSpanEvents:
                 "dddddddd-0000-0000-0000-000000000004",
                 records_by_id={},
                 roles={},
+                unlinked_results=[],
                 depth=0,
                 inlining=frozenset(),
             )
@@ -411,6 +413,7 @@ class TestCreateSubagentSpanEvents:
             "dddddddd-0000-0000-0000-000000000004",
             records_by_id={},
             roles={},
+            unlinked_results=[],
             depth=_MAX_SUBAGENT_DEPTH,
             inlining=frozenset(),
         )
@@ -426,6 +429,7 @@ class TestCreateSubagentSpanEvents:
                 child_id,
                 records_by_id={},
                 roles={},
+                unlinked_results=[],
                 depth=0,
                 inlining=frozenset({child_id}),
             )

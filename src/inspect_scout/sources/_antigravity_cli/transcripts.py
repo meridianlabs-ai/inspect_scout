@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from logging import getLogger
 from os import PathLike
-from typing import TYPE_CHECKING, Any, AsyncIterator
+from typing import TYPE_CHECKING, Any, AsyncIterator, NamedTuple
 
 from inspect_ai.event import (
     Event,
@@ -34,6 +34,7 @@ from inspect_ai.model import (
     ChatMessage,
     ChatMessageAssistant,
     ChatMessageSystem,
+    ChatMessageTool,
     stable_message_ids,
 )
 from inspect_ai.tool import ToolCall
@@ -228,6 +229,7 @@ def _create_transcript(
     # child conversation id -> role name, filled in from spawn calls as
     # _convert_steps encounters them
     roles: dict[str, str] = {}
+    unlinked_results: list[_UnlinkedResult] = []
 
     messages, events, info = _convert_steps(
         steps,
@@ -235,6 +237,7 @@ def _create_transcript(
         conversation_id=record.conversation_id,
         records_by_id=records_by_id,
         roles=roles,
+        unlinked_results=unlinked_results,
         depth=0,
         inlining=frozenset({record.conversation_id}),
     )
@@ -249,6 +252,12 @@ def _create_transcript(
         if isinstance(evt, ModelEvent):
             apply_ids(evt)
     apply_ids(messages)
+    for tool_event, tool_message in unlinked_results:
+        if tool_message.id is None:
+            # A sub-agent's result that no later call saw is in no
+            # ModelEvent, and sub-agent messages are not kept
+            apply_ids([tool_message])
+        tool_event.message_id = tool_message.id
 
     metadata: dict[str, Any] = {}
     if record.title:
@@ -307,6 +316,18 @@ class _ConversionInfo:
     first_timestamp: str | None = None
 
 
+class _UnlinkedResult(NamedTuple):
+    """A tool result whose event does not yet name its message.
+
+    Collected so that, once message IDs are assigned, the event can name its
+    message (`ToolEvent.message_id`); extraction rebuilds from the event the
+    results that followed a conversation's last model call.
+    """
+
+    event: ToolEvent
+    message: ChatMessageTool
+
+
 def _convert_steps(
     steps: list[Step],
     generations: list[GenerationInfo],
@@ -314,6 +335,7 @@ def _convert_steps(
     conversation_id: str,
     records_by_id: dict[str, ConversationRecord],
     roles: dict[str, str],
+    unlinked_results: list[_UnlinkedResult],
     depth: int,
     inlining: frozenset[str],
 ) -> tuple[list[ChatMessage], list[Event], _ConversionInfo]:
@@ -323,7 +345,8 @@ def _convert_steps(
     result. ``inlining`` holds the conversation ids on the current inlining
     path (the root plus every enclosing sub-agent), so a spawn result naming
     an ancestor is skipped rather than nested into a cycle; ``depth`` bounds
-    legitimate nesting.
+    legitimate nesting. ``roles`` and ``unlinked_results`` are shared with the
+    inlined sub-agents' conversions.
     """
     # `messages` is the complete transcript history; `context` is what the
     # model currently sees, which a compaction replaces with the checkpoint
@@ -442,13 +465,17 @@ def _convert_steps(
                 )
         elif is_tool_result_step(step):
             call = pairing.call or unknown_tool_call(step)
-            events.extend(
-                _create_tool_span_events(
-                    call,
-                    step,
-                    pairing.started if pairing.call else None,
-                    conversation_id,
-                )
+            span_events = _create_tool_span_events(
+                call,
+                step,
+                pairing.started if pairing.call else None,
+                conversation_id,
+            )
+            events.extend(span_events)
+            [tool_event] = [e for e in span_events if isinstance(e, ToolEvent)]
+            [tool_message] = [m for m in new_messages if isinstance(m, ChatMessageTool)]
+            unlinked_results.append(
+                _UnlinkedResult(event=tool_event, message=tool_message)
             )
         elif step.type == "ERROR_MESSAGE":
             events.append(
@@ -482,6 +509,7 @@ def _convert_steps(
                         child_id,
                         records_by_id=records_by_id,
                         roles=roles,
+                        unlinked_results=unlinked_results,
                         depth=depth,
                         inlining=inlining,
                     )
@@ -553,6 +581,7 @@ def _create_subagent_span_events(
     *,
     records_by_id: dict[str, ConversationRecord],
     roles: dict[str, str],
+    unlinked_results: list[_UnlinkedResult],
     depth: int,
     inlining: frozenset[str],
 ) -> list[Event]:
@@ -586,6 +615,7 @@ def _create_subagent_span_events(
         conversation_id=child_id,
         records_by_id=records_by_id,
         roles=roles,
+        unlinked_results=unlinked_results,
         depth=depth + 1,
         inlining=inlining | {child_id},
     )

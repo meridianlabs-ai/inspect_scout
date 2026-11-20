@@ -363,6 +363,14 @@ async def test_subagent_trailing_tool_result_reaches_scanner_input(
         "tool",
     ]
     assert child.messages[-1].text.endswith("Message delivered")
+    # the child's tool events name the messages the segment shows, though
+    # sub-agent messages are not kept in Transcript.messages
+    [send_message_event] = [
+        e
+        for e in transcripts[0].events
+        if isinstance(e, ToolEvent) and e.function == "send_message"
+    ]
+    assert send_message_event.message_id == child.messages[-1].id
 
 
 @pytest.mark.asyncio
@@ -795,9 +803,9 @@ async def test_user_only_recording_has_no_events(fixtures_dir: Path) -> None:
 async def test_tool_ended_recording_adds_no_model_call(fixtures_dir: Path) -> None:
     """A recording that ends on a successful tool result adds no call after it.
 
-    The ToolEvent and Transcript.messages keep the result. span_messages()
-    reads only ModelEvent inputs, so scanner input ends at the call that
-    made it, as for the final tool result of an eval log.
+    The ToolEvent names the tool message holding its result, so scanner
+    input (span_messages(), which otherwise reads only ModelEvent inputs)
+    ends on the result, as Transcript.messages does.
     """
     [transcript] = [
         t
@@ -816,6 +824,12 @@ async def test_tool_ended_recording_adds_no_model_call(fixtures_dir: Path) -> No
     assert isinstance(tool_event.result, str)
     assert tool_event.result.endswith("src/ tests/")
     assert [m.role for m in transcript.messages] == ["user", "assistant", "tool"]
+    assert tool_event.message_id == transcript.messages[-1].id
 
     segments = await _scanner_segments(transcript)
-    assert [[m.role for m in s.messages] for s in segments] == [["user", "assistant"]]
+    assert [[m.role for m in s.messages] for s in segments] == [
+        ["user", "assistant", "tool"]
+    ]
+    [segment] = segments
+    assert segment.messages[-1].id == tool_event.message_id
+    assert segment.messages[-1].text.endswith("src/ tests/")

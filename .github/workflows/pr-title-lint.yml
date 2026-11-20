@@ -11,4 +11,4 @@ jobs:
     permissions:
       pull-requests: read # read the PR title
     # A commit on main rather than v1: v1's reusables call their own actions by tag.
-    uses: meridianlabs-ai/actions/.github/workflows/pr-title-lint.yml@fbaa145b46c22a0e640234afba9bdac73cab13eb # main
+    uses: meridianlabs-ai/actions/.github/workflows/pr-title-lint.yml@5e38536660a7c7a03feef16a2e88b41fa54f52c5 # main

@@ -1,14 +1,21 @@
 """Tests for Transcripts.for_validation() method."""
 
+from pathlib import Path
 from typing import Any
 
+import pytest
+from inspect_ai.model import ChatMessageUser
+from inspect_scout import transcripts_db, transcripts_from
 from inspect_scout._query import condition_as_sql
 from inspect_scout._scanner.result import Result
 from inspect_scout._scanspec import ScanTranscripts
 from inspect_scout._transcript.transcripts import Transcripts, TranscriptsReader
+from inspect_scout._transcript.types import Transcript
 from inspect_scout._validation import ValidationCase, ValidationSet
 from pydantic import JsonValue
 from typing_extensions import override
+
+LOGS_DIR = Path(__file__).parent.parent / "recorder" / "logs"
 
 
 class MockTranscripts(Transcripts, TranscriptsReader):
@@ -62,7 +69,7 @@ def test_for_validation_single_id() -> None:
     condition = filtered._query.where[0]
     sql, params = condition_as_sql(condition, "sqlite")
 
-    assert sql == '"sample_id" IN (?, ?)'
+    assert sql == '"transcript_id" IN (?, ?)'
     assert params == ["transcript_1", "transcript_2"]
 
 
@@ -83,7 +90,7 @@ def test_for_validation_list_ids() -> None:
     condition = filtered._query.where[0]
     sql, params = condition_as_sql(condition, "sqlite")
 
-    assert sql == '"sample_id" IN (?, ?, ?)'
+    assert sql == '"transcript_id" IN (?, ?, ?)'
     assert params == ["transcript_1", "transcript_2", "transcript_3"]
 
 
@@ -103,7 +110,7 @@ def test_for_validation_mixed_ids() -> None:
     condition = filtered._query.where[0]
     sql, params = condition_as_sql(condition, "sqlite")
 
-    assert sql == '"sample_id" IN (?, ?, ?, ?)'
+    assert sql == '"transcript_id" IN (?, ?, ?, ?)'
     assert params == ["transcript_1", "transcript_2", "transcript_3", "transcript_4"]
 
 
@@ -126,7 +133,7 @@ def test_for_validation_duplicate_ids() -> None:
     sql, params = condition_as_sql(condition, "sqlite")
 
     # Should only have 2 unique IDs
-    assert sql == '"sample_id" IN (?, ?)'
+    assert sql == '"transcript_id" IN (?, ?)'
     assert params == ["transcript_1", "transcript_2"]
 
 
@@ -218,7 +225,7 @@ def test_for_validation_combines_with_existing_conditions() -> None:
 
     # Second condition is the ID filter
     sql2, params2 = condition_as_sql(filtered._query.where[1], "sqlite")
-    assert '"sample_id" IN (?, ?)' in sql2
+    assert '"transcript_id" IN (?, ?)' in sql2
     assert params2 == ["transcript_1", "transcript_2"]
 
 
@@ -237,7 +244,7 @@ def test_for_validation_sql_generation_sqlite() -> None:
     condition = filtered._query.where[0]
     sql, params = condition_as_sql(condition, "sqlite")
 
-    assert sql == '"sample_id" IN (?, ?)'
+    assert sql == '"transcript_id" IN (?, ?)'
     assert params == ["id1", "id2"]
 
 
@@ -257,7 +264,7 @@ def test_for_validation_sql_generation_postgres() -> None:
     sql, params = condition_as_sql(condition, "postgres")
 
     # PostgreSQL uses $1, $2 instead of ?
-    assert sql == '"sample_id" IN ($1, $2)'
+    assert sql == '"transcript_id" IN ($1, $2)'
     assert params == ["id1", "id2"]
 
 
@@ -276,7 +283,7 @@ def test_for_validation_sql_generation_duckdb() -> None:
     condition = filtered._query.where[0]
     sql, params = condition_as_sql(condition, "duckdb")
 
-    assert sql == '"sample_id" IN (?, ?)'
+    assert sql == '"transcript_id" IN (?, ?)'
     assert params == ["id1", "id2"]
 
 
@@ -320,7 +327,7 @@ def test_for_validation_with_predicate() -> None:
     condition = filtered._query.where[0]
     sql, params = condition_as_sql(condition, "sqlite")
 
-    assert sql == '"sample_id" IN (?)'
+    assert sql == '"transcript_id" IN (?)'
     assert params == ["transcript_1"]
 
 
@@ -339,7 +346,7 @@ def test_for_validation_chunk_boundary() -> None:
     # Should NOT use OR (fits in single IN clause)
     assert "OR" not in sql
     assert len(params) == 999
-    assert sql == '"sample_id" IN (' + ", ".join(["?"] * 999) + ")"
+    assert sql == '"transcript_id" IN (' + ", ".join(["?"] * 999) + ")"
 
 
 def test_for_validation_just_over_chunk_boundary() -> None:
@@ -358,3 +365,45 @@ def test_for_validation_just_over_chunk_boundary() -> None:
     assert "OR" in sql
     assert len(params) == 1000
     assert sql.count("IN") == 2
+
+
+@pytest.mark.asyncio
+async def test_for_validation_transcripts_db(tmp_path: Path) -> None:
+    """for_validation filters a transcript database (which has no sample_id)."""
+    async with transcripts_db(str(tmp_path)) as db:
+        await db.insert(
+            [
+                Transcript(
+                    transcript_id=f"t{i}",
+                    source_type="test",
+                    source_id="src",
+                    source_uri="test://uri",
+                    metadata={},
+                    messages=[ChatMessageUser(content=f"q{i}")],
+                    events=[],
+                )
+                for i in range(3)
+            ]
+        )
+
+    validation = ValidationSet(cases=[ValidationCase(id="t1", target=True)])
+    filtered = transcripts_from(str(tmp_path)).for_validation(validation)
+    async with filtered.reader() as reader:
+        ids = [info.transcript_id async for info in reader.index()]
+
+    assert ids == ["t1"]
+
+
+@pytest.mark.asyncio
+async def test_for_validation_eval_logs() -> None:
+    """for_validation filters eval log transcripts by transcript id."""
+    async with transcripts_from(LOGS_DIR).reader() as reader:
+        all_ids = [info.transcript_id async for info in reader.index()]
+    assert len(all_ids) > 1
+
+    validation = ValidationSet(cases=[ValidationCase(id=all_ids[0], target=True)])
+    filtered = transcripts_from(LOGS_DIR).for_validation(validation)
+    async with filtered.reader() as reader:
+        ids = [info.transcript_id async for info in reader.index()]
+
+    assert ids == [all_ids[0]]

@@ -15,6 +15,7 @@ from .validation import (
     _flatten_labels_in_data,
     _flatten_splits_in_data,
     _parse_id,
+    _read_csv,
 )
 
 FileFormat = Literal["csv", "yaml", "json", "jsonl"]
@@ -51,7 +52,7 @@ def _load_raw_data(
     suffix = file_path.suffix.lower()
 
     if suffix == ".csv":
-        df = pd.read_csv(file_path)
+        df = _read_csv(file_path)
         df = _convert_csv_types(df)
         columns = list(df.columns)
         # Convert DataFrame to list of dicts, handling NaN

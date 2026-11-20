@@ -286,3 +286,21 @@ def test_simultaneous_worker_failures_finish_with_useful_diagnostic(
     assert len({item["pid"] for item in report["attempts"]}) == 2
     assert "simultaneous worker failure" in report["parent_display"]
     assert "scan_transcript" in report["parent_display"]
+
+
+@pytest.mark.parametrize(
+    "mode,how",
+    [
+        ("sigkill", "killed by SIGKILL, possibly out of memory"),
+        ("exit", "exit code 3"),
+    ],
+)
+def test_dead_worker_ends_scan(tmp_path: Path, mode: str, how: str) -> None:
+    report = _run_scan(
+        tmp_path, provider="generic", fail_on_error=True, max_processes=2, mode=mode
+    )
+    assert not report["complete"]
+    assert not report["persisted_complete"]
+    assert _compact(f"exited unexpectedly ({how})") in _compact(
+        report["parent_display"]
+    )

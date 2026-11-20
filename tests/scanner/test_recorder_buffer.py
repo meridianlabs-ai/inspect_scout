@@ -699,13 +699,17 @@ async def test_thinned_metadata_keeps_unread_json_values_as_objects(
 
     monkeypatch.setattr(buffer_module, "TRANSCRIPT_METADATA_MAX_CHARS", 200)
     scanner_name = "test_scanner"
+    # Escapes and whitespace make "label" and "spaced" longer than 1 KB as
+    # stored, but not as inspect's thin_metadata measures them.
     metadata = LazyJSONDict(
         {
             "model": "gpt-4",
             "config": '{"temperature": 0.7}',
-            "files": json.dumps(["x" * 2000]),
+            "label": json.dumps({"label": "\u00e9" * 200}),
+            "spaced": json.dumps([1, 2], indent=1000),
+            "files": json.dumps(["x" * 20_000]),
         },
-        json_keys=["config", "files"],
+        json_keys=["config", "label", "spaced", "files"],
     )
     transcript = TranscriptInfo(
         transcript_id="lazy-metadata-1",
@@ -728,6 +732,8 @@ async def test_thinned_metadata_keeps_unread_json_values_as_objects(
     assert stored == {
         "model": "gpt-4",
         "config": {"temperature": 0.7},
+        "label": {"label": "\u00e9" * 200},
+        "spaced": [1, 2],
         "files": "Key removed from summary (> 1k)",
     }
     assert metadata.unread_json("files") is not None

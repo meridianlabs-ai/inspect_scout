@@ -590,17 +590,24 @@ def _transcript_metadata_column(transcript: TranscriptInfo) -> Any:
 # a larger one with this marker.
 _THIN_MAX_JSON_CHARS = 1024
 _THIN_REMOVED = "Key removed from summary (> 1k)"
+# The most JSON text shrinks when parsed and written compactly, whitespace
+# aside: the escape pair `\ud83d\ude00` is 12 characters for one.
+_JSON_MAX_SHRINK = 12
 
 
 def _thin_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
     if isinstance(metadata, LazyJSONDict):
         # `thin_metadata` walks `.items()`, which yields an unread JSON value as
         # its raw text, so the object would be recorded as a (truncated) string.
-        # Resolve those first; one too big to keep is dropped without parsing.
+        # Resolve those first; one that cannot fit is dropped without parsing.
         resolved: dict[str, Any] = {}
         for key in metadata:
             raw = metadata.unread_json(key)
-            too_big = raw is not None and len(raw) > _THIN_MAX_JSON_CHARS
+            too_big = (
+                raw is not None
+                and len(raw) - sum(map(raw.count, " \t\n\r"))
+                > _JSON_MAX_SHRINK * _THIN_MAX_JSON_CHARS
+            )
             resolved[key] = _THIN_REMOVED if too_big else metadata[key]
         metadata = resolved
     return thin_metadata(metadata)

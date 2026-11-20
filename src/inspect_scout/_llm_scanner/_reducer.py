@@ -156,9 +156,17 @@ class ResultReducer:
         Counts occurrences of each ``value`` across results. If there is
         a unique winner it is used; otherwise the last result's value
         breaks the tie. The ``answer`` is taken from the matching result.
+
+        Results whose ``value`` is ``None`` (the answer could not be
+        parsed) do not vote. If no result has a value, the last result
+        is returned as is, matching the numeric reducers.
         """
+        voters = [r for r in results if r.value is not None]
+        if not voters:
+            return results[-1]
+
         counts: dict[str, int] = {}
-        for r in results:
+        for r in voters:
             key = str(r.value)
             counts[key] = counts.get(key, 0) + 1
 
@@ -168,16 +176,16 @@ class ResultReducer:
         if len(winners) == 1:
             winning_key = winners[0]
         else:
-            # Tiebreak: pick the last result whose value is among the winners
+            # Tiebreak: pick the last voter whose value is among the winners
             winning_key = winners[0]  # fallback
-            for r in reversed(results):
+            for r in reversed(voters):
                 if str(r.value) in winners:
                     winning_key = str(r.value)
                     break
 
-        # Find the last result whose value matches the winner
-        matched = results[-1]  # fallback
-        for r in reversed(results):
+        # Find the last voter whose value matches the winner
+        matched = voters[-1]  # fallback
+        for r in reversed(voters):
             if str(r.value) == winning_key:
                 matched = r
                 break

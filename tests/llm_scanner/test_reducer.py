@@ -15,7 +15,7 @@ from inspect_scout._llm_scanner._reducer import (
 )
 from inspect_scout._llm_scanner.types import AnswerMultiLabel, AnswerStructured
 from inspect_scout._scanner.result import Reference, Result
-from pydantic import BaseModel
+from pydantic import BaseModel, JsonValue
 
 # ---------------------------------------------------------------------------
 # Numeric reducers
@@ -215,6 +215,51 @@ class TestMajority:
         # A and B are tied; last tied winner is B (index 3), not C (index 4)
         assert r.value == "B"
         assert r.answer == "B"
+
+    @pytest.mark.anyio
+    @pytest.mark.parametrize(
+        ("values", "expected"),
+        [
+            pytest.param(["A", None, None], "A", id="unparsed_outnumber_label"),
+            pytest.param(["A", "A", None, None, "B"], "A", id="unparsed_tie_label"),
+            pytest.param(["A", None], "A", id="unparsed_last"),
+            pytest.param(["A", "B", None], "B", id="tie_broken_by_last_parsed"),
+        ],
+    )
+    async def test_unparsed_segments_do_not_vote(
+        self, values: list[str | None], expected: str
+    ) -> None:
+        """A segment whose answer failed to parse (value None) is not a vote."""
+        results = [Result(value=v, answer=v) for v in values]
+        r = await ResultReducer.majority(results)
+        assert r.value == expected
+        assert r.answer == expected
+
+    @pytest.mark.anyio
+    async def test_all_unparsed_returns_last(self) -> None:
+        results = [
+            Result(value=None, answer=None, explanation="first"),
+            Result(value=None, answer=None, explanation="second"),
+        ]
+        r = await ResultReducer.majority(results)
+        assert r.value is None
+        assert r.explanation == "second"
+
+    @pytest.mark.anyio
+    @pytest.mark.parametrize(
+        ("value", "answer"),
+        [
+            pytest.param(False, "No", id="false"),
+            pytest.param(0, "0", id="zero"),
+            pytest.param("", "", id="empty_string"),
+        ],
+    )
+    async def test_falsy_values_still_vote(self, value: JsonValue, answer: str) -> None:
+        """Only ``None`` means unparsed; a falsy value is a real vote."""
+        results = [Result(value=value, answer=answer), Result(value=None, answer=None)]
+        r = await ResultReducer.majority(results)
+        assert r.value == value
+        assert r.answer == answer
 
 
 # ---------------------------------------------------------------------------

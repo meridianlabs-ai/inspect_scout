@@ -17,13 +17,14 @@ from inspect_ai.util._anyio import inner_exception
 from .._display import display
 from .._scanner.result import ResultReport
 from .._transcript.transcripts import TranscriptsReader
-from .._transcript.types import TranscriptInfo
 from ._iterator import SerializedAsyncIterator
 from .common import (
     ConcurrencyStrategy,
     ParseFunctionResult,
     ParseJob,
     ReaderCMFactory,
+    RecordResults,
+    ScanFunction,
     ScanMetrics,
     ScannerJob,
 )
@@ -83,14 +84,12 @@ def single_process_strategy(
 
     async def the_func(
         *,
-        record_results: Callable[
-            [TranscriptInfo, str, list[ResultReport]], Awaitable[None]
-        ],
+        record_results: RecordResults,
         parse_jobs: AsyncIterator[ParseJob],
         parse_function: Callable[
             [ParseJob, TranscriptsReader], Awaitable[ParseFunctionResult]
         ],
-        scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]],
+        scan_function: ScanFunction,
         update_metrics: Callable[[ScanMetrics], None] | None = None,
         reader_cm_factory: ReaderCMFactory,
     ) -> None:
@@ -263,10 +262,26 @@ def single_process_strategy(
             _update_metrics()
 
             try:
+                append = False
+
+                async def report_result(result: ResultReport) -> None:
+                    nonlocal append
+                    await record_results(
+                        scanner_job.transcript_info,
+                        scanner_job.scanner_name,
+                        [result],
+                        complete=False,
+                        append=append,
+                    )
+                    append = True
+
+                await scan_function(scanner_job, report_result)
                 await record_results(
                     scanner_job.transcript_info,
                     scanner_job.scanner_name,
-                    await scan_function(scanner_job),
+                    [],
+                    complete=True,
+                    append=append,
                 )
                 metrics.completed_scans += 1
                 print_diagnostics(

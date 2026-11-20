@@ -99,6 +99,8 @@ class Summary(BaseModel):
         scanner: str,
         results: Sequence[ResultReport],
         metrics: dict[str, dict[str, float]] | None,
+        *,
+        complete: bool = True,
     ) -> None:
         # Collect validation entries from results
         new_entries: list[ValidationEntry] = []
@@ -156,7 +158,7 @@ class Summary(BaseModel):
 
         # further aggregate
         tot_results = self.scanners[scanner]
-        tot_results.scans += 1
+        tot_results.scans += int(complete)
         tot_results.results += agg_results
         tot_results.unscored += agg_unscored
         tot_results.metrics = metrics

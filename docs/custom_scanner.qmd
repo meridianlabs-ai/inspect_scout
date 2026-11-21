@@ -347,6 +347,8 @@ Good: make a new list after each yield.
 
 If your loader's cleanup awaits, put that cleanup in a shielded cancel scope. A cancelled scan can stop it otherwise.
 
+A cancel scope or timeout that your loader holds open across a `yield` does not apply to the scanner. The scanner runs in a different task.
+
 ## Streaming Large Transcripts {#streaming}
 
 By default a scanner receives a fully materialized `Transcript`. A scanner that declares streaming support receives a `TranscriptHandle` for every eligible job (a sub-threshold, JSON-format or database-backed transcript arrives as a materialized handle that loads on first use). For `.eval`-format samples larger than 64 MiB the handle is *spooled*: it replays messages and events one at a time from an on-disk spool, so peak memory no longer scales with the largest sample.

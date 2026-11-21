@@ -137,6 +137,8 @@ def multi_process_strategy(
         max_processes = min(
             DEFAULT_MAX_PROCESS, multiprocessing.cpu_count(), total_scans
         )
+    # a process with no worker task never parses, so it could not finish
+    max_processes = min(max_processes, task_count)
 
     async def the_func(
         *,

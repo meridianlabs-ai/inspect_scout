@@ -332,6 +332,29 @@ def test_items_scan_in_parallel_in_each_process(tmp_path: Path) -> None:
     assert all(len(p) == 1 and p[0] != os.getpid() for p in pids.values())
 
 
+@scanner(name="transcript_count", messages="all")
+def _transcript_scanner() -> Scanner[Transcript]:
+    async def scan_transcript(transcript: Transcript) -> Result:
+        return Result(value=len(transcript.messages))
+
+    return scan_transcript
+
+
+def test_fewer_workers_than_processes_completes(tmp_path: Path) -> None:
+    """One worker in all (max_transcripts=1, one scanner) and two processes.
+
+    A process with no worker cannot parse, so it must not be started.
+    """
+    df = _scan_df(
+        tmp_path,
+        _transcript_scanner(),
+        ["a", "b", "c"],
+        max_transcripts=1,
+        max_processes=2,
+    )
+    assert sorted(df["transcript_id"]) == ["a", "b", "c"]
+
+
 # Errors
 
 

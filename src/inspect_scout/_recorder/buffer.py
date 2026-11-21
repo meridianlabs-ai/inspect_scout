@@ -2,10 +2,20 @@ import json
 import os
 import shutil
 import uuid
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime
 from logging import getLogger
-from typing import Any, BinaryIO, Final, Sequence, Set, TypeVar, cast
+from typing import (
+    Any,
+    BinaryIO,
+    Final,
+    NamedTuple,
+    Sequence,
+    Set,
+    TypeVar,
+    cast,
+)
 
 import anyio
 import jsonlines
@@ -44,14 +54,45 @@ SCAN_SUMMARY = "_summary.json"
 # lock and the live `Summary`. Mutating the shared `Summary` under the
 # lock and persisting it directly (without re-reading disk) keeps the
 # read-modify-write race-free while avoiding a disk round-trip per call.
+UsageCounts = Counter[tuple[str, str]]
+"""Per (model, field), how many recorded usages of the model set the field.
+
+The "" field counts the usages themselves. `_subtract_summary` uses these to
+drop a model, or reset an optional field to None, once nothing left sets it.
+"""
+
+_OPTIONAL_USAGE_FIELDS = (
+    "input_tokens_cache_write",
+    "input_tokens_cache_read",
+    "reasoning_tokens",
+    "total_cost",
+)
+
+
+def count_usage(counts: UsageCounts, model: str, usage: ModelUsage) -> None:
+    counts[(model, "")] += 1
+    for name in _OPTIONAL_USAGE_FIELDS:
+        if getattr(usage, name) is not None:
+            counts[(model, name)] += 1
+
+
+class Contribution(NamedTuple):
+    """What a transcript's results add to a scanner's summary."""
+
+    summary: ScannerSummary
+    usage_counts: UsageCounts
+
+
 @dataclass
 class _BufferState:
     lock: anyio.Lock
     summary: Summary | None = None
     error_keys: set[tuple[str, str]] | None = None
     """(transcript_id, scanner) pairs with entries in `_errors.jsonl`."""
-    retried: dict[tuple[str, str], ScannerSummary] = field(default_factory=dict)
+    retried: dict[tuple[str, str], Contribution] = field(default_factory=dict)
     """What (transcript_id, scanner) pairs a resume will retry add to `summary`."""
+    usage_counts: dict[str, UsageCounts] = field(default_factory=dict)
+    """Per scanner, counts of the model usage in `summary` (see `UsageCounts`)."""
 
 
 _buffer_states: dict[str, _BufferState] = {}
@@ -267,10 +308,16 @@ class RecorderBuffer:
         async with self._state.lock:
             assert self._state.summary is not None  # set in __init__
             # a retry replaces the transcript's earlier results in the summary
+            counts = self._state.usage_counts.setdefault(scanner, Counter())
             retried = self._state.retried.pop((transcript.transcript_id, scanner), None)
             if retried is not None and scanner in self._state.summary.scanners:
-                _subtract_summary(self._state.summary.scanners[scanner], retried)
+                _subtract_summary(
+                    self._state.summary.scanners[scanner], retried, counts
+                )
             self._state.summary._report(transcript, scanner, results, metrics)
+            for result in results:
+                for model, usage in result.model_usage.items():
+                    count_usage(counts, model, usage)
             _persist_scan_summary(self._buffer_dir, self._state.summary)
             # these results replace the transcript's earlier ones, so they
             # also replace its earlier errors (e.g. on a successful retry)
@@ -339,17 +386,20 @@ class RecorderBuffer:
     def reset_summary(
         self,
         summary: Summary,
-        retried: dict[tuple[str, str], ScannerSummary] | None = None,
+        retried: dict[tuple[str, str], Contribution],
+        usage_counts: dict[str, UsageCounts],
     ) -> None:
-        """Replace the summary (e.g. with one rebuilt from the recorded results).
+        """Replace the summary with one rebuilt from the recorded results.
 
         Args:
             summary: The new summary.
             retried: What each (transcript_id, scanner) pair to be retried
                 contributes to `summary`; recording the pair again replaces it.
+            usage_counts: Per scanner, counts of the model usage in `summary`.
         """
         self._state.summary = summary
-        self._state.retried = dict(retried or {})
+        self._state.retried = dict(retried)
+        self._state.usage_counts = dict(usage_counts)
         _persist_scan_summary(self._buffer_dir, summary)
 
     def reset_errors(self, errors: Sequence[Error]) -> None:
@@ -653,23 +703,33 @@ def scanner_table(
     return True
 
 
-def _subtract_summary(total: ScannerSummary, part: ScannerSummary) -> None:
+def _subtract_summary(
+    total: ScannerSummary, part: Contribution, counts: UsageCounts
+) -> None:
     """Remove a transcript's contribution `part` from `total` (see `_report`)."""
-    total.scans -= part.scans
-    total.results -= part.results
-    total.unscored -= part.unscored
-    total.errors -= part.errors
-    total.tokens -= part.tokens
-    for model, usage in part.model_usage.items():
-        if model in total.model_usage:
-            remaining = _subtract_usage(total.model_usage[model], usage)
-            if not any(remaining.model_dump().values()):
-                del total.model_usage[model]
-            else:
-                total.model_usage[model] = remaining
-    if part.validation is not None and total.validation is not None:
+    total.scans -= part.summary.scans
+    total.results -= part.summary.results
+    total.unscored -= part.summary.unscored
+    total.errors -= part.summary.errors
+    total.tokens -= part.summary.tokens
+    counts.subtract(part.usage_counts)
+    for model, usage in part.summary.model_usage.items():
+        if model not in total.model_usage:
+            continue
+        if counts[(model, "")] <= 0:
+            del total.model_usage[model]
+            continue
+        remaining = _subtract_usage(total.model_usage[model], usage)
+        total.model_usage[model] = remaining.model_copy(
+            update={
+                name: None
+                for name in _OPTIONAL_USAGE_FIELDS
+                if counts[(model, name)] <= 0
+            }
+        )
+    if part.summary.validation is not None and total.validation is not None:
         entries = list(total.validation.entries)
-        for entry in part.validation.entries:
+        for entry in part.summary.validation.entries:
             if entry in entries:
                 entries.remove(entry)
         total.validation = ValidationResults.from_entries(entries) if entries else None

@@ -526,3 +526,114 @@ async def test_unscored_result_with_error_survives_resume(
     assert (summary.unscored, summary.errors) == (
         (1, 1) if layout == "current" else (0, 1)
     )
+
+
+@pytest.mark.asyncio
+async def test_resumed_summary_is_incomplete(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    machines = _Machines(tmp_path, monkeypatch)
+    a = await _start(machines, tmp_path)
+    location = await a.location()
+    await _record(a, "t1", None)
+    await FileRecorder.sync(location, complete=False)
+
+    resumed = await machines.resume("B", location)
+    assert not (await resumed.summary()).complete
+    status = await FileRecorder.status(location)
+    assert not status.complete and not status.summary.complete
+
+
+_A = "model_a"
+_B = "model_b"
+
+
+def _usage(cost: float | None = None, reasoning: int | None = None) -> ModelUsage:
+    return ModelUsage(
+        input_tokens=2,
+        output_tokens=1,
+        total_tokens=3,
+        reasoning_tokens=reasoning,
+        total_cost=cost,
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "attempts",
+    [
+        # failures cost 0.1 and 0.2 on model_a; the retries run on model_b
+        {
+            "ok": [(_B, _usage())],
+            "f1": [(_A, _usage(cost=0.1)), (_B, _usage())],
+            "f2": [(_A, _usage(cost=0.2)), (_B, _usage())],
+        },
+        # only the failure set reasoning tokens and cost on model_a
+        {
+            "ok": [(_A, _usage())],
+            "f1": [(_A, _usage(cost=0.1, reasoning=5)), (_A, _usage())],
+        },
+    ],
+    ids=["dropped", "none"],
+)
+async def test_retry_replaces_failed_model_usage(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    attempts: dict[str, list[tuple[str, ModelUsage]]],
+) -> None:
+    async def record(
+        recorder: FileRecorder,
+        transcript_id: str,
+        model: str,
+        usage: ModelUsage,
+        failed: bool,
+    ) -> None:
+        await recorder.record(
+            _transcript(transcript_id),
+            SCANNER,
+            [
+                ResultReport(
+                    input_type="message",
+                    input_ids=[transcript_id],
+                    input=ChatMessageUser(content=""),
+                    result=None if failed else Result(value=1),
+                    validation=None,
+                    error=Error(
+                        transcript_id=transcript_id,
+                        scanner=SCANNER,
+                        error="failed",
+                        traceback="",
+                        refusal=False,
+                    )
+                    if failed
+                    else None,
+                    events=[],
+                    model_usage={model: usage},
+                )
+            ],
+            None,
+        )
+
+    machines = _Machines(tmp_path, monkeypatch)
+    a = await _start(machines, tmp_path)
+    location = await a.location()
+    for transcript_id, tries in attempts.items():
+        model, usage = tries[0]
+        await record(a, transcript_id, model, usage, failed=len(tries) > 1)
+    await FileRecorder.sync(location, complete=False)
+
+    resumed = await machines.resume("B", location)
+    for transcript_id, tries in attempts.items():
+        if len(tries) > 1:
+            model, usage = tries[-1]
+            await record(resumed, transcript_id, model, usage, failed=False)
+
+    clean = await _start(machines, tmp_path, machine="clean", scans="clean")
+    for transcript_id, tries in attempts.items():
+        model, usage = tries[-1]
+        await record(clean, transcript_id, model, usage, failed=False)
+    expected = (await clean.summary()).scanners[SCANNER]
+    assert (await resumed.summary()).scanners[SCANNER] == expected
+    machines.use("B")
+    status = await FileRecorder.sync(location, complete=True)
+    assert status.summary.scanners[SCANNER] == expected

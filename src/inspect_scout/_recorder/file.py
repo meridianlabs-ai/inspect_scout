@@ -5,6 +5,7 @@ import os
 import secrets
 import stat
 import tempfile
+from collections import Counter
 from collections.abc import AsyncIterator, Generator, Iterator, Mapping
 from collections.abc import Set as AbstractSet
 from contextlib import contextmanager
@@ -52,8 +53,11 @@ from .._query.sql import quote_identifier
 from .._recorder.buffer import (
     SCAN_ERRORS,
     SCAN_SUMMARY,
+    Contribution,
     RecorderBuffer,
+    UsageCounts,
     cleanup_buffer_dir,
+    count_usage,
     decode_recorded_value,
     read_scan_errors,
     read_scan_summary,
@@ -194,7 +198,9 @@ class FileRecorder(ScanRecorder):
             _reconcile_with_synced, self._scan_dir, self.scan_spec, self._scan_buffer
         )
         self._scan_buffer.reset_errors(reconciled.errors)
-        self._scan_buffer.reset_summary(reconciled.summary, reconciled.retried)
+        self._scan_buffer.reset_summary(
+            reconciled.summary, reconciled.retried, reconciled.usage_counts
+        )
         self._recorded = reconciled.recorded
         return self._scan_spec
 
@@ -868,8 +874,11 @@ class _Reconciled(NamedTuple):
     summary: Summary
     """Summary of the winning results."""
 
-    retried: dict[tuple[str, str], ScannerSummary]
+    retried: dict[tuple[str, str], Contribution]
     """What each errored (transcript_id, scanner), to be retried, adds to `summary`."""
+
+    usage_counts: dict[str, UsageCounts]
+    """Per scanner, counts of the model usage in `summary`."""
 
 
 def _reconcile_with_synced(
@@ -886,10 +895,12 @@ def _reconcile_with_synced(
     """
     prior = buffer.scan_summary()
     refusals = _error_refusals([*buffer.errors(), *_read_scan_errors(scan_dir)])
-    summary = Summary(scanners=list(spec.scanners.keys()))
+    # a resumed scan is incomplete until it is synced as complete
+    summary = Summary(complete=False, scanners=list(spec.scanners.keys()))
     recorded: dict[str, set[str]] = {}
     errors: list[Error] = []
-    retried: dict[tuple[str, str], ScannerSummary] = {}
+    retried: dict[tuple[str, str], Contribution] = {}
+    usage_counts: dict[str, UsageCounts] = {}
     for scanner in spec.scanners:
         total = _RowSummary(scanner, refusals)
         errored_parts: dict[str, _RowSummary] = {}
@@ -928,9 +939,12 @@ def _reconcile_with_synced(
         recorded[scanner] = ok
         errors.extend(total.errors)
         summary.scanners[scanner] = total.summary(prior)
+        usage_counts[scanner] = total.usage_counts
         for transcript_id, part in errored_parts.items():
-            retried[(transcript_id, scanner)] = part.summary()
-    return _Reconciled(recorded, errors, summary, retried)
+            retried[(transcript_id, scanner)] = Contribution(
+                part.summary(), part.usage_counts
+            )
+    return _Reconciled(recorded, errors, summary, retried, usage_counts)
 
 
 def _error_refusals(errors: Sequence[Error]) -> dict[tuple[str, ...], bool]:
@@ -960,6 +974,7 @@ class _RowSummary:
         self._summary = ScannerSummary()
         self._entries: list[ValidationEntry] = []
         self.errors: list[Error] = []
+        self.usage_counts: UsageCounts = Counter()
 
     def add(self, rows: Sequence[dict[str, Any]], transcripts: int = 0) -> None:
         s = self._summary
@@ -996,10 +1011,10 @@ class _RowSummary:
                     )
                 )
             s.tokens += row.get("scan_total_tokens") or 0
-            for model, usage in json.loads(row.get("scan_model_usage") or "{}").items():
-                s.model_usage[model] = s.model_usage.get(
-                    model, ModelUsage()
-                ) + ModelUsage.model_validate(usage)
+            for model, data in json.loads(row.get("scan_model_usage") or "{}").items():
+                usage = ModelUsage.model_validate(data)
+                s.model_usage[model] = s.model_usage.get(model, ModelUsage()) + usage
+                count_usage(self.usage_counts, model, usage)
 
     def _error(self, row: dict[str, Any], error: str) -> Error:
         traceback = row.get("scan_error_traceback") or ""

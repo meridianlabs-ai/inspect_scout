@@ -63,8 +63,8 @@ from .common import (
     ParseFunctionResult,
     ParseJob,
     ReaderCMFactory,
+    ScanFunction,
     ScanMetrics,
-    ScannerJob,
     sum_metrics,
 )
 
@@ -147,7 +147,7 @@ def multi_process_strategy(
         parse_function: Callable[
             [ParseJob, TranscriptsReader], Awaitable[ParseFunctionResult]
         ],
-        scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]],
+        scan_function: ScanFunction,
         update_metrics: Callable[[ScanMetrics], None] | None = None,
         reader_cm_factory: ReaderCMFactory,
     ) -> None:

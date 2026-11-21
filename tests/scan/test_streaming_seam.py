@@ -14,7 +14,7 @@ from inspect_scout._scan import (
     _scan_one,
     _streaming_eligible,
 )
-from inspect_scout._scanner.result import Result, SerializedTranscript
+from inspect_scout._scanner.result import Result, ResultReport, SerializedTranscript
 from inspect_scout._scanner.scanner import Scanner, mark_streaming_support
 from inspect_scout._transcript.handle import (
     MaterializedTranscriptHandle,
@@ -51,6 +51,15 @@ def _plain_scanner() -> Scanner[Transcript]:
     return scan
 
 
+async def _scan_reports(job: ScannerJob, *, fail_on_error: bool) -> list[ResultReport]:
+    """Pull every item of `job` and scan it, one after the other."""
+    reports = [
+        await item.scan()
+        async for item in _scan_one(job, validation=None, fail_on_error=fail_on_error)
+    ]
+    return [report for report in reports if report is not None]
+
+
 def _materialized_handle(transcript: Transcript) -> MaterializedTranscriptHandle:
     """Build a materialized handle over an in-memory transcript."""
 
@@ -81,7 +90,7 @@ async def test_scan_one_with_handle_scanner() -> None:
     received: list[Any] = []
     s = _handle_scanner(received)
     job = ScannerJob(union_transcript=handle, scanner=s, scanner_name="hs")
-    reports = await _scan_one(job, validation=None, fail_on_error=True)
+    reports = await _scan_reports(job, fail_on_error=True)
     assert received == [handle]
     assert len(reports) == 1
     assert reports[0].input_type == "transcript"
@@ -100,7 +109,7 @@ async def test_scan_one_stream_error_contained() -> None:
 
     s = _plain_scanner()
     job = ScannerJob(union_transcript=handle, scanner=s, scanner_name="ps")
-    reports = await _scan_one(job, validation=None, fail_on_error=False)
+    reports = await _scan_reports(job, fail_on_error=False)
     assert len(reports) == 1
     assert reports[0].error is not None
     assert "corrupt sample JSON" in reports[0].error.error
@@ -215,7 +224,7 @@ async def test_scan_one_records_serialized_input_for_spooled_handle(
         union_transcript=handle, scanner=_handle_scanner(), scanner_name="hs"
     )
     try:
-        reports = await _scan_one(job, validation=None, fail_on_error=True)
+        reports = await _scan_reports(job, fail_on_error=True)
     finally:
         await handle.aclose()
 

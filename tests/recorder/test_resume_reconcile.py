@@ -3,6 +3,7 @@
 Each machine has its own local buffer; the scan location is shared.
 """
 
+import json
 import secrets
 from pathlib import Path
 from typing import Any
@@ -108,10 +109,14 @@ async def _start(
 
 
 async def _clean_summary(
-    machines: _Machines, tmp_path: Path, outcomes: dict[str, int | None]
+    machines: _Machines,
+    tmp_path: Path,
+    outcomes: dict[str, int | None],
+    again: bool = False,
 ) -> dict[str, Any]:
     """Summary of recording `outcomes` once each, in a scan of their own."""
-    recorder = await _start(machines, tmp_path, machine="clean", scans="clean")
+    name = "clean-again" if again else "clean"
+    recorder = await _start(machines, tmp_path, machine=name, scans=name)
     for transcript_id, value in outcomes.items():
         await _record(recorder, transcript_id, value)
     return _normalized((await recorder.summary()).scanners[SCANNER])
@@ -236,6 +241,17 @@ async def test_resumed_summary_matches_winning_results(
     assert sorted(synced) == sorted(expected)
     assert all(len(values) == 1 for values in synced.values())
 
+    # a successful retry replaces the failure in the summary
+    for transcript_id in [t for t, v in expected.items() if v is None]:
+        await _record(resumed, transcript_id, 1)
+        expected[transcript_id] = 1
+    clean = await _clean_summary(machines, tmp_path, expected, again=True)
+    assert _normalized((await resumed.summary()).scanners[SCANNER]) == clean
+    machines.use("A" if scenario != "fresh" else "B")
+    status = await FileRecorder.sync(location, complete=True)
+    assert not status.errors
+    assert _normalized(status.summary.scanners[SCANNER]) == clean
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("retry", [1, None], ids=["succeeds", "fails"])
@@ -325,3 +341,188 @@ async def test_resume_reads_only_needed_columns_through_fsspec(
         assert 0 < read < size / 10
     finally:
         filesystem(location).rm(location, recursive=True)
+
+
+def _write_synced(location: str, rows: list[dict[str, Any]]) -> None:
+    """Write `rows` as the scanner's synced results (e.g. an older layout)."""
+    pq.write_table(pa.Table.from_pylist(rows), f"{location}/{SCANNER}.parquet")
+
+
+def _write_synced_errors(location: str, errors: list[Error]) -> None:
+    Path(location, "_errors.jsonl").write_text(
+        "".join(e.model_dump_json() + "\n" for e in errors)
+    )
+
+
+def _row(transcript_id: str, **columns: Any) -> dict[str, Any]:
+    row: dict[str, Any] = {
+        "transcript_id": transcript_id,
+        "input_ids": json.dumps([transcript_id]),
+        "value": None,
+        "value_type": "null",
+        "scan_error": None,
+        "scan_error_traceback": None,
+        "scan_total_tokens": 0,
+        "scan_model_usage": "{}",
+    }
+    return row | columns
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("targets", [(True, False), ("yes", "no")], ids=["bool", "str"])
+async def test_resume_reads_older_result_layouts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, targets: tuple[Any, Any]
+) -> None:
+    """Before 0.3.0: refusal as a bool column; before 0.3.41: native validation."""
+    machines = _Machines(tmp_path, monkeypatch)
+    location = await (await _start(machines, tmp_path)).location()
+    _write_synced(
+        location,
+        [
+            _row(
+                "ok",
+                value="1",
+                value_type="number",
+                validation_target=targets[0],
+                validation_result=True,
+                scan_error_refusal=None,
+            ),
+            _row(
+                "zero",
+                value="0",
+                value_type="number",
+                validation_target=targets[1],
+                validation_result=False,
+                scan_error_refusal=None,
+            ),
+            _row(
+                "failed",
+                scan_error="boom",
+                scan_error_traceback="tb",
+                scan_error_refusal=False,
+            ),
+            _row(
+                "refused",
+                scan_error="no",
+                scan_error_traceback="tb",
+                scan_error_refusal=True,
+            ),
+        ],
+    )
+    resumed = await machines.resume("B", location)
+    assert await resumed.is_recorded("ok", SCANNER)
+    assert not await resumed.is_recorded("failed", SCANNER)
+    assert {e.transcript_id: e.refusal for e in await resumed.errors()} == {
+        "failed": False,
+        "refused": True,
+    }
+    summary = (await resumed.summary()).scanners[SCANNER]
+    assert (summary.scans, summary.results, summary.errors) == (4, 1, 2)
+    assert summary.validation is not None
+    assert sorted(
+        (str(e.id), e.target, e.valid) for e in summary.validation.entries
+    ) == [("ok", targets[0], True), ("zero", targets[1], False)]
+    assert [v async for v in resumed.recorded_values(SCANNER, ["ok", "zero"])] == [
+        1,
+        0,
+    ]
+
+    # compacting the older layout with new results keeps every transcript once
+    await _record(resumed, "failed", 1)
+    status = await FileRecorder.sync(location, complete=False)
+    assert sorted(_synced_values(status)) == ["failed", "ok", "refused", "zero"]
+
+
+@pytest.mark.asyncio
+async def test_refusal_comes_from_the_matching_recorded_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """0.3.0-0.5.1 rows marked every error a refusal; the errors file didn't."""
+    machines = _Machines(tmp_path, monkeypatch)
+    location = await (await _start(machines, tmp_path)).location()
+    _write_synced(
+        location,
+        [
+            _row(
+                t,
+                scan_error=f"{t} failed",
+                scan_error_traceback="tb",
+                scan_error_type="refusal",
+            )
+            for t in ("matched", "stale", "unlisted")
+        ],
+    )
+    _write_synced_errors(
+        location,
+        [
+            Error(
+                transcript_id="matched",
+                scanner=SCANNER,
+                error="matched failed",
+                traceback="tb",
+                refusal=False,
+            ),
+            # an older error for this transcript, not the one in its results
+            Error(
+                transcript_id="stale",
+                scanner=SCANNER,
+                error="earlier failure",
+                traceback="tb",
+                refusal=False,
+            ),
+        ],
+    )
+    resumed = await machines.resume("B", location)
+    assert {e.transcript_id: (e.error, e.refusal) for e in await resumed.errors()} == {
+        "matched": ("matched failed", False),
+        "stale": ("stale failed", True),
+        "unlisted": ("unlisted failed", True),
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("layout", ["current", "older"])
+async def test_unscored_result_with_error_survives_resume(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, layout: str
+) -> None:
+    """A `None` result whose transcript couldn't be read back is still unscored."""
+    machines = _Machines(tmp_path, monkeypatch)
+    a = await _start(machines, tmp_path)
+    location = await a.location()
+    await a.record(
+        _transcript("t1"),
+        SCANNER,
+        [
+            ResultReport(
+                input_type="message",
+                input_ids=["t1"],
+                input=ChatMessageUser(content=""),
+                result=Result(value=None),
+                validation=None,
+                error=Error(
+                    transcript_id="t1",
+                    scanner=SCANNER,
+                    error="unreadable",
+                    traceback="",
+                    refusal=False,
+                ),
+                events=[],
+                model_usage={},
+            )
+        ],
+        None,
+    )
+    recorded = (await a.summary()).scanners[SCANNER]
+    assert (recorded.unscored, recorded.errors) == (1, 1)
+    await FileRecorder.sync(location, complete=False)
+    if layout == "older":
+        # files written before `scan_error_has_result` lack the column
+        table = pq.read_table(f"{location}/{SCANNER}.parquet")
+        _write_synced(location, table.drop(["scan_error_has_result"]).to_pylist())
+
+    resumed = await machines.resume("B", location)
+    summary = (await resumed.summary()).scanners[SCANNER]
+    # an older row can't tell this from an error without a result
+    assert (summary.unscored, summary.errors) == (
+        (1, 1) if layout == "current" else (0, 1)
+    )

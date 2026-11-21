@@ -27,9 +27,11 @@ from tests.helpers import temp_active_scans_store
 SCANNER = "resume_fresh_buffer"
 TRANSCRIPT_IDS = [f"t{i}" for i in range(6)]
 SLOW_ID = TRANSCRIPT_IDS[-1]
+FAILING_ID = TRANSCRIPT_IDS[-2]
 
 # set by the test; the slow transcript sets it once every other transcript is
-# recorded, so the test interrupts the scan with exactly one transcript left
+# recorded (one of them as an error), so the test interrupts the scan with
+# exactly one transcript left
 _others_recorded: anyio.Event | None = None
 
 
@@ -46,6 +48,8 @@ def resume_fresh_buffer(
                 await anyio.sleep(0.01)
             _others_recorded.set()
             await anyio.sleep_forever()
+        if transcript.transcript_id == FAILING_ID and not Path(release).exists():
+            raise RuntimeError("Transient scanner failure")
         # integral floats, including -0.0, must reach metrics as floats
         index = TRANSCRIPT_IDS.index(transcript.transcript_id)
         return Result(value=float(index) if index else -0.0)
@@ -111,6 +115,7 @@ def test_resume_with_fresh_buffer(
     with temp_active_scans_store():
         interrupted = anyio.run(interrupted_scan)
         assert not interrupted.complete
+        assert [e.transcript_id for e in interrupted.errors] == [FAILING_ID]
         synced = scan_results_df(interrupted.location).scanners[SCANNER]
         assert sorted(synced["transcript_id"]) == TRANSCRIPT_IDS[:-1]
         assert sorted(_read_calls(calls)) == TRANSCRIPT_IDS
@@ -129,11 +134,12 @@ def test_resume_with_fresh_buffer(
             display="none",
         )
 
-    assert resumed_calls == [SLOW_ID]
+    assert sorted(resumed_calls) == [FAILING_ID, SLOW_ID]
     assert resumed.complete and not resumed.errors
     results = scan_results_df(resumed.location).scanners[SCANNER]
     assert sorted(results["transcript_id"]) == TRANSCRIPT_IDS
+    # the retry replaces the failure: the summary matches a clean scan's
     summary = resumed.summary.scanners[SCANNER]
-    assert summary.scans == len(TRANSCRIPT_IDS)
-    assert summary.metrics == clean.summary.scanners[SCANNER].metrics
+    assert summary == clean.summary.scanners[SCANNER]
+    assert summary.scans == len(TRANSCRIPT_IDS) and summary.errors == 0
     assert summary.metrics is not None and summary.metrics[SCANNER]["mean"] == 2.5

@@ -2,7 +2,7 @@ import json
 import os
 import shutil
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from logging import getLogger
 from typing import Any, BinaryIO, Final, Sequence, Set, TypeVar, cast
@@ -16,12 +16,14 @@ from inspect_ai._util.appdirs import inspect_data_dir
 from inspect_ai._util.file import file
 from inspect_ai._util.hash import mm3_hash
 from inspect_ai.log._util import thin_metadata
+from inspect_ai.model import ModelUsage
 from inspect_ai.scorer import value_to_float
 from pydantic import JsonValue
 from pydantic_core import to_json
 from upath import UPath
 
-from inspect_scout._recorder.summary import Summary
+from inspect_scout._recorder.summary import ScannerSummary, Summary
+from inspect_scout._recorder.validation import ValidationResults
 from inspect_scout._util.constants import TRANSCRIPT_METADATA_MAX_CHARS
 from inspect_scout._util.path import normalize_for_hashing
 
@@ -48,6 +50,8 @@ class _BufferState:
     summary: Summary | None = None
     error_keys: set[tuple[str, str]] | None = None
     """(transcript_id, scanner) pairs with entries in `_errors.jsonl`."""
+    retried: dict[tuple[str, str], ScannerSummary] = field(default_factory=dict)
+    """What (transcript_id, scanner) pairs a resume will retry add to `summary`."""
 
 
 _buffer_states: dict[str, _BufferState] = {}
@@ -262,6 +266,10 @@ class RecorderBuffer:
         # updates and never observe a partial state on disk.
         async with self._state.lock:
             assert self._state.summary is not None  # set in __init__
+            # a retry replaces the transcript's earlier results in the summary
+            retried = self._state.retried.pop((transcript.transcript_id, scanner), None)
+            if retried is not None and scanner in self._state.summary.scanners:
+                _subtract_summary(self._state.summary.scanners[scanner], retried)
             self._state.summary._report(transcript, scanner, results, metrics)
             _persist_scan_summary(self._buffer_dir, self._state.summary)
             # these results replace the transcript's earlier ones, so they
@@ -328,9 +336,20 @@ class RecorderBuffer:
     def errors(self) -> list[Error]:
         return read_scan_errors(str(self._error_file))
 
-    def reset_summary(self, summary: Summary) -> None:
-        """Replace the summary (e.g. with one rebuilt from the recorded results)."""
+    def reset_summary(
+        self,
+        summary: Summary,
+        retried: dict[tuple[str, str], ScannerSummary] | None = None,
+    ) -> None:
+        """Replace the summary (e.g. with one rebuilt from the recorded results).
+
+        Args:
+            summary: The new summary.
+            retried: What each (transcript_id, scanner) pair to be retried
+                contributes to `summary`; recording the pair again replaces it.
+        """
         self._state.summary = summary
+        self._state.retried = dict(retried or {})
         _persist_scan_summary(self._buffer_dir, summary)
 
     def reset_errors(self, errors: Sequence[Error]) -> None:
@@ -400,7 +419,7 @@ def decode_recorded_value(value: Any, value_type: str | None) -> JsonValue:
     integral float like `1.0` as "1", which reads back as the int 1 (equal
     in value). Only "-0" can be told apart: an int has no negative zero.
     """
-    if isinstance(value, str) and value_type != "string":
+    if isinstance(value, str) and value_type not in ("string", None):
         # Lists and dicts are stored as JSON text under any type label.
         # Scalars only become text in mixed columns (and in compacted
         # results), where they use spellings that never start with [ or {.
@@ -536,6 +555,7 @@ def scanner_table(
     fixed_types: dict[str, pa.DataType] = {
         "transcript_success": pa.bool_(),
         "transcript_trust_content": pa.bool_(),
+        "scan_error_has_result": pa.bool_(),
     }
     corrected_fields = []
     for field in schema:
@@ -631,6 +651,52 @@ def scanner_table(
         flush_accumulated(writer)
 
     return True
+
+
+def _subtract_summary(total: ScannerSummary, part: ScannerSummary) -> None:
+    """Remove a transcript's contribution `part` from `total` (see `_report`)."""
+    total.scans -= part.scans
+    total.results -= part.results
+    total.unscored -= part.unscored
+    total.errors -= part.errors
+    total.tokens -= part.tokens
+    for model, usage in part.model_usage.items():
+        if model in total.model_usage:
+            remaining = _subtract_usage(total.model_usage[model], usage)
+            if not any(remaining.model_dump().values()):
+                del total.model_usage[model]
+            else:
+                total.model_usage[model] = remaining
+    if part.validation is not None and total.validation is not None:
+        entries = list(total.validation.entries)
+        for entry in part.validation.entries:
+            if entry in entries:
+                entries.remove(entry)
+        total.validation = ValidationResults.from_entries(entries) if entries else None
+
+
+def _subtract_usage(total: ModelUsage, part: ModelUsage) -> ModelUsage:
+    return ModelUsage(
+        input_tokens=total.input_tokens - part.input_tokens,
+        output_tokens=total.output_tokens - part.output_tokens,
+        total_tokens=total.total_tokens - part.total_tokens,
+        input_tokens_cache_write=_minus(
+            total.input_tokens_cache_write, part.input_tokens_cache_write
+        ),
+        input_tokens_cache_read=_minus(
+            total.input_tokens_cache_read, part.input_tokens_cache_read
+        ),
+        reasoning_tokens=_minus(total.reasoning_tokens, part.reasoning_tokens),
+        total_cost=_minus_float(total.total_cost, part.total_cost),
+    )
+
+
+def _minus(a: int | None, b: int | None) -> int | None:
+    return a if a is None or b is None else a - b
+
+
+def _minus_float(a: float | None, b: float | None) -> float | None:
+    return a if a is None or b is None else a - b
 
 
 def _float_text(col: "pa.Array[Any]", type: "pa.DataType") -> "pa.Array[Any]":

@@ -1,5 +1,5 @@
 import abc
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from types import TracebackType
@@ -284,10 +284,10 @@ class ScanRecorder(abc.ABC):
     async def is_recorded(self, transcript_id: str, scanner: str) -> bool: ...
 
     @abc.abstractmethod
-    async def recorded_values(
-        self, transcript_id: str, scanner: str
-    ) -> list[JsonValue]:
-        """Read values for a transcript that `is_recorded` will skip on resume."""
+    def recorded_values(
+        self, scanner: str, transcript_ids: Sequence[str]
+    ) -> AsyncIterator[JsonValue]:
+        """Values of transcripts that `is_recorded` will skip on resume."""
         ...
 
     @abc.abstractmethod

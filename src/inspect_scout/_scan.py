@@ -593,18 +593,19 @@ async def _scan_async_inner(
             total_scans = 0
             skipped_scans = 0
             metrics_accum = metrics_accumulators(scan.scanners)
+            # Only seed transcripts that will be skipped. A retry replaces
+            # every result for its transcript, including partial successes.
+            skipped: dict[str, list[str]] = {name: [] for name in metrics_accum}
             for transcript_id in snapshot.transcript_ids.keys():
                 for name in scanner_names_list:
                     if await recorder.is_recorded(transcript_id, name):
                         skipped_scans += 1
-                        # Only seed transcripts that will be skipped. A retry replaces
-                        # every result for its transcript, including partial successes.
-                        if name in metrics_accum:
-                            for value in await recorder.recorded_values(
-                                transcript_id, name
-                            ):
-                                metrics_accum[name].add_result(value)
+                        if name in skipped:
+                            skipped[name].append(transcript_id)
                     total_scans += 1
+            for name, transcript_ids in skipped.items():
+                async for value in recorder.recorded_values(name, transcript_ids):
+                    metrics_accum[name].add_result(value)
 
             # override total scans if there is a worklist
             if scan.worklist is not None:

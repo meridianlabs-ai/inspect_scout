@@ -440,6 +440,7 @@ def _handle_label_validation(
             template_row["scan_error"] = None
             template_row["scan_error_traceback"] = None
             template_row["scan_error_type"] = None
+            template_row["scan_error_has_result"] = None
 
             # NULL out scan execution fields
             template_row["scan_total_tokens"] = None

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.4](https://github.com/meridianlabs-ai/inspect_scout/compare/0.6.3...0.6.4) (2026-11-20)
+
+
+### Bug Fixes
+
+* **cli:** apply scan -F to transcripts from scout.yaml or a scan job ([#860](https://github.com/meridianlabs-ai/inspect_scout/issues/860)) ([6fc23fe](https://github.com/meridianlabs-ai/inspect_scout/commit/6fc23fe0552f7946b9da7416483f0382dbf5f42f))
+
 ## [0.6.3](https://github.com/meridianlabs-ai/inspect_scout/compare/0.6.2...0.6.3) (2026-11-17)
 
 

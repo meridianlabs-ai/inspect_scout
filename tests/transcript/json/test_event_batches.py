@@ -15,7 +15,6 @@ import ijson
 import pytest
 from inspect_scout import TranscriptInfo
 from inspect_scout._transcript.json.load_filtered import load_filtered_transcript
-from inspect_scout._transcript.json.reducer import json_event_batches
 from inspect_scout._transcript.json.stream_parse import stream_parse_to_spool
 
 Parse = Callable[[AsyncIterable[bytes], Path], Awaitable[None]]
@@ -160,6 +159,8 @@ async def _outcome(
 async def test_the_batches_and_errors_are_those_of_parse_async(
     document: bytes, backend: ModuleType, read_size: int
 ) -> None:
+    from inspect_scout._transcript.json.reducer import json_event_batches
+
     expected = await _outcome(
         backend.parse_async(_SmallReads(document, read_size), use_float=True)
     )
@@ -188,6 +189,8 @@ class _InstantReads(_SmallReads):
 async def test_a_long_string_from_a_source_that_never_waits_lets_a_cancellation_in() -> (
     None
 ):
+    from inspect_scout._transcript.json.reducer import json_event_batches
+
     reads_in_all = 20
     reader = _InstantReads(b'{"s": "' + b"x" * (reads_in_all * 64 * 1024) + b'"}')
 

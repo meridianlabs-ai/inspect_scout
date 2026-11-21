@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import AsyncIterator, Callable, Sequence
+from collections.abc import AsyncGenerator, Callable, Sequence
 from dataclasses import dataclass, field
 from types import ModuleType
 from typing import Any, Generator, Literal, ParamSpec, Protocol
@@ -320,7 +320,7 @@ _READ_SIZE = 64 * 1024
 
 async def json_event_batches(
     reader: AsyncBytesReader, backend: ModuleType
-) -> AsyncIterator[list[tuple[str, str, Any]]]:
+) -> AsyncGenerator[list[tuple[str, str, Any]], None]:
     """Yield the events of ``backend.parse_async(reader, use_float=True)``, a batch per read.
 
     Each read is awaited here, where a cancellation can be thrown into it.

@@ -330,8 +330,11 @@ async def stream_parse_to_spool(
     current_section = _SECTION_OTHER
 
     try:
-        async with adapt_to_reader(sample_bytes) as reader:
-            async for batch in json_event_batches(reader, ijson):
+        async with (
+            adapt_to_reader(sample_bytes) as reader,
+            contextlib.aclosing(json_event_batches(reader, ijson)) as batches,
+        ):
+            async for batch in batches:
                 for prefix, event, value in batch:
                     # HOT PATH: this classification runs 56M+ times per large parse.
                     # Avoid string slicing, startswith, or any allocation in common

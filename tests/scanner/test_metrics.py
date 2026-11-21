@@ -19,6 +19,7 @@ from inspect_scout._scanner.scanner import SCANNER_METRICS
 from inspect_scout._transcript.factory import transcripts_from
 from inspect_scout._transcript.types import Transcript
 from inspect_scout._util.throttle import throttle
+from pydantic import JsonValue
 
 # Test data location
 LOGS_DIR = Path(__file__).parent.parent.parent / "examples" / "scanner" / "logs"
@@ -146,8 +147,8 @@ def test_as_score_value_dict_with_nested() -> None:
 # =============================================================================
 
 
-def test_numeric_score_value_dict_filters_strings_and_none() -> None:
-    """Dict should filter out strings, None, and nested objects, keeping numerics."""
+def test_numeric_score_value_dict_filters_strings_and_preserves_none() -> None:
+    """Dict keeps numeric and unscored values while filtering strings."""
     result = _numeric_score_value(
         {
             "score": 0.8,
@@ -158,13 +159,13 @@ def test_numeric_score_value_dict_filters_strings_and_none() -> None:
             "empty": None,
         }
     )
-    assert result == {"score": 0.8, "count": 3, "flag": True}
+    assert result == {"score": 0.8, "count": 3, "flag": True, "empty": None}
 
 
 def test_numeric_score_value_dict_all_non_numeric() -> None:
-    """Dict with only non-numeric values should return empty dict."""
+    """An unscored key remains available for dictionary metrics."""
     result = _numeric_score_value({"text": "hello", "nothing": None})
-    assert result == {}
+    assert result == {"nothing": None}
 
 
 def test_numeric_score_value_list_filters_non_numeric() -> None:
@@ -209,6 +210,20 @@ def test_metrics_accumulator_dict_with_non_numeric_values() -> None:
     assert "dim2" in metrics
     assert metrics["dim1"]["mean"] == 6.0  # (5+7)/2
     assert metrics["dim2"]["mean"] == 6.0  # (3+9)/2
+
+
+@pytest.mark.parametrize("missing_first", [True, False])
+def test_dict_metrics_preserve_unscored_keys(missing_first: bool) -> None:
+    accumulator = MetricsAccumulator(
+        scanner="test", metrics={"a": [mean()], "b": [mean()]}
+    )
+    values: list[JsonValue] = [{"a": 1, "b": None}, {"a": 1, "b": 0}]
+    if not missing_first:
+        values.reverse()
+    for value in values:
+        accumulator.add_result(value)
+
+    assert accumulator.compute_metrics() == {"a": {"mean": 1.0}, "b": {"mean": 0.0}}
 
 
 def test_metrics_accumulator_add_result_numeric() -> None:
@@ -505,6 +520,40 @@ def test_scan_metrics_values_are_correct() -> None:
         metrics = status.summary.scanners["predictable_scanner"].metrics
         assert metrics is not None
         assert metrics["predictable_scanner"]["mean"] == 5.0
+
+
+@pytest.mark.parametrize("wildcard", [True, False])
+def test_scan_resultset_metrics(tmp_path: Path, wildcard: bool) -> None:
+    metrics = (
+        {"*": [mean()]}
+        if wildcard
+        else {"deception": [mean()], "misconfiguration": [mean()]}
+    )
+
+    @scanner(name="resultset_metrics", messages="all", metrics=[metrics])
+    def resultset_scanner() -> Scanner[Transcript]:
+        async def scan_transcript(transcript: Transcript) -> list[Result]:
+            return [
+                Result(label="deception", value=1),
+                Result(label="misconfiguration", value=0),
+                Result(label="deception", value=9),
+            ]
+
+        return scan_transcript
+
+    status = scan(
+        scanners=[resultset_scanner()],
+        transcripts=transcripts_from(LOGS_DIR),
+        scans=str(tmp_path),
+        limit=2,
+        display="none",
+    )
+
+    assert status.complete
+    computed = status.summary.scanners["resultset_metrics"].metrics
+    assert computed is not None
+    assert computed["deception"] == {"mean": 1.0}
+    assert computed["misconfiguration"] == {"mean": 0.0}
 
 
 def test_scan_metrics_with_multiple_metrics() -> None:

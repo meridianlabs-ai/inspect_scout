@@ -257,7 +257,7 @@ class ScanJob:
 
     @property
     def max_transcripts(self) -> int | None:
-        """The maximum number of transcripts to process concurrently (this also serves as the default value for `max_connections`). Defaults to 25."""
+        """Sets the number of scan workers: `max_transcripts` x scanners. A worker scans one whole transcript or one loader item (this also serves as the default value for `max_connections`). Defaults to 25."""
         return self._max_transcripts
 
     @property

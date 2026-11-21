@@ -251,7 +251,7 @@ model_role_option = click.option(
 max_transcripts_option = click.option(
     "--max-transcripts",
     type=int,
-    help=f"Maximum number of transcripts to scan concurrently (defaults to {DEFAULT_MAX_TRANSCRIPTS})",
+    help=f"Sets the number of scan workers: max transcripts x scanners. A worker scans one whole transcript or one loader item (defaults to {DEFAULT_MAX_TRANSCRIPTS})",
     envvar="SCOUT_SCAN_MAX_TRANSCRIPTS",
 )
 

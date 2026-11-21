@@ -301,6 +301,17 @@ class RecorderBuffer:
         table = pq.read_table(path.as_posix(), columns=["scan_error"])
         return bool(pc.any(pc.is_valid(table.column("scan_error"))).as_py())
 
+    def read_rows(
+        self, transcript_id: str, scanner: str, columns: Sequence[str]
+    ) -> list[dict[str, Any]]:
+        """The transcript's buffered result rows (`columns` it lacks are skipped)."""
+        parquet = pq.ParquetFile(
+            self._transcript_file(transcript_id, scanner).as_posix()
+        )
+        with parquet:
+            names = set(parquet.schema_arrow.names)
+            return parquet.read(columns=[c for c in columns if c in names]).to_pylist()
+
     def discard(self, transcript_id: str, scanner: str) -> None:
         """Remove the transcript's buffered results (its errors are kept)."""
         self._transcript_file(transcript_id, scanner).unlink(missing_ok=True)
@@ -316,6 +327,11 @@ class RecorderBuffer:
 
     def errors(self) -> list[Error]:
         return read_scan_errors(str(self._error_file))
+
+    def reset_summary(self, summary: Summary) -> None:
+        """Replace the summary (e.g. with one rebuilt from the recorded results)."""
+        self._state.summary = summary
+        _persist_scan_summary(self._buffer_dir, summary)
 
     def reset_errors(self, errors: Sequence[Error]) -> None:
         """Replace every recorded error (e.g. with the errors still outstanding)."""

@@ -1,16 +1,23 @@
-"""Resumes on different machines agree on recorded results and outstanding errors.
+"""Resumes on different machines agree on recorded results, errors and summary.
 
 Each machine has its own local buffer; the scan location is shared.
 """
 
+import secrets
 from pathlib import Path
+from typing import Any
 
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
-from inspect_ai.model import ChatMessageUser
+from inspect_ai._util.file import file, filesystem
+from inspect_ai.model import ChatMessageUser, ModelUsage
 from inspect_scout import Result, scan_results_df
+from inspect_scout._recorder.buffer import RecorderBuffer
 from inspect_scout._recorder.file import FileRecorder
 from inspect_scout._recorder.recorder import Status
-from inspect_scout._scanner.result import Error, ResultReport
+from inspect_scout._recorder.summary import ScannerSummary
+from inspect_scout._scanner.result import Error, ResultReport, ResultValidation
 from inspect_scout._scanspec import ScannerSpec, ScanSpec
 from inspect_scout._transcript.types import TranscriptInfo
 
@@ -29,7 +36,10 @@ def _transcript(transcript_id: str) -> TranscriptInfo:
 async def _record(
     recorder: FileRecorder, transcript_id: str, value: int | None
 ) -> None:
-    """Record a success with `value`, or an error when `value` is None."""
+    """Record a success with `value`, or an error when `value` is None.
+
+    Successes carry validation and model usage, so summaries count them too.
+    """
     error = (
         Error(
             transcript_id=transcript_id,
@@ -47,13 +57,21 @@ async def _record(
         [
             ResultReport(
                 input_type="message",
-                input_ids=[],
+                input_ids=[transcript_id],
                 input=ChatMessageUser(content=""),
                 result=None if value is None else Result(value=value),
-                validation=None,
+                validation=None
+                if value is None
+                else ResultValidation(target=1, valid=value == 1),
                 error=error,
                 events=[],
-                model_usage={},
+                model_usage={}
+                if value is None
+                else {
+                    "mockllm/model": ModelUsage(
+                        input_tokens=2, output_tokens=1, total_tokens=3
+                    )
+                },
             )
         ],
         None,
@@ -77,14 +95,34 @@ class _Machines:
         return recorder
 
 
-async def _start(machines: _Machines, tmp_path: Path) -> FileRecorder:
-    machines.use("A")
+async def _start(
+    machines: _Machines, tmp_path: Path, machine: str = "A", scans: str = "scans"
+) -> FileRecorder:
+    machines.use(machine)
     recorder = FileRecorder()
     await recorder.init(
         ScanSpec(scan_name="reconcile", scanners={SCANNER: ScannerSpec(name="test")}),
-        str(tmp_path / "scans"),
+        str(tmp_path / scans),
     )
     return recorder
+
+
+async def _clean_summary(
+    machines: _Machines, tmp_path: Path, outcomes: dict[str, int | None]
+) -> dict[str, Any]:
+    """Summary of recording `outcomes` once each, in a scan of their own."""
+    recorder = await _start(machines, tmp_path, machine="clean", scans="clean")
+    for transcript_id, value in outcomes.items():
+        await _record(recorder, transcript_id, value)
+    return _normalized((await recorder.summary()).scanners[SCANNER])
+
+
+def _normalized(summary: ScannerSummary) -> dict[str, Any]:
+    """`summary` with validation entries in a stable order."""
+    data = summary.model_dump()
+    if data["validation"] is not None:
+        data["validation"]["entries"].sort(key=lambda entry: str(entry["id"]))
+    return data
 
 
 def _synced_values(status: Status) -> dict[str, list[object]]:
@@ -161,3 +199,129 @@ async def test_outstanding_errors_survive_partial_resume(
     status = await FileRecorder.sync(location, complete=True)
     assert not status.errors
     assert _synced_values(status) == {"f1": [1], "f2": [2], "ok": [1]}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("scenario", ["fresh", "stale", "mixed"])
+async def test_resumed_summary_matches_winning_results(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, scenario: str
+) -> None:
+    machines = _Machines(tmp_path, monkeypatch)
+    a = await _start(machines, tmp_path)
+    location = await a.location()
+    await _record(a, "t1", None)
+    await _record(a, "t2", None if scenario != "fresh" else 1)
+    await FileRecorder.sync(location, complete=False)
+    expected: dict[str, int | None] = {"t1": None, "t2": 1}
+
+    if scenario != "fresh":
+        if scenario == "mixed":
+            await _record(a, "t3", 0)  # buffered on A, never synced
+        b = await machines.resume("B", location)
+        await _record(b, "t1", 1)
+        await _record(b, "t2", 1)
+        await FileRecorder.sync(location, complete=False)
+        expected = {"t1": 1, "t2": 1}
+        if scenario == "mixed":
+            expected["t3"] = 0
+
+    resumed = await machines.resume("A" if scenario != "fresh" else "B", location)
+    summary = (await resumed.summary()).scanners[SCANNER]
+    clean = await _clean_summary(machines, tmp_path, expected)
+    assert _normalized(summary) == clean
+    machines.use("A" if scenario != "fresh" else "B")
+    status = await FileRecorder.sync(location, complete=False)
+    assert _normalized(status.summary.scanners[SCANNER]) == clean
+    synced = _synced_values(status)
+    assert sorted(synced) == sorted(expected)
+    assert all(len(values) == 1 for values in synced.values())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("retry", [1, None], ids=["succeeds", "fails"])
+async def test_errors_follow_results_when_recording_stops_early(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, retry: int | None
+) -> None:
+    """Results are written before errors; a stop in between must not mislead."""
+    machines = _Machines(tmp_path, monkeypatch)
+    a = await _start(machines, tmp_path)
+    location = await a.location()
+    await _record(a, "ok", 1)
+    if retry is not None:
+        await _record(a, "f1", None)  # an earlier failure, now retried
+    await FileRecorder.sync(location, complete=False)
+
+    resumed = await machines.resume("A", location)
+
+    def stop(*args: object) -> None:
+        raise KeyboardInterrupt
+
+    with monkeypatch.context() as m:
+        m.setattr(RecorderBuffer, "_replace_errors", stop)
+        with pytest.raises(KeyboardInterrupt):
+            await _record(resumed, "f1", retry)
+
+    for _ in range(2):
+        resumed = await machines.resume("A", location)
+        assert await resumed.is_recorded("f1", SCANNER) == (retry is not None)
+        assert _failed(await resumed.errors()) == ([] if retry else ["f1"])
+    status = await FileRecorder.sync(location, complete=retry is not None)
+    assert _failed(status.errors) == ([] if retry else ["f1"])
+
+
+@pytest.mark.asyncio
+async def test_resume_reads_only_needed_columns_through_fsspec(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Results PyArrow can't read natively (memory://, az://) aren't read whole."""
+    monkeypatch.setenv("SCOUT_SCANBUFFER_DIR", str(tmp_path / "buffer"))
+    recorder = FileRecorder()
+    await recorder.init(
+        ScanSpec(scan_name="fsspec", scanners={SCANNER: ScannerSpec(name="test")}),
+        "memory://scans",
+    )
+    location = await recorder.location()
+    results = f"{location}/{SCANNER}.parquet"
+    try:
+        rows = 2_000
+        table = pa.table(
+            {
+                "transcript_id": [f"t{i}" for i in range(rows)],
+                "value": [str(float(i % 2)) for i in range(rows)],
+                "value_type": ["number"] * rows,
+                "scan_error": pa.nulls(rows, pa.string()),
+                # a column resume never needs, holding nearly all the bytes
+                "scan_events": [secrets.token_hex(1_000) for _ in range(rows)],
+            }
+        )
+        with file(results, "wb") as f:
+            pq.write_table(table, f, row_group_size=500, compression="none")
+        size = filesystem(results).info(results).size
+        with file(results, "rb") as f:
+            memory_file = type(f)
+
+        read = 0
+        original = memory_file.read
+
+        def counting_read(self: Any, n: int = -1) -> bytes:
+            nonlocal read
+            data = original(self, n)
+            read += len(data)
+            return data
+
+        monkeypatch.setattr(memory_file, "read", counting_read)
+        monkeypatch.setenv("SCOUT_SCANBUFFER_DIR", str(tmp_path / "fresh-buffer"))
+        resumed = FileRecorder()
+        await resumed.resume(location)
+        assert await resumed.is_recorded("t1", SCANNER)
+        values = [
+            v
+            async for v in resumed.recorded_values(
+                SCANNER, [f"t{i}" for i in range(rows)]
+            )
+        ]
+        assert values == [float(i % 2) for i in range(rows)]
+        assert (await resumed.summary()).scanners[SCANNER].scans == rows
+        assert 0 < read < size / 10
+    finally:
+        filesystem(location).rm(location, recursive=True)

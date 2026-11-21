@@ -5,7 +5,7 @@ import os
 import secrets
 import stat
 import tempfile
-from collections.abc import AsyncIterator, Iterator, Mapping
+from collections.abc import AsyncIterator, Generator, Iterator, Mapping
 from collections.abc import Set as AbstractSet
 from contextlib import contextmanager
 from logging import getLogger
@@ -42,7 +42,11 @@ from upath import UPath
 if TYPE_CHECKING:
     from pyarrow import Scalar
 
-from inspect_scout._recorder.summary import Summary
+from inspect_ai.model import ModelUsage
+
+from inspect_scout._recorder.summary import ScannerSummary, Summary
+from inspect_scout._recorder.validation import ValidationEntry, ValidationResults
+from inspect_scout._validation.validate import is_positive_value
 
 from .._query.sql import quote_identifier
 from .._recorder.buffer import (
@@ -125,7 +129,9 @@ class FileRecorder(ScanRecorder):
     def __init__(self) -> None:
         self._scan_dir: UPath | None = None
         self._scan_spec: ScanSpec | None = None
-        self._synced: dict[str, AbstractSet[str]] | None = None
+        # per scanner, recorded transcripts (set by `resume`, which also
+        # counts results synced to the scan location)
+        self._recorded: dict[str, set[str]] | None = None
 
     @override
     async def init(
@@ -170,10 +176,8 @@ class FileRecorder(ScanRecorder):
         that would otherwise outlive a successful retry.
 
         Results synced to the scan location count too, so a resume without
-        this machine's buffer (e.g. on a new machine) skips them. Where the
-        buffer and the synced results disagree, a success wins over an
-        error, and otherwise the buffer (the newer record) wins. Errors stay
-        outstanding until their transcript is recorded again. To
+        this machine's buffer (e.g. on a new machine) skips them; see
+        `_reconcile_with_synced` for how the two are combined. To
         attach to a completed scan to add records for *new* transcripts,
         use `attach` instead.
         """
@@ -186,12 +190,12 @@ class FileRecorder(ScanRecorder):
             self._scan_dir.as_posix(),
             self.scan_spec,
         )
-        self._synced = await anyio.to_thread.run_sync(
-            _reconcile_with_synced,
-            self._scan_dir,
-            sorted(self.scan_spec.scanners.keys()),
-            self._scan_buffer,
+        reconciled = await anyio.to_thread.run_sync(
+            _reconcile_with_synced, self._scan_dir, self.scan_spec, self._scan_buffer
         )
+        self._scan_buffer.reset_errors(reconciled.errors)
+        self._scan_buffer.reset_summary(reconciled.summary)
+        self._recorded = reconciled.recorded
         return self._scan_spec
 
     async def attach(
@@ -252,11 +256,9 @@ class FileRecorder(ScanRecorder):
 
     @override
     async def is_recorded(self, transcript_id: str, scanner: str) -> bool:
-        if self._synced is None or self._scan_buffer.is_buffered(
-            transcript_id, scanner
-        ):
+        if self._recorded is None:
             return await self._scan_buffer.is_recorded(transcript_id, scanner)
-        return transcript_id in self._synced[scanner]
+        return transcript_id in self._recorded[scanner]
 
     @override
     async def recorded_values(
@@ -264,7 +266,7 @@ class FileRecorder(ScanRecorder):
     ) -> AsyncIterator[JsonValue]:
         synced: list[str] = []
         for transcript_id in transcript_ids:
-            if self._synced is None or self._scan_buffer.is_buffered(
+            if self._recorded is None or self._scan_buffer.is_buffered(
                 transcript_id, scanner
             ):
                 for value in await self._scan_buffer.recorded_values(
@@ -275,11 +277,14 @@ class FileRecorder(ScanRecorder):
                 synced.append(transcript_id)
         if synced:
             batches = _synced_values(self.scan_dir, scanner, synced)
-            while (
-                values := await anyio.to_thread.run_sync(next, batches, None)
-            ) is not None:
-                for value in values:
-                    yield value
+            try:
+                while (
+                    values := await anyio.to_thread.run_sync(next, batches, None)
+                ) is not None:
+                    for value in values:
+                        yield value
+            finally:
+                batches.close()
 
     @override
     async def record(
@@ -290,6 +295,11 @@ class FileRecorder(ScanRecorder):
         metrics: dict[str, dict[str, float]] | None,
     ) -> None:
         await self._scan_buffer.record(transcript, scanner, results, metrics)
+        if self._recorded is not None:
+            if any(result.error is not None for result in results):
+                self._recorded[scanner].discard(transcript.transcript_id)
+            elif results:
+                self._recorded[scanner].add(transcript.transcript_id)
 
     @override
     async def record_metrics(
@@ -828,108 +838,221 @@ _prior_parquet_cache: dict[str, dict[str, str | None]] = {}
 
 _SYNCED_BATCH_ROWS = 10_000
 
-
-def _reconcile_with_synced(
-    scan_dir: UPath, scanners: list[str], buffer: RecorderBuffer
-) -> dict[str, AbstractSet[str]]:
-    """Reconcile a resumed scan's buffer with the results synced to `scan_dir`.
-
-    Drops buffered errors for transcripts another run has since synced
-    successfully (otherwise the stale error would replace that success when
-    compacted), and resets the buffer's errors to those still outstanding:
-    the buffered ones, plus synced ones for transcripts not in the buffer.
-
-    Returns:
-        Per scanner, the transcripts with synced results and no errors.
-    """
-    buffered_errors = buffer.errors()
-    recorded: dict[str, AbstractSet[str]] = {}
-    outstanding: list[Error] = []
-    for scanner in scanners:
-        synced = _read_synced_index(scan_dir, scanner)
-        buffered = set(buffer.buffered_transcripts(scanner))
-        for transcript_id in buffered & synced.recorded:
-            if buffer.is_errored(transcript_id, scanner):
-                buffer.discard(transcript_id, scanner)
-                buffered.discard(transcript_id)
-        outstanding.extend(
-            e
-            for e in buffered_errors
-            if e.scanner == scanner and e.transcript_id in buffered
-        )
-        outstanding.extend(e for e in synced.errors if e.transcript_id not in buffered)
-        recorded[scanner] = synced.recorded
-    buffer.reset_errors(outstanding)
-    return recorded
+# result columns that `_reconcile_with_synced` rebuilds the summary and
+# errors from (columns a file lacks, e.g. written by an older version, are
+# read as null)
+_RECONCILE_COLUMNS = [
+    "transcript_id",
+    "input_ids",
+    "value",
+    "value_type",
+    "scan_error",
+    "scan_error_traceback",
+    "scan_error_type",
+    "validation_target",
+    "validation_result",
+    "scan_total_tokens",
+    "scan_model_usage",
+]
 
 
-class _SyncedIndex(NamedTuple):
-    recorded: AbstractSet[str]
-    """Transcripts with synced results and no errors."""
+class _Reconciled(NamedTuple):
+    recorded: dict[str, set[str]]
+    """Per scanner, transcripts whose winning results include no error."""
 
     errors: list[Error]
-    """Synced errors."""
+    """Errors in the winning results (those still outstanding)."""
+
+    summary: Summary
+    """Summary of the winning results."""
 
 
-def _read_synced_index(scan_dir: UPath, scanner: str) -> _SyncedIndex:
-    parquet = _open_synced_parquet(scan_dir, scanner)
-    if parquet is None:
-        return _SyncedIndex(frozenset(), [])
-    error_columns = ["scan_error", "scan_error_traceback", "scan_error_type"]
-    columns = ["transcript_id"] + [
-        c for c in error_columns if c in parquet.schema_arrow.names
-    ]
-    succeeded: set[str] = set()
-    errored: set[str] = set()
+def _reconcile_with_synced(
+    scan_dir: UPath, spec: ScanSpec, buffer: RecorderBuffer
+) -> _Reconciled:
+    """Reconcile a resumed scan's buffer with the results synced to `scan_dir`.
+
+    Each transcript's results come from the buffer or from the synced
+    results: a success wins over an error, and otherwise the buffer (the
+    newer record) wins. A buffered error that lost to a synced success is
+    removed, so compaction keeps that success. The outstanding errors and
+    the summary are rebuilt from the winning results, so they agree with
+    the results however many machines contributed to them.
+    """
+    prior = buffer.scan_summary()
+    summary = Summary(scanners=list(spec.scanners.keys()))
+    recorded: dict[str, set[str]] = {}
     errors: list[Error] = []
-    for batch in parquet.iter_batches(batch_size=_SYNCED_BATCH_ROWS, columns=columns):
-        for row in batch.to_pylist():
-            transcript_id: str = row["transcript_id"]
-            if row.get("scan_error") is None:
-                succeeded.add(transcript_id)
-            else:
-                errored.add(transcript_id)
-                errors.append(
+    for scanner in spec.scanners:
+        rows = _RowSummary(scanner)
+        with _open_synced_parquet(scan_dir, scanner) as synced:
+            synced_all, synced_errored = (
+                _read_synced_index(synced) if synced is not None else (set(), set())
+            )
+            synced_ok = synced_all - synced_errored
+            buffered: set[str] = set()
+            ok: set[str] = set()
+            for transcript_id in buffer.buffered_transcripts(scanner):
+                transcript_rows = buffer.read_rows(
+                    transcript_id, scanner, _RECONCILE_COLUMNS
+                )
+                errored = any(r.get("scan_error") is not None for r in transcript_rows)
+                if errored and transcript_id in synced_ok:
+                    buffer.discard(transcript_id, scanner)
+                    continue
+                buffered.add(transcript_id)
+                rows.add_transcripts(1)
+                rows.add(transcript_rows)
+                if not errored:
+                    ok.add(transcript_id)
+            rows.add_transcripts(len(synced_all - buffered))
+            if synced is not None:
+                for batch in _synced_batches(synced, _RECONCILE_COLUMNS, buffered):
+                    rows.add(batch)
+        ok.update(synced_ok - buffered)
+        recorded[scanner] = ok
+        errors.extend(rows.errors)
+        summary.scanners[scanner] = rows.summary(prior)
+    return _Reconciled(recorded, errors, summary)
+
+
+class _RowSummary:
+    """Accumulates a scanner's summary and errors from its result rows.
+
+    Mirrors `Summary._report`, which counts the same results as they are
+    recorded.
+    """
+
+    def __init__(self, scanner: str) -> None:
+        self._scanner = scanner
+        self._summary = ScannerSummary()
+        self._entries: list[ValidationEntry] = []
+        self.errors: list[Error] = []
+
+    def add_transcripts(self, count: int) -> None:
+        self._summary.scans += count
+
+    def add(self, rows: Sequence[dict[str, Any]]) -> None:
+        s = self._summary
+        for row in rows:
+            if row.get("scan_error") is not None:
+                s.errors += 1
+                self.errors.append(
                     Error(
-                        transcript_id=transcript_id,
-                        scanner=scanner,
+                        transcript_id=row["transcript_id"],
+                        scanner=self._scanner,
                         error=row["scan_error"],
                         traceback=row.get("scan_error_traceback") or "",
                         refusal=row.get("scan_error_type") == "refusal",
                     )
                 )
-    succeeded -= errored
-    return _SyncedIndex(succeeded, errors)
+            value = decode_recorded_value(row.get("value"), row.get("value_type"))
+            if value is None and row.get("scan_error") is None:
+                s.unscored += 1
+            if row.get("value_type") == "resultset" and isinstance(value, list):
+                s.results += sum(
+                    1
+                    for item in value
+                    if isinstance(item, dict) and is_positive_value(item.get("value"))
+                )
+            elif value:
+                s.results += 1
+            if row.get("validation_target") is not None:
+                input_ids: list[str] = json.loads(row.get("input_ids") or "[]")
+                self._entries.append(
+                    ValidationEntry(
+                        id=(input_ids[0] if len(input_ids) == 1 else input_ids)
+                        if input_ids
+                        else "",
+                        target=json.loads(row["validation_target"]),
+                        valid=json.loads(row["validation_result"]),
+                    )
+                )
+            s.tokens += row.get("scan_total_tokens") or 0
+            for model, usage in json.loads(row.get("scan_model_usage") or "{}").items():
+                s.model_usage[model] = s.model_usage.get(
+                    model, ModelUsage()
+                ) + ModelUsage.model_validate(usage)
+
+    def summary(self, prior: Summary) -> ScannerSummary:
+        """The summary, keeping `prior`'s metrics until the scan recomputes them."""
+        if self._entries:
+            self._summary.validation = ValidationResults.from_entries(self._entries)
+        if self._scanner in prior.scanners:
+            self._summary.metrics = prior.scanners[self._scanner].metrics
+        return self._summary
+
+
+def _read_synced_index(parquet: pq.ParquetFile) -> tuple[set[str], set[str]]:
+    """Synced transcripts with results, and those with errors among them."""
+    transcripts: set[str] = set()
+    errored: set[str] = set()
+    for batch in _synced_batches(parquet, ["transcript_id", "scan_error"]):
+        for row in batch:
+            transcripts.add(row["transcript_id"])
+            if row.get("scan_error") is not None:
+                errored.add(row["transcript_id"])
+    return transcripts, errored
+
+
+def _synced_batches(
+    parquet: pq.ParquetFile,
+    columns: Sequence[str],
+    exclude: AbstractSet[str] = frozenset(),
+    include: Sequence[str] | None = None,
+) -> Iterator[list[dict[str, Any]]]:
+    """Synced rows a batch at a time, optionally filtered by transcript id."""
+    names = set(parquet.schema_arrow.names)
+    exclude_ids = pa.array(list(exclude), type=pa.string()) if exclude else None
+    include_ids = pa.array(include, type=pa.string()) if include is not None else None
+    for batch in parquet.iter_batches(
+        batch_size=_SYNCED_BATCH_ROWS, columns=[c for c in columns if c in names]
+    ):
+        transcript_ids = batch.column("transcript_id")
+        if exclude_ids is not None:
+            batch = batch.filter(
+                pc.invert(pc.is_in(transcript_ids, value_set=exclude_ids))
+            )
+        elif include_ids is not None:
+            batch = batch.filter(pc.is_in(transcript_ids, value_set=include_ids))
+        yield batch.to_pylist()
 
 
 def _synced_values(
     scan_dir: UPath, scanner: str, transcript_ids: Sequence[str]
-) -> Iterator[list[JsonValue]]:
+) -> Generator[list[JsonValue], None, None]:
     """Synced values for `transcript_ids`, a batch at a time."""
-    parquet = _open_synced_parquet(scan_dir, scanner)
-    if parquet is None:
-        return
-    wanted = pa.array(transcript_ids, type=pa.string())
-    for batch in parquet.iter_batches(
-        batch_size=_SYNCED_BATCH_ROWS,
-        columns=["transcript_id", "value", "value_type"],
-    ):
-        batch = batch.filter(pc.is_in(batch.column("transcript_id"), value_set=wanted))
-        yield [
-            decode_recorded_value(value, value_type)
-            for value, value_type in zip(
-                batch.column("value").to_pylist(),
-                batch.column("value_type").to_pylist(),
-                strict=True,
-            )
-        ]
+    with _open_synced_parquet(scan_dir, scanner) as parquet:
+        if parquet is None:
+            return
+        for batch in _synced_batches(
+            parquet, ["transcript_id", "value", "value_type"], include=transcript_ids
+        ):
+            yield [
+                decode_recorded_value(row["value"], row["value_type"]) for row in batch
+            ]
 
 
-def _open_synced_parquet(scan_dir: UPath, scanner: str) -> pq.ParquetFile | None:
-    path = _scanner_parquet_file(scan_dir, scanner)
-    if not filesystem(path).exists(path):
-        return None
-    return _open_scanner_parquet(scan_dir, scanner)
+@contextmanager
+def _open_synced_parquet(
+    scan_dir: UPath, scanner: str
+) -> Iterator[pq.ParquetFile | None]:
+    """Open a scanner's synced results for bounded, column-projected reads.
+
+    Unlike `_open_scanner_parquet`, protocols PyArrow can't read natively
+    are read through a seekable fsspec handle rather than downloaded whole.
+    """
+    path = scan_dir / f"{scanner}.parquet"
+    path_str = path.as_posix()
+    if not filesystem(path_str).exists(path_str):
+        yield None
+    elif path.protocol in ("", "file") or _pyarrow_reads_natively(path_str):
+        with _open_scanner_parquet(scan_dir, scanner) as parquet:
+            yield parquet
+    else:
+        with file(path_str, "rb") as f:
+            with pq.ParquetFile(f, pre_buffer=False) as parquet:
+                yield parquet
 
 
 def _prior_parquet_cache_key(scan_buffer_dir: UPath) -> str:
@@ -1416,6 +1539,10 @@ def _cast_value_sql(value_type: str) -> str:
         return "value"
 
 
+def _pyarrow_reads_natively(path: str) -> bool:
+    return path.startswith(("s3://", "gs://", "gcs://", "abfs://", "abfss://"))
+
+
 def _parquet_source(
     parquet_path: UPath,
 ) -> tuple[str | io.BytesIO, pafs.FileSystem | None]:
@@ -1435,7 +1562,7 @@ def _parquet_source(
     """
     path_str = parquet_path.as_posix()
 
-    if path_str.startswith(("s3://", "gs://", "gcs://", "abfs://", "abfss://")):
+    if _pyarrow_reads_natively(path_str):
         scheme, rest = path_str.split("://", 1)
         # Leave the authority (userinfo@host:port) exactly as written so its
         # percent-encoding round-trips. Re-quoting would turn a secret like

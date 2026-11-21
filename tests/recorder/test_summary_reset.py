@@ -3,15 +3,17 @@
 from pathlib import Path
 
 import pytest
+from inspect_ai.model import ChatMessageUser
+from inspect_scout import Result
 from inspect_scout._recorder.buffer import (
     SCAN_ERRORS,
-    SCAN_SUMMARY,
     RecorderBuffer,
     cleanup_buffer_dir,
 )
 from inspect_scout._recorder.file import FileRecorder
-from inspect_scout._scanner.result import Error
+from inspect_scout._scanner.result import Error, ResultReport
 from inspect_scout._scanspec import ScannerSpec, ScanSpec
+from inspect_scout._transcript.types import TranscriptInfo
 
 
 def _make_spec(scanners: list[str]) -> ScanSpec:
@@ -49,27 +51,42 @@ async def test_init_resets_summary(tmp_path: Path, scout_buffer_dir: Path) -> No
 
 @pytest.mark.asyncio
 async def test_resume_preserves_summary(tmp_path: Path, scout_buffer_dir: Path) -> None:
-    """`resume` seeds the buffer summary from the scan dir."""
+    """`resume` restores the summary of the results synced to the scan dir."""
     scans_location = str(tmp_path / "scans")
     spec = _make_spec(["s"])
 
     rec1 = FileRecorder()
     await rec1.init(spec, scans_location)
-    rec1._scan_buffer.scan_summary().scanners["s"].scans = 10
-    rec1._scan_buffer.scan_summary().scanners["s"].results = 50
-
-    # mimic FileRecorder.sync persisting the summary into the scan dir
-    summary_path = rec1.scan_dir / SCAN_SUMMARY
-    with open(str(summary_path), "w") as f:
-        f.write(rec1._scan_buffer.scan_summary().model_dump_json(indent=2))
-
-    # simulate post-sync(complete=True) state where the buffer was cleaned
-    cleanup_buffer_dir(RecorderBuffer.buffer_dir(rec1.scan_dir.as_posix()))
+    for transcript_id, value in [("t1", 1), ("t2", 0)]:
+        await rec1.record(
+            TranscriptInfo(
+                transcript_id=transcript_id,
+                source_type="test",
+                source_id="src",
+                source_uri=f"test://{transcript_id}",
+            ),
+            "s",
+            [
+                ResultReport(
+                    input_type="message",
+                    input_ids=[],
+                    input=ChatMessageUser(content=""),
+                    result=Result(value=value),
+                    validation=None,
+                    error=None,
+                    events=[],
+                    model_usage={},
+                )
+            ],
+            None,
+        )
+    # syncing as complete also cleans the buffer
+    await FileRecorder.sync(rec1.scan_dir.as_posix(), complete=True)
 
     rec2 = FileRecorder()
     await rec2.resume(rec1.scan_dir.as_posix())
-    assert rec2._scan_buffer.scan_summary().scanners["s"].scans == 10
-    assert rec2._scan_buffer.scan_summary().scanners["s"].results == 50
+    assert rec2._scan_buffer.scan_summary().scanners["s"].scans == 2
+    assert rec2._scan_buffer.scan_summary().scanners["s"].results == 1
 
 
 @pytest.mark.asyncio

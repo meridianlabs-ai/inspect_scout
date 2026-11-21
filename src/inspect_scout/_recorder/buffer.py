@@ -46,6 +46,8 @@ SCAN_SUMMARY = "_summary.json"
 class _BufferState:
     lock: anyio.Lock
     summary: Summary | None = None
+    error_keys: set[tuple[str, str]] | None = None
+    """(transcript_id, scanner) pairs with entries in `_errors.jsonl`."""
 
 
 _buffer_states: dict[str, _BufferState] = {}
@@ -262,12 +264,13 @@ class RecorderBuffer:
             assert self._state.summary is not None  # set in __init__
             self._state.summary._report(transcript, scanner, results, metrics)
             _persist_scan_summary(self._buffer_dir, self._state.summary)
-
-        # record errors (open(..., "at") gives OS-atomic appends)
-        for result in results:
-            if result.error is not None:
-                with open(str(self._error_file), "at") as f:
-                    f.write(result.error.model_dump_json(warnings=False) + "\n")
+            # these results replace the transcript's earlier ones, so they
+            # also replace its earlier errors (e.g. on a successful retry)
+            self._replace_errors(
+                transcript.transcript_id,
+                scanner,
+                [result.error for result in results if result.error is not None],
+            )
 
     async def record_metrics(
         self,
@@ -279,53 +282,86 @@ class RecorderBuffer:
             self._state.summary._report_metrics(scanner, metrics)
             _persist_scan_summary(self._buffer_dir, self._state.summary)
 
-    async def is_recorded(self, transcript_id: str, scanner: str) -> bool:
+    def is_buffered(self, transcript_id: str, scanner: str) -> bool:
+        """Whether the buffer holds results for this transcript and scanner.
+
+        A buffered transcript's results replace any synced ones (see
+        `scanner_table`), so the buffer is authoritative for it.
+        """
+        return self._transcript_file(transcript_id, scanner).exists()
+
+    def buffered_transcripts(self, scanner: str) -> list[str]:
+        """Ids of the transcripts with buffered results for `scanner`."""
         sdir = self._buffer_dir / f"scanner={_sanitize_component(scanner)}"
-        transcript_file = sdir / f"{transcript_id}.parquet"
-        if transcript_file.exists():
-            # check if there are any non-null scan_error fields
-            table = pq.read_table(transcript_file.as_posix(), columns=["scan_error"])
-            scan_errors = table.column("scan_error")
-            if pc.any(pc.is_valid(scan_errors)).as_py():
-                return False
-            return True
-        else:
-            return False
+        return [p.stem for p in sdir.glob("*.parquet")] if sdir.exists() else []
+
+    def is_errored(self, transcript_id: str, scanner: str) -> bool:
+        """Whether any buffered result for the transcript is an error."""
+        path = self._transcript_file(transcript_id, scanner)
+        table = pq.read_table(path.as_posix(), columns=["scan_error"])
+        return bool(pc.any(pc.is_valid(table.column("scan_error"))).as_py())
+
+    def discard(self, transcript_id: str, scanner: str) -> None:
+        """Remove the transcript's buffered results (its errors are kept)."""
+        self._transcript_file(transcript_id, scanner).unlink(missing_ok=True)
+
+    def _transcript_file(self, transcript_id: str, scanner: str) -> UPath:
+        sdir = self._buffer_dir / f"scanner={_sanitize_component(scanner)}"
+        return sdir / f"{transcript_id}.parquet"
+
+    async def is_recorded(self, transcript_id: str, scanner: str) -> bool:
+        return self.is_buffered(transcript_id, scanner) and not self.is_errored(
+            transcript_id, scanner
+        )
 
     def errors(self) -> list[Error]:
         return read_scan_errors(str(self._error_file))
+
+    def reset_errors(self, errors: Sequence[Error]) -> None:
+        """Replace every recorded error (e.g. with the errors still outstanding)."""
+        self._write_errors(errors)
+        self._state.error_keys = {(e.transcript_id, e.scanner) for e in errors}
+
+    def _replace_errors(
+        self, transcript_id: str, scanner: str, errors: Sequence[Error]
+    ) -> None:
+        """Replace the errors recorded for a transcript (caller holds the lock)."""
+        if self._state.error_keys is None:
+            self._state.error_keys = {
+                (e.transcript_id, e.scanner) for e in self.errors()
+            }
+        if (transcript_id, scanner) in self._state.error_keys:
+            self._write_errors(
+                [
+                    e
+                    for e in self.errors()
+                    if (e.transcript_id, e.scanner) != (transcript_id, scanner)
+                ]
+            )
+            self._state.error_keys.discard((transcript_id, scanner))
+        if errors:
+            with open(str(self._error_file), "at") as f:
+                for error in errors:
+                    f.write(error.model_dump_json(warnings=False) + "\n")
+            self._state.error_keys.update((e.transcript_id, e.scanner) for e in errors)
+
+    def _write_errors(self, errors: Sequence[Error]) -> None:
+        tmp_file = self._buffer_dir / f".{SCAN_ERRORS}.{uuid.uuid4().hex}.tmp"
+        with open(tmp_file.as_posix(), "w") as f:
+            for error in errors:
+                f.write(error.model_dump_json(warnings=False) + "\n")
+        os.replace(tmp_file.as_posix(), self._error_file.as_posix())
 
     async def recorded_values(
         self, transcript_id: str, scanner: str
     ) -> list[JsonValue]:
         def read() -> list[JsonValue]:
-            path = (
-                self._buffer_dir
-                / f"scanner={_sanitize_component(scanner)}"
-                / f"{transcript_id}.parquet"
-            )
+            path = self._transcript_file(transcript_id, scanner)
             table = pq.read_table(path.as_posix(), columns=["value", "value_type"])
-            values: list[JsonValue] = []
-            for row in table.to_pylist():
-                value = row["value"]
-                if isinstance(value, str) and row["value_type"] != "string":
-                    # Lists and dicts are stored as JSON text under any type
-                    # label. Scalars only become text in mixed columns, where
-                    # they use Python spellings that never start with [ or {.
-                    if value.startswith(("[", "{")):
-                        value = json.loads(value)
-                    elif row["value_type"] == "boolean":
-                        value = value.lower() == "true"
-                    elif row["value_type"] == "number" and value in (
-                        "nan",
-                        "inf",
-                        "-inf",
-                    ):
-                        value = float(value)
-                    else:
-                        value = json.loads(value)
-                values.append(value)
-            return values
+            return [
+                decode_recorded_value(row["value"], row["value_type"])
+                for row in table.to_pylist()
+            ]
 
         return await anyio.to_thread.run_sync(read)
 
@@ -339,6 +375,27 @@ class RecorderBuffer:
 
 
 T = TypeVar("T")
+
+
+def decode_recorded_value(value: Any, value_type: str | None) -> JsonValue:
+    """Restore a stored result value to the type the scanner returned.
+
+    Results compacted before floats kept their Python spelling store an
+    integral float like `1.0` as "1", which reads back as the int 1 (equal
+    in value). Only "-0" can be told apart: an int has no negative zero.
+    """
+    if isinstance(value, str) and value_type != "string":
+        # Lists and dicts are stored as JSON text under any type label.
+        # Scalars only become text in mixed columns (and in compacted
+        # results), where they use spellings that never start with [ or {.
+        if value.startswith(("[", "{")):
+            return cast(JsonValue, json.loads(value))
+        if value_type == "boolean":
+            return value.lower() == "true"
+        if value_type == "number" and value in ("nan", "inf", "-inf", "-0"):
+            return float(value)
+        return cast(JsonValue, json.loads(value))
+    return cast(JsonValue, value)
 
 
 def resolve_metadata_var(
@@ -522,7 +579,10 @@ def scanner_table(
                         if field.name in batch.schema.names:
                             # Column exists - cast it to target type
                             col = batch.column(field.name)
-                            arrays.append(col.cast(field.type))
+                            if field.name == "value" and pa.types.is_floating(col.type):
+                                arrays.append(_float_text(col, field.type))
+                            else:
+                                arrays.append(col.cast(field.type))
                         else:
                             # Column missing - create null array
                             arrays.append(
@@ -555,6 +615,15 @@ def scanner_table(
         flush_accumulated(writer)
 
     return True
+
+
+def _float_text(col: "pa.Array[Any]", type: "pa.DataType") -> "pa.Array[Any]":
+    """Spell floats as Python does, as mixed-type buffer columns do.
+
+    Arrow's cast drops the fraction of integral floats (`1.0` -> "1",
+    `-0.0` -> "-0"), so they would read back as ints.
+    """
+    return pa.array([None if v is None else str(v) for v in col.to_pylist()], type=type)
 
 
 def _persist_scan_summary(buffer_dir: UPath, summary: Summary) -> None:

@@ -1,6 +1,7 @@
 import io
 import json
 from collections.abc import AsyncIterable
+from contextlib import aclosing
 from dataclasses import dataclass, field
 from typing import IO, Any, Callable
 
@@ -42,6 +43,7 @@ from .reducer import (
     call_pool_item_coroutine,
     event_has_pool_refs,
     event_item_coroutine,
+    json_event_batches,
     message_item_coroutine,
     message_pool_item_coroutine,
     metadata_coroutine,
@@ -356,137 +358,148 @@ async def _parse_and_filter(
     last_prefix = ""
     current_section = _SECTION_OTHER
 
-    async for prefix, event, value in ijson.parse_async(sample_json, use_float=True):
-        if prefix == "" and event == "map_key":
-            pending_fields.discard(value)
+    early_exit = False
+    async with aclosing(json_event_batches(sample_json, ijson)) as batches:
+        async for batch in batches:
+            for prefix, event, value in batch:
+                if prefix == "" and event == "map_key":
+                    pending_fields.discard(value)
 
-        # Earlier top-level fields are complete when the events array starts.
-        if (
-            events_coro is None
-            and prefix == "events"
-            and event == "start_array"
-            and not state.attachment_refs
-            and not pending_fields
-        ):
-            if on_early_exit is not None:
-                on_early_exit()
-            break
-
-        # HOT PATH: this classification runs 56M+ times per large parse. Avoid
-        # string slicing, startswith, or any allocation in common paths.
-        # Profile before changing. Mirrored in json/stream_parse.py's
-        # `stream_parse_to_spool` (minus the _SECTION_TIMELINES branch, which
-        # streaming skips -- see its own comment). A change to this decision
-        # tree needs the same change there.
-        if prefix != last_prefix:
-            last_prefix = prefix
-            p_len = len(prefix)
-            if p_len == 0 or prefix[0] not in ("m", "e", "a", "t", "s", "c"):
-                current_section = _SECTION_OTHER
-            elif p_len < _MIN_SECTION_PREFIX_LEN:
-                # Short prefixes: "events" (6), "scores" (6), "target" (6)
-                if prefix == "scores":
-                    current_section = _SECTION_SCORES
-                elif prefix == "target":
-                    current_section = _SECTION_TARGET
-                elif prefix == "events":
-                    # The section's own start_array, which fires even for an
-                    # empty array -- unlike "events.item".
-                    state.events_seen = True
-                    current_section = _SECTION_OTHER
-                else:
-                    current_section = _SECTION_OTHER
-            elif prefix[0] == "m":
-                # "messages" vs "metadata": both start "me", discriminate on 3rd char.
+                # Earlier top-level fields are complete when the events array starts.
                 if (
-                    p_len >= _MESSAGES_ITEM_PREFIX_LEN
-                    and prefix[2] == "s"
-                    and prefix[:_MESSAGES_ITEM_PREFIX_LEN] == MESSAGES_ITEM_PREFIX
+                    events_coro is None
+                    and prefix == "events"
+                    and event == "start_array"
+                    and not state.attachment_refs
+                    and not pending_fields
                 ):
-                    current_section = _SECTION_MESSAGES
-                elif prefix[2] == "t" and (
-                    prefix == "metadata" or prefix.startswith(METADATA_PREFIX)
-                ):
-                    current_section = _SECTION_METADATA
-                elif (
-                    p_len >= _MESSAGE_POOL_ITEM_PREFIX_LEN
-                    and prefix[:_MESSAGE_POOL_ITEM_PREFIX_LEN]
-                    == MESSAGE_POOL_ITEM_PREFIX
-                ):
-                    current_section = _SECTION_MESSAGE_POOL
-                else:
-                    current_section = _SECTION_OTHER
-            elif prefix[0] == "e":
-                # events array, or an events_data.* pool sub-array.
-                if (
-                    p_len >= _EVENTS_ITEM_PREFIX_LEN
-                    and prefix[:_EVENTS_ITEM_PREFIX_LEN] == EVENTS_ITEM_PREFIX
-                ):
-                    current_section = _SECTION_EVENTS
-                elif (
-                    p_len >= _EVENTS_DATA_MESSAGES_ITEM_PREFIX_LEN
-                    and prefix[:_EVENTS_DATA_MESSAGES_ITEM_PREFIX_LEN]
-                    == EVENTS_DATA_MESSAGES_ITEM_PREFIX
-                ):
-                    current_section = _SECTION_MESSAGE_POOL
-                elif (
-                    p_len >= _EVENTS_DATA_CALLS_ITEM_PREFIX_LEN
-                    and prefix[:_EVENTS_DATA_CALLS_ITEM_PREFIX_LEN]
-                    == EVENTS_DATA_CALLS_ITEM_PREFIX
-                ):
-                    current_section = _SECTION_CALL_POOL
-                else:
-                    current_section = _SECTION_OTHER
-            elif (
-                prefix[0] == "a"
-                and p_len >= _ATTACHMENTS_PREFIX_LEN
-                and prefix[:_ATTACHMENTS_PREFIX_LEN] == ATTACHMENTS_PREFIX
-            ):
-                current_section = _SECTION_ATTACHMENTS
-            elif (
-                prefix[0] == "c"
-                and p_len >= _CALL_POOL_ITEM_PREFIX_LEN
-                and prefix[:_CALL_POOL_ITEM_PREFIX_LEN] == CALL_POOL_ITEM_PREFIX
-            ):
-                current_section = _SECTION_CALL_POOL
-            elif prefix[0] == "t":
-                if prefix[1] == _TARGET_CHAR1:
-                    current_section = _SECTION_TARGET
-                elif (
-                    p_len >= _TIMELINES_ITEM_PREFIX_LEN
-                    and prefix[:_TIMELINES_ITEM_PREFIX_LEN] == TIMELINES_ITEM_PREFIX
-                ):
-                    current_section = _SECTION_TIMELINES
-                else:
-                    current_section = _SECTION_OTHER
-            elif prefix[0] == "s" and prefix[:_SCORES_PREFIX_LEN] == SCORES_PREFIX:
-                current_section = _SECTION_SCORES
-            else:
-                current_section = _SECTION_OTHER
+                    if on_early_exit is not None:
+                        on_early_exit()
+                    early_exit = True
+                    break
 
-        if current_section == _SECTION_MESSAGES and messages_coro:
-            messages_coro.send((prefix, event, value))
-        elif current_section == _SECTION_EVENTS and events_coro:
-            events_coro.send((prefix, event, value))
-        elif current_section == _SECTION_ATTACHMENTS:
-            attachments_coro.send((prefix, event, value))
-        elif current_section == _SECTION_METADATA and metadata_coro:
-            metadata_coro.send((prefix, event, value))
-        elif current_section == _SECTION_TARGET and target_coro is not None:
-            try:
-                target_coro.send((prefix, event, value))
-            except StopIteration:
-                target_coro = None
-        elif current_section == _SECTION_TIMELINES and timelines_coro:
-            timelines_coro.send((prefix, event, value))
-        elif current_section == _SECTION_SCORES and scores_coro:
-            scores_coro.send((prefix, event, value))
-        elif current_section == _SECTION_MESSAGE_POOL and message_pool_coros:
-            for coro in message_pool_coros:
-                coro.send((prefix, event, value))
-        elif current_section == _SECTION_CALL_POOL and call_pool_coros:
-            for coro in call_pool_coros:
-                coro.send((prefix, event, value))
+                # HOT PATH: this classification runs 56M+ times per large parse. Avoid
+                # string slicing, startswith, or any allocation in common paths.
+                # Profile before changing. Mirrored in json/stream_parse.py's
+                # `stream_parse_to_spool` (minus the _SECTION_TIMELINES branch, which
+                # streaming skips -- see its own comment). A change to this decision
+                # tree needs the same change there.
+                if prefix != last_prefix:
+                    last_prefix = prefix
+                    p_len = len(prefix)
+                    if p_len == 0 or prefix[0] not in ("m", "e", "a", "t", "s", "c"):
+                        current_section = _SECTION_OTHER
+                    elif p_len < _MIN_SECTION_PREFIX_LEN:
+                        # Short prefixes: "events" (6), "scores" (6), "target" (6)
+                        if prefix == "scores":
+                            current_section = _SECTION_SCORES
+                        elif prefix == "target":
+                            current_section = _SECTION_TARGET
+                        elif prefix == "events":
+                            # The section's own start_array, which fires even for an
+                            # empty array -- unlike "events.item".
+                            state.events_seen = True
+                            current_section = _SECTION_OTHER
+                        else:
+                            current_section = _SECTION_OTHER
+                    elif prefix[0] == "m":
+                        # "messages" vs "metadata": both start "me", discriminate on 3rd char.
+                        if (
+                            p_len >= _MESSAGES_ITEM_PREFIX_LEN
+                            and prefix[2] == "s"
+                            and prefix[:_MESSAGES_ITEM_PREFIX_LEN]
+                            == MESSAGES_ITEM_PREFIX
+                        ):
+                            current_section = _SECTION_MESSAGES
+                        elif prefix[2] == "t" and (
+                            prefix == "metadata" or prefix.startswith(METADATA_PREFIX)
+                        ):
+                            current_section = _SECTION_METADATA
+                        elif (
+                            p_len >= _MESSAGE_POOL_ITEM_PREFIX_LEN
+                            and prefix[:_MESSAGE_POOL_ITEM_PREFIX_LEN]
+                            == MESSAGE_POOL_ITEM_PREFIX
+                        ):
+                            current_section = _SECTION_MESSAGE_POOL
+                        else:
+                            current_section = _SECTION_OTHER
+                    elif prefix[0] == "e":
+                        # events array, or an events_data.* pool sub-array.
+                        if (
+                            p_len >= _EVENTS_ITEM_PREFIX_LEN
+                            and prefix[:_EVENTS_ITEM_PREFIX_LEN] == EVENTS_ITEM_PREFIX
+                        ):
+                            current_section = _SECTION_EVENTS
+                        elif (
+                            p_len >= _EVENTS_DATA_MESSAGES_ITEM_PREFIX_LEN
+                            and prefix[:_EVENTS_DATA_MESSAGES_ITEM_PREFIX_LEN]
+                            == EVENTS_DATA_MESSAGES_ITEM_PREFIX
+                        ):
+                            current_section = _SECTION_MESSAGE_POOL
+                        elif (
+                            p_len >= _EVENTS_DATA_CALLS_ITEM_PREFIX_LEN
+                            and prefix[:_EVENTS_DATA_CALLS_ITEM_PREFIX_LEN]
+                            == EVENTS_DATA_CALLS_ITEM_PREFIX
+                        ):
+                            current_section = _SECTION_CALL_POOL
+                        else:
+                            current_section = _SECTION_OTHER
+                    elif (
+                        prefix[0] == "a"
+                        and p_len >= _ATTACHMENTS_PREFIX_LEN
+                        and prefix[:_ATTACHMENTS_PREFIX_LEN] == ATTACHMENTS_PREFIX
+                    ):
+                        current_section = _SECTION_ATTACHMENTS
+                    elif (
+                        prefix[0] == "c"
+                        and p_len >= _CALL_POOL_ITEM_PREFIX_LEN
+                        and prefix[:_CALL_POOL_ITEM_PREFIX_LEN] == CALL_POOL_ITEM_PREFIX
+                    ):
+                        current_section = _SECTION_CALL_POOL
+                    elif prefix[0] == "t":
+                        if prefix[1] == _TARGET_CHAR1:
+                            current_section = _SECTION_TARGET
+                        elif (
+                            p_len >= _TIMELINES_ITEM_PREFIX_LEN
+                            and prefix[:_TIMELINES_ITEM_PREFIX_LEN]
+                            == TIMELINES_ITEM_PREFIX
+                        ):
+                            current_section = _SECTION_TIMELINES
+                        else:
+                            current_section = _SECTION_OTHER
+                    elif (
+                        prefix[0] == "s"
+                        and prefix[:_SCORES_PREFIX_LEN] == SCORES_PREFIX
+                    ):
+                        current_section = _SECTION_SCORES
+                    else:
+                        current_section = _SECTION_OTHER
+
+                if current_section == _SECTION_MESSAGES and messages_coro:
+                    messages_coro.send((prefix, event, value))
+                elif current_section == _SECTION_EVENTS and events_coro:
+                    events_coro.send((prefix, event, value))
+                elif current_section == _SECTION_ATTACHMENTS:
+                    attachments_coro.send((prefix, event, value))
+                elif current_section == _SECTION_METADATA and metadata_coro:
+                    metadata_coro.send((prefix, event, value))
+                elif current_section == _SECTION_TARGET and target_coro is not None:
+                    try:
+                        target_coro.send((prefix, event, value))
+                    except StopIteration:
+                        target_coro = None
+                elif current_section == _SECTION_TIMELINES and timelines_coro:
+                    timelines_coro.send((prefix, event, value))
+                elif current_section == _SECTION_SCORES and scores_coro:
+                    scores_coro.send((prefix, event, value))
+                elif current_section == _SECTION_MESSAGE_POOL and message_pool_coros:
+                    for coro in message_pool_coros:
+                        coro.send((prefix, event, value))
+                elif current_section == _SECTION_CALL_POOL and call_pool_coros:
+                    for coro in call_pool_coros:
+                        coro.send((prefix, event, value))
+            if early_exit:
+                break
 
     return (
         RawTranscript(

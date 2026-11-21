@@ -81,7 +81,7 @@ async def test_scan_one_with_handle_scanner() -> None:
     received: list[Any] = []
     s = _handle_scanner(received)
     job = ScannerJob(union_transcript=handle, scanner=s, scanner_name="hs")
-    reports = await _scan_one(job, validation=None, fail_on_error=True)
+    reports = await _scan_one(job, max_items=1, validation=None, fail_on_error=True)
     assert received == [handle]
     assert len(reports) == 1
     assert reports[0].input_type == "transcript"
@@ -100,7 +100,7 @@ async def test_scan_one_stream_error_contained() -> None:
 
     s = _plain_scanner()
     job = ScannerJob(union_transcript=handle, scanner=s, scanner_name="ps")
-    reports = await _scan_one(job, validation=None, fail_on_error=False)
+    reports = await _scan_one(job, max_items=1, validation=None, fail_on_error=False)
     assert len(reports) == 1
     assert reports[0].error is not None
     assert "corrupt sample JSON" in reports[0].error.error
@@ -215,7 +215,7 @@ async def test_scan_one_records_serialized_input_for_spooled_handle(
         union_transcript=handle, scanner=_handle_scanner(), scanner_name="hs"
     )
     try:
-        reports = await _scan_one(job, validation=None, fail_on_error=True)
+        reports = await _scan_one(job, max_items=1, validation=None, fail_on_error=True)
     finally:
         await handle.aclose()
 

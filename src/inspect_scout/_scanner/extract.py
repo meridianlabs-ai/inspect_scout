@@ -172,7 +172,8 @@ async def messages_as_str(
        nonce: If set, written on every marker in the output: message
           headers (e.g. `USER (3f9a1c7e):`), `Tool Call`, `Tool Use` and
           tool error lines, reasoning and prefill tags (e.g.
-          `<thinking 3f9a1c7e>`), and the start and end lines of a tool call
+          `<thinking 3f9a1c7e>`), placeholders for content that is not
+          text (e.g. `<image 3f9a1c7e />`), and the start and end lines of a tool call
           argument that spans lines. A reader that knows the nonce can then
           tell real markers from text in a message that imitates one. Must
           be at least 8 characters, all ASCII letters and digits.
@@ -291,7 +292,8 @@ def message_numbering(
         nonce: If set, written on every marker in the output: message
             headers (e.g. ``[M2] USER (3f9a1c7e):``), ``Tool Call``, ``Tool Use`` and
             tool error lines, reasoning and prefill tags (e.g.
-            ``<thinking 3f9a1c7e>``), and the start and end lines of a tool call
+            ``<thinking 3f9a1c7e>``), placeholders for content that is not
+            text (e.g. ``<image 3f9a1c7e />``), and the start and end lines of a tool call
             argument that spans lines. A reader that knows the nonce can then
             tell real markers from text in a message that imitates one. Must
             be at least 8 characters, all ASCII letters and digits.
@@ -359,7 +361,8 @@ def message_as_str(
         nonce: If set, written on every marker in the output: message
             headers (e.g. ``USER (3f9a1c7e):``), ``Tool Call``, ``Tool Use`` and
             tool error lines, reasoning and prefill tags (e.g.
-            ``<thinking 3f9a1c7e>``), and the start and end lines of a tool call
+            ``<thinking 3f9a1c7e>``), placeholders for content that is not
+            text (e.g. ``<image 3f9a1c7e />``), and the start and end lines of a tool call
             argument that spans lines. A reader that knows the nonce can then
             tell real markers from text in a message that imitates one. Must
             be at least 8 characters, all ASCII letters and digits.
@@ -521,7 +524,11 @@ def _text_from_content(
                 else f"\nTool Use{mark}: {content.name}({content.arguments}) -> {content.result} {content.error if content.error else ''}"
             )
         case "image" | "audio" | "video" | "data" | "document":
-            return f"<{content.type} />"
+            return f"<{content.type}{tag} />"
+        case _:
+            # a content type this version does not know, such as one from a
+            # newer inspect_ai: name it rather than drop it
+            return f"<{content.type}{tag} />"
 
 
 def _better_content_text(

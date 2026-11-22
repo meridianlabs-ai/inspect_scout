@@ -14,6 +14,7 @@ import pytest
 from inspect_ai._util.file import file, filesystem
 from inspect_ai.model import ChatMessageUser, ModelUsage
 from inspect_scout import Result, scan_results_df
+from inspect_scout._recorder import buffer as buffer_module
 from inspect_scout._recorder.buffer import RecorderBuffer
 from inspect_scout._recorder.file import FileRecorder
 from inspect_scout._recorder.recorder import Status
@@ -204,6 +205,190 @@ async def test_outstanding_errors_survive_partial_resume(
     status = await FileRecorder.sync(location, complete=True)
     assert not status.errors
     assert _synced_values(status) == {"f1": [1], "f2": [2], "ok": [1]}
+
+
+async def _record_error(recorder: FileRecorder, transcript_id: str, text: str) -> None:
+    error = Error(
+        transcript_id=transcript_id,
+        scanner=SCANNER,
+        error=text,
+        traceback="",
+        refusal=False,
+    )
+    report = ResultReport(
+        input_type="message",
+        input_ids=[transcript_id],
+        input=ChatMessageUser(content=""),
+        result=None,
+        validation=None,
+        error=error,
+        events=[],
+        model_usage={},
+    )
+    await recorder.record(_transcript(transcript_id), SCANNER, [report], None)
+
+
+@pytest.mark.asyncio
+async def test_retries_keep_only_each_transcripts_latest_errors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    machines = _Machines(tmp_path, monkeypatch)
+    a = await _start(machines, tmp_path)
+    location = await a.location()
+    ids = [f"t{i}" for i in range(6)]
+    for transcript_id in ids:
+        await _record_error(a, transcript_id, "first")
+    await FileRecorder.sync(location, complete=False)
+
+    # enough retries that replaced errors are dropped part way through
+    resumed = await machines.resume("A", location)
+    for round in ("second", "third"):
+        for transcript_id in ids[:4]:
+            await _record_error(resumed, transcript_id, round)
+    await _record(resumed, "t4", 1)
+    expected = {"t0": "third", "t1": "third", "t2": "third", "t3": "third"}
+    expected["t5"] = "first"
+
+    for errors in (
+        await resumed.errors(),
+        (await FileRecorder.status(location)).errors,
+        (await FileRecorder.sync(location, complete=False)).errors,
+    ):
+        assert {e.transcript_id: e.error for e in errors} == expected
+        assert len(errors) == len(expected)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reader", ["sync", "attach"])
+async def test_new_process_drops_errors_replaced_before_a_restart(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, reader: str
+) -> None:
+    machines = _Machines(tmp_path, monkeypatch)
+    a = await _start(machines, tmp_path)
+    location = await a.location()
+    ids = [f"t{i}" for i in range(6)]
+    for transcript_id in ids:
+        await _record_error(a, transcript_id, "first")
+    await FileRecorder.sync(location, complete=False)
+    resumed = await machines.resume("A", location)
+    await _record(resumed, "t0", 1)
+    await _record_error(resumed, "t1", "second")
+    error_file = RecorderBuffer.buffer_dir(location) / "_errors.jsonl"
+    assert '"replaced": true' in error_file.read_text()
+
+    # a new process knows nothing of what this one replaced
+    monkeypatch.setattr(buffer_module, "_buffer_states", {})
+    if reader == "sync":
+        errors = (await FileRecorder.sync(location, complete=True)).errors
+    else:
+        attached = FileRecorder()
+        await attached.attach(location)
+        errors = await attached.errors()
+    assert sorted((e.transcript_id, e.error) for e in errors) == [
+        ("t1", "second"),
+        *((transcript_id, "first") for transcript_id in ids[2:]),
+    ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("tail", ["ascii", "utf-8", "whole-entry"])
+async def test_errors_survive_an_append_that_was_cut_short(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, tail: str
+) -> None:
+    machines = _Machines(tmp_path, monkeypatch)
+    a = await _start(machines, tmp_path)
+    location = await a.location()
+    for transcript_id in ("t0", "t1", "t2"):
+        await _record_error(a, transcript_id, "first")
+    await FileRecorder.sync(location, complete=False)
+    resumed = await machines.resume("A", location)
+    await _record(resumed, "t0", 1)
+
+    # the last append stopped part way through
+    error_file = RecorderBuffer.buffer_dir(location) / "_errors.jsonl"
+    data = error_file.read_bytes()
+    if tail == "whole-entry":
+        error_file.write_bytes(data.removesuffix(b"\n"))
+    else:
+        fragment = '{"transcript_id": "t1", "error": "€'.encode()
+        error_file.write_bytes(data + fragment[: -1 if tail == "utf-8" else -3])
+    assert _failed((await FileRecorder.status(location)).errors) == ["t1", "t2"]
+
+    await _record_error(resumed, "t2", "second\u2028line")
+    assert _failed((await FileRecorder.status(location)).errors) == ["t1", "t2"]
+    resumed = await machines.resume("A", location)
+    assert _failed(await resumed.errors()) == ["t1", "t2"]
+    await _record(resumed, "t1", 1)
+    status = await FileRecorder.sync(location, complete=True)
+    assert [(e.transcript_id, e.error) for e in status.errors] == [
+        ("t2", "second\u2028line")
+    ]
+
+
+@pytest.mark.asyncio
+async def test_retry_after_a_failed_append_drops_the_error_it_replaced(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    machines = _Machines(tmp_path, monkeypatch)
+    a = await _start(machines, tmp_path)
+    location = await a.location()
+    await _record_error(a, "t1", "first")
+    await FileRecorder.sync(location, complete=False)
+    resumed = await machines.resume("A", location)
+
+    def full_disk(*args: object) -> None:
+        raise OSError("No space left on device")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(buffer_module, "_append_error_lines", full_disk)
+        with pytest.raises(OSError):
+            await _record(resumed, "t1", 1)
+    await _record(resumed, "t1", 1)
+    status = await FileRecorder.sync(location, complete=True)
+    assert not status.errors
+
+
+@pytest.mark.asyncio
+async def test_interrupted_retry_never_restores_the_error_it_replaced(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    machines = _Machines(tmp_path, monkeypatch)
+    a = await _start(machines, tmp_path)
+    location = await a.location()
+    await _record_error(a, "t1", "first")
+    await FileRecorder.sync(location, complete=False)
+    resumed = await machines.resume("A", location)
+    await resumed.record(
+        _transcript("t1"),
+        SCANNER,
+        [
+            ResultReport(
+                input_type="message",
+                input_ids=["t1"],
+                input=ChatMessageUser(content=""),
+                result=None,
+                validation=None,
+                error=Error(
+                    transcript_id="t1",
+                    scanner=SCANNER,
+                    error=text,
+                    traceback="",
+                    refusal=False,
+                ),
+                events=[],
+                model_usage={},
+            )
+            for text in ("second-a", "second-b")
+        ],
+        None,
+    )
+
+    # the retry stopped part way through writing its new errors
+    error_file = RecorderBuffer.buffer_dir(location) / "_errors.jsonl"
+    error_file.write_text("".join(error_file.read_text().splitlines(True)[:-1]))
+    monkeypatch.setattr(buffer_module, "_buffer_states", {})
+    status = await FileRecorder.sync(location, complete=True)
+    assert [e.error for e in status.errors] == ["second-a"]
 
 
 @pytest.mark.asyncio

@@ -59,6 +59,7 @@ from .._recorder.buffer import (
     cleanup_buffer_dir,
     count_usage,
     decode_recorded_value,
+    read_buffer_errors,
     read_scan_errors,
     read_scan_summary,
     scanner_table,
@@ -176,8 +177,9 @@ class FileRecorder(ScanRecorder):
         """Resume an interrupted scan, retrying transcripts that errored.
 
         `is_recorded` returns False for errored transcripts so they're
-        re-processed; we truncate `_errors.jsonl` to clear stale entries
-        that would otherwise outlive a successful retry.
+        re-processed. `_errors.jsonl` is rewritten with the outstanding
+        errors, and recording a transcript replaces its entries, so an
+        error doesn't outlive a successful retry.
 
         Results synced to the scan location count too, so a resume without
         this machine's buffer (e.g. on a new machine) skips them; see
@@ -456,7 +458,7 @@ class FileRecorder(ScanRecorder):
                 spec=spec,
                 location=scan_location,
                 summary=read_scan_summary(buffer_dir, spec),
-                errors=_read_scan_errors(buffer_dir),
+                errors=read_buffer_errors(buffer_dir),
             )
 
         # Scan dir may be remote; use async reads via AsyncFilesystem so
@@ -1915,7 +1917,7 @@ async def _sync_status_files(
     # copy errors
     errors = "".join(
         error.model_dump_json(warnings=False) + "\n"
-        for error in _read_scan_errors(scan_buffer_dir)
+        for error in read_buffer_errors(scan_buffer_dir)
     )
     await _write_scan_file(fs, scan_dir, SCAN_ERRORS, errors.encode("utf-8"))
 

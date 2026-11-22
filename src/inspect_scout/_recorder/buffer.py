@@ -45,6 +45,9 @@ from .._transcript.util import LazyJSONDict
 logger = getLogger(__name__)
 
 SCAN_ERRORS = "_errors.jsonl"
+_REPLACED = "replaced"
+"""Key of a buffer errors-file entry that drops its pair's earlier entries."""
+_MARKER_KEYS = {"transcript_id", "scanner", _REPLACED}
 SCAN_SUMMARY = "_summary.json"
 
 
@@ -87,8 +90,12 @@ class Contribution(NamedTuple):
 class _BufferState:
     lock: anyio.Lock
     summary: Summary | None = None
-    error_keys: set[tuple[str, str]] | None = None
-    """(transcript_id, scanner) pairs with entries in `_errors.jsonl`."""
+    error_counts: Counter[tuple[str, str]] | None = None
+    """Per (transcript_id, scanner), its current errors in `_errors.jsonl`."""
+    current_errors: int = 0
+    """The total of `error_counts`."""
+    stale_lines: int = 0
+    """Lines of `_errors.jsonl` this process replaced (see `_replace_errors`)."""
     retried: dict[tuple[str, str], Contribution] = field(default_factory=dict)
     """What (transcript_id, scanner) pairs a resume will retry add to `summary`."""
     usage_counts: dict[str, UsageCounts] = field(default_factory=dict)
@@ -151,7 +158,7 @@ class RecorderBuffer:
 
         This is purely a passive constructor: it reads existing buffer state
         from disk or creates fresh files only if they don't exist. Mode-
-        specific setup (clearing for a fresh scan, truncating errors for a
+        specific setup (clearing for a fresh scan, resetting errors for a
         retry-resume, preserving errors for a continuation) is the caller's
         responsibility — see `FileRecorder.init` / `resume` / `attach`.
 
@@ -381,7 +388,7 @@ class RecorderBuffer:
         )
 
     def errors(self) -> list[Error]:
-        return read_scan_errors(str(self._error_file))
+        return read_buffer_errors(self._buffer_dir)
 
     def reset_summary(
         self,
@@ -405,30 +412,53 @@ class RecorderBuffer:
     def reset_errors(self, errors: Sequence[Error]) -> None:
         """Replace every recorded error (e.g. with the errors still outstanding)."""
         self._write_errors(errors)
-        self._state.error_keys = {(e.transcript_id, e.scanner) for e in errors}
+        self._state.error_counts = Counter((e.transcript_id, e.scanner) for e in errors)
+        self._state.current_errors = len(errors)
+        self._state.stale_lines = 0
 
     def _replace_errors(
         self, transcript_id: str, scanner: str, errors: Sequence[Error]
     ) -> None:
-        """Replace the errors recorded for a transcript (caller holds the lock)."""
-        if self._state.error_keys is None:
-            self._state.error_keys = {
-                (e.transcript_id, e.scanner) for e in self.errors()
-            }
-        if (transcript_id, scanner) in self._state.error_keys:
-            self._write_errors(
-                [
-                    e
-                    for e in self.errors()
-                    if (e.transcript_id, e.scanner) != (transcript_id, scanner)
-                ]
+        """Replace the errors recorded for a transcript (caller holds the lock).
+
+        Rather than rewriting the file, this appends a `_REPLACED` entry for
+        the transcript followed by its new errors, in one write, so a record
+        costs the same however many errors are outstanding. The file is
+        rewritten without the replaced lines once they outnumber the rest.
+        """
+        state = self._state
+        if state.error_counts is None:
+            errors_now = self.errors()
+            state.error_counts = Counter(
+                (e.transcript_id, e.scanner) for e in errors_now
             )
-            self._state.error_keys.discard((transcript_id, scanner))
+            state.current_errors = len(errors_now)
+            state.stale_lines = _line_count(self._error_file) - len(errors_now)
+        key = (transcript_id, scanner)
+        replaced = state.error_counts.pop(key, 0)
+        lines = [error.model_dump_json(warnings=False) + "\n" for error in errors]
+        if replaced:
+            marker = {
+                "transcript_id": transcript_id,
+                "scanner": scanner,
+                _REPLACED: True,
+            }
+            lines.insert(0, json.dumps(marker) + "\n")
+            state.current_errors -= replaced
+            state.stale_lines += replaced + 1
+        if lines:
+            try:
+                _append_error_lines(self._error_file, lines)
+            except BaseException:
+                # what reached the file is unknown, so re-read it next time
+                state.error_counts = None
+                raise
         if errors:
-            with open(str(self._error_file), "at") as f:
-                for error in errors:
-                    f.write(error.model_dump_json(warnings=False) + "\n")
-            self._state.error_keys.update((e.transcript_id, e.scanner) for e in errors)
+            state.error_counts[key] = len(errors)
+            state.current_errors += len(errors)
+        if state.stale_lines > state.current_errors:
+            self._write_errors(self.errors())
+            state.stale_lines = 0
 
     def _write_errors(self, errors: Sequence[Error]) -> None:
         tmp_file = self._buffer_dir / f".{SCAN_ERRORS}.{uuid.uuid4().hex}.tmp"
@@ -966,6 +996,68 @@ def read_scan_errors(error_file: str) -> list[Error]:
             return errors
     except FileNotFoundError:
         return []
+
+
+def read_buffer_errors(buffer_dir: UPath) -> list[Error]:
+    """Read a buffer's errors file.
+
+    Unlike a scan dir's errors file it can hold `_REPLACED` entries, each
+    dropping the earlier errors of its (transcript_id, scanner) pair, and
+    can end in the unreadable part of an append that was cut short, which
+    is ignored. The buffer dir is always local.
+    """
+    errors: list[Error | None] = []
+    positions: dict[tuple[str, str], list[int]] = {}
+    try:
+        with open((buffer_dir / SCAN_ERRORS).as_posix(), "rb") as f:
+            for line in f:
+                try:
+                    entry = json.loads(line)
+                except ValueError:
+                    # only the last line can be unterminated
+                    if not line.endswith(b"\n"):
+                        break
+                    raise
+                key = (entry["transcript_id"], entry["scanner"])
+                if entry.keys() == _MARKER_KEYS:
+                    for position in positions.pop(key, []):
+                        errors[position] = None
+                else:
+                    positions.setdefault(key, []).append(len(errors))
+                    errors.append(Error(**entry))
+    except FileNotFoundError:
+        return []
+    return [error for error in errors if error is not None]
+
+
+def _line_count(path: UPath) -> int:
+    try:
+        with open(path.as_posix(), "rb") as f:
+            return sum(1 for _ in f)
+    except FileNotFoundError:
+        return 0
+
+
+def _append_error_lines(error_file: UPath, lines: Sequence[str]) -> None:
+    """Append `lines` to a buffer errors file in one write.
+
+    An append that was cut short can leave an unterminated last line. If it
+    is a whole entry (readers already apply it) it is terminated, and
+    otherwise (readers ignore it) it is dropped.
+    """
+    with open(error_file.as_posix(), "ab+") as f:
+        if f.tell() > 0:
+            f.seek(-1, os.SEEK_END)
+            if f.read(1) != b"\n":
+                f.seek(0)
+                data = f.read()
+                start = data.rfind(b"\n") + 1
+                try:
+                    json.loads(data[start:])
+                    f.write(b"\n")
+                except ValueError:
+                    f.truncate(start)
+        f.write("".join(lines).encode("utf-8"))
 
 
 def read_scan_summary(scan_dir: UPath, spec: ScanSpec) -> Summary:

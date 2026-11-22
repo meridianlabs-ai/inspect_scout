@@ -386,8 +386,8 @@ def message_as_str(
     )
 
     mark = _marker_nonce(nonce)
-    # with a nonce, a compaction summary is marked as one, so a user turn that
-    # imitates its text cannot pass for it
+    # with a nonce, a message that is certainly a compaction summary alone is
+    # marked as one, so a user turn that imitates its text cannot pass for it
     role_label = (
         "COMPACTION SUMMARY"
         if nonce is not None and _is_compaction_summary(message)
@@ -492,12 +492,27 @@ def _role_label(message: ChatMessage, *, upper_fallback: bool) -> str:
     return message.role.upper() if upper_fallback else message.role
 
 
+# the fixed start and end of the summary that Inspect's summary compaction
+# writes (inspect_ai `model/_compaction/summary.py`), in every version since
+# it was added (0.3.159)
+_SUMMARY_START = "[CONTEXT COMPACTION SUMMARY]\n\nThe following is a summary of work completed on this task so far"
+_SUMMARY_END = "\n\nPlease continue working on this task from where you left off."
+
+
 def _is_compaction_summary(message: ChatMessage) -> bool:
-    """Whether `message` is the summary that Inspect's summary compaction writes: a user message with `metadata={"summary": True}`."""
+    """Whether `message` is certainly the summary that Inspect's summary compaction writes, and nothing else.
+
+    That is a user message with `metadata={"summary": True}` whose text is the summary as written: it starts and ends as Inspect writes it. A message Inspect merged from consecutive user messages, as it does for providers that need them merged, keeps the summary's metadata and adds `combined_from`, so it may hold a user's own turn: it is not the summary alone, and neither is any other message in doubt.
+    """
+    metadata = message.metadata
     return (
         message.role == "user"
-        and message.metadata is not None
-        and message.metadata.get("summary") is True
+        and metadata is not None
+        and metadata.get("summary") is True
+        and "combined_from" not in metadata
+        and isinstance(message.content, str)
+        and message.content.startswith(_SUMMARY_START)
+        and message.content.endswith(_SUMMARY_END)
     )
 
 

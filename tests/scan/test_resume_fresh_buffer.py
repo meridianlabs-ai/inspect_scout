@@ -50,9 +50,7 @@ def resume_fresh_buffer(
             await anyio.sleep_forever()
         if transcript.transcript_id == FAILING_ID and not Path(release).exists():
             raise RuntimeError("Transient scanner failure")
-        # integral floats, including -0.0, must reach metrics as floats
-        index = TRANSCRIPT_IDS.index(transcript.transcript_id)
-        return Result(value=float(index) if index else -0.0)
+        return Result(value=TRANSCRIPT_IDS.index(transcript.transcript_id))
 
     return run
 
@@ -138,8 +136,7 @@ def test_resume_with_fresh_buffer(
     assert resumed.complete and not resumed.errors
     results = scan_results_df(resumed.location).scanners[SCANNER]
     assert sorted(results["transcript_id"]) == TRANSCRIPT_IDS
-    # the retry replaces the failure: the summary matches a clean scan's
-    summary = resumed.summary.scanners[SCANNER]
-    assert summary == clean.summary.scanners[SCANNER]
-    assert summary.scans == len(TRANSCRIPT_IDS) and summary.errors == 0
-    assert summary.metrics is not None and summary.metrics[SCANNER]["mean"] == 2.5
+    # metrics cover the synced results as well as the rescanned ones
+    metrics = resumed.summary.scanners[SCANNER].metrics
+    assert metrics == clean.summary.scanners[SCANNER].metrics
+    assert metrics is not None and metrics[SCANNER]["mean"] == 2.5

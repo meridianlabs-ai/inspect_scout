@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 from inspect_ai.model import ChatMessageUser
 from inspect_scout import Result
-from inspect_scout._recorder.buffer import decode_recorded_value
 from inspect_scout._recorder.file import FileRecorder
 from inspect_scout._scanner.result import ResultReport
 from inspect_scout._scanspec import ScannerSpec, ScanSpec
@@ -53,8 +52,6 @@ def _report(result: Result) -> ResultReport:
         ([{"acc": 1}], "number"),
         ([1, {"acc": 1}], "number"),
         ([True, {"acc": False}], "boolean"),
-        ([1.0, -0.0, 0.5, 1e20], None),
-        ([1, 1.0, -0.0], None),
     ],
 )
 async def test_recorded_values(
@@ -91,27 +88,4 @@ async def test_recorded_values(
             assert isinstance(actual, float) and math.isnan(actual)
         else:
             assert actual == expected
-            if isinstance(expected, float):
-                assert isinstance(actual, float)
-                assert math.copysign(1, actual) == math.copysign(1, expected)
     assert [type(value) for value in restored] == [type(value) for value in values]
-
-
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [
-        # Results compacted before floats kept their spelling: "-0" can only
-        # be a float, but an integral float like 1.0 reads back as the int 1.
-        ("-0", -0.0),
-        ("1", 1),
-        ("0.5", 0.5),
-        ("1.0", 1.0),
-        ("-0.0", -0.0),
-    ],
-)
-def test_decode_compacted_number(value: str, expected: JsonValue) -> None:
-    decoded = decode_recorded_value(value, "number")
-    assert decoded == expected and type(decoded) is type(expected)
-    if isinstance(expected, float):
-        assert isinstance(decoded, float)
-        assert math.copysign(1, decoded) == math.copysign(1, expected)

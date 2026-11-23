@@ -86,7 +86,6 @@ Note that the heavy JSON columns (`input` and `scan_events`) are excluded by def
 | `scan_error` | str | Error which occurred during scan. |
 | `scan_error_traceback` | str | Traceback for error (if any) |
 | `scan_error_type` | str | Error type (either "refusal" for refusals or null for other errors). |
-| `scan_error_has_result` | bool | For a row with an error, whether the row also holds the scanner's result (null when there is no error). |
 | `scan_events` | list\[Event\]<br/><small>JSON</small> | Scan events (e.g. model event, log event, etc.) (excluded by default) |
 | `scan_total_tokens` | number | Total tokens used by scan (only included when `rows = "transcripts"`). |
 | `scan_model_usage` | dict \[str, ModelUsage\]<br/><small>JSON</small> | Token usage by model for scan (only included when `rows = "transcripts"`). |

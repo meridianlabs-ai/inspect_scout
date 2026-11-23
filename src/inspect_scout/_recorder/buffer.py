@@ -3,19 +3,10 @@ import os
 import shutil
 import uuid
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from logging import getLogger
-from typing import (
-    Any,
-    BinaryIO,
-    Final,
-    NamedTuple,
-    Sequence,
-    Set,
-    TypeVar,
-    cast,
-)
+from typing import Any, BinaryIO, Final, Sequence, Set, TypeVar, cast
 
 import anyio
 import jsonlines
@@ -26,14 +17,12 @@ from inspect_ai._util.appdirs import inspect_data_dir
 from inspect_ai._util.file import file
 from inspect_ai._util.hash import mm3_hash
 from inspect_ai.log._util import thin_metadata
-from inspect_ai.model import ModelUsage
 from inspect_ai.scorer import value_to_float
 from pydantic import JsonValue
 from pydantic_core import to_json
 from upath import UPath
 
-from inspect_scout._recorder.summary import ScannerSummary, Summary
-from inspect_scout._recorder.validation import ValidationResults
+from inspect_scout._recorder.summary import Summary
 from inspect_scout._util.constants import TRANSCRIPT_METADATA_MAX_CHARS
 from inspect_scout._util.path import normalize_for_hashing
 
@@ -57,35 +46,6 @@ SCAN_SUMMARY = "_summary.json"
 # lock and the live `Summary`. Mutating the shared `Summary` under the
 # lock and persisting it directly (without re-reading disk) keeps the
 # read-modify-write race-free while avoiding a disk round-trip per call.
-UsageCounts = Counter[tuple[str, str]]
-"""Per (model, field), how many recorded usages of the model set the field.
-
-The "" field counts the usages themselves. `_subtract_summary` uses these to
-drop a model, or reset an optional field to None, once nothing left sets it.
-"""
-
-_OPTIONAL_USAGE_FIELDS = (
-    "input_tokens_cache_write",
-    "input_tokens_cache_read",
-    "reasoning_tokens",
-    "total_cost",
-)
-
-
-def count_usage(counts: UsageCounts, model: str, usage: ModelUsage) -> None:
-    counts[(model, "")] += 1
-    for name in _OPTIONAL_USAGE_FIELDS:
-        if getattr(usage, name) is not None:
-            counts[(model, name)] += 1
-
-
-class Contribution(NamedTuple):
-    """What a transcript's results add to a scanner's summary."""
-
-    summary: ScannerSummary
-    usage_counts: UsageCounts
-
-
 @dataclass
 class _BufferState:
     lock: anyio.Lock
@@ -96,10 +56,6 @@ class _BufferState:
     """The total of `error_counts`."""
     stale_lines: int = 0
     """Lines of `_errors.jsonl` this process replaced (see `_replace_errors`)."""
-    retried: dict[tuple[str, str], Contribution] = field(default_factory=dict)
-    """What (transcript_id, scanner) pairs a resume will retry add to `summary`."""
-    usage_counts: dict[str, UsageCounts] = field(default_factory=dict)
-    """Per scanner, counts of the model usage in `summary` (see `UsageCounts`)."""
 
 
 _buffer_states: dict[str, _BufferState] = {}
@@ -314,17 +270,7 @@ class RecorderBuffer:
         # updates and never observe a partial state on disk.
         async with self._state.lock:
             assert self._state.summary is not None  # set in __init__
-            # a retry replaces the transcript's earlier results in the summary
-            counts = self._state.usage_counts.setdefault(scanner, Counter())
-            retried = self._state.retried.pop((transcript.transcript_id, scanner), None)
-            if retried is not None and scanner in self._state.summary.scanners:
-                _subtract_summary(
-                    self._state.summary.scanners[scanner], retried, counts
-                )
             self._state.summary._report(transcript, scanner, results, metrics)
-            for result in results:
-                for model, usage in result.model_usage.items():
-                    count_usage(counts, model, usage)
             _persist_scan_summary(self._buffer_dir, self._state.summary)
             # these results replace the transcript's earlier ones, so they
             # also replace its earlier errors (e.g. on a successful retry)
@@ -363,17 +309,6 @@ class RecorderBuffer:
         table = pq.read_table(path.as_posix(), columns=["scan_error"])
         return bool(pc.any(pc.is_valid(table.column("scan_error"))).as_py())
 
-    def read_rows(
-        self, transcript_id: str, scanner: str, columns: Sequence[str]
-    ) -> list[dict[str, Any]]:
-        """The transcript's buffered result rows (`columns` it lacks are skipped)."""
-        parquet = pq.ParquetFile(
-            self._transcript_file(transcript_id, scanner).as_posix()
-        )
-        with parquet:
-            names = set(parquet.schema_arrow.names)
-            return parquet.read(columns=[c for c in columns if c in names]).to_pylist()
-
     def discard(self, transcript_id: str, scanner: str) -> None:
         """Remove the transcript's buffered results (its errors are kept)."""
         self._transcript_file(transcript_id, scanner).unlink(missing_ok=True)
@@ -389,25 +324,6 @@ class RecorderBuffer:
 
     def errors(self) -> list[Error]:
         return read_buffer_errors(self._buffer_dir)
-
-    def reset_summary(
-        self,
-        summary: Summary,
-        retried: dict[tuple[str, str], Contribution],
-        usage_counts: dict[str, UsageCounts],
-    ) -> None:
-        """Replace the summary with one rebuilt from the recorded results.
-
-        Args:
-            summary: The new summary.
-            retried: What each (transcript_id, scanner) pair to be retried
-                contributes to `summary`; recording the pair again replaces it.
-            usage_counts: Per scanner, counts of the model usage in `summary`.
-        """
-        self._state.summary = summary
-        self._state.retried = dict(retried)
-        self._state.usage_counts = dict(usage_counts)
-        _persist_scan_summary(self._buffer_dir, summary)
 
     def reset_errors(self, errors: Sequence[Error]) -> None:
         """Replace every recorded error (e.g. with the errors still outstanding)."""
@@ -433,7 +349,6 @@ class RecorderBuffer:
                 (e.transcript_id, e.scanner) for e in errors_now
             )
             state.current_errors = len(errors_now)
-            state.stale_lines = _line_count(self._error_file) - len(errors_now)
         key = (transcript_id, scanner)
         replaced = state.error_counts.pop(key, 0)
         lines = [error.model_dump_json(warnings=False) + "\n" for error in errors]
@@ -447,12 +362,8 @@ class RecorderBuffer:
             state.current_errors -= replaced
             state.stale_lines += replaced + 1
         if lines:
-            try:
-                _append_error_lines(self._error_file, lines)
-            except BaseException:
-                # what reached the file is unknown, so re-read it next time
-                state.error_counts = None
-                raise
+            with open(str(self._error_file), "at") as f:
+                f.write("".join(lines))
         if errors:
             state.error_counts[key] = len(errors)
             state.current_errors += len(errors)
@@ -493,12 +404,7 @@ T = TypeVar("T")
 
 
 def decode_recorded_value(value: Any, value_type: str | None) -> JsonValue:
-    """Restore a stored result value to the type the scanner returned.
-
-    Results compacted before floats kept their Python spelling store an
-    integral float like `1.0` as "1", which reads back as the int 1 (equal
-    in value). Only "-0" can be told apart: an int has no negative zero.
-    """
+    """Restore a stored result value to the type the scanner returned."""
     if isinstance(value, str) and value_type not in ("string", None):
         # Lists and dicts are stored as JSON text under any type label.
         # Scalars only become text in mixed columns (and in compacted
@@ -507,7 +413,7 @@ def decode_recorded_value(value: Any, value_type: str | None) -> JsonValue:
             return cast(JsonValue, json.loads(value))
         if value_type == "boolean":
             return value.lower() == "true"
-        if value_type == "number" and value in ("nan", "inf", "-inf", "-0"):
+        if value_type == "number" and value in ("nan", "inf", "-inf"):
             return float(value)
         return cast(JsonValue, json.loads(value))
     return cast(JsonValue, value)
@@ -635,7 +541,6 @@ def scanner_table(
     fixed_types: dict[str, pa.DataType] = {
         "transcript_success": pa.bool_(),
         "transcript_trust_content": pa.bool_(),
-        "scan_error_has_result": pa.bool_(),
     }
     corrected_fields = []
     for field in schema:
@@ -695,10 +600,7 @@ def scanner_table(
                         if field.name in batch.schema.names:
                             # Column exists - cast it to target type
                             col = batch.column(field.name)
-                            if field.name == "value" and pa.types.is_floating(col.type):
-                                arrays.append(_float_text(col, field.type))
-                            else:
-                                arrays.append(col.cast(field.type))
+                            arrays.append(col.cast(field.type))
                         else:
                             # Column missing - create null array
                             arrays.append(
@@ -731,71 +633,6 @@ def scanner_table(
         flush_accumulated(writer)
 
     return True
-
-
-def _subtract_summary(
-    total: ScannerSummary, part: Contribution, counts: UsageCounts
-) -> None:
-    """Remove a transcript's contribution `part` from `total` (see `_report`)."""
-    total.scans -= part.summary.scans
-    total.results -= part.summary.results
-    total.unscored -= part.summary.unscored
-    total.errors -= part.summary.errors
-    total.tokens -= part.summary.tokens
-    counts.subtract(part.usage_counts)
-    for model, usage in part.summary.model_usage.items():
-        if model not in total.model_usage:
-            continue
-        if counts[(model, "")] <= 0:
-            del total.model_usage[model]
-            continue
-        remaining = _subtract_usage(total.model_usage[model], usage)
-        total.model_usage[model] = remaining.model_copy(
-            update={
-                name: None
-                for name in _OPTIONAL_USAGE_FIELDS
-                if counts[(model, name)] <= 0
-            }
-        )
-    if part.summary.validation is not None and total.validation is not None:
-        entries = list(total.validation.entries)
-        for entry in part.summary.validation.entries:
-            if entry in entries:
-                entries.remove(entry)
-        total.validation = ValidationResults.from_entries(entries) if entries else None
-
-
-def _subtract_usage(total: ModelUsage, part: ModelUsage) -> ModelUsage:
-    return ModelUsage(
-        input_tokens=total.input_tokens - part.input_tokens,
-        output_tokens=total.output_tokens - part.output_tokens,
-        total_tokens=total.total_tokens - part.total_tokens,
-        input_tokens_cache_write=_minus(
-            total.input_tokens_cache_write, part.input_tokens_cache_write
-        ),
-        input_tokens_cache_read=_minus(
-            total.input_tokens_cache_read, part.input_tokens_cache_read
-        ),
-        reasoning_tokens=_minus(total.reasoning_tokens, part.reasoning_tokens),
-        total_cost=_minus_float(total.total_cost, part.total_cost),
-    )
-
-
-def _minus(a: int | None, b: int | None) -> int | None:
-    return a if a is None or b is None else a - b
-
-
-def _minus_float(a: float | None, b: float | None) -> float | None:
-    return a if a is None or b is None else a - b
-
-
-def _float_text(col: "pa.Array[Any]", type: "pa.DataType") -> "pa.Array[Any]":
-    """Spell floats as Python does, as mixed-type buffer columns do.
-
-    Arrow's cast drops the fraction of integral floats (`1.0` -> "1",
-    `-0.0` -> "-0"), so they would read back as ints.
-    """
-    return pa.array([None if v is None else str(v) for v in col.to_pylist()], type=type)
 
 
 def _persist_scan_summary(buffer_dir: UPath, summary: Summary) -> None:
@@ -1002,22 +839,13 @@ def read_buffer_errors(buffer_dir: UPath) -> list[Error]:
     """Read a buffer's errors file.
 
     Unlike a scan dir's errors file it can hold `_REPLACED` entries, each
-    dropping the earlier errors of its (transcript_id, scanner) pair, and
-    can end in the unreadable part of an append that was cut short, which
-    is ignored. The buffer dir is always local.
+    dropping the earlier errors of its (transcript_id, scanner) pair.
     """
     errors: list[Error | None] = []
     positions: dict[tuple[str, str], list[int]] = {}
     try:
-        with open((buffer_dir / SCAN_ERRORS).as_posix(), "rb") as f:
-            for line in f:
-                try:
-                    entry = json.loads(line)
-                except ValueError:
-                    # only the last line can be unterminated
-                    if not line.endswith(b"\n"):
-                        break
-                    raise
+        with file((buffer_dir / SCAN_ERRORS).as_posix(), "r") as f:
+            for entry in jsonlines.Reader(f).iter(type=dict):
                 key = (entry["transcript_id"], entry["scanner"])
                 if entry.keys() == _MARKER_KEYS:
                     for position in positions.pop(key, []):
@@ -1028,36 +856,6 @@ def read_buffer_errors(buffer_dir: UPath) -> list[Error]:
     except FileNotFoundError:
         return []
     return [error for error in errors if error is not None]
-
-
-def _line_count(path: UPath) -> int:
-    try:
-        with open(path.as_posix(), "rb") as f:
-            return sum(1 for _ in f)
-    except FileNotFoundError:
-        return 0
-
-
-def _append_error_lines(error_file: UPath, lines: Sequence[str]) -> None:
-    """Append `lines` to a buffer errors file in one write.
-
-    An append that was cut short can leave an unterminated last line. If it
-    is a whole entry (readers already apply it) it is terminated, and
-    otherwise (readers ignore it) it is dropped.
-    """
-    with open(error_file.as_posix(), "ab+") as f:
-        if f.tell() > 0:
-            f.seek(-1, os.SEEK_END)
-            if f.read(1) != b"\n":
-                f.seek(0)
-                data = f.read()
-                start = data.rfind(b"\n") + 1
-                try:
-                    json.loads(data[start:])
-                    f.write(b"\n")
-                except ValueError:
-                    f.truncate(start)
-        f.write("".join(lines).encode("utf-8"))
 
 
 def read_scan_summary(scan_dir: UPath, spec: ScanSpec) -> Summary:

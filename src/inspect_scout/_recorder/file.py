@@ -5,9 +5,7 @@ import os
 import secrets
 import stat
 import tempfile
-from collections import Counter
 from collections.abc import AsyncIterator, Generator, Iterator, Mapping
-from collections.abc import Set as AbstractSet
 from contextlib import contextmanager
 from logging import getLogger
 from pathlib import Path
@@ -43,21 +41,14 @@ from upath import UPath
 if TYPE_CHECKING:
     from pyarrow import Scalar
 
-from inspect_ai.model import ModelUsage
-
-from inspect_scout._recorder.summary import ScannerSummary, Summary
-from inspect_scout._recorder.validation import ValidationEntry, ValidationResults
-from inspect_scout._validation.validate import is_positive_value
+from inspect_scout._recorder.summary import Summary
 
 from .._query.sql import quote_identifier
 from .._recorder.buffer import (
     SCAN_ERRORS,
     SCAN_SUMMARY,
-    Contribution,
     RecorderBuffer,
-    UsageCounts,
     cleanup_buffer_dir,
-    count_usage,
     decode_recorded_value,
     read_buffer_errors,
     read_scan_errors,
@@ -200,9 +191,6 @@ class FileRecorder(ScanRecorder):
             _reconcile_with_synced, self._scan_dir, self.scan_spec, self._scan_buffer
         )
         self._scan_buffer.reset_errors(reconciled.errors)
-        self._scan_buffer.reset_summary(
-            reconciled.summary, reconciled.retried, reconciled.usage_counts
-        )
         self._recorded = reconciled.recorded
         return self._scan_spec
 
@@ -846,41 +834,13 @@ _prior_parquet_cache: dict[str, dict[str, str | None]] = {}
 
 _SYNCED_BATCH_ROWS = 10_000
 
-# result columns that `_reconcile_with_synced` rebuilds the summary and
-# errors from (columns a file lacks, e.g. written by an older version, are
-# read as null)
-_RECONCILE_COLUMNS = [
-    "transcript_id",
-    "input_ids",
-    "value",
-    "value_type",
-    "scan_error",
-    "scan_error_traceback",
-    "scan_error_type",
-    "scan_error_refusal",  # before 0.3.0
-    "scan_error_has_result",
-    "validation_target",
-    "validation_result",
-    "scan_total_tokens",
-    "scan_model_usage",
-]
-
 
 class _Reconciled(NamedTuple):
     recorded: dict[str, set[str]]
     """Per scanner, transcripts whose winning results include no error."""
 
     errors: list[Error]
-    """Errors in the winning results (those still outstanding)."""
-
-    summary: Summary
-    """Summary of the winning results."""
-
-    retried: dict[tuple[str, str], Contribution]
-    """What each errored (transcript_id, scanner), to be retried, adds to `summary`."""
-
-    usage_counts: dict[str, UsageCounts]
-    """Per scanner, counts of the model usage in `summary`."""
+    """Errors of the transcripts whose winning results include one."""
 
 
 def _reconcile_with_synced(
@@ -891,175 +851,46 @@ def _reconcile_with_synced(
     Each transcript's results come from the buffer or from the synced
     results: a success wins over an error, and otherwise the buffer (the
     newer record) wins. A buffered error that lost to a synced success is
-    removed, so compaction keeps that success. The outstanding errors and
-    the summary are rebuilt from the winning results, so they agree with
-    the results however many machines contributed to them.
+    removed, so compaction keeps that success. The outstanding errors are
+    the buffer's for transcripts it holds, and the scan dir's for the
+    others.
     """
-    prior = buffer.scan_summary()
-    refusals = _error_refusals([*buffer.errors(), *_read_scan_errors(scan_dir)])
-    # a resumed scan is incomplete until it is synced as complete
-    summary = Summary(complete=False, scanners=list(spec.scanners.keys()))
+    buffered_errors = buffer.errors()
+    synced_errors = _read_scan_errors(scan_dir)
     recorded: dict[str, set[str]] = {}
     errors: list[Error] = []
-    retried: dict[tuple[str, str], Contribution] = {}
-    usage_counts: dict[str, UsageCounts] = {}
     for scanner in spec.scanners:
-        total = _RowSummary(scanner, refusals)
-        errored_parts: dict[str, _RowSummary] = {}
         with _open_synced_parquet(scan_dir, scanner) as synced:
             synced_all, synced_errored = (
                 _read_synced_index(synced) if synced is not None else (set(), set())
             )
-            synced_ok = synced_all - synced_errored
-            buffered: set[str] = set()
-            ok: set[str] = set()
-            for transcript_id in buffer.buffered_transcripts(scanner):
-                rows = buffer.read_rows(transcript_id, scanner, _RECONCILE_COLUMNS)
-                errored = any(r.get("scan_error") is not None for r in rows)
-                if errored and transcript_id in synced_ok:
-                    buffer.discard(transcript_id, scanner)
-                    continue
-                buffered.add(transcript_id)
-                total.add(rows, transcripts=1)
-                if errored:
-                    errored_parts[transcript_id] = _RowSummary(scanner, refusals)
-                    errored_parts[transcript_id].add(rows, transcripts=1)
-                else:
-                    ok.add(transcript_id)
-            for transcript_id in synced_errored - buffered:
-                errored_parts[transcript_id] = _RowSummary(scanner, refusals)
-                errored_parts[transcript_id].add([], transcripts=1)
-            total.add([], transcripts=len(synced_all - buffered))
-            if synced is not None:
-                for batch in _synced_batches(synced, _RECONCILE_COLUMNS, buffered):
-                    total.add(batch)
-                    for row in batch:
-                        part = errored_parts.get(row["transcript_id"])
-                        if part is not None:
-                            part.add([row])
+        synced_ok = synced_all - synced_errored
+        buffered: set[str] = set()
+        ok: set[str] = set()
+        for transcript_id in buffer.buffered_transcripts(scanner):
+            errored = buffer.is_errored(transcript_id, scanner)
+            if errored and transcript_id in synced_ok:
+                buffer.discard(transcript_id, scanner)
+                continue
+            buffered.add(transcript_id)
+            if not errored:
+                ok.add(transcript_id)
+        buffered_errored = buffered - ok
         ok.update(synced_ok - buffered)
         recorded[scanner] = ok
-        errors.extend(total.errors)
-        summary.scanners[scanner] = total.summary(prior)
-        usage_counts[scanner] = total.usage_counts
-        for transcript_id, part in errored_parts.items():
-            retried[(transcript_id, scanner)] = Contribution(
-                part.summary(), part.usage_counts
-            )
-    return _Reconciled(recorded, errors, summary, retried, usage_counts)
-
-
-def _error_refusals(errors: Sequence[Error]) -> dict[tuple[str, ...], bool]:
-    """Refusal flags of recorded errors, keyed by what identifies the error.
-
-    Rows written by 0.3.0-0.5.1 marked every error a refusal; the errors
-    file recorded the flag correctly, so it is used for a row it matches.
-    """
-    return {
-        (e.transcript_id, e.scanner, e.error, e.traceback): e.refusal for e in errors
-    }
-
-
-class _RowSummary:
-    """Accumulates a scanner's summary and errors from its result rows.
-
-    Counts what `Summary._report` counts as the same results are recorded.
-    Rows from before `scan_error_has_result` (and an errors-file match for
-    refusals) can't always tell an error that came with a result from one
-    without: a `None` result value with an error then isn't counted as
-    unscored.
-    """
-
-    def __init__(self, scanner: str, refusals: dict[tuple[str, ...], bool]) -> None:
-        self._scanner = scanner
-        self._refusals = refusals
-        self._summary = ScannerSummary()
-        self._entries: list[ValidationEntry] = []
-        self.errors: list[Error] = []
-        self.usage_counts: UsageCounts = Counter()
-
-    def add(self, rows: Sequence[dict[str, Any]], transcripts: int = 0) -> None:
-        s = self._summary
-        s.scans += transcripts
-        for row in rows:
-            error = row.get("scan_error")
-            if error is not None:
-                s.errors += 1
-                self.errors.append(self._error(row, error))
-            value = decode_recorded_value(row.get("value"), row.get("value_type"))
-            has_result = error is None or row.get("scan_error_has_result") is True
-            if value is None and has_result:
-                s.unscored += 1
-            if row.get("value_type") == "resultset" and isinstance(value, list):
-                s.results += sum(
-                    1
-                    for item in value
-                    if isinstance(item, dict) and is_positive_value(item.get("value"))
-                )
-            elif value:
-                s.results += 1
-            if row.get("validation_target") is not None:
-                input_ids: list[str] = json.loads(row.get("input_ids") or "[]")
-                self._entries.append(
-                    ValidationEntry(
-                        id=(input_ids[0] if len(input_ids) == 1 else input_ids)
-                        if input_ids
-                        else "",
-                        target=_decode_validation(row["validation_target"]),
-                        valid=cast(
-                            bool | dict[str, bool],
-                            _decode_validation(row.get("validation_result")),
-                        ),
-                    )
-                )
-            s.tokens += row.get("scan_total_tokens") or 0
-            for model, data in json.loads(row.get("scan_model_usage") or "{}").items():
-                usage = ModelUsage.model_validate(data)
-                s.model_usage[model] = s.model_usage.get(model, ModelUsage()) + usage
-                count_usage(self.usage_counts, model, usage)
-
-    def _error(self, row: dict[str, Any], error: str) -> Error:
-        traceback = row.get("scan_error_traceback") or ""
-        transcript_id: str = row["transcript_id"]
-        refusal = self._refusals.get((transcript_id, self._scanner, error, traceback))
-        if refusal is None:
-            legacy = row.get("scan_error_refusal")
-            refusal = (
-                legacy
-                if isinstance(legacy, bool)
-                else row.get("scan_error_type") == "refusal"
-            )
-        return Error(
-            transcript_id=transcript_id,
-            scanner=self._scanner,
-            error=error,
-            traceback=traceback,
-            refusal=refusal,
+        errors.extend(
+            e
+            for e in buffered_errors
+            if e.scanner == scanner and e.transcript_id in buffered_errored
         )
-
-    def summary(self, prior: Summary | None = None) -> ScannerSummary:
-        """The summary, keeping `prior`'s metrics until the scan recomputes them."""
-        if self._entries:
-            self._summary.validation = ValidationResults.from_entries(self._entries)
-        if prior is not None and self._scanner in prior.scanners:
-            self._summary.metrics = prior.scanners[self._scanner].metrics
-        return self._summary
-
-
-def _decode_validation(value: Any) -> JsonValue:
-    """Decode a stored validation target or result.
-
-    These are JSON text, but before 0.3.41 scalars were stored natively, so
-    a native value is used as is, and a legacy string target that isn't
-    JSON as the string. (A legacy string target that is valid JSON, such as
-    "true" or "1", reads back as that JSON value.)
-    """
-    if not isinstance(value, str):
-        return cast(JsonValue, value)
-    try:
-        return cast(JsonValue, json.loads(value))
-    except ValueError:
-        return value
+        errors.extend(
+            e
+            for e in synced_errors
+            if e.scanner == scanner
+            and e.transcript_id in synced_errored
+            and e.transcript_id not in buffered
+        )
+    return _Reconciled(recorded, errors)
 
 
 def _read_synced_index(parquet: pq.ParquetFile) -> tuple[set[str], set[str]]:
@@ -1077,23 +908,18 @@ def _read_synced_index(parquet: pq.ParquetFile) -> tuple[set[str], set[str]]:
 def _synced_batches(
     parquet: pq.ParquetFile,
     columns: Sequence[str],
-    exclude: AbstractSet[str] = frozenset(),
     include: Sequence[str] | None = None,
 ) -> Iterator[list[dict[str, Any]]]:
-    """Synced rows a batch at a time, optionally filtered by transcript id."""
+    """Synced rows a batch at a time, optionally only those of `include`."""
     names = set(parquet.schema_arrow.names)
-    exclude_ids = pa.array(list(exclude), type=pa.string()) if exclude else None
     include_ids = pa.array(include, type=pa.string()) if include is not None else None
     for batch in parquet.iter_batches(
         batch_size=_SYNCED_BATCH_ROWS, columns=[c for c in columns if c in names]
     ):
-        transcript_ids = batch.column("transcript_id")
-        if exclude_ids is not None:
+        if include_ids is not None:
             batch = batch.filter(
-                pc.invert(pc.is_in(transcript_ids, value_set=exclude_ids))
+                pc.is_in(batch.column("transcript_id"), value_set=include_ids)
             )
-        elif include_ids is not None:
-            batch = batch.filter(pc.is_in(transcript_ids, value_set=include_ids))
         yield batch.to_pylist()
 
 

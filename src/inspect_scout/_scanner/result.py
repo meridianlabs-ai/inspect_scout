@@ -221,7 +221,6 @@ class ResultReport(BaseModel):
             columns["scan_error"] = None
             columns["scan_error_traceback"] = None
             columns["scan_error_type"] = None
-            columns["scan_error_has_result"] = None
         elif self.error is not None:
             columns["uuid"] = uuid()
             columns["label"] = None
@@ -235,7 +234,6 @@ class ResultReport(BaseModel):
             columns["scan_error"] = self.error.error
             columns["scan_error_traceback"] = self.error.traceback
             columns["scan_error_type"] = "refusal" if self.error.refusal else None
-            columns["scan_error_has_result"] = False
         else:
             raise ValueError(
                 "A scan result must have either a 'result', 'refusal, or 'error' field."
@@ -248,7 +246,6 @@ class ResultReport(BaseModel):
             columns["scan_error"] = self.error.error
             columns["scan_error_traceback"] = self.error.traceback
             columns["scan_error_type"] = "refusal" if self.error.refusal else None
-            columns["scan_error_has_result"] = True
 
         # report validation
         if self.validation is not None:

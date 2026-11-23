@@ -5,12 +5,16 @@ from typing import Any, Literal
 
 import pytest
 from inspect_ai._util.content import (
+    Content,
+    ContentAudio,
+    ContentBase,
     ContentData,
     ContentDocument,
     ContentImage,
     ContentReasoning,
     ContentText,
     ContentToolUse,
+    ContentVideo,
 )
 from inspect_ai.model import (
     ChatMessage,
@@ -1717,6 +1721,52 @@ def test_message_as_str_without_nonce_writes_names_and_values_as_is(
     message: ChatMessage, expected: str
 ) -> None:
     assert message_as_str(message) == expected
+
+
+class ContentHologram(ContentBase):
+    """A content type the renderer does not know, as from a newer inspect_ai."""
+
+    type: Literal["hologram"] = "hologram"
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        ContentImage(image="data:image/png;base64,abc"),
+        ContentAudio(audio="data:audio/mp3;base64,abc", format="mp3"),
+        ContentVideo(video="data:video/mp4;base64,abc", format="mp4"),
+        ContentData(data={"key": "value"}),
+        ContentDocument(document="data:application/pdf;base64,xyz"),
+        ContentHologram(),
+    ],
+)
+@pytest.mark.parametrize("nonce", [None, "3f9a1c7e"])
+def test_placeholder(content: Content | ContentHologram, nonce: str | None) -> None:
+    """Content that is not text renders as a placeholder naming its type, carrying the nonce when one is set; an unknown type is not dropped."""
+    message = ChatMessageUser.model_construct(
+        content=[ContentText(text="Look"), content]
+    )
+    header = "USER:" if nonce is None else f"USER ({nonce}):"
+    tag = "" if nonce is None else f" {nonce}"
+    assert (
+        message_as_str(message, nonce=nonce)
+        == f"{header}\nLook\n<{content.type}{tag} />\n"
+    )
+
+
+def test_placeholder_in_agent_text_lacks_the_nonce() -> None:
+    """A placeholder written as text renders as written, so it lacks the nonce a real one carries."""
+    message = ChatMessageTool(
+        content=[
+            ContentText(text="<image /> <image 00000000 />"),
+            ContentImage(image="data:image/png;base64,abc"),
+        ],
+        function="screenshot",
+    )
+    assert (
+        message_as_str(message, nonce="3f9a1c7e")
+        == "TOOL (3f9a1c7e):\n<image /> <image 00000000 />\n<image 3f9a1c7e />\n"
+    )
 
 
 @pytest.mark.parametrize(

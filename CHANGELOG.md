@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.6.4](https://github.com/meridianlabs-ai/inspect_scout/compare/0.6.3...0.6.4) (2026-11-23)
+
+
+### Features
+
+* a model provider's compaction renders as its summary, or as a marked placeholder when unreadable ([#866](https://github.com/meridianlabs-ai/inspect_scout/issues/866)) ([dbea363](https://github.com/meridianlabs-ai/inspect_scout/commit/dbea36352537a3d9ac6b51509c92a53424a2dda1))
+
+
+### Bug Fixes
+
+* **cli:** apply scan -F to transcripts from scout.yaml or a scan job ([#860](https://github.com/meridianlabs-ai/inspect_scout/issues/860)) ([6fc23fe](https://github.com/meridianlabs-ai/inspect_scout/commit/6fc23fe0552f7946b9da7416483f0382dbf5f42f))
+* interrupted scan of local eval logs can hang and leaves transcript reads open ([#858](https://github.com/meridianlabs-ai/inspect_scout/issues/858)) ([fdc17b3](https://github.com/meridianlabs-ai/inspect_scout/commit/fdc17b34481075a388e00eb35fa1c7a064c1240d))
+* media placeholders carry the nonce, and unknown content types are no longer dropped ([#865](https://github.com/meridianlabs-ai/inspect_scout/issues/865)) ([4d2b92f](https://github.com/meridianlabs-ai/inspect_scout/commit/4d2b92fd8bcb80bcde347642bb8cc5a223b291de))
+
 ## [0.6.3](https://github.com/meridianlabs-ai/inspect_scout/compare/0.6.2...0.6.3) (2026-11-17)
 
 

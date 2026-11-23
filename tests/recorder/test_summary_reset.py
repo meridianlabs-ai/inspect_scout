@@ -10,6 +10,7 @@ from inspect_scout._recorder.buffer import (
     cleanup_buffer_dir,
 )
 from inspect_scout._recorder.file import FileRecorder
+from inspect_scout._scanner.result import Error
 from inspect_scout._scanspec import ScannerSpec, ScanSpec
 
 
@@ -89,20 +90,25 @@ async def test_init_truncates_errors(tmp_path: Path, scout_buffer_dir: Path) -> 
 
 
 @pytest.mark.asyncio
-async def test_resume_truncates_errors(tmp_path: Path, scout_buffer_dir: Path) -> None:
-    """`resume` truncates the errors file.
+async def test_resume_drops_errors_without_errored_results(
+    tmp_path: Path, scout_buffer_dir: Path
+) -> None:
+    """`resume` keeps only the errors of transcripts whose results are errors.
 
-    Previously-errored transcripts are re-processed (is_recorded returns
-    False for errored parquets). Stale error entries must not persist or
-    they incorrectly mark the scan as incomplete when the retry succeeds.
+    Errored transcripts are re-processed (is_recorded returns False for
+    errored results). An error entry with no errored result behind it is
+    stale and would incorrectly mark the scan as incomplete.
     """
     scans_location = str(tmp_path / "scans")
     spec = _make_spec(["s"])
 
     rec1 = FileRecorder()
     await rec1.init(spec, scans_location)
+    stale = Error(
+        transcript_id="t1", scanner="s", error="test", traceback="", refusal=False
+    )
     with open(str(rec1._scan_buffer._error_file), "w") as f:
-        f.write('{"error": "test"}\n')
+        f.write(stale.model_dump_json() + "\n")
 
     rec2 = FileRecorder()
     await rec2.resume(rec1.scan_dir.as_posix())

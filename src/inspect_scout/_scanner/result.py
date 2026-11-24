@@ -107,6 +107,12 @@ class ResultValidation(BaseModel):
     """The predicate used for validation (e.g., 'eq', 'gte', 'contains')."""
     split: str | None = Field(default=None)
     """The split the validation case belongs to (e.g., 'dev', 'test')."""
+    errored: bool = Field(default=False)
+    """The scan raised before this case could be validated.
+
+    `valid` is then not a verdict: the case is counted in
+    `ValidationMetrics.errored` and left out of the confusion matrix.
+    """
 
 
 class SerializedTranscript(BaseModel):
@@ -250,7 +256,12 @@ class ResultReport(BaseModel):
         # report validation
         if self.validation is not None:
             columns["validation_target"] = to_json_str_compact(self.validation.target)
-            columns["validation_result"] = to_json_str_compact(self.validation.valid)
+            # an errored case keeps its target but has no verdict to record
+            columns["validation_result"] = (
+                None
+                if self.validation.errored
+                else to_json_str_compact(self.validation.valid)
+            )
             columns["validation_predicate"] = self.validation.predicate
             columns["validation_split"] = self.validation.split
             if isinstance(self.validation.valid, dict):

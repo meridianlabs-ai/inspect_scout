@@ -20,6 +20,13 @@ class ValidationEntry(BaseModel):
     valid: bool | dict[str, bool]
     """Whether validation passed."""
 
+    errored: bool = False
+    """The scan raised before this case could be validated.
+
+    `valid` is then not a verdict: the entry is counted in
+    `ValidationMetrics.errored` and left out of the confusion matrix.
+    """
+
     @model_validator(mode="before")
     @classmethod
     def default_missing_fields(cls, data: Any) -> Any:
@@ -47,9 +54,16 @@ class ValidationMetrics(BaseModel):
     fn: int = 0
     """Target truthy, validation failed."""
 
+    errored: int = 0
+    """Cases whose scan raised (a refusal included) before they were validated.
+
+    Not in the confusion matrix, the ratios below, or `total`.
+    """
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def total(self) -> int:
+        """Scored cases: TP + FP + TN + FN. Errored cases are not included."""
         return self.tp + self.fp + self.tn + self.fn
 
     @computed_field  # type: ignore[prop-decorator]
@@ -146,11 +160,19 @@ def compute_validation_metrics(
     Note: If entries contain a mix of bool and dict `valid` values, only dict
     entries are processed (bool entries are silently skipped). This handles
     edge cases in incremental data collection but should be rare in practice.
+
+    Errored entries (scan raised before validation) are counted in `errored`
+    and never enter the confusion matrix. For per-key metrics an errored entry
+    with a dict target counts once against each of its keys; one with a scalar
+    target has no key to attribute it to and counts on the total only.
     """
     # Filter to entries with non-None targets
     with_targets = [e for e in entries if e.target is not None]
     if not with_targets:
         return None
+
+    scored = [e for e in with_targets if not e.errored]
+    errored = [e for e in with_targets if e.errored]
 
     # Check if any entry has dict-based valid
     has_dict_entries = any(isinstance(e.valid, dict) for e in with_targets)
@@ -158,7 +180,16 @@ def compute_validation_metrics(
     if has_dict_entries:
         # Per-key metrics
         per_key: dict[str, ValidationMetrics] = {}
-        for entry in with_targets:
+        unattributed_errored = 0
+        for entry in errored:
+            if isinstance(entry.target, dict):
+                for key in entry.target:
+                    if key not in per_key:
+                        per_key[key] = ValidationMetrics()
+                    per_key[key].errored += 1
+            else:
+                unattributed_errored += 1
+        for entry in scored:
             target = entry.target
             entry_target_positive = is_positive_value(target)
             if isinstance(entry.valid, dict):
@@ -180,17 +211,18 @@ def compute_validation_metrics(
                     _update_metrics(per_key[key], key_target_positive, valid)
 
         # Total is sum of per-key
-        total = ValidationMetrics()
+        total = ValidationMetrics(errored=unattributed_errored)
         for m in per_key.values():
             total.tp += m.tp
             total.fp += m.fp
             total.tn += m.tn
             total.fn += m.fn
+            total.errored += m.errored
         return (total, per_key)
     else:
         # Bool entries - just total
-        total = ValidationMetrics()
-        for entry in with_targets:
+        total = ValidationMetrics(errored=len(errored))
+        for entry in scored:
             target_positive = is_positive_value(entry.target)
             _update_metrics(total, target_positive, entry.valid)  # type: ignore[arg-type]
         return (total, None)

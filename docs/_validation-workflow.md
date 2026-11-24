@@ -140,6 +140,8 @@ Validation results are reported using four standard classification metrics:
 
 : {tbl-colwidths="[20,80]"}
 
+A validation case whose scan raised (a judge error, or a refusal once retries are exhausted) is not scored. It is reported as `errored` alongside the metrics and left out of all four of them and of `total`, so a scanner that fails on some of the labelled cases does not report its accuracy over only the cases it answered. The scan summary shows the count next to the accuracy (for example `0.80 (2 errored)`), and the case's row keeps its `validation_target` with no `validation_result`.
+
 In practice, there's often a tradeoff between precision and recall. A conservative scanner may have high precision but miss cases (low recall), while an aggressive scanner catches more cases (high recall) but with more false positives (lower precision). The right balance depends on your use case. Here are some resources that cover this in more depth:
 
 - [Precision and Recall](https://en.wikipedia.org/wiki/Precision_and_recall) (Wikipedia) — Comprehensive overview of precision, recall, F1, and related metrics.

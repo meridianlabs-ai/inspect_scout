@@ -301,7 +301,7 @@ If you don't require immediate results then batch processing can be an excellent
 
 -   Batch processing can often take several hours so please be patient!. The scan status display shows the number of batches in flight and the average total time take per batch.
 
--   The optimal processing flow for batch mode is to send *all of your transcripts* in a single batch group so that they all complete together. Therefore, when running in batch mode `--max-transcripts` is automatically set to a very high value (10,000). You may need to lower this if holding that many transcripts in memory is problematic.
+-   The optimal processing flow for batch mode is to send *all of your transcripts* in a single batch group so that they all complete together. Therefore, when running in batch mode `--max-transcripts` is automatically set to a very high value (10,000). These workers can also scan the items of one transcript (for example its messages) in parallel. You may need to lower `--max-transcripts` to use less memory.
 
 See the Inspect AI documentation on [Batch Mode](https://inspect.aisi.org.uk/models-batch.html) for additional details on batching as well as notes on provider specific behavior and configuration.
 

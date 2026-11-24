@@ -1,11 +1,13 @@
 import contextlib
 import time
 from collections import deque
+from dataclasses import dataclass, field
 from typing import AsyncIterator, Awaitable, Callable, Literal
 
 import anyio
 import psutil
 from anyio import create_task_group
+from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from inspect_ai.model._providers.util.batch_log import (
     BatchStatus,
     set_batch_log_callback,
@@ -21,15 +23,43 @@ from .._transcript.types import TranscriptInfo
 from ._iterator import SerializedAsyncIterator
 from .common import (
     ConcurrencyStrategy,
+    LoaderItemJob,
     ParseFunctionResult,
     ParseJob,
     ReaderCMFactory,
+    ScanFunction,
     ScanMetrics,
     ScannerJob,
 )
 
 # Module-level counter for assigning unique worker IDs
 worker_id_counter: int = 0
+
+ItemResult = MemoryObjectReceiveStream[ResultReport | None]
+"""Result stream of one started item scan."""
+
+
+@dataclass(eq=False)
+class _JobRecord:
+    """Scheduler state of one admitted `ScannerJob`."""
+
+    job: ScannerJob
+    followers: tuple["_JobRecord", ...]
+    grants: MemoryObjectSendStream[None] | None = None
+    """Grants one pull to the job's owner task. None until the first pull."""
+    replies: MemoryObjectReceiveStream[ItemResult | None] | None = None
+    """The owner's reply to a grant: an item's result stream, or None at end of loader."""
+    in_flight: int = 0
+    loader_done: bool = False
+    reports: list[ResultReport] = field(default_factory=list)
+
+
+def _job_record(job: ScannerJob) -> _JobRecord:
+    return _JobRecord(job, tuple(_job_record(follower) for follower in job.followers))
+
+
+def _flatten(record: _JobRecord) -> list[_JobRecord]:
+    return [record, *(r for follower in record.followers for r in _flatten(follower))]
 
 
 def single_process_strategy(
@@ -57,14 +87,22 @@ def single_process_strategy(
 
     Architecture
     ------------
-    Spawns initial_workers at startup (default: min(10, task_count)), then workers
-    spawn additional workers dynamically up to task_count as they complete tasks.
-    Workers execute in a loop where in each iteration they:
+    Starts all task_count workers at once. Workers execute in a loop where in
+    each iteration they:
     1. Consult the scheduler to determine next action (parse, scan, or wait)
     2. Execute the chosen action
     3. Update metrics
-    4. Potentially spawn additional workers if under task_count
-    5. Yield control to allow other workers to execute
+
+    The unit of scan work is a `LoaderItemJob`: one loader item of a
+    `ScannerJob`. One owner task per job does every pull of the job's loader
+    and closes it. A worker that scans grants one pull to the owner. The owner
+    starts the item scan as a child task (so the scanner sees the loader's
+    context), and the worker holds its slot until that scan ends. While the
+    item scans, the job goes back to the front of the queue so that another
+    worker can pull its next item. A job finishes after its loader ends and its
+    last item scan ends: `on_complete`, then `record_results` with all its
+    reports, then its followers go into the queue. Idle workers wait on an
+    event and wake when a job goes into the queue.
 
     The scheduler decision function evaluates:
     - Whether parse jobs remain to be processed
@@ -90,7 +128,7 @@ def single_process_strategy(
         parse_function: Callable[
             [ParseJob, TranscriptsReader], Awaitable[ParseFunctionResult]
         ],
-        scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]],
+        scan_function: ScanFunction,
         update_metrics: Callable[[ScanMetrics], None] | None = None,
         reader_cm_factory: ReaderCMFactory,
     ) -> None:
@@ -102,7 +140,12 @@ def single_process_strategy(
             task_count * (prefetch_multiple if prefetch_multiple is not None else 1.0)
         )
 
-        scanner_job_deque: deque[ScannerJob] = deque()
+        # jobs that wait for a pull
+        scanner_job_deque: deque[_JobRecord] = deque()
+        # every admitted job that has not finished (leads and followers)
+        live: set[_JobRecord] = set()
+        # one event per idle worker
+        waiters: deque[anyio.Event] = deque()
         process = psutil.Process()
 
         def _on_batch_status(status: BatchStatus) -> None:
@@ -200,16 +243,27 @@ def single_process_strategy(
             # Rule 7: Both queues empty/exhausted
             return "wait"
 
-        async def _perform_wait(current_wait_duration: float) -> float:
-            """Perform the wait action: yield control and update metrics.
+        def _enqueue(record: _JobRecord, *, front: bool = False) -> None:
+            """Put a job into the queue and wake one idle worker."""
+            if front:
+                scanner_job_deque.appendleft(record)
+            else:
+                scanner_job_deque.append(record)
+            if waiters:
+                waiters.popleft().set()
 
-            Returns the next wait duration to use. First wait is 0s, subsequent waits are 1s.
-            """
+        def _wake_all() -> None:
+            while waiters:
+                waiters.popleft().set()
+
+        async def _perform_wait() -> None:
+            """Perform the wait action: wait until a job goes into the queue or a worker exits."""
+            event = anyio.Event()
+            waiters.append(event)
             metrics.tasks_idle += 1
             _update_metrics()
-            await anyio.sleep(current_wait_duration)
+            await event.wait()
             metrics.tasks_idle -= 1
-            return 1.0 if current_wait_duration == 0 else 1.0
 
         async def _perform_parse(worker_id: int, reader: TranscriptsReader) -> bool:
             """Perform the parse action. Returns True if parse job was pulled from the queue, False if there was no parse job to perform."""
@@ -234,7 +288,9 @@ def single_process_strategy(
                 if result[0]:
                     # Success: enqueue the lead scanner job (followers are
                     # attached to it and released when it completes).
-                    scanner_job_deque.append(result[1])
+                    lead = _job_record(result[1])
+                    live.update(_flatten(lead))
+                    _enqueue(lead)
                 else:
                     # Error: record error results
                     for result_report in result[1]:
@@ -250,35 +306,119 @@ def single_process_strategy(
             finally:
                 metrics.tasks_parsing -= 1
 
+        async def _run_item(
+            item: LoaderItemJob, result: MemoryObjectSendStream[ResultReport | None]
+        ) -> None:
+            report = await item.scan()
+            with result:
+                await result.send(report)
+
+        async def _loader_owner(
+            job: ScannerJob,
+            grants: MemoryObjectReceiveStream[None],
+            replies: MemoryObjectSendStream[ItemResult | None],
+        ) -> None:
+            """Do every pull of the job's loader, and close it, in this one task.
+
+            Pulls one item per grant and starts its scan as a child task, so the
+            scan sees the context that the loader set up.
+            """
+            with anyio.CancelScope() as cleanup:
+                items = scan_function(job)
+                try:
+                    async for _ in grants:
+                        try:
+                            item = await anext(items)
+                        except StopAsyncIteration:
+                            await replies.send(None)
+                            grants.close()
+                            replies.close()
+                            return
+                        result_send, result_receive = anyio.create_memory_object_stream[
+                            ResultReport | None
+                        ]()
+                        worker_tg.start_soon(_run_item, item, result_send)
+                        await replies.send(result_receive)
+                finally:
+                    # a cancelled scan must still close the loader
+                    cleanup.shield = True
+                    await items.aclose()
+
+        def _start_owner(
+            job: ScannerJob,
+        ) -> tuple[
+            MemoryObjectSendStream[None], MemoryObjectReceiveStream[ItemResult | None]
+        ]:
+            grant_send, grant_receive = anyio.create_memory_object_stream[None]()
+            reply_send, reply_receive = anyio.create_memory_object_stream[
+                ItemResult | None
+            ]()
+            worker_tg.start_soon(_loader_owner, job, grant_receive, reply_send)
+            return grant_send, reply_receive
+
+        async def _finish(record: _JobRecord) -> None:
+            """Finish a job once: `on_complete`, record its reports, release its followers."""
+            # the claim: no await before this, so only one caller gets here
+            live.remove(record)
+            try:
+                if record.job.on_complete is not None:
+                    with anyio.CancelScope(shield=True):
+                        await record.job.on_complete()
+                await record_results(
+                    record.job.transcript_info,
+                    record.job.scanner_name,
+                    record.reports,
+                )
+                metrics.completed_scans += 1
+            finally:
+                # Release any followers held back by this lead. No-op when the
+                # job has no followers (single-scanner-per-transcript case).
+                for follower in record.followers:
+                    _enqueue(follower)
+
         async def _perform_scan(worker_id: int) -> bool:
-            """Perform the scan action. Returns True if scan completed, False otherwise."""
+            """Perform the scan action: pull one item of a job, and scan it.
+
+            Returns True if it pulled from a job, False if the queue was empty.
+            """
             if len(scanner_job_deque) == 0:
                 # Race condition: queue became empty
                 await anyio.sleep(0)
                 return False
 
-            scanner_job = scanner_job_deque.popleft()
+            record = scanner_job_deque.popleft()
             exec_start_time = time.time()
             metrics.tasks_scanning += 1
             _update_metrics()
 
             try:
-                await record_results(
-                    scanner_job.transcript_info,
-                    scanner_job.scanner_name,
-                    await scan_function(scanner_job),
-                )
-                metrics.completed_scans += 1
-                print_diagnostics(
-                    f"Worker #{worker_id:02d}",
-                    f"Scanned ({(time.time() - exec_start_time):.3f}s) - {_scanner_job_info(scanner_job)}",
-                )
+                if record.grants is None or record.replies is None:
+                    record.grants, record.replies = _start_owner(record.job)
+                await record.grants.send(None)
+                item_result = await record.replies.receive()
+                if item_result is None:
+                    record.loader_done = True
+                    record.grants.close()
+                    record.replies.close()
+                else:
+                    # let another worker pull the next item while this one scans
+                    _enqueue(record, front=True)
+                    record.in_flight += 1
+                    with item_result:
+                        report = await item_result.receive()
+                    if report is not None:
+                        record.reports.append(report)
+                    record.in_flight -= 1
+                    print_diagnostics(
+                        f"Worker #{worker_id:02d}",
+                        f"Scanned ({(time.time() - exec_start_time):.3f}s) - {_scanner_job_info(record.job)}",
+                    )
+                # If the item scan raises, this worker does not get here: the
+                # task group failure path and the drain own the job.
+                if record.loader_done and record.in_flight == 0:
+                    await _finish(record)
                 return True
             finally:
-                # Release any followers held back by this lead. No-op when the
-                # job has no followers (single-scanner-per-transcript case).
-                for follower in scanner_job.followers:
-                    scanner_job_deque.append(follower)
                 metrics.tasks_scanning -= 1
 
         async def _worker_task(
@@ -289,16 +429,14 @@ def single_process_strategy(
             nonlocal parse_jobs_exhausted
             scans_completed = 0
             parses_completed = 0
-            wait_duration = 0.0
 
             try:
                 while True:
                     action = _choose_next_action()
 
                     if action == "wait":
-                        wait_duration = await _perform_wait(wait_duration)
+                        await _perform_wait()
                     elif action == "parse":
-                        wait_duration = 0.0
                         if await _perform_parse(worker_id, reader):
                             parses_completed += 1
                         else:
@@ -307,7 +445,6 @@ def single_process_strategy(
                             )
                             parse_jobs_exhausted = True
                     elif action == "scan":
-                        wait_duration = 0.0
                         if await _perform_scan(worker_id):
                             scans_completed += 1
 
@@ -325,6 +462,8 @@ def single_process_strategy(
                 )
             finally:
                 metrics.task_count -= 1
+                # the woken workers see this worker gone and check for the end
+                _wake_all()
                 _update_metrics()
 
         async def _metrics_ticker(scope: anyio.CancelScope) -> None:
@@ -340,7 +479,7 @@ def single_process_strategy(
                     ticker_scope = anyio.CancelScope()
                     tg.start_soon(_metrics_ticker, ticker_scope)
 
-                    # Spawn initial workers for faster ramp-up
+                    # Start all workers at once
                     global worker_id_counter
                     async with create_task_group() as worker_tg:
                         for _ in range(task_count):
@@ -350,6 +489,18 @@ def single_process_strategy(
                                 _worker_task, worker_id_counter, reader
                             )
                     ticker_scope.cancel()
+
+            # The pool can also end with no exception when a scanner or loader
+            # raises a bare CancelledError. Do not report that as a success.
+            if not parse_jobs_exhausted or live:
+                raise RuntimeError(
+                    f"Scan interrupted: {len(live)} scanner jobs did not finish"
+                    + (
+                        ""
+                        if parse_jobs_exhausted
+                        else ", and transcripts remain to parse"
+                    )
+                )
 
         except Exception as ex:
             raise inner_exception(ex) from None
@@ -367,29 +518,27 @@ def single_process_strategy(
             final_metrics_delivered = True
 
             # A worker pool torn down early (exception, cancellation) can
-            # strand jobs still sitting in scanner_job_deque -- most commonly
-            # a follower whose lead already ran, or a lead whose followers
-            # were never released. Each carries a share of a refcounted
-            # TranscriptHandle (see ScannerJob.on_complete); undispatched, its
-            # on_complete never fires and the handle never closes. Shielded:
-            # the ambient scope may already be cancelled here, and an
-            # unshielded await would raise before closing anything. Runs after
+            # leave jobs that did not finish: in the queue, during a pull or
+            # an item scan, or followers never released. Each carries a share
+            # of a refcounted TranscriptHandle (see ScannerJob.on_complete);
+            # unfinished, its on_complete never fires and the handle never
+            # closes. A job leaves `live` exactly once (here or in its finish
+            # step), so no share is released twice. Shielded: the ambient
+            # scope may already be cancelled here, and an unshielded await
+            # would raise before closing anything. Runs after
             # reader_cm_factory's context manager has exited -- safe today
             # because on_complete only touches the handle, not the reader, but
             # an unstated coupling worth knowing about.
             with anyio.CancelScope(shield=True):
-                pending = list(scanner_job_deque)
-                scanner_job_deque.clear()
-                while pending:
-                    job = pending.pop()
-                    pending.extend(job.followers)
-                    if job.on_complete is not None:
+                while live:
+                    on_complete = live.pop().job.on_complete
+                    if on_complete is not None:
                         # One job's on_complete raising must not stop the
                         # rest from draining -- each still holds a real share
                         # of the refcount, and swallowing this exception (not
                         # letting it replace whatever's already propagating)
                         # is strictly better than leaking the handle.
                         with contextlib.suppress(Exception):
-                            await job.on_complete()
+                            await on_complete()
 
     return the_func

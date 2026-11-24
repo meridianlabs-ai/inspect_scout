@@ -63,7 +63,10 @@ class ScanOptions(BaseModel):
     """Options used for scan."""
 
     max_transcripts: int = Field(default=DEFAULT_MAX_TRANSCRIPTS)
-    """Maximum number of concurrent transcripts (defaults to 25)."""
+    """Sets the number of scan workers: `max_transcripts` x scanners (defaults to 25).
+
+    A worker scans one whole transcript or one loader item.
+    """
 
     max_processes: int | None = Field(default=None)
     """Number of worker processes. Defaults to 4."""

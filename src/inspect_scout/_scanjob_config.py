@@ -57,7 +57,7 @@ class ScanJobConfig(BaseModel):
     """Named roles for use in `get_model()`."""
 
     max_transcripts: int | None = Field(default=None)
-    """The maximum number of transcripts to process concurrently (this also serves as the default value for `max_connections`). Defaults to 25."""
+    """Sets the number of scan workers: `max_transcripts` x scanners. A worker scans one whole transcript or one loader item (this also serves as the default value for `max_connections`). Defaults to 25."""
 
     max_processes: int | None = Field(default=None)
     """The maximum number of concurrent processes (for multiproccesing). Defaults to 4."""

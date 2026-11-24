@@ -248,6 +248,8 @@ def my_scanner() -> Scanner[ChatMessageUser | ChatMessageAssistant]:
     return scan
 ```
 
+Scout scans the messages of one transcript in parallel, in no fixed order. This also applies to scanners that take one event.
+
 ## Timeline Scanners {#timelines}
 
 Timelines provide a hierarchical view of agent execution, organizing flat events into a tree of spans that represent agent invocations, tool calls, and other structured activities. While flat message and event lists work well for simple transcripts, timelines are essential for understanding multi-agent or deeply nested agent workflows.
@@ -319,6 +321,33 @@ def assistant_refusals() -> Scanner[list[ChatMessage]]:
 
     return scan
 ```
+
+Scout can scan the items of one loader in parallel. Scout can pull the next item, or finish your loader, while a scanner still works on an earlier item. After your loader yields a value, do not change that value. Yield a new object for each item.
+
+Bad: the loader yields one list, then clears it and fills it again. A scanner that still reads the first window sees the second window.
+
+``` python
+async def load(transcript: Transcript) -> AsyncIterator[list[ChatMessage]]:
+    window: list[ChatMessage] = []
+    for message in transcript.messages:
+        window.append(message)
+        if len(window) == 10:
+            yield window
+            window.clear()  # changes the list that a scanner can still read
+    if window:
+        yield window
+```
+
+Good: make a new list after each yield.
+
+``` python
+            yield window
+            window = []
+```
+
+If your loader's cleanup awaits, put that cleanup in a shielded cancel scope. A cancelled scan can stop it otherwise.
+
+A cancel scope or timeout that your loader holds open across a `yield` does not apply to the scanner. The scanner runs in a different task.
 
 ## Streaming Large Transcripts {#streaming}
 

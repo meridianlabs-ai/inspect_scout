@@ -91,7 +91,7 @@ Project files support all of the same options available to [scan jobs](#scan-job
 | `model_args` | dict \| str | Model creation args as a dictionary or path to JSON/YAML file. |
 | `generate_config` | dict | Generation config (e.g., `temperature`) |
 | `model_roles` | dict | Named model roles for use with `get_model()`. |
-| `max_transcripts` | int | Maximum concurrent transcripts to process (defaults to 25). |
+| `max_transcripts` | int | Sets the number of scan workers: `max_transcripts` x scanners. A worker scans one whole transcript or one loader item (defaults to 25). |
 | `max_processes` | int | Maximum concurrent processes for multiprocessing (defaults to 4). |
 | `limit` | int | Limit the number of transcripts processed. |
 | `shuffle` | bool \| int | Shuffle transcript order. Pass an `int` to set a random seed. |

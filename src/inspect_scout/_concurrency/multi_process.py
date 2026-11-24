@@ -63,8 +63,8 @@ from .common import (
     ParseFunctionResult,
     ParseJob,
     ReaderCMFactory,
+    ScanFunction,
     ScanMetrics,
-    ScannerJob,
     sum_metrics,
 )
 
@@ -137,6 +137,8 @@ def multi_process_strategy(
         max_processes = min(
             DEFAULT_MAX_PROCESS, multiprocessing.cpu_count(), total_scans
         )
+    # a process with no worker task never parses, so it could not finish
+    max_processes = min(max_processes, task_count)
 
     async def the_func(
         *,
@@ -147,7 +149,7 @@ def multi_process_strategy(
         parse_function: Callable[
             [ParseJob, TranscriptsReader], Awaitable[ParseFunctionResult]
         ],
-        scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]],
+        scan_function: ScanFunction,
         update_metrics: Callable[[ScanMetrics], None] | None = None,
         reader_cm_factory: ReaderCMFactory,
     ) -> None:

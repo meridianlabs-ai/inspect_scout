@@ -38,8 +38,8 @@ if TYPE_CHECKING:
         ParseFunctionResult,
         ParseJob,
         ReaderCMFactory,
+        ScanFunction,
         ScanMetrics,
-        ScannerJob,
     )
 
 
@@ -258,8 +258,8 @@ class IPCContext:
     ]
     """Function that executes a parse job yielding scanner jobs."""
 
-    scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]]
-    """Function that executes a scanner job and returns results."""
+    scan_function: ScanFunction
+    """Function that pulls a scanner job's loader items, one `LoaderItemJob` each."""
 
     reader_cm_factory: ReaderCMFactory
     """Factory that yields a context-managed `TranscriptsReader` for this worker."""

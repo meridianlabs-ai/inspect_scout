@@ -4,6 +4,7 @@ from typing import (
     AbstractSet,
     Any,
     AsyncContextManager,
+    AsyncGenerator,
     AsyncIterator,
     Awaitable,
     Callable,
@@ -99,16 +100,14 @@ class ScannerJob(NamedTuple):
     """
 
     on_complete: Callable[[], Awaitable[None]] | None = None
-    """Awaited once after this job's scan completes, or once by the strategy's
-    teardown drain if the job is stranded undispatched.
+    """Awaited once by the strategy: by the job's finish step after its last
+    item scan ends, or by the teardown drain if the job does not finish.
 
     Closes the shared `TranscriptHandle` once the last job (lead + all
     followers) has finished. `None` for the materialized-`Transcript` path.
 
-    Both callers run it in a `finally`, so it must be cheap and total: the
-    drain runs after the reader context manager has exited and swallows
-    whatever it raises (`single_process.py`), and `_scan_one` awaits it while
-    another exception may be propagating.
+    It must be cheap and total: the drain runs it after the reader context
+    manager has exited and swallows whatever it raises (`single_process.py`).
     """
 
     @property
@@ -116,6 +115,20 @@ class ScannerJob(NamedTuple):
         """Metadata for the union transcript; a `Transcript` is itself one."""
         union = self.union_transcript
         return union if isinstance(union, Transcript) else union.info
+
+
+class LoaderItemJob(NamedTuple):
+    """One loader item of a `ScannerJob`: the unit of work of the strategy."""
+
+    scanner_job: ScannerJob
+    """The job whose loader yielded this item."""
+
+    scan: Callable[[], Awaitable[ResultReport | None]]
+    """Scan one pulled item. None: the item has no input ids, record nothing."""
+
+
+ScanFunction = Callable[[ScannerJob], AsyncGenerator[LoaderItemJob, None]]
+"""Pull the items of a `ScannerJob`'s loader, one `LoaderItemJob` per item."""
 
 
 ParseFunctionResult = (
@@ -156,7 +169,7 @@ class ConcurrencyStrategy(Protocol):
         parse_function: Callable[
             [ParseJob, TranscriptsReader], Awaitable[ParseFunctionResult]
         ],
-        scan_function: Callable[[ScannerJob], Awaitable[list[ResultReport]]],
+        scan_function: ScanFunction,
         record_results: Callable[
             [TranscriptInfo, str, list[ResultReport]], Awaitable[None]
         ],

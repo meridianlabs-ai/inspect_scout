@@ -21,6 +21,7 @@ from inspect_ai.model import (
     ChatMessageAssistant,
     ChatMessageTool,
     Content,
+    ContentData,
 )
 from inspect_ai.util import warn_once
 from typing_extensions import Unpack
@@ -171,8 +172,9 @@ async def messages_as_str(
           formatted strings as a list.
        nonce: If set, written on every marker in the output: message
           headers (e.g. `USER (3f9a1c7e):`), `Tool Call`, `Tool Use` and
-          tool error lines, reasoning and prefill tags (e.g.
-          `<thinking 3f9a1c7e>`), and the start and end lines of a tool call
+          tool error lines, reasoning, prefill and compaction tags (e.g.
+          `<thinking 3f9a1c7e>`), placeholders for content that is not
+          text (e.g. `<image 3f9a1c7e />`), and the start and end lines of a tool call
           argument that spans lines. A reader that knows the nonce can then
           tell real markers from text in a message that imitates one. Must
           be at least 8 characters, all ASCII letters and digits.
@@ -290,8 +292,9 @@ def message_numbering(
             message IDs to their assigned labels (e.g. ``"M3"``).
         nonce: If set, written on every marker in the output: message
             headers (e.g. ``[M2] USER (3f9a1c7e):``), ``Tool Call``, ``Tool Use`` and
-            tool error lines, reasoning and prefill tags (e.g.
-            ``<thinking 3f9a1c7e>``), and the start and end lines of a tool call
+            tool error lines, reasoning, prefill and compaction tags (e.g.
+            ``<thinking 3f9a1c7e>``), placeholders for content that is not
+            text (e.g. ``<image 3f9a1c7e />``), and the start and end lines of a tool call
             argument that spans lines. A reader that knows the nonce can then
             tell real markers from text in a message that imitates one. Must
             be at least 8 characters, all ASCII letters and digits.
@@ -358,8 +361,9 @@ def message_as_str(
         preprocessor: Content filter for messages. Defaults to removing system messages.
         nonce: If set, written on every marker in the output: message
             headers (e.g. ``USER (3f9a1c7e):``), ``Tool Call``, ``Tool Use`` and
-            tool error lines, reasoning and prefill tags (e.g.
-            ``<thinking 3f9a1c7e>``), and the start and end lines of a tool call
+            tool error lines, reasoning, prefill and compaction tags (e.g.
+            ``<thinking 3f9a1c7e>``), placeholders for content that is not
+            text (e.g. ``<image 3f9a1c7e />``), and the start and end lines of a tool call
             argument that spans lines. A reader that knows the nonce can then
             tell real markers from text in a message that imitates one. Must
             be at least 8 characters, all ASCII letters and digits.
@@ -485,12 +489,34 @@ def _role_label(message: ChatMessage, *, upper_fallback: bool) -> str:
     return message.role.upper() if upper_fallback else message.role
 
 
+def _provider_compaction_text(content: Content, nonce: str | None) -> str | None:
+    """A model provider's compaction of earlier messages as text, or None for other content.
+
+    Inspect keeps a provider's compaction as data content holding `compaction_metadata`. Anthropic's (`"anthropic_compact"`) holds a readable summary, which renders between `<compaction_summary>` tags. OpenAI's (`"openai_compact"`) is encrypted, as is any other kind as far as Scout knows: with a nonce it renders as `<compaction_unreadable 3f9a1c7e />`, and without one it is left to render as data.
+    """
+    if not isinstance(content, ContentData):
+        return None
+    metadata = content.data.get("compaction_metadata")
+    if not isinstance(metadata, dict):
+        return None
+    tag = _tag_nonce(nonce)
+    summary = metadata.get("content")
+    if metadata.get("type") == "anthropic_compact" and isinstance(summary, str):
+        close_break = "\n" if nonce is not None else ""
+        return (
+            f"<compaction_summary{tag}>{summary}{close_break}</compaction_summary{tag}>"
+        )
+    return None if nonce is None else f"<compaction_unreadable{tag} />"
+
+
 def _text_from_content(
     content: Content,
     exclude_tool_usage: bool,
     exclude_reasoning: bool,
     nonce: str | None,
 ) -> str | None:
+    if (compaction := _provider_compaction_text(content, nonce)) is not None:
+        return compaction
     tag = _tag_nonce(nonce)
     mark = _marker_nonce(nonce)
     # with a nonce, a closing tag starts its own line, so reasoning text that
@@ -521,7 +547,11 @@ def _text_from_content(
                 else f"\nTool Use{mark}: {content.name}({content.arguments}) -> {content.result} {content.error if content.error else ''}"
             )
         case "image" | "audio" | "video" | "data" | "document":
-            return f"<{content.type} />"
+            return f"<{content.type}{tag} />"
+        case _:
+            # a content type this version does not know, such as one from a
+            # newer inspect_ai: name it rather than drop it
+            return f"<{content.type}{tag} />"
 
 
 def _better_content_text(

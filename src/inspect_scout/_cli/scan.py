@@ -1,3 +1,4 @@
+from functools import reduce
 from logging import getLogger
 from typing import Any, Callable, Literal, TypeVar, cast
 
@@ -558,14 +559,14 @@ def scan_command(
     # need to resolve project against scanjob here so it can override env vars
     merge_project_into_scanjob(read_project(), scanjob)
 
-    # resolve transcripts from cli/env (apply filter)
+    # resolve transcripts from cli/env
     tx = transcripts_from(transcripts) if len(transcripts) > 0 else None
-    if tx is not None:
-        for f in filter:
-            tx = tx.where(f)
 
     # tx might have been from env so enable it to be overridden by project/scanjob
     tx = resolve_scan_option(ctx, "transcripts", tx, scanjob.transcripts)
+
+    if tx is not None:
+        tx = reduce(lambda t, f: t.where(f), filter, tx)
 
     # resolve some options
     scans = resolve_scan_option(ctx, "scans", scans, scanjob.scans)

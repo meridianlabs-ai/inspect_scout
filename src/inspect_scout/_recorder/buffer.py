@@ -2,8 +2,10 @@ import json
 import os
 import shutil
 import uuid
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
+from logging import getLogger
 from typing import Any, BinaryIO, Final, Sequence, Set, TypeVar, cast
 
 import anyio
@@ -14,12 +16,14 @@ import pyarrow.parquet as pq
 from inspect_ai._util.appdirs import inspect_data_dir
 from inspect_ai._util.file import file
 from inspect_ai._util.hash import mm3_hash
+from inspect_ai.log._util import thin_metadata
 from inspect_ai.scorer import value_to_float
 from pydantic import JsonValue
 from pydantic_core import to_json
 from upath import UPath
 
 from inspect_scout._recorder.summary import Summary
+from inspect_scout._util.constants import TRANSCRIPT_METADATA_MAX_CHARS
 from inspect_scout._util.path import normalize_for_hashing
 
 from .._scanner.result import Error, ResultReport
@@ -27,7 +31,12 @@ from .._scanspec import ScanSpec
 from .._transcript.types import TranscriptInfo
 from .._transcript.util import LazyJSONDict
 
+logger = getLogger(__name__)
+
 SCAN_ERRORS = "_errors.jsonl"
+_REPLACED = "replaced"
+"""Key of a buffer errors-file entry that drops its pair's earlier entries."""
+_MARKER_KEYS = {"transcript_id", "scanner", _REPLACED}
 SCAN_SUMMARY = "_summary.json"
 
 
@@ -41,6 +50,12 @@ SCAN_SUMMARY = "_summary.json"
 class _BufferState:
     lock: anyio.Lock
     summary: Summary | None = None
+    error_counts: Counter[tuple[str, str]] | None = None
+    """Per (transcript_id, scanner), its current errors in `_errors.jsonl`."""
+    current_errors: int = 0
+    """The total of `error_counts`."""
+    stale_lines: int = 0
+    """Lines of `_errors.jsonl` this process replaced (see `_replace_errors`)."""
 
 
 _buffer_states: dict[str, _BufferState] = {}
@@ -99,7 +114,7 @@ class RecorderBuffer:
 
         This is purely a passive constructor: it reads existing buffer state
         from disk or creates fresh files only if they don't exist. Mode-
-        specific setup (clearing for a fresh scan, truncating errors for a
+        specific setup (clearing for a fresh scan, resetting errors for a
         retry-resume, preserving errors for a continuation) is the caller's
         responsibility — see `FileRecorder.init` / `resume` / `attach`.
 
@@ -173,6 +188,7 @@ class RecorderBuffer:
         transcript_error = resolve_metadata_var(transcript.error, "error", m)
         transcript_limit = resolve_metadata_var(transcript.limit, "limit", m)
 
+        transcript_metadata = _transcript_metadata_column(transcript)
         records = [
             cast(
                 dict[str, str | bool | int | float | None],
@@ -199,7 +215,7 @@ class RecorderBuffer:
                     "transcript_limit": transcript_limit,
                     # no metadata fallback: trust only ever comes from the field
                     "transcript_trust_content": transcript.trust_content,
-                    "transcript_metadata": transcript.metadata,
+                    "transcript_metadata": transcript_metadata,
                     "scan_id": self._spec.scan_id,
                     "scan_tags": self._spec.tags or [],
                     "scan_metadata": self._spec.metadata or {},
@@ -256,12 +272,13 @@ class RecorderBuffer:
             assert self._state.summary is not None  # set in __init__
             self._state.summary._report(transcript, scanner, results, metrics)
             _persist_scan_summary(self._buffer_dir, self._state.summary)
-
-        # record errors (open(..., "at") gives OS-atomic appends)
-        for result in results:
-            if result.error is not None:
-                with open(str(self._error_file), "at") as f:
-                    f.write(result.error.model_dump_json(warnings=False) + "\n")
+            # these results replace the transcript's earlier ones, so they
+            # also replace its earlier errors (e.g. on a successful retry)
+            self._replace_errors(
+                transcript.transcript_id,
+                scanner,
+                [result.error for result in results if result.error is not None],
+            )
 
     async def record_metrics(
         self,
@@ -273,53 +290,104 @@ class RecorderBuffer:
             self._state.summary._report_metrics(scanner, metrics)
             _persist_scan_summary(self._buffer_dir, self._state.summary)
 
-    async def is_recorded(self, transcript_id: str, scanner: str) -> bool:
+    def is_buffered(self, transcript_id: str, scanner: str) -> bool:
+        """Whether the buffer holds results for this transcript and scanner.
+
+        A buffered transcript's results replace any synced ones (see
+        `scanner_table`), so the buffer is authoritative for it.
+        """
+        return self._transcript_file(transcript_id, scanner).exists()
+
+    def buffered_transcripts(self, scanner: str) -> list[str]:
+        """Ids of the transcripts with buffered results for `scanner`."""
         sdir = self._buffer_dir / f"scanner={_sanitize_component(scanner)}"
-        transcript_file = sdir / f"{transcript_id}.parquet"
-        if transcript_file.exists():
-            # check if there are any non-null scan_error fields
-            table = pq.read_table(transcript_file.as_posix(), columns=["scan_error"])
-            scan_errors = table.column("scan_error")
-            if pc.any(pc.is_valid(scan_errors)).as_py():
-                return False
-            return True
-        else:
-            return False
+        return [p.stem for p in sdir.glob("*.parquet")] if sdir.exists() else []
+
+    def is_errored(self, transcript_id: str, scanner: str) -> bool:
+        """Whether any buffered result for the transcript is an error."""
+        path = self._transcript_file(transcript_id, scanner)
+        table = pq.read_table(path.as_posix(), columns=["scan_error"])
+        return bool(pc.any(pc.is_valid(table.column("scan_error"))).as_py())
+
+    def discard(self, transcript_id: str, scanner: str) -> None:
+        """Remove the transcript's buffered results (its errors are kept)."""
+        self._transcript_file(transcript_id, scanner).unlink(missing_ok=True)
+
+    def _transcript_file(self, transcript_id: str, scanner: str) -> UPath:
+        sdir = self._buffer_dir / f"scanner={_sanitize_component(scanner)}"
+        return sdir / f"{transcript_id}.parquet"
+
+    async def is_recorded(self, transcript_id: str, scanner: str) -> bool:
+        return self.is_buffered(transcript_id, scanner) and not self.is_errored(
+            transcript_id, scanner
+        )
 
     def errors(self) -> list[Error]:
-        return read_scan_errors(str(self._error_file))
+        return read_buffer_errors(self._buffer_dir)
+
+    def reset_errors(self, errors: Sequence[Error]) -> None:
+        """Replace every recorded error (e.g. with the errors still outstanding)."""
+        self._write_errors(errors)
+        self._state.error_counts = Counter((e.transcript_id, e.scanner) for e in errors)
+        self._state.current_errors = len(errors)
+        self._state.stale_lines = 0
+
+    def _replace_errors(
+        self, transcript_id: str, scanner: str, errors: Sequence[Error]
+    ) -> None:
+        """Replace the errors recorded for a transcript (caller holds the lock).
+
+        Rather than rewriting the file, this appends a `_REPLACED` entry for
+        the transcript followed by its new errors, in one write, so a record
+        costs the same however many errors are outstanding. The file is
+        rewritten without the replaced lines once they outnumber the rest.
+        """
+        state = self._state
+        if state.error_counts is None:
+            errors_now = self.errors()
+            state.error_counts = Counter(
+                (e.transcript_id, e.scanner) for e in errors_now
+            )
+            state.current_errors = len(errors_now)
+        key = (transcript_id, scanner)
+        replaced = state.error_counts.pop(key, 0)
+        lines = [error.model_dump_json(warnings=False) + "\n" for error in errors]
+        if replaced:
+            marker = {
+                "transcript_id": transcript_id,
+                "scanner": scanner,
+                _REPLACED: True,
+            }
+            lines.insert(0, json.dumps(marker) + "\n")
+            state.current_errors -= replaced
+            state.stale_lines += replaced + 1
+        if lines:
+            with open(str(self._error_file), "at") as f:
+                f.write("".join(lines))
+        if errors:
+            state.error_counts[key] = len(errors)
+            state.current_errors += len(errors)
+        if state.stale_lines > state.current_errors:
+            self._write_errors(self.errors())
+            state.stale_lines = 0
+
+    def _write_errors(self, errors: Sequence[Error]) -> None:
+        tmp_file = self._buffer_dir / f".{SCAN_ERRORS}.{uuid.uuid4().hex}.tmp"
+        with open(tmp_file.as_posix(), "w") as f:
+            for error in errors:
+                f.write(error.model_dump_json(warnings=False) + "\n")
+        os.replace(tmp_file.as_posix(), self._error_file.as_posix())
 
     async def recorded_values(
         self, transcript_id: str, scanner: str
     ) -> list[JsonValue]:
         def read() -> list[JsonValue]:
-            path = (
-                self._buffer_dir
-                / f"scanner={_sanitize_component(scanner)}"
-                / f"{transcript_id}.parquet"
-            )
+            path = self._transcript_file(transcript_id, scanner)
             table = pq.read_table(path.as_posix(), columns=["value", "value_type"])
-            values: list[JsonValue] = []
-            for row in table.to_pylist():
-                value = row["value"]
-                if isinstance(value, str) and row["value_type"] != "string":
-                    # Lists and dicts are stored as JSON text under any type
-                    # label. Scalars only become text in mixed columns, where
-                    # they use Python spellings that never start with [ or {.
-                    if value.startswith(("[", "{")):
-                        value = json.loads(value)
-                    elif row["value_type"] == "boolean":
-                        value = value.lower() == "true"
-                    elif row["value_type"] == "number" and value in (
-                        "nan",
-                        "inf",
-                        "-inf",
-                    ):
-                        value = float(value)
-                    else:
-                        value = json.loads(value)
-                values.append(value)
-            return values
+            return [
+                decode_recorded_value(row["value"], row["value_type"])
+                for row in table.to_pylist()
+            ]
 
         return await anyio.to_thread.run_sync(read)
 
@@ -333,6 +401,22 @@ class RecorderBuffer:
 
 
 T = TypeVar("T")
+
+
+def decode_recorded_value(value: Any, value_type: str | None) -> JsonValue:
+    """Restore a stored result value to the type the scanner returned."""
+    if isinstance(value, str) and value_type not in ("string", None):
+        # Lists and dicts are stored as JSON text under any type label.
+        # Scalars only become text in mixed columns (and in compacted
+        # results), where they use spellings that never start with [ or {.
+        if value.startswith(("[", "{")):
+            return cast(JsonValue, json.loads(value))
+        if value_type == "boolean":
+            return value.lower() == "true"
+        if value_type == "number" and value in ("nan", "inf", "-inf"):
+            return float(value)
+        return cast(JsonValue, json.loads(value))
+    return cast(JsonValue, value)
 
 
 def resolve_metadata_var(
@@ -598,6 +682,50 @@ _SERIALIZED_INPUT_COLUMNS = frozenset({"input", "input_data"})
 """Columns `ResultReport.to_df_columns` fills with pre-serialized UTF-8 JSON."""
 
 
+def _transcript_metadata_column(transcript: TranscriptInfo) -> Any:
+    serialized = _normalize_scalar("transcript_metadata", transcript.metadata)
+    # Sample metadata can embed whole files; parquet strings must stay under 2 GiB.
+    if isinstance(serialized, str) and len(serialized) > TRANSCRIPT_METADATA_MAX_CHARS:
+        logger.warning(
+            "Transcript %s: metadata serializes to %d characters, over the %d cap; "
+            "recording it thinned.",
+            transcript.transcript_id,
+            len(serialized),
+            TRANSCRIPT_METADATA_MAX_CHARS,
+        )
+        serialized = _normalize_scalar(
+            "transcript_metadata", _thin_metadata(transcript.metadata)
+        )
+    return serialized
+
+
+# inspect's `thin_metadata` keeps a value whose JSON is at most 1 KB and replaces
+# a larger one with this marker.
+_THIN_MAX_JSON_CHARS = 1024
+_THIN_REMOVED = "Key removed from summary (> 1k)"
+# The most JSON text shrinks when parsed and written compactly, whitespace
+# aside: the escape pair `\ud83d\ude00` is 12 characters for one.
+_JSON_MAX_SHRINK = 12
+
+
+def _thin_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
+    if isinstance(metadata, LazyJSONDict):
+        # `thin_metadata` walks `.items()`, which yields an unread JSON value as
+        # its raw text, so the object would be recorded as a (truncated) string.
+        # Resolve those first; one that cannot fit is dropped without parsing.
+        resolved: dict[str, Any] = {}
+        for key in metadata:
+            raw = metadata.unread_json(key)
+            too_big = (
+                raw is not None
+                and len(raw) - sum(map(raw.count, " \t\n\r"))
+                > _JSON_MAX_SHRINK * _THIN_MAX_JSON_CHARS
+            )
+            resolved[key] = _THIN_REMOVED if too_big else metadata[key]
+        metadata = resolved
+    return thin_metadata(metadata)
+
+
 def _normalize_scalar(key: str, v: Any) -> Any:
     if v is None:
         return None
@@ -705,6 +833,29 @@ def read_scan_errors(error_file: str) -> list[Error]:
             return errors
     except FileNotFoundError:
         return []
+
+
+def read_buffer_errors(buffer_dir: UPath) -> list[Error]:
+    """Read a buffer's errors file.
+
+    Unlike a scan dir's errors file it can hold `_REPLACED` entries, each
+    dropping the earlier errors of its (transcript_id, scanner) pair.
+    """
+    errors: list[Error | None] = []
+    positions: dict[tuple[str, str], list[int]] = {}
+    try:
+        with file((buffer_dir / SCAN_ERRORS).as_posix(), "r") as f:
+            for entry in jsonlines.Reader(f).iter(type=dict):
+                key = (entry["transcript_id"], entry["scanner"])
+                if entry.keys() == _MARKER_KEYS:
+                    for position in positions.pop(key, []):
+                        errors[position] = None
+                else:
+                    positions.setdefault(key, []).append(len(errors))
+                    errors.append(Error(**entry))
+    except FileNotFoundError:
+        return []
+    return [error for error in errors if error is not None]
 
 
 def read_scan_summary(scan_dir: UPath, spec: ScanSpec) -> Summary:

@@ -431,7 +431,7 @@ Because context-window segmentation can produce multiple results from a single s
 | `ResultReducer.max` | Maximum of numeric values. |
 | `ResultReducer.min` | Minimum of numeric values. |
 | `ResultReducer.union` | Union of list values, deduplicated, preserving order. |
-| `ResultReducer.majority` | Most common value, with last-result tiebreaker. |
+| `ResultReducer.majority` | Most common value among results that parsed, with last-result tiebreaker. |
 | `ResultReducer.last` | Returns the last result with merged auxiliary fields. |
 
 All reducers are async functions with signature `(list[Result]) -> Result`.

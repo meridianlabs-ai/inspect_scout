@@ -18,3 +18,6 @@ TRANSCRIPT_SOURCE_DATABASE: Literal["eval_log", "database"] = "database"
 
 SPOOL_THRESHOLD_BYTES: int = 64 * 1024 * 1024
 """Byte-size threshold above which transcript reads stream via disk spool instead of materializing."""
+
+TRANSCRIPT_METADATA_MAX_CHARS: int = 64 * 1024 * 1024
+"""Serialized length above which result rows record thinned transcript metadata instead of the full value."""

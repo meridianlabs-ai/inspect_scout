@@ -274,7 +274,7 @@ wheels = [
 
 [[package]]
 name = "anthropic"
-version = "2.10.0"
+version = "2.13.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -286,9 +286,9 @@ dependencies = [
     { name = "sniffio" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/49/e4/42615a688c415bb4a05510c3964c58e04b5b88d574ecf07455371ce758b7/anthropic-2.10.0.tar.gz", hash = "sha256:6f3ffbdc6eb0a09a197be2eabdc62b8395a13d692710b8cdfa0393a80b355585", size = 2011659, upload-time = "2026-11-17T18:28:48.258Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/09/fc/fb3accd8b9f9f9123ee5e90f27d855a9ed40a315197be6d4c8f07f9f0428/anthropic-2.13.0.tar.gz", hash = "sha256:966718543d354aae57cba5b8b5693491b9538a55ac8d83d3ddc54448ae8f58e7", size = 2048816, upload-time = "2026-11-23T18:35:03.506Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b5/02/4496b5a84f2b77ff31b25fa573f9fa2ce6a2be4e165db10a63aaa958a6dd/anthropic-2.10.0-py3-none-any.whl", hash = "sha256:1b91b2b4aa2bab44db8712e8a9053454bcff6daa3e6f5f11d85dc38b37d0a2a3", size = 2519451, upload-time = "2026-11-17T18:28:50.04Z" },
+    { url = "https://files.pythonhosted.org/packages/49/7b/a0c69f7a530a3648f8c0100af74d11f9fca7b307c352f1db8b679f37107d/anthropic-2.13.0-py3-none-any.whl", hash = "sha256:b9f61dc45a9630108f96135ecb726ffe1a6fd1f70dd2c9db5621eaaca62c16ec", size = 2613482, upload-time = "2026-11-23T18:35:01.841Z" },
 ]
 
 [[package]]
@@ -1789,7 +1789,7 @@ wheels = [
 
 [[package]]
 name = "inspect-ai"
-version = "0.3.291"
+version = "0.3.292"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "agent-client-protocol" },
@@ -1834,9 +1834,9 @@ dependencies = [
     { name = "zipp" },
     { name = "zstandard" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ab/38/11145421c7c312c7bc33e6aab635bdb63e315049f19c98d482d900fb39ce/inspect_ai-0.3.291.tar.gz", hash = "sha256:2ea302b1c35349e3efb95d1ee94937639c1760a62fcf471b86ad4646e6d52718", size = 7892590, upload-time = "2026-11-17T22:08:25.433Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6e/b8/c6aa885727a59b81cb622a5decab2dd8f322c36637cc247b93cc80e93700/inspect_ai-0.3.292.tar.gz", hash = "sha256:7018003b842dfc15dff0fad5c0da1a5423575e016e3270aa307921ca559de25d", size = 8038052, upload-time = "2026-11-23T17:59:47.057Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a8/0d/3e0ab49df0f679603d86cc0ab6f86c57c100ae9bb0b83a9e3bcb5335123f/inspect_ai-0.3.291-py3-none-any.whl", hash = "sha256:ef9e1df52757857103d10cb2fad92f369439cc254902422a49b207781c0114b0", size = 35832591, upload-time = "2026-11-17T22:08:21.847Z" },
+    { url = "https://files.pythonhosted.org/packages/cd/6c/90ce10511dc40dfa997cfd90b0443a7d6b19f710fab0cfaf23773bc0309e/inspect_ai-0.3.292-py3-none-any.whl", hash = "sha256:65f33bf73612367a547c87ae5b96f81318e72dd9efdcd92c8e0e95aa3525e2d7", size = 35899179, upload-time = "2026-11-23T17:59:44.273Z" },
 ]
 
 [[package]]
@@ -1976,7 +1976,7 @@ provides-extras = ["dev", "doc"]
 
 [[package]]
 name = "inspect-swe"
-version = "0.3.1"
+version = "0.3.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "agent-client-protocol" },
@@ -1990,9 +1990,9 @@ dependencies = [
     { name = "sniffio" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/17/77/738f9c71da64f0194d5cf81f0df70541252f4e52fd1bc2e85d46a4a6f5dd/inspect_swe-0.3.1.tar.gz", hash = "sha256:ea71c733b4cf19a8b2afaad3153c0a54c02f0123af296f601143be35e2897b9c", size = 204350, upload-time = "2026-11-18T02:42:07.289Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8e/02/8badc5cc1bac78cdae98cd45775dbb134a944206211e9f028de1392c8b26/inspect_swe-0.3.2.tar.gz", hash = "sha256:0d50a776256b2e426e0399450d9e78e1e4b816821779704402fb4a9ea89b90e8", size = 209341, upload-time = "2026-11-19T19:06:12.572Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/26/eb/c8c785d0379691d43576c9c93125de8b9c459bd5829b8a6da598160217ae/inspect_swe-0.3.1-py3-none-any.whl", hash = "sha256:90be5fee376464acbc7235e0005b432e5e2670dd2c6f35a5b6bb27b9f61066ee", size = 245332, upload-time = "2026-11-18T02:42:05.707Z" },
+    { url = "https://files.pythonhosted.org/packages/16/52/b659434d61e82d611d128f5c51b56defa3b331d14a835172fc5c2b50b205/inspect_swe-0.3.2-py3-none-any.whl", hash = "sha256:077803d45ca54e6dc13070262b5310a9b1621709dd114cd7d4fd25551151e186", size = 251323, upload-time = "2026-11-19T19:06:11.189Z" },
 ]
 
 [[package]]

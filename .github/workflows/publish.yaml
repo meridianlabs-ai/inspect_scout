@@ -83,7 +83,7 @@ jobs:
     needs: check-tag
     permissions:
       contents: read
-    uses: meridianlabs-ai/actions/.github/workflows/build-python-dist.yml@fbaa145b46c22a0e640234afba9bdac73cab13eb # main
+    uses: meridianlabs-ai/actions/.github/workflows/build-python-dist.yml@e702cf7ff758356c69904671719921fca1f3438c # main
     with:
       python-version: "3.11"
       # the built viewer (src/inspect_scout/_view/dist) is in Git LFS
@@ -157,7 +157,7 @@ jobs:
       contents: read
       pages: write
       id-token: write
-    uses: meridianlabs-ai/actions/.github/workflows/publish-docs.yml@fbaa145b46c22a0e640234afba9bdac73cab13eb # main
+    uses: meridianlabs-ai/actions/.github/workflows/publish-docs.yml@e702cf7ff758356c69904671719921fca1f3438c # main
     with:
       python-version: "3.11"
       extras: doc

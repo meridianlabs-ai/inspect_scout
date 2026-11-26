@@ -97,6 +97,21 @@ async def extract_input_messages(
         if isinstance(input_messages, list):
             # Normalize Pydantic AI format with 'parts' to standard format
             normalized = _normalize_pydantic_ai_messages(input_messages)
+            if (
+                instrumentor == Instrumentor.ANTHROPIC
+                and all(
+                    isinstance(msg, dict) and isinstance(msg.get("parts"), list)
+                    for msg in input_messages
+                )
+                and any(
+                    msg.get("role") == "tool" or msg.get("tool_calls")
+                    for msg in normalized
+                )
+            ):
+                # Tool calls and tool results built from 'parts' are in
+                # OpenAI chat format (assistant tool_calls, role "tool"),
+                # which the Anthropic converter rejects
+                return await _convert_messages(normalized, Instrumentor.OPENAI)
             return await _convert_messages(normalized, instrumentor)
 
     return []
@@ -172,12 +187,15 @@ def _normalize_pydantic_ai_messages(
                     continue
                 elif part_type == "tool_call_response":
                     # Pydantic AI tool response format (different keys)
-                    # Has: id, name, result instead of tool_call_id, content
+                    # Has: id, name, result (OTel semconv / logfire: response)
+                    # instead of tool_call_id, content
                     normalized.append(
                         {
                             "role": "tool",
                             "tool_call_id": part.get("id", ""),
-                            "content": str(part.get("result", "")),
+                            "content": str(
+                                part.get("response", part.get("result", ""))
+                            ),
                         }
                     )
                     continue

@@ -57,6 +57,11 @@ def _search_last(pattern: str, string: str, flags: int = 0) -> re.Match[str] | N
 # allowing _search_last to pick the final occurrence.
 _ANSWER_PATTERN_LINE = r"(?i)ANSWER\s*:[^\S\n]*([^\n]+)"
 
+# Multi-label answers use the last "ANSWER:" on its line, so "The answer: A is
+# incorrect. ANSWER: B, C" gives "B, C". The negative lookahead is like the
+# one in ANSWER_PATTERN_WORD.
+_ANSWER_PATTERN_LAST_ON_LINE = r"(?i)ANSWER\s*:(?![^\n]*ANSWER\s*:)[^\S\n]*([^\n]+)"
+
 
 def _strip_markdown_formatting(text: str) -> str:
     """Strip common markdown formatting from text."""
@@ -296,7 +301,9 @@ class _LabelsAnswer(Answer):
 
         # For multi-classification, allow comma-separated values on the line
         pattern = (
-            _ANSWER_PATTERN_LINE if self.multi_classification else ANSWER_PATTERN_WORD
+            _ANSWER_PATTERN_LAST_ON_LINE
+            if self.multi_classification
+            else ANSWER_PATTERN_WORD
         )
         # Match on the completion with markdown stripped ("**ANSWER:** A, C")
         completion = _strip_markdown_formatting(output.completion)

@@ -332,6 +332,22 @@ def test_parse_labels(
             "Read my_file_name.\nChecked.",
             id="bold-answer-after-text",
         ),
+        pytest.param(
+            ["First", "Second", "Third"],
+            "The **answer**: A is incorrect. ANSWER: B, C",
+            ["Second", "Third"],
+            "B, C",
+            "The answer: A is incorrect.",
+            id="two-markers-on-line-bold",
+        ),
+        pytest.param(
+            ["First", "Second", "Third"],
+            "The answer: A is incorrect. ANSWER: B, C",
+            ["Second", "Third"],
+            "B, C",
+            "The answer: A is incorrect.",
+            id="two-markers-on-line",
+        ),
     ],
 )
 def test_parse_multi_classification(

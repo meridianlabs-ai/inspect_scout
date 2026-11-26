@@ -57,6 +57,11 @@ def _search_last(pattern: str, string: str, flags: int = 0) -> re.Match[str] | N
 # allowing _search_last to pick the final occurrence.
 _ANSWER_PATTERN_LINE = r"(?i)ANSWER\s*:[^\S\n]*([^\n]+)"
 
+# Multi-label answers use the last "ANSWER:" on its line, so "The answer: A is
+# incorrect. ANSWER: B, C" gives "B, C". The negative lookahead is like the
+# one in ANSWER_PATTERN_WORD.
+_ANSWER_PATTERN_LAST_ON_LINE = r"(?i)ANSWER\s*:(?![^\n]*ANSWER\s*:)[^\S\n]*([^\n]+)"
+
 
 def _strip_markdown_formatting(text: str) -> str:
     """Strip common markdown formatting from text."""
@@ -68,6 +73,24 @@ def _strip_markdown_formatting(text: str) -> str:
     # Remove inline code: `text`
     text = re.sub(r"`(.+?)`", r"\1", text)
     return text
+
+
+def _explanation_before_answer(
+    completion: str, stripped: str, answer_start: int
+) -> str:
+    """Return the explanation for an answer found in the stripped completion.
+
+    ``stripped`` is ``_strip_markdown_formatting(completion)`` and
+    ``answer_start`` is where the answer starts in it. Text before the answer
+    line comes from the raw completion, so the reasoning keeps its formatting
+    (for example ``my_file_name``); only text before the answer on the answer
+    line itself comes from ``stripped``. Stripping never removes a newline or
+    matches across one, so both strings have the same lines.
+    """
+    line_start = stripped.rfind("\n", 0, answer_start) + 1
+    line_number = stripped.count("\n", 0, line_start)
+    before_line = "\n".join(completion.split("\n")[:line_number])
+    return f"{before_line}\n{stripped[line_start:answer_start]}".strip()
 
 
 @runtime_checkable
@@ -278,19 +301,29 @@ class _LabelsAnswer(Answer):
 
         # For multi-classification, allow comma-separated values on the line
         pattern = (
-            _ANSWER_PATTERN_LINE if self.multi_classification else ANSWER_PATTERN_WORD
+            _ANSWER_PATTERN_LAST_ON_LINE
+            if self.multi_classification
+            else ANSWER_PATTERN_WORD
         )
-        match = _search_last(pattern, output.completion, re.IGNORECASE)
+        # Match on the completion with markdown stripped ("**ANSWER:** A, C")
+        completion = _strip_markdown_formatting(output.completion)
+        match = _search_last(pattern, completion, re.IGNORECASE)
 
         if match:
             answer_text = match.group(1).strip()
-            explanation = output.completion[: match.start()].strip()
+            explanation = _explanation_before_answer(
+                output.completion, completion, match.start()
+            )
             references = extract_references(explanation)
 
             # Generate valid characters for all labels
             valid_characters = [_answer_character(i) for i in range(len(self.labels))]
 
             if self.multi_classification:
+                # Ignore trailing punctuation ("ANSWER: A, C."), which single
+                # labels already accept via ANSWER_PATTERN_WORD
+                answer_text = answer_text.rstrip(".;:!?").rstrip()
+
                 # "NONE" means no labels apply (only when allow_none is set)
                 if answer_text.upper() == "NONE" and self.allow_none:
                     no_labels: list[str] = []

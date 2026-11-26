@@ -180,6 +180,14 @@ def test_parse_numeric(
             "Answer:",
             id="double-answer",
         ),
+        pytest.param(
+            ["First", "Second", "Third"],
+            "Read my_file_name and **notes**.\n\n**ANSWER:** B",
+            "B",
+            "Second",
+            "Read my_file_name and **notes**.",
+            id="bold-answer-raw-explanation",
+        ),
     ],
 )
 def test_parse_labels(
@@ -300,6 +308,46 @@ def test_parse_labels(
             "Answer:",
             id="double-answer",
         ),
+        pytest.param(
+            ["First", "Second", "Third"],
+            "Clear.\n\nANSWER: A, C.",
+            ["First", "Third"],
+            "A, C",
+            "Clear.",
+            id="trailing-period",
+        ),
+        pytest.param(
+            ["First", "Second", "Third"],
+            "Read my_file_name and **notes**.\n\n**ANSWER: A, C**",
+            ["First", "Third"],
+            "A, C",
+            "Read my_file_name and **notes**.",
+            id="bold-answer-raw-explanation",
+        ),
+        pytest.param(
+            ["First", "Second", "Third"],
+            "Read my_file_name.\nChecked. **ANSWER:** A, C.",
+            ["First", "Third"],
+            "A, C",
+            "Read my_file_name.\nChecked.",
+            id="bold-answer-after-text",
+        ),
+        pytest.param(
+            ["First", "Second", "Third"],
+            "The **answer**: A is incorrect. ANSWER: B, C",
+            ["Second", "Third"],
+            "B, C",
+            "The answer: A is incorrect.",
+            id="two-markers-on-line-bold",
+        ),
+        pytest.param(
+            ["First", "Second", "Third"],
+            "The answer: A is incorrect. ANSWER: B, C",
+            ["Second", "Third"],
+            "B, C",
+            "The answer: A is incorrect.",
+            id="two-markers-on-line",
+        ),
     ],
 )
 def test_parse_multi_classification(
@@ -357,6 +405,14 @@ _ALLOW_NONE_LABELS = ["Violence or harm", "Illegal activity", "Privacy violation
             None,
             "None apply.\n\nANSWER: NONE",
             id="none-rejected",
+        ),
+        pytest.param(
+            True,
+            "None apply.\n\nANSWER: NONE.",
+            [],
+            "NONE",
+            "None apply.",
+            id="none-trailing-period",
         ),
     ],
 )
@@ -480,6 +536,20 @@ def test_parse_string(
         pytest.param("boolean", "R.\n\n_ANSWER: yes_", True, id="italic-underscore"),
         pytest.param("boolean", "R.\n\n`ANSWER: yes`", True, id="backtick"),
         pytest.param("numeric", "R.\n\n**ANSWER: 7**", 7.0, id="numeric-bold"),
+        pytest.param(["X", "Y"], "R.\n\n**ANSWER: B**", "B", id="labels-bold"),
+        pytest.param(["X", "Y"], "R.\n\n**ANSWER:** B", "B", id="labels-bold-marker"),
+        pytest.param(
+            AnswerMultiLabel(["X", "Y", "Z"]),
+            "R.\n\n**ANSWER: A, C**",
+            ["X", "Z"],
+            id="multi-label-bold",
+        ),
+        pytest.param(
+            AnswerMultiLabel(["X", "Y", "Z"]),
+            "R.\n\n**ANSWER:** A, C",
+            ["X", "Z"],
+            id="multi-label-bold-marker",
+        ),
     ],
 )
 def test_parse_markdown_stripping(

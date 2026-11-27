@@ -1,8 +1,11 @@
 """Tests for Logfire data extraction."""
 
+import json
+import sys
 from typing import Any
 
 import pytest
+from inspect_ai.model import ChatMessageAssistant, ChatMessageTool
 from inspect_scout.sources._logfire.detection import Instrumentor
 from inspect_scout.sources._logfire.extraction import (
     extract_input_messages,
@@ -66,6 +69,86 @@ class TestExtractInputMessages:
         messages = await extract_input_messages(span, Instrumentor.OPENAI)
 
         assert len(messages) == 2
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "system,instrumentor",
+        [
+            ("anthropic", Instrumentor.ANTHROPIC),
+            ("openai", Instrumentor.OPENAI),
+        ],
+    )
+    async def test_extract_from_input_messages_with_tool_call(
+        self,
+        system: str,
+        instrumentor: Instrumentor,
+    ) -> None:
+        """Extract a tool round trip from gen_ai.input.messages (semconv v2)."""
+        input_messages = [
+            {"role": "user", "parts": [{"type": "text", "content": "Weather?"}]},
+            {
+                "role": "assistant",
+                "parts": [
+                    {
+                        "type": "tool_call",
+                        "id": "toolu_1",
+                        "name": "get_weather",
+                        "arguments": {"city": "Paris"},
+                    }
+                ],
+            },
+            {
+                "role": "user",
+                "parts": [
+                    {"type": "tool_call_response", "id": "toolu_1", "response": "Sunny"}
+                ],
+            },
+        ]
+        span: dict[str, Any] = {
+            "attributes": {
+                "gen_ai.system": system,
+                "request_data": {"model": "test-model"},
+                "gen_ai.input.messages": json.dumps(input_messages),
+            },
+            "otel_events": [],
+        }
+        messages = await extract_input_messages(span, instrumentor)
+
+        assert [m.role for m in messages] == ["user", "assistant", "tool"]
+        assistant = messages[1]
+        assert isinstance(assistant, ChatMessageAssistant)
+        assert assistant.tool_calls is not None
+        assert assistant.tool_calls[0].function == "get_weather"
+        assert assistant.tool_calls[0].arguments == {"city": "Paris"}
+        tool = messages[2]
+        assert isinstance(tool, ChatMessageTool)
+        assert tool.tool_call_id == "toolu_1"
+        assert tool.text == "Sunny"
+
+    @pytest.mark.asyncio
+    async def test_extract_anthropic_text_input_messages_without_openai(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A text-only Anthropic span (semconv v2) imports without openai."""
+        monkeypatch.setitem(sys.modules, "openai", None)
+        input_messages = [
+            {"role": "system", "parts": [{"type": "text", "content": "Be brief."}]},
+            {"role": "user", "parts": [{"type": "text", "content": "Hi"}]},
+        ]
+        span: dict[str, Any] = {
+            "attributes": {
+                "gen_ai.system": "anthropic",
+                "request_data": {"model": "test-model"},
+                "gen_ai.input.messages": json.dumps(input_messages),
+            },
+            "otel_events": [],
+        }
+        messages = await extract_input_messages(span, Instrumentor.ANTHROPIC)
+
+        assert [(m.role, m.text) for m in messages] == [
+            ("system", "Be brief."),
+            ("user", "Hi"),
+        ]
 
     @pytest.mark.asyncio
     async def test_empty_span_returns_empty_list(self) -> None:

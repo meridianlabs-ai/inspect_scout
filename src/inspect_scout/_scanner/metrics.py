@@ -107,17 +107,41 @@ def as_score_value(value: JsonValue) -> Value:
         raise AssertionError("None should not be passed to as_score_value")
 
 
+def resultset_as_score_value(
+    value: JsonValue,
+) -> dict[str, int | bool | float | str | None]:
+    """Project labeled results into a score dictionary, keeping the first label."""
+    results = cast(list[dict[str, JsonValue]], value)
+    scores: dict[str, int | bool | float | str | None] = {}
+    for result in results:
+        label = result.get("label")
+        if label is None:
+            raise RuntimeError(
+                "Result sets used as scores must have labels for all items."
+            )
+        key = str(label)
+        if key not in scores:
+            item_value = result.get("value")
+            scores[key] = (
+                to_json_str_safe(item_value)
+                if isinstance(item_value, list | dict)
+                else item_value
+            )
+    return scores
+
+
 def _numeric_score_value(value: JsonValue) -> Value:
     """Convert a JsonValue to a Score Value for metric computation.
 
-    Filters out non-numeric values (strings, None, complex objects) from
-    lists and dicts so that metric functions like mean() and stderr() only
-    see values they can aggregate.
+    Filters out non-numeric values from lists and dicts. Dictionary keys with
+    None values are preserved so Score can mark them as unscored.
     """
     if isinstance(value, list):
         return [v for v in value if isinstance(v, int | float | bool)]
     elif isinstance(value, dict):
-        return {k: v for k, v in value.items() if isinstance(v, int | float | bool)}
+        return {
+            k: v for k, v in value.items() if isinstance(v, int | float | bool | None)
+        }
     elif isinstance(value, str | int | float | bool):
         return value
     else:

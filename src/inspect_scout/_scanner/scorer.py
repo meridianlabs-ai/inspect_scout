@@ -1,7 +1,6 @@
 from copy import deepcopy
-from typing import Any, Mapping, Sequence, cast
+from typing import Any, Mapping, Sequence
 
-from inspect_ai._util.json import to_json_str_safe
 from inspect_ai._util.registry import is_registry_object, registry_unqualified_name
 from inspect_ai.event import Event, Timeline
 from inspect_ai.log import transcript as sample_transcript
@@ -16,9 +15,12 @@ from inspect_ai.scorer import (
     stderr,
 )
 from inspect_ai.solver import TaskState
-from pydantic import JsonValue
 
-from inspect_scout._scanner.metrics import as_score_value, metrics_for_scanner
+from inspect_scout._scanner.metrics import (
+    as_score_value,
+    metrics_for_scanner,
+    resultset_as_score_value,
+)
 from inspect_scout._scanner.result import Result, as_resultset
 from inspect_scout._scanner.scanner import Scanner, ScannerConfig, config_for_scanner
 from inspect_scout._transcript.eval_log import EVAL_LOG_SOURCE_TYPE
@@ -102,23 +104,7 @@ def as_scorer(
 
             # if its a resultset, then project as dict
             if result.type == "resultset":
-                results_list = cast(list[dict[str, JsonValue]], result.value)
-                results_dict: dict[str, int | bool | float | str | None] = {}
-                for result_item in results_list:
-                    # get and validate label (required for scores)
-                    label = result_item.get("label", None)
-                    if label is None:
-                        raise RuntimeError(
-                            "Result sets used as scores must have labels for all items."
-                        )
-                    # take first label only
-                    if label not in results_dict:
-                        # extract and setvalue (must be scalar)
-                        value = result_item.get("value")
-                        if isinstance(value, list | dict):
-                            value = to_json_str_safe(value)
-                        results_dict[str(label)] = value
-                return Score(value=results_dict)
+                return Score(value=resultset_as_score_value(result.value))
             else:
                 return Score(
                     value=as_score_value(result.value),

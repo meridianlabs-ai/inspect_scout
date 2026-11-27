@@ -327,6 +327,8 @@ The `transcript_messages()` function is the primary API for extracting pre-rende
 -   If only events are present, it extracts messages from events with compaction handling.
 -   If only messages are present, it segments them by context window.
 
+In the first two cases a span's conversation is its last model call's input and output, followed by any tool results that came after that call, rebuilt from their `ToolEvent`s.
+
 ``` python
 from inspect_scout import message_numbering, transcript_messages
 

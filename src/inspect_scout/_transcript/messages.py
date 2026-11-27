@@ -16,13 +16,14 @@ from inspect_ai.event import (
     Timeline,
     TimelineEvent,
     TimelineSpan,
+    ToolEvent,
     event_sequence,
     event_tree,
 )
-from inspect_ai.model import ChatMessage, Model, get_model
+from inspect_ai.model import ChatMessage, ChatMessageTool, Content, Model, get_model
 from inspect_ai.model._chat_message import ChatMessageBase
 from inspect_ai.model._model_info import get_model_info
-from inspect_ai.tool import ToolInfo
+from inspect_ai.tool import ToolInfo, ToolResult
 
 from inspect_scout._scanner.extract import MessagesAsStr
 
@@ -496,11 +497,13 @@ def span_messages(
 
     Filters for ``ModelEvent`` and ``CompactionEvent``, then merges
     messages into a single list based on the ``compaction`` strategy.
+    Tool results that followed the last model call are appended from
+    their ``ToolEvent``s (see ``_trailing_tool_messages``).
 
     Args:
         source: A ``Timeline`` (extracts ``.root``), ``TimelineSpan``
             (events extracted from its content), or a raw list of events.
-            Non-Model/Compaction events are ignored.
+            Other events are ignored.
         compaction: How to handle compaction boundaries:
             - ``"all"``: merge across boundaries for full coverage.
               Summary grafts pre + post messages. Trim prepends the
@@ -523,7 +526,8 @@ def span_messages(
     if not split_compactions:
         return span_conversation(source, compaction=compaction).messages
 
-    events = _compaction_regions(_span_events(source), compaction)
+    span_events = _span_events(source)
+    events = _compaction_regions(span_events, compaction)
     if events is None:
         return []
 
@@ -541,6 +545,9 @@ def span_messages(
 
     if current_model_events:
         regions.append(_segment_messages(current_model_events[-1]))
+
+    if regions:
+        regions[-1].extend(_trailing_tool_messages(span_events, regions[-1]))
 
     return regions
 
@@ -565,9 +572,11 @@ def span_conversation(
 
     Same merge as `span_messages()` (see there for `source` and
     `compaction`), also returning the model events whose input and output
-    the messages were taken from.
+    the messages were taken from. Tool results appended after the last call
+    (see `_trailing_tool_messages`) come from no model event.
     """
-    events = _compaction_regions(_span_events(source), compaction)
+    span_events = _span_events(source)
+    events = _compaction_regions(span_events, compaction)
     if events is None:
         return SpanConversation(messages=[], model_events=[])
 
@@ -612,7 +621,64 @@ def span_conversation(
         merged.extend(_segment_messages(current_model_events_merge[-1]))
         sources.append(current_model_events_merge[-1])
 
+    merged.extend(_trailing_tool_messages(span_events, merged))
+
     return SpanConversation(messages=merged, model_events=sources)
+
+
+def _trailing_tool_messages(
+    events: list[Event], conversation: list[ChatMessage]
+) -> list[ChatMessage]:
+    """Rebuild the tool messages for results that followed the last model call.
+
+    A conversation is taken from model events' input and output, so a tool
+    result that no later call saw (the final call's tools, or a run cut off
+    after a result) is in it only if rebuilt from its `ToolEvent`. The event
+    carries the fields inspect_ai builds the message from, and `message_id`
+    names the message that held the result; an event without one is left
+    out, as the result never became a message (a call that got no result,
+    or a producer that doesn't link the two). Events answering a call the
+    conversation already has a message for are skipped.
+    """
+    last_call_index = next(
+        (i for i, e in reversed(list(enumerate(events))) if isinstance(e, ModelEvent)),
+        None,
+    )
+    if last_call_index is None:
+        return []
+    seen_tool_call_ids = {
+        m.tool_call_id for m in conversation if isinstance(m, ChatMessageTool)
+    }
+    messages: list[ChatMessage] = []
+    for event in events[last_call_index + 1 :]:
+        if (
+            isinstance(event, ToolEvent)
+            and event.message_id is not None
+            and event.id not in seen_tool_call_ids
+        ):
+            messages.append(
+                ChatMessageTool(
+                    id=event.message_id,
+                    tool_call_id=event.id,
+                    function=event.function,
+                    content=_tool_result_content(event.result),
+                    error=event.error,
+                )
+            )
+            seen_tool_call_ids.add(event.id)
+    return messages
+
+
+def _tool_result_content(result: ToolResult) -> str | list[Content]:
+    """A tool result as tool message content, the way inspect_ai sends it."""
+    if isinstance(result, str):
+        return result
+    if isinstance(result, list):
+        content: list[Content] = [*result]
+        return content
+    if isinstance(result, (int, float, bool)):
+        return str(result)
+    return [result]
 
 
 def _span_events(source: Timeline | TimelineSpan | list[Event]) -> list[Event]:

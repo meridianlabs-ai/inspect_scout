@@ -10,14 +10,16 @@ from inspect_ai.model import (
     ChatMessage,
     ChatMessageAssistant,
     ChatMessageSystem,
+    ChatMessageTool,
     ChatMessageUser,
+    ContentText,
     Model,
     ModelOutput,
     get_model,
 )
 from inspect_ai.model._generate_config import GenerateConfig
 from inspect_ai.model._model_output import ChatCompletionChoice
-from inspect_ai.tool import ToolInfo
+from inspect_ai.tool import ToolInfo, ToolResult
 from inspect_scout._scanner.extract import message_numbering
 from inspect_scout._transcript.messages import (
     MessagesSegment,
@@ -78,15 +80,21 @@ def _make_compaction_event(
     )
 
 
-def _make_tool_event() -> ToolEvent:
-    """Create a ToolEvent for testing that non-model events are ignored."""
+def _make_tool_event(
+    *,
+    id: str = "tool-call-id",
+    message_id: str | None = None,
+    result: ToolResult = "result",
+) -> ToolEvent:
+    """Create a ToolEvent; `message_id` names the tool message that held its result."""
     return ToolEvent(
         event="tool",
         timestamp=datetime(2024, 1, 1),
-        id="tool-call-id",
+        id=id,
         function="test_func",
         arguments={"arg": "value"},
-        result="result",
+        result=result,
+        message_id=message_id,
     )
 
 
@@ -476,6 +484,140 @@ def test_span_messages_compaction_last_with_trim() -> None:
     assert result[0] is _asst1
     assert result[-1].text == "After"
     assert len(result) == 4  # a1, u2, u3, output
+
+
+# -- trailing tool results --
+
+
+@pytest.mark.parametrize("compaction", ["all", "last"])
+def test_span_messages_appends_trailing_tool_result(
+    compaction: Literal["all", "last"],
+) -> None:
+    """A tool result after the last call is rebuilt from its ToolEvent, in every mode."""
+    events: list[Event] = [
+        _make_model_event([_user1], output_content="Seg 0"),
+        _make_compaction_event(),
+        _make_model_event([_user2], output_content="Calling"),
+        _make_tool_event(id="call-1", message_id="t-1", result="42"),
+    ]
+
+    result = span_messages(events, compaction=compaction)
+
+    assert result[-2].text == "Calling"
+    tail = result[-1]
+    assert isinstance(tail, ChatMessageTool)
+    assert (tail.id, tail.tool_call_id, tail.function, tail.content) == (
+        "t-1",
+        "call-1",
+        "test_func",
+        "42",
+    )
+
+
+@pytest.mark.parametrize(
+    "events,expected",
+    [
+        pytest.param(
+            [_make_model_event([_user1]), _make_tool_event(id="call-1")],
+            ["user", "assistant"],
+            id="no-message-id",
+        ),
+        pytest.param(
+            [
+                _make_tool_event(id="call-1", message_id="t-1"),
+                _make_model_event([_user1]),
+            ],
+            ["user", "assistant"],
+            id="before-the-last-call",
+        ),
+        pytest.param(
+            [
+                _make_model_event(
+                    [
+                        _user1,
+                        ChatMessageTool(content="1", tool_call_id="call-1", id="t-0"),
+                    ]
+                ),
+                _make_tool_event(id="call-1", message_id="t-1"),
+            ],
+            ["user", "tool", "assistant"],
+            id="already-answered",
+        ),
+        pytest.param(
+            [_make_tool_event(id="call-1", message_id="t-1")],
+            [],
+            id="no-model-call",
+        ),
+    ],
+)
+def test_span_messages_leaves_out_other_tool_events(
+    events: list[Event], expected: list[str]
+) -> None:
+    """Only a trailing ToolEvent that names its message adds a tool message."""
+    assert [m.role for m in span_messages(events)] == expected
+
+
+@pytest.mark.parametrize(
+    "result,expected",
+    [
+        ("text", "text"),
+        (3, "3"),
+        (True, "True"),
+        (ContentText(text="x"), [ContentText(text="x")]),
+        ([ContentText(text="x")], [ContentText(text="x")]),
+    ],
+)
+def test_trailing_tool_result_content(
+    result: ToolResult, expected: str | list[ContentText]
+) -> None:
+    """The result becomes tool message content as inspect_ai would send it."""
+    events: list[Event] = [
+        _make_model_event([_user1]),
+        _make_tool_event(id="call-1", message_id="t-1", result=result),
+    ]
+
+    assert span_messages(events)[-1].content == expected
+
+
+def test_span_conversation_trailing_tool_result_has_no_source_event() -> None:
+    """The rebuilt message is in `messages` but comes from no model event."""
+    events: list[Event] = [
+        _make_model_event([_user1], uuid="m1"),
+        _make_tool_event(id="call-1", message_id="t-1"),
+    ]
+
+    result = span_conversation(events)
+
+    assert [m.role for m in result.messages] == ["user", "assistant", "tool"]
+    assert [e.uuid for e in result.model_events] == ["m1"]
+
+
+def test_span_messages_split_compactions_trailing_tool_result_in_last_region() -> None:
+    events: list[Event] = [
+        _make_model_event([_user1]),
+        _make_compaction_event(),
+        _make_model_event([_user2]),
+        _make_tool_event(id="call-1", message_id="t-1"),
+    ]
+
+    regions = span_messages(events, split_compactions=True)
+
+    assert [[m.role for m in r] for r in regions] == [
+        ["user", "assistant"],
+        ["user", "assistant", "tool"],
+    ]
+
+
+def test_span_messages_trailing_tool_result_from_timeline_span() -> None:
+    span = _make_timeline_span(
+        "Agent",
+        events=[
+            _make_model_event([_user1]),
+            _make_tool_event(id="call-1", message_id="t-1"),
+        ],
+    )
+
+    assert [m.role for m in span_messages(span)] == ["user", "assistant", "tool"]
 
 
 # -- span_tools tests --

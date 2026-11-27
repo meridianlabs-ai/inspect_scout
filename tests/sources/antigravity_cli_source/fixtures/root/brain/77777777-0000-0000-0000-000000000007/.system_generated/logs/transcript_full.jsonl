@@ -1,0 +1,2 @@
+{"step_index":0,"source":"USER_EXPLICIT","type":"USER_INPUT","status":"DONE","created_at":"2026-08-26T08:00:00Z","content":"<USER_REQUEST>\nIs anyone there?\n</USER_REQUEST>\n<ADDITIONAL_METADATA>\nThe current local time is: 2026-08-26T01:00:00-07:00.\n</ADDITIONAL_METADATA>"}
+{"step_index":1,"source":"SYSTEM","type":"CHECKPOINT","status":"DONE","created_at":"2026-08-26T08:00:00Z","content":"{{ CHECKPOINT 0 }}\n# USER Objective:\nUnknown\n\n# User Requests\n1. Is anyone there?"}

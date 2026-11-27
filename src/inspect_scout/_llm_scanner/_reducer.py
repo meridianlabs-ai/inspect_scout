@@ -129,10 +129,32 @@ class ResultReducer:
 
     @staticmethod
     async def any(results: list[Result]) -> Result:
-        """Boolean OR — True if any result is True."""
-        value = builtins.any(r.value is True for r in results)
+        """Boolean OR, preserving the selected answer's numeric conversion."""
+        selected: Result | None = None
+        value = False
+        for result in results:
+            # Conversion can map True to any float, including zero. Use the
+            # parsed answer when available rather than the converted score.
+            boolean = result.parsed if isinstance(result.parsed, bool) else result.value
+            if isinstance(boolean, bool):
+                # A failed parse's fallback must not replace a converted No.
+                if boolean or selected is None or isinstance(result.parsed, bool):
+                    selected = result
+                value = boolean
+                if value:
+                    break
         answer = "Yes" if value else "No"
-        return _build_result(results, value=value, answer=answer)
+        reduced = _build_result(
+            results,
+            value=selected.value if selected is not None else False,
+            answer=answer,
+        )
+        reduced.parsed = (
+            value
+            if selected is not None and isinstance(selected.parsed, bool)
+            else None
+        )
+        return reduced
 
     @staticmethod
     async def union(results: list[Result]) -> Result:

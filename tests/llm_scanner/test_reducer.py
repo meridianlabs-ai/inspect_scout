@@ -106,6 +106,78 @@ class TestMin:
 
 
 class TestAny:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("fallback_first", [False, True])
+    async def test_failed_subgroup_does_not_replace_converted_negative(
+        self, fallback_first: bool
+    ) -> None:
+        negative = Result(value=3.0, parsed=False, answer="No")
+        fallback = await ResultReducer.any([Result(value=False), Result(value=False)])
+        assert fallback.parsed is None
+        results = [fallback, negative] if fallback_first else [negative, fallback]
+        result = await ResultReducer.any(results)
+        assert result.value == 3.0
+        assert isinstance(result.value, float)
+        assert result.parsed is False
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("fallback_first", [False, True])
+    async def test_parsed_negative_survives_parse_failure(
+        self, fallback_first: bool
+    ) -> None:
+        negative = Result(value=3.0, parsed=False, answer="No")
+        fallback = Result(value=False)
+        results = [fallback, negative] if fallback_first else [negative, fallback]
+        result = await ResultReducer.any(results)
+        assert result.value == 3.0
+        assert isinstance(result.value, float)
+        assert result.parsed is False
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("inner_fallback_first", [False, True])
+    @pytest.mark.parametrize("outer_fallback_first", [False, True])
+    async def test_nested_reduction_keeps_converted_negative(
+        self, inner_fallback_first: bool, outer_fallback_first: bool
+    ) -> None:
+        negative = Result(value=3.0, parsed=False, answer="No")
+        inner_results = [Result(value=False), negative]
+        if not inner_fallback_first:
+            inner_results.reverse()
+        inner = await ResultReducer.any(inner_results)
+        outer_results = [Result(value=False), inner]
+        if not outer_fallback_first:
+            outer_results.reverse()
+        result = await ResultReducer.any(outer_results)
+        assert result.value == 3.0
+        assert isinstance(result.value, float)
+        assert result.parsed is False
+        assert result.answer == "No"
+
+    @pytest.mark.asyncio
+    async def test_all_unparsed_results_stay_unparsed(self) -> None:
+        inner = await ResultReducer.any([Result(value=False), Result(value=False)])
+        result = await ResultReducer.any([inner, Result(value=False)])
+        for reduced in (inner, result):
+            assert reduced.value is False
+            assert reduced.parsed is None
+            assert reduced.answer == "No"
+
+    @pytest.mark.asyncio
+    async def test_reducing_converted_results_twice_preserves_boolean(self) -> None:
+        positive = Result(value=0.0, parsed=True, answer="Yes")
+        negative = Result(value=1.0, parsed=False, answer="No")
+        first = await ResultReducer.any([negative, positive])
+        result = await ResultReducer.any([first, negative])
+        assert result.value == 0.0
+        assert result.parsed is True
+        assert result.answer == "Yes"
+
+    @pytest.mark.asyncio
+    async def test_unparsed_numeric_values_are_not_boolean_answers(self) -> None:
+        result = await ResultReducer.any([Result(value=1.0), Result(value=None)])
+        assert result.value is False
+        assert result.answer == "No"
+
     @pytest.mark.anyio
     async def test_any_all_false(self) -> None:
         results = [

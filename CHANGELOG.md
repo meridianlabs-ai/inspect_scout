@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.7.0](https://github.com/meridianlabs-ai/inspect_scout/compare/0.6.4...0.7.0) (2026-11-27)
+
+
+### Breaking Changes
+
+* the loader items of one transcript now scan in parallel. Scanners over messages, events or any loader's items run concurrently within a transcript, in no order, so a scanner that keeps mutable state in its closure can race, and a loader must not change a value after it yields it. Rows within a transcript have no fixed order; the set of rows is unchanged. A cancel scope or timeout that a loader holds across a `yield` no longer applies to the scanner. `--max-transcripts` now sets the number of scan workers: the pool is `max_transcripts` x the number of scanners, no longer capped by the number of transcript and scanner pairs, and all workers start at once, so a scan of a few transcripts makes more concurrent scanner calls (model calls are still limited by `max_connections`). In multi-process mode a transcript's items stay in the process that read it, and the process count is at most the worker count, which can lower a set `max_processes`. A scanner that raises a bare `CancelledError` now ends the scan as interrupted.
+
+### Features
+
+* scan the loader items of one transcript in parallel ([#864](https://github.com/meridianlabs-ai/inspect_scout/issues/864)) ([4972487](https://github.com/meridianlabs-ai/inspect_scout/commit/4972487b62556f0e43e9c4be6dd7ec4d546a705e))
+
+
+### Bug Fixes
+
+* label answers keep every label when the ANSWER line ends in a period or uses markdown bold ([#877](https://github.com/meridianlabs-ai/inspect_scout/issues/877)) ([c1f34e8](https://github.com/meridianlabs-ai/inspect_scout/commit/c1f34e8062b7ff0a8e4382bbe5aeecc26bd44219))
+* resuming a scan on a different machine rescans every transcript ([#863](https://github.com/meridianlabs-ai/inspect_scout/issues/863)) ([c72b984](https://github.com/meridianlabs-ai/inspect_scout/commit/c72b9849ebd318dd085748c0c6462ccebe691e5c))
+
 ## [0.6.4](https://github.com/meridianlabs-ai/inspect_scout/compare/0.6.3...0.6.4) (2026-11-23)
 
 

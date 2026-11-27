@@ -1324,3 +1324,18 @@ def test_csv_whitespace_target_round_trips(
     assert [case.model_dump(exclude_none=True) for case in cases] == [
         {"id": "alpha", "target": target}
     ]
+
+
+def test_csv_case_with_numeric_task_id_can_be_updated(
+    client: TestClient, tmp_path: Path
+) -> None:
+    path = tmp_path / "cases.csv"
+    path.write_text("id,target,task_id\nabc,true,1\n")
+    route = f"/validations/{_base64url(path.as_uri())}/{_base64url('abc')}"
+
+    case = client.get(route).json()
+    assert case["task_id"] == "1"
+
+    updated = client.post(route, json={"target": False, "task_id": case["task_id"]})
+    assert updated.status_code == 200
+    assert client.get(route).json() == {"id": "abc", "target": False, "task_id": "1"}

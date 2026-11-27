@@ -323,6 +323,8 @@ By default, if errors occur during a scan they are caught and reported and the o
 
 ![](images/scan-resume.png)
 
+Resuming a scan runs code the scan names, so only resume scans you trust (see [Handling Errors](index.qmd#handling-errors)).
+
 Generally you should use Scout View to review errors in more details to determine if they are fundamental problems (e.g. bugs in your code) or transient infrastructure errors that it might be acceptable to exclude from scan results.
 
 If you prefer to fail immediately when an error occurs rather than capturing errors in results, use the `--fail-on-error` flag:
